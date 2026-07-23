@@ -38,7 +38,10 @@ export async function middleware(request: NextRequest) {
 
   const { pathname, search } = request.nextUrl;
 
-  if ((pathname.startsWith("/app") || pathname.startsWith("/onboarding")) && !user) {
+  // /onboarding is deliberately not gated here — it's the anonymous product
+  // demo. Account creation happens at the end of the flow itself (see
+  // onboarding-flow.tsx), not as a precondition to seeing it.
+  if (pathname.startsWith("/app") && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname + search);

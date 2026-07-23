@@ -2,7 +2,20 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, Loader2, Plus, Sparkles, Check, Building2, Users, Radar } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Loader2,
+  Plus,
+  Sparkles,
+  Check,
+  Building2,
+  Users,
+  Radar,
+  Mail,
+  CheckCircle2,
+} from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,24 +28,35 @@ import { CompetitorRow, type CompetitorInput } from "@/components/app/competitor
 import { SuggestedCompetitors, type SuggestedCompetitor } from "@/components/app/suggested-competitors";
 import { DocumentUpload } from "@/components/app/document-upload";
 import { generatePreviewAlert } from "@/lib/onboarding-preview";
-import { DOMAIN_PATTERN, normalizeDomain } from "@/lib/domain";
+import { DOMAIN_PATTERN } from "@/lib/domain";
+import { createClient } from "@/lib/supabase/client";
 
 const MAX_COMPETITORS = 15;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const STEPS = [
-  { title: "Company basics", icon: Building2 },
-  { title: "Competitors", icon: Radar },
-  { title: "Growth Monitoring", icon: Users },
-  { title: "Live preview", icon: Sparkles },
-];
-const STEP_TITLES = STEPS.map((s) => s.title);
-
-export function OnboardingFlow() {
+export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedPlan = searchParams.get("plan");
   const selectedPeriod = searchParams.get("period") === "annual" ? "annual" : "monthly";
   const [step, setStep] = useState(0);
+
+  const STEPS = useMemo(() => {
+    const base = [
+      { title: "Company basics", icon: Building2 },
+      { title: "Competitors", icon: Radar },
+      { title: "Growth Monitoring", icon: Users },
+      { title: "Live preview", icon: Sparkles },
+    ];
+    return initiallySignedIn ? base : [...base, { title: "Create account", icon: Mail }];
+  }, [initiallySignedIn]);
+  const STEP_TITLES = STEPS.map((s) => s.title);
+  const isFinalStep = step === STEPS.length - 1;
+  const isAccountStep = !initiallySignedIn && isFinalStep;
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
 
   const [companyName, setCompanyName] = useState("");
   const [positioning, setPositioning] = useState("");
@@ -67,8 +91,21 @@ export function OnboardingFlow() {
     if (step === 0) return companyName.trim() && positioning.trim() && icp.trim();
     if (step === 1) return filledCompetitors.length >= 3 && domainsValid;
     if (step === 2) return hasSalesCrm || hasPlg;
+    if (isAccountStep) return EMAIL_PATTERN.test(email.trim()) && password.length >= 6;
     return true;
-  }, [step, companyName, positioning, icp, filledCompetitors.length, domainsValid, hasSalesCrm, hasPlg]);
+  }, [
+    step,
+    companyName,
+    positioning,
+    icp,
+    filledCompetitors.length,
+    domainsValid,
+    hasSalesCrm,
+    hasPlg,
+    isAccountStep,
+    email,
+    password,
+  ]);
 
   const previewAlert = useMemo(
     () =>
@@ -136,6 +173,33 @@ export function OnboardingFlow() {
     setSubmitting(true);
     setSubmitError("");
 
+    if (!initiallySignedIn) {
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: { emailRedirectTo: `${window.location.origin}/app/dashboard` },
+      });
+
+      if (error) {
+        setSubmitError(error.message);
+        setSubmitting(false);
+        return;
+      }
+
+      // Email confirmation is off in dev, but if it's ever re-enabled there's
+      // no session yet — nothing to persist the onboarding data against.
+      if (!data.session) {
+        setNeedsConfirmation(true);
+        setSubmitting(false);
+        return;
+      }
+    }
+
+    await completeOnboarding();
+  }
+
+  async function completeOnboarding() {
     try {
       const res = await fetch("/api/onboarding/complete", {
         method: "POST",
@@ -182,6 +246,21 @@ export function OnboardingFlow() {
       setSubmitError("Something went wrong. Try again.");
       setSubmitting(false);
     }
+  }
+
+  if (needsConfirmation) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center gap-3 py-8 text-center">
+          <CheckCircle2 className="size-8 text-primary" />
+          <p className="font-medium">Check your email</p>
+          <p className="text-sm text-muted-foreground">
+            We sent a confirmation link to {email}. Follow it to finish setting up your account and see
+            your dashboard.
+          </p>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
@@ -299,7 +378,16 @@ export function OnboardingFlow() {
               />
 
               <div className="border-t border-border pt-4">
-                <DocumentUpload />
+                {initiallySignedIn ? (
+                  <DocumentUpload />
+                ) : (
+                  <div>
+                    <p className="text-sm font-medium">Attach supporting documents (optional)</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Available once you create your account, at the end of this demo.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -417,6 +505,43 @@ export function OnboardingFlow() {
                   {hasSalesCrm && hasPlg ? "Hybrid" : hasSalesCrm ? "Sales-led" : hasPlg ? "Self-serve" : "Not set"}
                 </p>
               </div>
+              {!initiallySignedIn ? (
+                <p className="text-sm font-medium text-primary">Like what you see? Save it — one step left.</p>
+              ) : null}
+            </div>
+          )}
+
+          {isAccountStep && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Create a free account to save this setup and start monitoring these competitors for real.
+                No card required.
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="onboardingEmail">Work email</Label>
+                <Input
+                  id="onboardingEmail"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@company.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="onboardingPassword">Password</Label>
+                <Input
+                  id="onboardingPassword"
+                  type="password"
+                  minLength={6}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                By creating an account, you agree to our{" "}
+                <Link href="/terms" className="text-primary hover:underline">Terms of Service</Link> and{" "}
+                <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>.
+              </p>
             </div>
           )}
         </CardContent>
@@ -442,7 +567,7 @@ export function OnboardingFlow() {
         ) : (
           <Button type="button" onClick={handleFinish} disabled={submitting}>
             {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
-            Go to dashboard
+            {isAccountStep ? "Create account & go to dashboard" : "Go to dashboard"}
             <ArrowRight className="size-4" />
           </Button>
         )}
