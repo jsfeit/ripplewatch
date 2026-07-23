@@ -1,18 +1,11 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { suggestCompetitors } from "@/lib/anthropic";
 
-// Signed-in-only rather than account-scoped — this runs during onboarding,
-// before an account exists, same as the document-upload routes.
+// Deliberately open to anonymous visitors — this runs during the onboarding
+// demo, before an account exists and often before anyone has signed in at
+// all. It's read-only against Claude, not account-scoped, so there's
+// nothing here that needs an authenticated user.
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Not signed in." }, { status: 401 });
-  }
-
   const body = await request.json().catch(() => null);
   const companyName = typeof body?.companyName === "string" ? body.companyName.trim() : "";
   const positioning = typeof body?.positioning === "string" ? body.positioning.trim() : null;

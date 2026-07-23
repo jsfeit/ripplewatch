@@ -1,11 +1,17 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { Waves } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
 import { OnboardingFlow } from "./onboarding-flow";
 
 export const metadata = { title: "Set up your workspace", robots: { index: false, follow: false } };
 
-export default function OnboardingPage() {
+export default async function OnboardingPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
     <div className="min-h-screen bg-secondary/30">
       <header className="border-b border-border bg-background">
@@ -20,7 +26,7 @@ export default function OnboardingPage() {
       </header>
       <main className="mx-auto max-w-3xl px-6 py-12">
         <Suspense>
-          <OnboardingFlow />
+          <OnboardingFlow initiallySignedIn={Boolean(user)} />
         </Suspense>
       </main>
     </div>

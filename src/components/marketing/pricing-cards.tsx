@@ -22,7 +22,7 @@ export function PricingCards() {
       <div className="mt-10 grid gap-6 sm:grid-cols-3">
         {TIERS.map((tier) => {
           const displayMonthly = period === "annual" ? annualPriceUsd(tier.monthlyUsd) / 12 : tier.monthlyUsd;
-          const href = tier.selfServe ? `/signup?plan=${tier.id}&period=${period}` : "/waitlist";
+          const href = tier.selfServe ? `/onboarding?plan=${tier.id}&period=${period}` : "/waitlist";
 
           return (
             <div key={tier.id} className="relative">

@@ -41,7 +41,7 @@ export default function PricingPage() {
           Most self-serve teams start on Starter and move to Plus once relevance scoring proves
           its worth on their first few alerts.
         </p>
-        <Link href="/signup?plan=starter&period=monthly" className={buttonVariants({ className: "mt-6" })}>
+        <Link href="/onboarding?plan=starter&period=monthly" className={buttonVariants({ className: "mt-6" })}>
           Get started
         </Link>
       </div>
