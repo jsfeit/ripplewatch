@@ -1,6 +1,14 @@
 import { LegalDoc } from "@/components/marketing/legal-doc";
 
-export const metadata = { title: "Privacy Policy — Ripplewatch" };
+const description = "What Ripplewatch collects, how it's used, and who it's shared with.";
+
+export const metadata = {
+  title: "Privacy Policy",
+  description,
+  alternates: { canonical: "/privacy" },
+  openGraph: { title: "Privacy Policy — Ripplewatch", description, images: ["/opengraph-image"] },
+  twitter: { card: "summary_large_image", title: "Privacy Policy — Ripplewatch", description, images: ["/opengraph-image"] },
+};
 
 export default function PrivacyPage() {
   return (

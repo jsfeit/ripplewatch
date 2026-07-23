@@ -4,7 +4,16 @@ import { MOCK_SIGNALS, MOCK_COMPETITORS } from "@/lib/mock-data";
 import { buttonVariants } from "@/components/ui/button";
 import Link from "next/link";
 
-export const metadata = { title: "How it works — Ripplewatch" };
+const description =
+  "See how Ripplewatch turns a raw competitor signal into a relevance verdict — scored against your positioning, ICP, and the real reasons deals were lost.";
+
+export const metadata = {
+  title: "How it works",
+  description,
+  alternates: { canonical: "/how-it-works" },
+  openGraph: { title: "How it works — Ripplewatch", description, images: ["/opengraph-image"] },
+  twitter: { card: "summary_large_image", title: "How it works — Ripplewatch", description, images: ["/opengraph-image"] },
+};
 
 const scoredExample = MOCK_SIGNALS.find((s) => s.id === "sig-2")!;
 const rawExample = MOCK_SIGNALS.find((s) => s.id === "sig-8")!;

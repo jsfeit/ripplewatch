@@ -1,6 +1,14 @@
 import { LegalDoc } from "@/components/marketing/legal-doc";
 
-export const metadata = { title: "Terms of Service — Ripplewatch" };
+const description = "The terms that govern your use of ripplewatch.ai and the Ripplewatch application.";
+
+export const metadata = {
+  title: "Terms of Service",
+  description,
+  alternates: { canonical: "/terms" },
+  openGraph: { title: "Terms of Service — Ripplewatch", description, images: ["/opengraph-image"] },
+  twitter: { card: "summary_large_image", title: "Terms of Service — Ripplewatch", description, images: ["/opengraph-image"] },
+};
 
 export default function TermsPage() {
   return (

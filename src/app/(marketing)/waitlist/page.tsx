@@ -3,7 +3,16 @@ import { AlertCard } from "@/components/app/alert-card";
 import { MOCK_SIGNALS, MOCK_COMPETITORS } from "@/lib/mock-data";
 import { WaitlistForm } from "./waitlist-form";
 
-export const metadata = { title: "Join the waitlist — Ripplewatch" };
+const description =
+  "Ripplewatch is onboarding teams in small batches to keep relevance scoring sharp. Join the waitlist to get early access.";
+
+export const metadata = {
+  title: "Join the waitlist",
+  description,
+  alternates: { canonical: "/waitlist" },
+  openGraph: { title: "Join the waitlist — Ripplewatch", description, images: ["/opengraph-image"] },
+  twitter: { card: "summary_large_image", title: "Join the waitlist — Ripplewatch", description, images: ["/opengraph-image"] },
+};
 
 const scoredExample = MOCK_SIGNALS.find((s) => s.id === "sig-1")!;
 const exampleCompetitor = MOCK_COMPETITORS.find((c) => c.id === scoredExample.competitorId)!;

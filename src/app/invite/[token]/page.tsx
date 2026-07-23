@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { InviteAccept } from "./invite-accept";
 
-export const metadata = { title: "Join your team — Ripplewatch" };
+export const metadata = { title: "Join your team", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
 export default async function InvitePage({ params }: { params: Promise<{ token: string }> }) {
