@@ -158,7 +158,7 @@ export default function MarketResearchPage() {
           <table className="w-full min-w-[640px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-border bg-secondary/40 text-left">
-                <th className="p-3 font-medium">Tool</th>
+                <th className="sticky left-0 z-10 bg-secondary/40 p-3 font-medium">Tool</th>
                 <th className="p-3 text-center font-medium">Pricing</th>
                 <th className="p-3 text-center font-medium">Features</th>
                 <th className="p-3 text-center font-medium">SEO/Traffic</th>
@@ -175,7 +175,14 @@ export default function MarketResearchPage() {
                   key={row.name}
                   className={cn("border-b border-border last:border-0", i % 2 === 1 && "bg-secondary/20")}
                 >
-                  <td className="p-3 font-medium">{row.name}</td>
+                  <td
+                    className={cn(
+                      "sticky left-0 z-10 p-3 font-medium",
+                      i % 2 === 1 ? "bg-secondary/20" : "bg-background"
+                    )}
+                  >
+                    {row.name}
+                  </td>
                   <td className="p-3"><Cell on={row.pricing} /></td>
                   <td className="p-3"><Cell on={row.features} /></td>
                   <td className="p-3"><Cell on={row.seoTraffic} /></td>
