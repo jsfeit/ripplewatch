@@ -14,6 +14,8 @@ export function SiteFooter() {
           <Link href="/pricing" className="hover:text-foreground">Pricing</Link>
           <Link href="/waitlist" className="hover:text-foreground">Join waitlist</Link>
           <Link href="/onboarding" className="hover:text-foreground">Live demo</Link>
+          <Link href="/state-of-competitive-intelligence" className="hover:text-foreground">Research</Link>
+          <Link href="/faq" className="hover:text-foreground">FAQ</Link>
           <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
           <Link href="/terms" className="hover:text-foreground">Terms</Link>
         </nav>

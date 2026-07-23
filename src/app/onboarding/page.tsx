@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Waves } from "lucide-react";
 import { OnboardingFlow } from "./onboarding-flow";
 
-export const metadata = { title: "Set up your workspace — Ripplewatch" };
+export const metadata = { title: "Set up your workspace", robots: { index: false, follow: false } };
 
 export default function OnboardingPage() {
   return (

@@ -3,7 +3,16 @@ import { buttonVariants } from "@/components/ui/button";
 import { TierComparisonTable } from "@/components/marketing/tier-comparison-table";
 import { PricingCards } from "@/components/marketing/pricing-cards";
 
-export const metadata = { title: "Pricing — Ripplewatch" };
+const description =
+  "Relevance-scored competitive intelligence starting at $49/mo. Every tier includes AI-scored alerts against your own positioning and lost-deal reasons.";
+
+export const metadata = {
+  title: "Pricing",
+  description,
+  alternates: { canonical: "/pricing" },
+  openGraph: { title: "Pricing — Ripplewatch", description, images: ["/opengraph-image"] },
+  twitter: { card: "summary_large_image", title: "Pricing — Ripplewatch", description, images: ["/opengraph-image"] },
+};
 
 export default function PricingPage() {
   return (

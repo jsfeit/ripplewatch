@@ -5,6 +5,8 @@ import { TierComparisonTable } from "@/components/marketing/tier-comparison-tabl
 import { AlertCard } from "@/components/app/alert-card";
 import { MOCK_SIGNALS, MOCK_COMPETITORS } from "@/lib/mock-data";
 
+export const metadata = { alternates: { canonical: "/" } };
+
 const scoredExample = MOCK_SIGNALS.find((s) => s.id === "sig-1")!;
 const rawExample = MOCK_SIGNALS.find((s) => s.id === "sig-4")!;
 const competitorFor = (id: string) => MOCK_COMPETITORS.find((c) => c.id === id)!;
@@ -33,9 +35,28 @@ const ASK_EXCHANGE = {
     "Two things worth acting on. They cut their entry tier from $99 to $69/mo — that directly narrows the price gap you've lost two deals to this month. They also removed the competitor-count cap on their top tier, which undercuts the \"scales with you\" pitch you lead with in upmarket conversations.",
 };
 
+const STRUCTURED_DATA = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Ripplewatch",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  description:
+    "AI-native competitive intelligence for startup marketing teams. Scores every competitor signal against your own positioning, ICP, and lost-deal reasons — not just what changed, but whether it matters.",
+  offers: [
+    { "@type": "Offer", name: "Starter", price: "49", priceCurrency: "USD" },
+    { "@type": "Offer", name: "Plus", price: "149", priceCurrency: "USD" },
+    { "@type": "Offer", name: "Plus + Human", price: "499", priceCurrency: "USD" },
+  ],
+};
+
 export default function HomePage() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA) }}
+      />
       <section className="mx-auto max-w-6xl px-6 pb-20 pt-20 sm:pt-28">
         <div className="mx-auto max-w-3xl text-center">
           <span className="inline-flex items-center rounded-full border border-border bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground">

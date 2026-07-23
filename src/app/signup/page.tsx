@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Waves } from "lucide-react";
 import { SignupForm } from "./signup-form";
 
-export const metadata = { title: "Sign up — Ripplewatch" };
+export const metadata = { title: "Sign up", robots: { index: false, follow: false } };
 
 export default function SignupPage() {
   return (
