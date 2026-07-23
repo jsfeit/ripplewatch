@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { FAQ_CATEGORIES } from "@/lib/faq";
+import { FaqAccordion } from "./faq-accordion";
 
 const description =
   "Answers on pricing and cancellation, how Ripplewatch's relevance scoring works, data security, and getting started.";
@@ -42,23 +43,7 @@ export default function FaqPage() {
         <p className="mt-3 text-muted-foreground">{description}</p>
       </div>
 
-      <div className="mt-14 space-y-12">
-        {FAQ_CATEGORIES.map((category) => (
-          <div key={category.title}>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              {category.title}
-            </h2>
-            <div className="mt-4 space-y-6 border-t border-border pt-6">
-              {category.items.map((item) => (
-                <div key={item.question}>
-                  <h3 className="font-medium">{item.question}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{item.answer}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
+      <FaqAccordion categories={FAQ_CATEGORIES} />
 
       <div className="mt-16 text-center">
         <p className="text-sm text-muted-foreground">Still have a question?</p>
