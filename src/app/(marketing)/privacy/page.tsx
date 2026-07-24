@@ -78,9 +78,13 @@ export default function PrivacyPage() {
           <li><strong>Stripe</strong> — payment processing.</li>
           <li><strong>Anthropic</strong> — AI processing (relevance scoring, suggestions, Ask).</li>
           <li><strong>Resend</strong> — transactional email delivery (alerts, invites).</li>
+          <li><strong>Sentry</strong> — error tracking, so we can catch and fix problems.</li>
           <li><strong>Slack, HubSpot, Gong, Zoom</strong> — only if and when you connect them yourself.</li>
         </ul>
-        <p>We do not sell your personal information to third parties, and we do not share it for advertising purposes.</p>
+        <p>
+          We do not sell your personal information to third parties, and we do not share it for advertising
+          purposes. See our full <a href="/subprocessors">Subprocessors</a> list for what each one processes.
+        </p>
       </section>
 
       <section>
