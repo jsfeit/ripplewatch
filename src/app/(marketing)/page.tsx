@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { ArrowRight, ArrowUp, Radar, Sparkles, Send, Waves } from "lucide-react";
+import { ArrowRight, ArrowUp, Radar, Sparkles, Send, Waves, CircleDashed } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { TierComparisonTable } from "@/components/marketing/tier-comparison-table";
-import { AlertCard, type AlertCardSignal } from "@/components/app/alert-card";
+import { cn, avatarColor } from "@/lib/utils";
 
 export const metadata = { alternates: { canonical: "/" } };
 
@@ -11,24 +12,12 @@ export const metadata = { alternates: { canonical: "/" } };
 // against deals lost/won and our own price point). Fictional competitor
 // name deliberately: this is an illustrative example, not a factual claim
 // about a real company's pricing.
+//
+// Bespoke markup (not the shared AlertCard component) on purpose: this
+// layout — bold headline first, reasoning second, no upgrade nudge — is
+// specific to this marketing example and shouldn't change how real scored/
+// unscored signals render in the actual product.
 const PRICE_HIKE_TITLE = "Northlane raised its Growth plan from $149 to $199/mo";
-
-const rawExample: AlertCardSignal = {
-  type: "pricing",
-  title: PRICE_HIKE_TITLE,
-  summary: "Price change detected on their /pricing page. No further detail provided.",
-  scored: false,
-};
-
-const scoredExample: AlertCardSignal = {
-  type: "pricing",
-  title: PRICE_HIKE_TITLE,
-  summary: "Growth plan increased 34%, still capped at 10 competitors tracked.",
-  scored: true,
-  relevanceLevel: "High",
-  relevanceReasoning:
-    "This closes the gap between Northlane and your Plus plan to just $50/mo — the same price difference that came up in 3 of your last 5 lost deals. Worth revisiting how you frame value at this price point.",
-};
 
 const STEPS = [
   {
@@ -110,21 +99,73 @@ export default function HomePage() {
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Generic monitoring tool
               </p>
-              <div className="mt-4">
-                <AlertCard signal={rawExample} competitorName="Northlane" competitorInitial="N" />
+              <div className="relative mt-4 overflow-hidden rounded-lg border border-border bg-card p-4 pl-5">
+                <div className="absolute inset-y-0 left-0 w-1 bg-border" />
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+                        avatarColor("Northlane")
+                      )}
+                    >
+                      N
+                    </span>
+                    <div>
+                      <p className="text-sm font-medium leading-none">Northlane</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Pricing / site change</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="gap-1 text-muted-foreground">
+                    <CircleDashed className="size-3" />
+                    Raw signal
+                  </Badge>
+                </div>
+                <p className="mt-3 text-sm font-medium">{PRICE_HIKE_TITLE}</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Price change detected on their /pricing page. No further detail provided.
+                </p>
               </div>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-primary">
                 Ripplewatch
               </p>
-              <div className="mt-4">
-                <AlertCard
-                  signal={scoredExample}
-                  competitorName="Northlane"
-                  competitorInitial="N"
-                  avatar={<Waves className="size-3.5" />}
-                />
+              <div className="relative mt-4 overflow-hidden rounded-lg border border-primary/25 bg-card p-4 pl-5">
+                <div className="absolute inset-y-0 left-0 w-1 bg-primary" />
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                      <Waves className="size-3.5" />
+                    </span>
+                    <div>
+                      <p className="text-sm font-medium leading-none">Northlane</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Pricing / site change</p>
+                    </div>
+                  </div>
+                  <Badge className="gap-1 border-primary/30 bg-primary/10 text-primary hover:bg-primary/10">
+                    <Sparkles className="size-3" />
+                    Scored
+                  </Badge>
+                </div>
+                <div className="mt-3">
+                  <span className="rounded-full border border-primary/30 bg-primary/15 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                    High relevance
+                  </span>
+                </div>
+                <p className="mt-2 text-[15px] font-semibold leading-relaxed text-foreground">
+                  {PRICE_HIKE_TITLE}
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-foreground">
+                  This closes the gap between Northlane and your Plus plan to just $25/mo — Northlane
+                  came up as the price comparison in 20 of your last 100 lost deals. Worth revisiting
+                  how you frame value at this price point, and reaching out to those lost deals given
+                  this change.
+                </p>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  All features within the Growth plan are the same, outside of the new AI chat feature
+                  added across all SKUs.
+                </p>
               </div>
             </div>
           </div>
