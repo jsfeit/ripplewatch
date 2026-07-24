@@ -258,6 +258,28 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["invites"]["Insert"]>;
         Relationships: [];
       };
+      career_applications: {
+        Row: {
+          id: string;
+          name: string;
+          email: string;
+          job_title: string;
+          resume_file_name: string;
+          resume_storage_path: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          email: string;
+          job_title: string;
+          resume_file_name: string;
+          resume_storage_path: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["career_applications"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

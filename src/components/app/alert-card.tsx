@@ -31,10 +31,15 @@ export function AlertCard({
   signal,
   competitorName,
   competitorInitial,
+  avatar,
 }: {
   signal: AlertCardSignal;
   competitorName: string;
   competitorInitial: string;
+  // Overrides the initial-letter avatar with a custom icon — used on the
+  // marketing site to brand a scored example as "Ripplewatch's read" rather
+  // than the competitor's own icon.
+  avatar?: React.ReactNode;
 }) {
   return (
     <div
@@ -52,10 +57,10 @@ export function AlertCard({
           <span
             className={cn(
               "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-              avatarColor(competitorName)
+              avatar ? "bg-primary text-primary-foreground" : avatarColor(competitorName)
             )}
           >
-            {competitorInitial}
+            {avatar ?? competitorInitial}
           </span>
           <div>
             <p className="text-sm font-medium leading-none">{competitorName}</p>

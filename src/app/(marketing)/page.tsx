@@ -1,15 +1,34 @@
 import Link from "next/link";
-import { ArrowRight, ArrowUp, Radar, Sparkles, Send } from "lucide-react";
+import { ArrowRight, ArrowUp, Radar, Sparkles, Send, Waves } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { TierComparisonTable } from "@/components/marketing/tier-comparison-table";
-import { AlertCard } from "@/components/app/alert-card";
-import { MOCK_SIGNALS, MOCK_COMPETITORS } from "@/lib/mock-data";
+import { AlertCard, type AlertCardSignal } from "@/components/app/alert-card";
 
 export const metadata = { alternates: { canonical: "/" } };
 
-const scoredExample = MOCK_SIGNALS.find((s) => s.id === "sig-1")!;
-const rawExample = MOCK_SIGNALS.find((s) => s.id === "sig-4")!;
-const competitorFor = (id: string) => MOCK_COMPETITORS.find((c) => c.id === id)!;
+// Same underlying price-hike headline shown twice — once as a generic tool
+// would surface it (raw, no context), once as Ripplewatch does (scored
+// against deals lost/won and our own price point). Fictional competitor
+// name deliberately: this is an illustrative example, not a factual claim
+// about a real company's pricing.
+const PRICE_HIKE_TITLE = "Northlane raised its Growth plan from $149 to $199/mo";
+
+const rawExample: AlertCardSignal = {
+  type: "pricing",
+  title: PRICE_HIKE_TITLE,
+  summary: "Price change detected on their /pricing page. No further detail provided.",
+  scored: false,
+};
+
+const scoredExample: AlertCardSignal = {
+  type: "pricing",
+  title: PRICE_HIKE_TITLE,
+  summary: "Growth plan increased 34%, still capped at 10 competitors tracked.",
+  scored: true,
+  relevanceLevel: "High",
+  relevanceReasoning:
+    "This closes the gap between Northlane and your Plus plan to just $50/mo — the same price difference that came up in 3 of your last 5 lost deals. Worth revisiting how you frame value at this price point.",
+};
 
 const STEPS = [
   {
@@ -92,11 +111,7 @@ export default function HomePage() {
                 Generic monitoring tool
               </p>
               <div className="mt-4">
-                <AlertCard
-                  signal={rawExample}
-                  competitorName={competitorFor(rawExample.competitorId).name}
-                  competitorInitial={competitorFor(rawExample.competitorId).initial}
-                />
+                <AlertCard signal={rawExample} competitorName="Northlane" competitorInitial="N" />
               </div>
             </div>
             <div>
@@ -106,8 +121,9 @@ export default function HomePage() {
               <div className="mt-4">
                 <AlertCard
                   signal={scoredExample}
-                  competitorName={competitorFor(scoredExample.competitorId).name}
-                  competitorInitial={competitorFor(scoredExample.competitorId).initial}
+                  competitorName="Northlane"
+                  competitorInitial="N"
+                  avatar={<Waves className="size-3.5" />}
                 />
               </div>
             </div>
