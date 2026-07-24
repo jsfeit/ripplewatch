@@ -1,6 +1,6 @@
 import { MONTHLY_PRICE_USD, annualPriceUsd, ANNUAL_DISCOUNT_PERCENT } from "./pricing";
 
-export type TierId = "starter" | "plus" | "plus-human";
+export type TierId = "starter" | "plus" | "advanced";
 
 export type Tier = {
   id: TierId;
@@ -57,33 +57,33 @@ export const TIERS: Tier[] = [
     annualNote: annualNote(MONTHLY_PRICE_USD.plus),
     monthlyUsd: MONTHLY_PRICE_USD.plus,
     selfServe: true,
-    tagline: "Everything in Starter, full scoring, on up to 15 competitors.",
-    competitors: "Up to 15 competitors",
+    tagline: "Everything in Starter, full scoring, on up to 7 competitors.",
+    competitors: "Up to 7 competitors",
     signalSources: "Pricing, job postings, news, funding",
     relevanceScoring: "Full scoring on every signal",
     onboarding: "Self-serve form",
     delivery: "Slack + email",
     crm: "Read-only pull",
-    seats: "Unlimited",
+    seats: "Up to 10 seats",
     cta: "Start with Plus",
     highlight: true,
   },
   {
-    id: "plus-human",
-    name: "Plus + Human",
-    price: `$${MONTHLY_PRICE_USD.plus_human}`,
+    id: "advanced",
+    name: "Advanced",
+    price: `$${MONTHLY_PRICE_USD.advanced}`,
     priceNote: "/mo",
-    annualNote: annualNote(MONTHLY_PRICE_USD.plus_human),
-    monthlyUsd: MONTHLY_PRICE_USD.plus_human,
-    selfServe: false,
-    tagline: "Everything in Plus, with an analyst tuning your context.",
-    competitors: "Up to 15 competitors",
+    annualNote: annualNote(MONTHLY_PRICE_USD.advanced),
+    monthlyUsd: MONTHLY_PRICE_USD.advanced,
+    selfServe: true,
+    tagline: "Everything in Plus, with more room and a guided setup.",
+    competitors: "Up to 20 competitors",
     signalSources: "Pricing, job postings, news, funding",
-    relevanceScoring: "Full + analyst-refined",
-    onboarding: "Analyst-led call",
-    delivery: "Slack + email + monthly brief",
+    relevanceScoring: "Full scoring on every signal",
+    onboarding: "Assisted onboarding call",
+    delivery: "Slack + email",
     crm: "Read-only pull",
     seats: "Unlimited",
-    cta: "Talk to us",
+    cta: "Start with Advanced",
   },
 ];

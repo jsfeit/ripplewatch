@@ -44,9 +44,9 @@ const STRUCTURED_DATA = {
   description:
     "AI-native competitive intelligence for startup marketing teams. Scores every competitor signal against your own positioning, ICP, and lost-deal reasons — not just what changed, but whether it matters.",
   offers: [
-    { "@type": "Offer", name: "Starter", price: "49", priceCurrency: "USD" },
+    { "@type": "Offer", name: "Starter", price: "69", priceCurrency: "USD" },
     { "@type": "Offer", name: "Plus", price: "149", priceCurrency: "USD" },
-    { "@type": "Offer", name: "Plus + Human", price: "499", priceCurrency: "USD" },
+    { "@type": "Offer", name: "Advanced", price: "349", priceCurrency: "USD" },
   ],
 };
 

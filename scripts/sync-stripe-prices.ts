@@ -25,7 +25,7 @@ import {
 const DISPLAY_NAMES: Record<TierKey, string> = {
   starter: "Starter",
   plus: "Plus",
-  plus_human: "Plus + Human",
+  advanced: "Advanced",
 };
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2026-06-24.dahlia" });
@@ -92,19 +92,21 @@ async function main() {
   if (!env.includes("STRIPE_PRICE_STARTER_ANNUAL")) {
     env += `\nSTRIPE_PRICE_STARTER_ANNUAL=${results.starter.annual}`;
     env += `\nSTRIPE_PRICE_PLUS_ANNUAL=${results.plus.annual}`;
-    env += `\nSTRIPE_PRICE_PLUS_HUMAN_MONTHLY=${results.plus_human.monthly}`;
-    env += `\nSTRIPE_PRICE_PLUS_HUMAN_ANNUAL=${results.plus_human.annual}\n`;
+    env += `\nSTRIPE_PRICE_ADVANCED=${results.advanced.monthly}`;
+    env += `\nSTRIPE_PRICE_ADVANCED_ANNUAL=${results.advanced.annual}\n`;
   } else {
     env = env.replace(/^STRIPE_PRICE_STARTER_ANNUAL=.*$/m, `STRIPE_PRICE_STARTER_ANNUAL=${results.starter.annual}`);
     env = env.replace(/^STRIPE_PRICE_PLUS_ANNUAL=.*$/m, `STRIPE_PRICE_PLUS_ANNUAL=${results.plus.annual}`);
-    env = env.replace(
-      /^STRIPE_PRICE_PLUS_HUMAN_MONTHLY=.*$/m,
-      `STRIPE_PRICE_PLUS_HUMAN_MONTHLY=${results.plus_human.monthly}`
-    );
-    env = env.replace(
-      /^STRIPE_PRICE_PLUS_HUMAN_ANNUAL=.*$/m,
-      `STRIPE_PRICE_PLUS_HUMAN_ANNUAL=${results.plus_human.annual}`
-    );
+    if (env.includes("STRIPE_PRICE_ADVANCED=")) {
+      env = env.replace(/^STRIPE_PRICE_ADVANCED=.*$/m, `STRIPE_PRICE_ADVANCED=${results.advanced.monthly}`);
+      env = env.replace(
+        /^STRIPE_PRICE_ADVANCED_ANNUAL=.*$/m,
+        `STRIPE_PRICE_ADVANCED_ANNUAL=${results.advanced.annual}`
+      );
+    } else {
+      env += `\nSTRIPE_PRICE_ADVANCED=${results.advanced.monthly}`;
+      env += `\nSTRIPE_PRICE_ADVANCED_ANNUAL=${results.advanced.annual}\n`;
+    }
   }
   writeFileSync(envPath, env);
 

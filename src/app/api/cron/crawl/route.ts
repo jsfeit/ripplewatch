@@ -137,7 +137,7 @@ export async function GET(request: Request) {
     }
 
     // Starter is teaser-scored: at most one scored alert per week. Plus and
-    // Plus+Human score every new signal.
+    // Advanced score every new signal.
     let alreadyScoredThisWeek = false;
     if (account.tier === "starter") {
       const competitorIds = competitors.map((c) => c.id);

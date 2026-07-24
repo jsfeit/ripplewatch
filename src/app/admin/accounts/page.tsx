@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 const TIER_LABELS: Record<string, string> = {
   starter: "Starter",
   plus: "Plus",
-  plus_human: "Plus + Human",
+  advanced: "Advanced",
 };
 
 type Account = Database["public"]["Tables"]["accounts"]["Row"];

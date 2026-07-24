@@ -7,8 +7,8 @@ import type { SignalType } from "./mock-data";
 
 export const COMPETITOR_LIMIT: Record<AccountTier, number> = {
   starter: 3,
-  plus: 15,
-  plus_human: 15,
+  plus: 7,
+  advanced: 20,
 };
 
 // Signal sources are now uniform across tiers — differentiation moved to
@@ -18,23 +18,23 @@ export const COMPETITOR_LIMIT: Record<AccountTier, number> = {
 export const TIER_SIGNAL_SOURCES: Record<AccountTier, SignalType[]> = {
   starter: ["pricing", "job_posting", "news", "funding"],
   plus: ["pricing", "job_posting", "news", "funding"],
-  plus_human: ["pricing", "job_posting", "news", "funding"],
+  advanced: ["pricing", "job_posting", "news", "funding"],
 };
 
-// CRM/churn-tool read-only pull is available on every tier now — Plus+Human's
-// premium is analyst-led onboarding and the monthly brief, not CRM access.
+// CRM/churn-tool read-only pull is available on every tier now — Advanced's
+// premium is assisted onboarding and higher limits, not CRM access.
 export const CRM_ALLOWED: Record<AccountTier, boolean> = {
   starter: true,
   plus: true,
-  plus_human: true,
+  advanced: true,
 };
 
 // Team seats: Starter cap encourages upgrading once a team grows past a
-// single marketer; Plus and Plus+Human are unlimited.
+// single marketer; Plus caps at 10; Advanced is unlimited.
 export const SEAT_LIMIT: Record<AccountTier, number> = {
   starter: 3,
-  plus: Infinity,
-  plus_human: Infinity,
+  plus: 10,
+  advanced: Infinity,
 };
 
 export function seatLimitLabel(tier: AccountTier): string {
@@ -47,7 +47,7 @@ export function seatLimitLabel(tier: AccountTier): string {
 export const CALL_INTEL_ALLOWED: Record<AccountTier, boolean> = {
   starter: false,
   plus: true,
-  plus_human: true,
+  advanced: true,
 };
 
 export function competitorLimitLabel(tier: AccountTier): string {

@@ -72,7 +72,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
             competitorInitial={competitorFor(rawExample.competitorId).initial}
           />
           <p className="mt-3 text-xs text-muted-foreground">
-            A fact, dropped in front of you — no read on whether it's worth acting on.
+            A fact, dropped in front of you — no read on whether it&apos;s worth acting on.
           </p>
         </div>
         <div>

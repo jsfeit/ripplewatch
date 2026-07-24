@@ -18,11 +18,10 @@ export function getStripe(): Stripe {
   return cachedStripe;
 }
 
-export type SelfServeTier = "starter" | "plus";
+export type SelfServeTier = "starter" | "plus" | "advanced";
 export type BillingPeriod = "monthly" | "annual";
 
-// Self-serve tiers only — Plus + Human is analyst-led sales, no Stripe
-// price is looked up for it here.
+// All three tiers are self-serve checkout now.
 const PRICE_BY_TIER_AND_PERIOD: Record<SelfServeTier, Record<BillingPeriod, string | undefined>> = {
   starter: {
     monthly: process.env.STRIPE_PRICE_STARTER,
@@ -31,6 +30,10 @@ const PRICE_BY_TIER_AND_PERIOD: Record<SelfServeTier, Record<BillingPeriod, stri
   plus: {
     monthly: process.env.STRIPE_PRICE_PLUS,
     annual: process.env.STRIPE_PRICE_PLUS_ANNUAL,
+  },
+  advanced: {
+    monthly: process.env.STRIPE_PRICE_ADVANCED,
+    annual: process.env.STRIPE_PRICE_ADVANCED_ANNUAL,
   },
 };
 

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const VALID_TIERS = ["starter", "plus", "plus_human"];
+const VALID_TIERS = ["starter", "plus", "advanced"];
 
-// Manual override for sales-assisted upgrades (Plus + Human has no
-// self-serve checkout — this is the only way that tier ever gets set).
+// Manual override for support/sales use — all tiers are self-serve now, but
+// this stays as a direct way to fix or comp an account's tier.
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const body = await request.json().catch(() => null);
