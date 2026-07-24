@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,13 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 
-export function LoginForm() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+export function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [sent, setSent] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -24,22 +21,38 @@ export function LoginForm() {
     setError("");
 
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
 
+    setLoading(false);
     if (error) {
       setError(error.message);
-      setLoading(false);
       return;
     }
+    setSent(true);
+  }
 
-    router.push(searchParams.get("next") ?? "/app/dashboard");
-    router.refresh();
+  if (sent) {
+    return (
+      <Card>
+        <CardHeader>
+          <h1 className="text-lg font-semibold">Check your email</h1>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            If an account exists for <span className="font-medium text-foreground">{email}</span>,
+            we&apos;ve sent a link to reset your password.
+          </p>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
     <Card>
       <CardHeader>
-        <h1 className="text-lg font-semibold">Log in</h1>
+        <h1 className="text-lg font-semibold">Reset your password</h1>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -54,30 +67,14 @@ export function LoginForm() {
               placeholder="you@company.com"
             />
           </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
-              <Link href="/forgot-password" className="text-xs text-primary hover:underline">
-                Forgot password?
-              </Link>
-            </div>
-            <Input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? <Loader2 className="size-4 animate-spin" /> : null}
-            Log in
+            Send reset link
           </Button>
           <p className="text-center text-sm text-muted-foreground">
-            No account?{" "}
-            <Link href="/signup" className="text-primary hover:underline">
-              Sign up
+            <Link href="/login" className="text-primary hover:underline">
+              Back to log in
             </Link>
           </p>
         </form>
