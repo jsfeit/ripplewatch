@@ -60,6 +60,7 @@ export async function POST(request: Request) {
       customer_email: account?.stripe_customer_id ? undefined : user.email,
       client_reference_id: profile.account_id,
       line_items: [{ price: priceId, quantity: 1 }],
+      allow_promotion_codes: true,
       // Collects zero tax until you have an active Tax Registration for the
       // customer's jurisdiction (dashboard.stripe.com/tax/registrations) —
       // Stripe doesn't error in that case, it just silently taxes nothing.

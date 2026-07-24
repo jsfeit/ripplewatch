@@ -18,6 +18,7 @@ export function SiteFooter() {
           <Link href="/faq" className="hover:text-foreground">FAQ</Link>
           <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
           <Link href="/terms" className="hover:text-foreground">Terms</Link>
+          <Link href="/login" className="hover:text-foreground">Sign in</Link>
         </nav>
         <p className="text-xs text-muted-foreground">© 2026 Ripplewatch. ripplewatch.ai</p>
       </div>
