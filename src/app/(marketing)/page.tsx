@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowRight, ArrowUp, Radar, Sparkles, Send, Waves, CircleDashed } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { TierComparisonTable } from "@/components/marketing/tier-comparison-table";
+import { PricingCards } from "@/components/marketing/pricing-cards";
 import { cn, avatarColor } from "@/lib/utils";
 
 export const metadata = { alternates: { canonical: "/" } };
@@ -233,7 +233,7 @@ export default function HomePage() {
             sources, and full scoring on every signal.
           </p>
           <div className="mt-10">
-            <TierComparisonTable />
+            <PricingCards />
           </div>
           <div className="mt-8 text-center">
             <Link href="/pricing" className={buttonVariants()}>

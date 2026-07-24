@@ -1,6 +1,6 @@
 import Link from "next/link";
+import { ShieldCheck } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import { TierComparisonTable } from "@/components/marketing/tier-comparison-table";
 import { PricingCards } from "@/components/marketing/pricing-cards";
 
 const description =
@@ -28,14 +28,17 @@ export default function PricingPage() {
         <PricingCards />
       </div>
 
-      <div className="mt-20">
-        <h2 className="text-center text-2xl font-semibold tracking-tight">Full feature comparison</h2>
-        <div className="mt-8">
-          <TierComparisonTable />
-        </div>
+      <div className="mx-auto mt-16 flex max-w-2xl items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 p-6">
+        <ShieldCheck className="mt-0.5 size-5 shrink-0 text-primary" />
+        <p className="text-sm leading-relaxed text-foreground">
+          <span className="font-semibold">30-day money-back guarantee, on every plan.</span> Use
+          Ripplewatch for real, against your real competitors — if it&apos;s not for you, email us within
+          30 days of any charge for a full refund. Cancel anytime from Settings, no penalty or
+          lock-in; it takes effect at the end of your current billing period.
+        </p>
       </div>
 
-      <div className="mx-auto mt-20 max-w-2xl rounded-xl border border-border bg-secondary/40 p-8 text-center">
+      <div className="mx-auto mt-8 max-w-2xl rounded-xl border border-border bg-secondary/40 p-8 text-center">
         <h3 className="text-lg font-semibold">Not sure which tier fits?</h3>
         <p className="mt-2 text-sm text-muted-foreground">
           Most self-serve teams start on Starter and move to Plus once relevance scoring proves
