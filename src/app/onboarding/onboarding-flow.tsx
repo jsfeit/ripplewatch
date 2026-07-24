@@ -32,7 +32,7 @@ import { DOMAIN_PATTERN } from "@/lib/domain";
 import { createClient } from "@/lib/supabase/client";
 import { TIERS } from "@/lib/tiers";
 
-const MAX_COMPETITORS = 15;
+const MAX_COMPETITORS = 20;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SELF_SERVE_TIERS = TIERS.filter((t) => t.selfServe);
 
@@ -549,7 +549,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
               {!selectedPlan ? (
                 <div className="space-y-2">
                   <Label>Choose a plan</Label>
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3 sm:grid-cols-3">
                     {SELF_SERVE_TIERS.map((tier) => (
                       <button
                         key={tier.id}
@@ -573,11 +573,6 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
                       </button>
                     ))}
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Need more than 15 competitors or analyst-led onboarding?{" "}
-                    <Link href="/waitlist" className="text-primary hover:underline">Talk to us</Link> about
-                    Plus + Human instead.
-                  </p>
                 </div>
               ) : null}
 

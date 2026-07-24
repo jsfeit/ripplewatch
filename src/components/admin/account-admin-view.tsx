@@ -24,7 +24,7 @@ type Signal = Database["public"]["Tables"]["signals"]["Row"];
 const TIER_LABELS: Record<string, string> = {
   starter: "Starter",
   plus: "Plus",
-  plus_human: "Plus + Human",
+  advanced: "Advanced",
 };
 
 export function AccountAdminView({

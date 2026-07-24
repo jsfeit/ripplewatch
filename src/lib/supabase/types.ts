@@ -2,7 +2,7 @@
 // changes, update this alongside the migration — there's no live project to
 // generate it from yet (`supabase gen types typescript` once one exists).
 
-export type Tier = "starter" | "plus" | "plus_human";
+export type Tier = "starter" | "plus" | "advanced";
 export type SignalType = "pricing" | "job_posting" | "review" | "news" | "funding";
 export type RelevanceLevel = "High" | "Medium" | "Low";
 export type SignalSource = "manual" | "pipeline";

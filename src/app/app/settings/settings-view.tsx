@@ -39,7 +39,7 @@ export function SettingsView({
   const [billingLoading, setBillingLoading] = useState<string | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
 
-  const currentTier = TIERS.find((t) => t.id === account.tier.replace("_", "-")) ?? TIERS[0];
+  const currentTier = TIERS.find((t) => t.id === account.tier) ?? TIERS[0];
   const isConnected = (provider: string) => integrations.some((i) => i.provider === provider && i.connected);
 
   async function handleManageBilling() {
@@ -51,7 +51,7 @@ export function SettingsView({
     else setError(data.error ?? "Could not open billing portal.");
   }
 
-  async function handleUpgrade(tier: "starter" | "plus") {
+  async function handleUpgrade(tier: "starter" | "plus" | "advanced") {
     setBillingLoading(tier);
     const res = await fetch("/api/stripe/checkout", {
       method: "POST",
@@ -262,6 +262,17 @@ export function SettingsView({
                     >
                       {billingLoading === "plus" ? <Loader2 className="size-4 animate-spin" /> : null}
                       Upgrade to Plus
+                    </Button>
+                  ) : null}
+                  {account.tier !== "advanced" ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleUpgrade("advanced")}
+                      disabled={billingLoading !== null}
+                    >
+                      {billingLoading === "advanced" ? <Loader2 className="size-4 animate-spin" /> : null}
+                      Upgrade to Advanced
                     </Button>
                   ) : null}
                 </>

@@ -4,7 +4,7 @@ import { TierComparisonTable } from "@/components/marketing/tier-comparison-tabl
 import { PricingCards } from "@/components/marketing/pricing-cards";
 
 const description =
-  "Relevance-scored competitive intelligence starting at $49/mo. Every tier includes AI-scored alerts against your own positioning and lost-deal reasons.";
+  "Relevance-scored competitive intelligence starting at $69/mo. Every tier includes AI-scored alerts against your own positioning and lost-deal reasons.";
 
 export const metadata = {
   title: "Pricing",
