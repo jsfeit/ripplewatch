@@ -30,9 +30,11 @@ import { DocumentUpload } from "@/components/app/document-upload";
 import { generatePreviewAlert } from "@/lib/onboarding-preview";
 import { DOMAIN_PATTERN } from "@/lib/domain";
 import { createClient } from "@/lib/supabase/client";
+import { TIERS } from "@/lib/tiers";
 
 const MAX_COMPETITORS = 15;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const SELF_SERVE_TIERS = TIERS.filter((t) => t.selfServe);
 
 export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boolean }) {
   const router = useRouter();
@@ -40,6 +42,8 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
   const selectedPlan = searchParams.get("plan");
   const selectedPeriod = searchParams.get("period") === "annual" ? "annual" : "monthly";
   const [step, setStep] = useState(0);
+  const [chosenPlanId, setChosenPlanId] = useState<string | null>(null);
+  const finalPlan = selectedPlan ?? chosenPlanId;
 
   const STEPS = useMemo(() => {
     const base = [
@@ -91,7 +95,9 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
     if (step === 0) return companyName.trim() && positioning.trim() && icp.trim();
     if (step === 1) return filledCompetitors.length >= 3 && domainsValid;
     if (step === 2) return hasSalesCrm || hasPlg;
-    if (isAccountStep) return EMAIL_PATTERN.test(email.trim()) && password.length >= 6;
+    if (isAccountStep) {
+      return EMAIL_PATTERN.test(email.trim()) && password.length >= 6 && Boolean(finalPlan);
+    }
     return true;
   }, [
     step,
@@ -103,6 +109,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
     hasSalesCrm,
     hasPlg,
     isAccountStep,
+    finalPlan,
     email,
     password,
   ]);
@@ -224,11 +231,11 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
         return;
       }
 
-      if (selectedPlan === "starter" || selectedPlan === "plus") {
+      if (finalPlan === "starter" || finalPlan === "plus") {
         const checkoutRes = await fetch("/api/stripe/checkout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tier: selectedPlan, period: selectedPeriod }),
+          body: JSON.stringify({ tier: finalPlan, period: selectedPeriod }),
         });
         const checkoutData = await checkoutRes.json();
         if (checkoutRes.ok && checkoutData.url) {
@@ -449,6 +456,15 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
                       rows={3}
                     />
                   </div>
+                  <div className="pt-1">
+                    {initiallySignedIn ? (
+                      <DocumentUpload />
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Or attach a win/loss report — available once you create your account.
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -470,6 +486,15 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
                       placeholder="Churned after 2 months — said RivalSense's onboarding was easier to get started with"
                       rows={3}
                     />
+                  </div>
+                  <div className="pt-1">
+                    {initiallySignedIn ? (
+                      <DocumentUpload />
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Or attach a churn report — available once you create your account.
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
@@ -506,17 +531,56 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
                 </p>
               </div>
               {!initiallySignedIn ? (
-                <p className="text-sm font-medium text-primary">Like what you see? Save it — one step left.</p>
+                <p className="text-sm font-medium text-primary">
+                  Like what you see? This is just a one-alert teaser — sign up to start real monitoring
+                  and get this on every signal, not just a sample.
+                </p>
               ) : null}
             </div>
           )}
 
           {isAccountStep && (
-            <div className="space-y-4">
+            <div className="space-y-5">
               <p className="text-sm text-muted-foreground">
-                Create a free account to save this setup and start monitoring these competitors for real.
-                No card required.
+                Create your account to start monitoring these competitors for real.
+                {selectedPlan ? null : " Pick a plan, then you're set — no trial, but every plan comes with a 30-day money-back guarantee."}
               </p>
+
+              {!selectedPlan ? (
+                <div className="space-y-2">
+                  <Label>Choose a plan</Label>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {SELF_SERVE_TIERS.map((tier) => (
+                      <button
+                        key={tier.id}
+                        type="button"
+                        onClick={() => setChosenPlanId(tier.id)}
+                        className={cn(
+                          "rounded-lg border p-4 text-left transition-colors",
+                          chosenPlanId === tier.id
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/40"
+                        )}
+                      >
+                        <div className="flex items-baseline justify-between">
+                          <span className="font-medium">{tier.name}</span>
+                          <span className="text-sm text-muted-foreground">
+                            {tier.price}
+                            {tier.priceNote}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">{tier.tagline}</p>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Need more than 15 competitors or analyst-led onboarding?{" "}
+                    <Link href="/waitlist" className="text-primary hover:underline">Talk to us</Link> about
+                    Plus + Human instead.
+                  </p>
+                </div>
+              ) : null}
+
               <div className="space-y-2">
                 <Label htmlFor="onboardingEmail">Work email</Label>
                 <Input
@@ -541,6 +605,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
                 By creating an account, you agree to our{" "}
                 <Link href="/terms" className="text-primary hover:underline">Terms of Service</Link> and{" "}
                 <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>.
+                You&apos;ll be sent to Stripe to complete payment on the next step.
               </p>
             </div>
           )}
@@ -565,7 +630,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
             <ArrowRight className="size-4" />
           </Button>
         ) : (
-          <Button type="button" onClick={handleFinish} disabled={submitting}>
+          <Button type="button" onClick={handleFinish} disabled={submitting || !canProceed}>
             {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
             {isAccountStep ? "Create account & go to dashboard" : "Go to dashboard"}
             <ArrowRight className="size-4" />
