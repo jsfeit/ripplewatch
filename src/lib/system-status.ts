@@ -100,6 +100,16 @@ function checkHubspot(): StatusCheck {
   };
 }
 
+function checkSentry(): StatusCheck {
+  const configured = Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN);
+  return {
+    name: "Sentry",
+    configured,
+    ok: configured,
+    detail: configured ? "DSN set — error tracking active." : "NEXT_PUBLIC_SENTRY_DSN not set.",
+  };
+}
+
 function checkCron(): StatusCheck {
   const value = process.env.CRON_SECRET;
   const isPlaceholder = value === "dev-only-placeholder-change-me";
@@ -122,5 +132,5 @@ export async function getSystemStatus(): Promise<StatusCheck[]> {
     checkAnthropic(),
     checkResend(),
   ]);
-  return [supabase, stripe, anthropic, resend, checkSlack(), checkHubspot(), checkCron()];
+  return [supabase, stripe, anthropic, resend, checkSlack(), checkHubspot(), checkSentry(), checkCron()];
 }

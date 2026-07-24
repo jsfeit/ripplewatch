@@ -42,3 +42,6 @@ next-env.d.ts
 
 # HubSpot config file
 hubspot.config.yml
+
+# Sentry Config File
+.env.sentry-build-plugin
