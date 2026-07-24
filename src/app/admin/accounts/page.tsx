@@ -20,6 +20,7 @@ type Account = Database["public"]["Tables"]["accounts"]["Row"];
 export default async function AdminAccountsPage() {
   const configured = isSupabaseConfigured();
   const competitorCounts = new Map<string, number>();
+  const userCounts = new Map<string, number>();
   let accounts: Account[] | null = null;
   let error: { message: string } | null = null;
 
@@ -32,6 +33,12 @@ export default async function AdminAccountsPage() {
     const { data: competitorRows } = await supabase.from("competitors").select("account_id");
     for (const row of competitorRows ?? []) {
       competitorCounts.set(row.account_id, (competitorCounts.get(row.account_id) ?? 0) + 1);
+    }
+
+    const { data: profileRows } = await supabase.from("profiles").select("account_id");
+    for (const row of profileRows ?? []) {
+      if (!row.account_id) continue;
+      userCounts.set(row.account_id, (userCounts.get(row.account_id) ?? 0) + 1);
     }
   }
 
@@ -60,6 +67,7 @@ export default async function AdminAccountsPage() {
                 <TableHead>Tier</TableHead>
                 <TableHead>Billing</TableHead>
                 <TableHead>Competitors</TableHead>
+                <TableHead>Users</TableHead>
                 <TableHead>Created</TableHead>
               </TableRow>
             </TableHeader>
@@ -90,6 +98,7 @@ export default async function AdminAccountsPage() {
                   <TableCell className="text-muted-foreground">
                     {competitorCounts.get(a.id) ?? 0}
                   </TableCell>
+                  <TableCell className="text-muted-foreground">{userCounts.get(a.id) ?? 0}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {new Date(a.created_at).toLocaleDateString()}
                   </TableCell>
@@ -97,7 +106,7 @@ export default async function AdminAccountsPage() {
               ))}
               {accounts?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     No accounts yet.
                   </TableCell>
                 </TableRow>
