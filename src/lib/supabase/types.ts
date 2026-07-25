@@ -51,6 +51,7 @@ export interface Database {
           stripe_subscription_id: string | null;
           subscription_status: string | null;
           contact_email: string | null;
+          created_by: string | null;
           created_at: string;
         };
         Insert: {
@@ -67,6 +68,7 @@ export interface Database {
           stripe_subscription_id?: string | null;
           subscription_status?: string | null;
           contact_email?: string | null;
+          created_by?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["accounts"]["Insert"]>;
