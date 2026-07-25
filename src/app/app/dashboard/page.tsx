@@ -23,6 +23,12 @@ export default async function DashboardPage() {
 
   if (!profile?.account_id) redirect("/onboarding");
 
+  const { data: account } = await supabase
+    .from("accounts")
+    .select("name, positioning, icp, lost_deal_notes, churn_notes")
+    .eq("id", profile.account_id)
+    .single();
+
   const { data: competitors } = await supabase
     .from("competitors")
     .select("*")
@@ -54,7 +60,16 @@ export default async function DashboardPage() {
         </TabsList>
 
         <TabsContent value="feed" className="mt-6">
-          <DashboardFeed competitors={competitors ?? []} signals={signals ?? []} />
+          <DashboardFeed
+            competitors={competitors ?? []}
+            signals={signals ?? []}
+            previewContext={{
+              companyName: account?.name ?? "",
+              positioning: account?.positioning ?? "",
+              icp: account?.icp ?? "",
+              lossReason: account?.lost_deal_notes || account?.churn_notes || "",
+            }}
+          />
         </TabsContent>
 
         <TabsContent value="articles" className="mt-6">
