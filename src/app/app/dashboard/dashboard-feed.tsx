@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Radar, Waves } from "lucide-react";
+import { Radar, Sparkles, Waves } from "lucide-react";
 import { AlertCard } from "@/components/app/alert-card";
 import { EmptyState } from "@/components/app/empty-state";
+import { generatePreviewAlert, type PreviewInputs } from "@/lib/onboarding-preview";
 import { cn, avatarColor, avatarDotColor } from "@/lib/utils";
 import type { Database } from "@/lib/supabase/types";
 
@@ -31,9 +32,11 @@ function weekBounds() {
 export function DashboardFeed({
   competitors,
   signals,
+  previewContext,
 }: {
   competitors: Competitor[];
   signals: Signal[];
+  previewContext: Omit<PreviewInputs, "competitorName">;
 }) {
   const [filter, setFilter] = useState<string | "all">("all");
 
@@ -134,13 +137,47 @@ export function DashboardFeed({
               description="Add some in Settings to start tracking signals."
             />
           ) : (
-            <EmptyState
-              icon={Waves}
-              title="No signals yet"
-              description="Crawling runs on a schedule, so check back soon."
-            />
+            <SampleAlertPreview competitorName={competitors[0].name} context={previewContext} />
           ))}
       </div>
+    </div>
+  );
+}
+
+// Shown when an account has competitors but no real signals yet (crawling
+// hasn't run for them). Reuses the same deterministic template as the
+// onboarding "aha" step, against the account's actual context, so the
+// dashboard doesn't feel like a cold reset from the personalized demo.
+function SampleAlertPreview({
+  competitorName,
+  context,
+}: {
+  competitorName: string;
+  context: Omit<PreviewInputs, "competitorName">;
+}) {
+  const preview = generatePreviewAlert({ ...context, competitorName });
+
+  return (
+    <div className="space-y-4">
+      <div className="relative overflow-hidden rounded-lg border border-primary/25 bg-card p-4 pl-5">
+        <div className="absolute inset-y-0 left-0 w-1 bg-primary" />
+        <div className="flex items-center gap-2 text-xs font-semibold text-primary">
+          <Sparkles className="size-3.5" />
+          Sample — based on your setup
+        </div>
+        <p className="mt-3 text-sm font-medium">{preview.headline}</p>
+        <div className="mt-3 rounded-md border border-primary/20 bg-accent/60 p-3">
+          <span className="rounded-full border border-primary/30 bg-primary/15 px-2 py-0.5 text-[11px] font-semibold text-primary">
+            High relevance
+          </span>
+          <p className="mt-2 text-sm leading-relaxed text-foreground/90">{preview.reasoning}</p>
+        </div>
+      </div>
+      <EmptyState
+        icon={Waves}
+        title="Real signals are on the way"
+        description="Crawling runs on a schedule — this sample will be replaced by your first real alert."
+      />
     </div>
   );
 }
