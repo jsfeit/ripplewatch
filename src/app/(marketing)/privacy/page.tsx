@@ -83,7 +83,7 @@ export default function PrivacyPage() {
         </ul>
         <p>
           We do not sell your personal information to third parties, and we do not share it for advertising
-          purposes. See our full <a href="/subprocessors">Subprocessors</a> list for what each one processes.
+          purposes. See our full <a href="/terms#subprocessors">Subprocessors</a> list for what each one processes.
         </p>
       </section>
 

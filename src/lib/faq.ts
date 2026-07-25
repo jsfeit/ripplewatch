@@ -6,6 +6,36 @@ export type FaqCategory = { title: string; items: FaqItem[] };
 
 export const FAQ_CATEGORIES: FaqCategory[] = [
   {
+    title: "Product",
+    items: [
+      {
+        question: "What is Ripplewatch?",
+        answer:
+          "An AI-native competitive intelligence tool for startup marketing and product teams. Think of it as a continuous read on the health of market around you — it monitors the competitors you choose and scores every signal — a pricing change, a job posting, a news mention — against your own positioning, ICP, and the real reasons you've lost deals or churned customers.",
+      },
+      {
+        question: "How is this different from other competitive intelligence tools?",
+        answer:
+          "Most tools tell you what changed and stop there, leaving you to figure out whether it matters. Ripplewatch scores every signal against your specific business context using a fixed, ordered rubric — the same signal can be High relevance for one company and Low for another, because it's judged against what actually affects that business, not a generic severity scale.",
+      },
+      {
+        question: "What data sources does it monitor?",
+        answer:
+          "Pricing pages, job postings, news coverage, and funding announcements, continuously, for every competitor you track. If you connect Slack, HubSpot, Gong, or Zoom, it also draws on sales-call mentions and CRM deal notes to sharpen its judgment.",
+      },
+      {
+        question: "Does it use my sales calls or CRM data?",
+        answer:
+          "Only if you connect Gong, Zoom, or HubSpot yourself, and only to add context to scoring — for example, recognizing that a competitor's price cut matches a reason you've actually lost a deal. You can disconnect any integration at any time in Settings.",
+      },
+      {
+        question: "What is the Ask feature?",
+        answer:
+          "A chat interface scoped to your own tracked competitors and business context. Instead of waiting for an alert, you can ask something like \"what has this competitor changed recently that matters to us?\" and get an answer grounded in your last 90 days of signals.",
+      },
+    ],
+  },
+  {
     title: "Pricing & billing",
     items: [
       {
@@ -30,36 +60,6 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "Is there a setup fee?",
         answer: "No. You only pay the plan price shown on the pricing page.",
-      },
-    ],
-  },
-  {
-    title: "Product",
-    items: [
-      {
-        question: "What is Ripplewatch?",
-        answer:
-          "An AI-native competitive intelligence tool for startup marketing and product teams. It monitors the competitors you choose and scores every signal — a pricing change, a job posting, a news mention — against your own positioning, ICP, and the real reasons you've lost deals or churned customers.",
-      },
-      {
-        question: "How is this different from other competitive intelligence tools?",
-        answer:
-          "Most tools tell you what changed and stop there, leaving you to figure out whether it matters. Ripplewatch scores every signal against your specific business context using a fixed, ordered rubric — the same signal can be High relevance for one company and Low for another, because it's judged against what actually affects that business, not a generic severity scale.",
-      },
-      {
-        question: "What data sources does it monitor?",
-        answer:
-          "Pricing pages, job postings, news coverage, and funding announcements, continuously, for every competitor you track. If you connect Slack, HubSpot, Gong, or Zoom, it also draws on sales-call mentions and CRM deal notes to sharpen its judgment.",
-      },
-      {
-        question: "Does it use my sales calls or CRM data?",
-        answer:
-          "Only if you connect Gong, Zoom, or HubSpot yourself, and only to add context to scoring — for example, recognizing that a competitor's price cut matches a reason you've actually lost a deal. You can disconnect any integration at any time in Settings.",
-      },
-      {
-        question: "What is the Ask feature?",
-        answer:
-          "A chat interface scoped to your own tracked competitors and business context. Instead of waiting for an alert, you can ask something like \"what has this competitor changed recently that matters to us?\" and get an answer grounded in your last 90 days of signals.",
       },
     ],
   },
@@ -102,6 +102,11 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "How do I contact support, and how fast do you respond?",
         answer: "Email hello@ripplewatch.ai — we respond within 3 days.",
+      },
+      {
+        question: "Where can I read more about the competitive intelligence market?",
+        answer:
+          'We put together a full survey of the CI landscape — how 14 different tools approach monitoring, what they cover, and where the gaps are — in our <a href="/state-of-competitive-intelligence">State of Competitive Intelligence</a> report.',
       },
     ],
   },

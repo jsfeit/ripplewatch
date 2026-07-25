@@ -19,6 +19,10 @@ export const metadata = {
   },
 };
 
+// Answers can contain simple inline HTML (e.g. a link) for on-page
+// rendering — structured data wants plain text, so strip tags there.
+const stripHtml = (html: string) => html.replace(/<[^>]+>/g, "");
+
 const STRUCTURED_DATA = {
   "@context": "https://schema.org",
   "@type": "FAQPage",
@@ -26,7 +30,7 @@ const STRUCTURED_DATA = {
     category.items.map((item) => ({
       "@type": "Question",
       name: item.question,
-      acceptedAnswer: { "@type": "Answer", text: item.answer },
+      acceptedAnswer: { "@type": "Answer", text: stripHtml(item.answer) },
     }))
   ),
 };
