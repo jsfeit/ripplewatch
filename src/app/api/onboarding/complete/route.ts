@@ -60,6 +60,7 @@ export async function POST(request: Request) {
     lost_deal_notes: lostDealReasons?.trim() || null,
     churn_notes: churnReasons?.trim() || null,
     contact_email: user.email,
+    created_by: user.id,
   });
 
   if (accountError) {
