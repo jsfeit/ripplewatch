@@ -1,4 +1,5 @@
 import { LegalDoc } from "@/components/marketing/legal-doc";
+import { SubprocessorTable, CORE_SUBPROCESSORS, OPTIONAL_SUBPROCESSORS } from "@/components/marketing/subprocessor-table";
 
 const description = "The terms that govern your use of ripplewatch.ai and the Ripplewatch application.";
 
@@ -86,7 +87,26 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>7. Intellectual property</h2>
+        <h2 id="subprocessors">7. Subprocessors</h2>
+        <p>
+          We use a small number of third-party service providers (&ldquo;subprocessors&rdquo;) to run
+          Ripplewatch. Each one only processes the data described below, only for the purpose listed — see
+          our <a href="/privacy">Privacy Policy</a> for the full picture of what we collect and why.
+        </p>
+        <p className="mt-4"><strong>Core infrastructure</strong> — used to run Ripplewatch for every customer.</p>
+        <SubprocessorTable rows={CORE_SUBPROCESSORS} />
+        <p className="mt-4"><strong>Optional integrations</strong> — only process your data if you choose to connect them in Settings.</p>
+        <SubprocessorTable rows={OPTIONAL_SUBPROCESSORS} />
+        <p className="mt-4">
+          If we add or remove a subprocessor, we&apos;ll update this section and notify customers on paid
+          plans by email in advance where practical. If your company requires a signed Data Processing
+          Addendum (DPA) as part of your procurement or security review, email{" "}
+          <a href="mailto:hello@ripplewatch.ai">hello@ripplewatch.ai</a> and we&apos;ll get one to you.
+        </p>
+      </section>
+
+      <section>
+        <h2>8. Intellectual property</h2>
         <p>
           We own Ripplewatch&apos;s software, design, and branding. You own the business information you input
           into the product (your positioning, ICP, notes, and uploaded documents), and you grant us a
@@ -95,7 +115,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>8. Termination</h2>
+        <h2>9. Termination</h2>
         <p>
           You can cancel your account at any time. We may suspend or terminate your access if you violate
           these terms, and we will make a reasonable effort to notify you first except where immediate
@@ -104,7 +124,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>9. Disclaimer of warranties</h2>
+        <h2>10. Disclaimer of warranties</h2>
         <p>
           Ripplewatch is provided &ldquo;as is&rdquo; without warranties of any kind, express or implied, including
           any warranty of merchantability, fitness for a particular purpose, or uninterrupted or
@@ -113,7 +133,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>10. Limitation of liability</h2>
+        <h2>11. Limitation of liability</h2>
         <p>
           To the fullest extent permitted by law, Ripplewatch will not be liable for any indirect, incidental,
           or consequential damages, and our total liability for any claim relating to the service is
@@ -122,7 +142,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>11. Governing law</h2>
+        <h2>12. Governing law</h2>
         <p>
           These terms are governed by the laws of the State of Delaware, USA, without regard to conflict-of-law
           principles. Any disputes will be resolved in the state or federal courts located in Delaware.
@@ -130,7 +150,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>12. Changes to these terms</h2>
+        <h2>13. Changes to these terms</h2>
         <p>
           We may update these terms from time to time. If we make material changes, we will update the date
           above and notify you by email or an in-app notice. Continued use of Ripplewatch after a change
@@ -139,7 +159,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>13. Contact us</h2>
+        <h2>14. Contact us</h2>
         <p>
           Questions about these terms? Reach us at{" "}
           <a href="mailto:hello@ripplewatch.ai">hello@ripplewatch.ai</a>.

@@ -28,7 +28,7 @@ export function SiteFooter() {
           <Link href="/careers" className="hover:text-foreground">Careers</Link>
           <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
           <Link href="/terms" className="hover:text-foreground">Terms</Link>
-          <Link href="/subprocessors" className="hover:text-foreground">Subprocessors</Link>
+          <Link href="/terms#subprocessors" className="hover:text-foreground">Subprocessors</Link>
           <Link href="/login" className="hover:text-foreground">Sign in</Link>
         </nav>
         <div className="flex items-center gap-4">
