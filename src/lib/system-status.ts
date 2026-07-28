@@ -72,7 +72,14 @@ async function checkResend(): Promise<StatusCheck> {
     const { Resend } = await import("resend");
     const client = new Resend(process.env.RESEND_API_KEY);
     const { error } = await client.domains.list();
-    if (error) throw new Error(error.message);
+    // A key restricted to "Sending access" (the least-privilege, recommended
+    // scope) can't list domains — that's not a bad key, just a narrower one.
+    // Sending itself still works; there's no cheap way to verify that
+    // without actually sending an email, so treat this specific rejection
+    // as healthy rather than failing the check.
+    if (error && !/restricted to only send emails/i.test(error.message)) {
+      throw new Error(error.message);
+    }
     return { name: "Resend", configured: true, ok: true, detail: `Sending as ${process.env.RESEND_FROM_EMAIL}.` };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
