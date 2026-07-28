@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { sendWelcomeEmail } from "@/lib/resend";
 
 type CompetitorInput = { name: string; domain: string };
 
@@ -96,6 +97,12 @@ export async function POST(request: Request) {
     .update({ account_id: accountId })
     .eq("uploaded_by", user.id)
     .is("account_id", null);
+
+  // Best-effort — a welcome email failing shouldn't block onboarding.
+  const appUrl = new URL(request.url).origin;
+  sendWelcomeEmail(user.email!, companyName.trim(), appUrl).catch((err) =>
+    console.error("welcome email failed:", err)
+  );
 
   return NextResponse.json({ ok: true, accountId });
 }
