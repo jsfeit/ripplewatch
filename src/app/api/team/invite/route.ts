@@ -114,7 +114,16 @@ export async function POST(request: Request) {
   }
 
   const acceptUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${invite.token}`;
-  await sendInviteEmail(email, account.name, acceptUrl);
+  let emailError = false;
+  try {
+    await sendInviteEmail(email, account.name, acceptUrl);
+  } catch (err) {
+    // The invite row already exists and its link works — don't lose that
+    // over a delivery failure, just tell the caller so they know to share
+    // the link another way.
+    console.error("invite email failed:", err);
+    emailError = true;
+  }
 
-  return NextResponse.json({ invite });
+  return NextResponse.json({ invite, emailError });
 }

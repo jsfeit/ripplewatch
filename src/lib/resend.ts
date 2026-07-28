@@ -70,12 +70,13 @@ export async function sendDigestEmail(
 
   const { noun } = CADENCE_COPY[cadence];
 
-  await getResend().emails.send({
+  const result = await getResend().emails.send({
     from: process.env.RESEND_FROM_EMAIL!,
     to,
     subject: `${signals.filter((s) => s.scored).length} scored alert${signals.length === 1 ? "" : "s"} ${noun}`,
     html: renderDigestHtml(companyName, signals, cadence),
   });
+  if (result.error) throw new Error(result.error.message);
 }
 
 // Marketing campaigns (waitlist notify, launch announcement) — distinct
@@ -94,10 +95,45 @@ export async function sendCampaignEmail(to: string, subject: string, html: strin
   return result.data?.id ?? null;
 }
 
+// Distinct from the transactional digest/invite emails above — a one-time
+// send right after onboarding completes, so a new signup doesn't churn
+// before their first real (scored) signal shows up days later.
+export async function sendWelcomeEmail(to: string, companyName: string, appUrl: string) {
+  if (!isResendConfigured()) return;
+
+  const result = await getResend().emails.send({
+    from: process.env.RESEND_FROM_EMAIL!,
+    to,
+    subject: "Welcome to Ripplewatch — here's how to get value this week",
+    html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+      <h2 style="margin:0 0 12px;">You're set up, ${companyName}.</h2>
+      <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+        Your dashboard has a sample scored alert right now — that's a placeholder built from your own
+        positioning and competitors, not a real signal yet. Real ones start showing up once the next
+        scheduled crawl runs.
+      </p>
+      <p style="color:#3a3a3a;font-size:14px;line-height:1.6;"><strong>Three things worth doing this week:</strong></p>
+      <ol style="color:#3a3a3a;font-size:14px;line-height:1.7;padding-left:20px;">
+        <li>Connect Slack so alerts land where your team already works, instead of waiting on email.</li>
+        <li>Add any remaining competitors you're tracking — the more context, the sharper the scoring.</li>
+        <li>Try Ask — it's scoped to your own competitors and business context, so you can ask something
+          like "what's changed with our top competitor recently?" instead of waiting for an alert.</li>
+      </ol>
+      <a href="${appUrl}/app/dashboard" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#0f5f56;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">
+        Go to your dashboard
+      </a>
+      <p style="color:#888;font-size:12px;margin-top:24px;">
+        Questions? Just reply — a person reads every one.
+      </p>
+    </div>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
 export async function sendInviteEmail(to: string, inviterCompanyName: string, acceptUrl: string) {
   if (!isResendConfigured()) return;
 
-  await getResend().emails.send({
+  const result = await getResend().emails.send({
     from: process.env.RESEND_FROM_EMAIL!,
     to,
     subject: `You've been invited to ${inviterCompanyName}'s Ripplewatch workspace`,
@@ -111,4 +147,5 @@ export async function sendInviteEmail(to: string, inviterCompanyName: string, ac
       </a>
     </div>`,
   });
+  if (result.error) throw new Error(result.error.message);
 }

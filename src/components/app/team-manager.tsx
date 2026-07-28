@@ -51,6 +51,9 @@ export function TeamManager({ tier, currentUserId }: { tier: Tier; currentUserId
       setError(data.error ?? "Could not send invite.");
       return;
     }
+    if (data.emailError) {
+      setError("Invite created, but the email failed to send. Try re-inviting them, or check Resend.");
+    }
     setEmail("");
     refresh();
   }

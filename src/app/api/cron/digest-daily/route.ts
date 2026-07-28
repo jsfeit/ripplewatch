@@ -54,7 +54,16 @@ export async function GET(request: Request) {
       relevanceReasoning: s.relevance_reasoning,
     }));
 
-    await sendDigestEmail(account.contact_email, account.name, digestSignals, "daily");
+    try {
+      await sendDigestEmail(account.contact_email, account.name, digestSignals, "daily");
+    } catch (err) {
+      // Don't mark these as sent — leave them pending so the next run
+      // retries, and don't let one account's failure stop the rest.
+      console.error(`daily digest send failed for ${account.name}:`, err);
+      summary.push({ account: account.name, sent: 0, error: true });
+      continue;
+    }
+
     await supabase
       .from("signals")
       .update({ email_digest_sent_at: new Date().toISOString() })
