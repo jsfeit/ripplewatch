@@ -37,6 +37,7 @@ export default async function AdminWaitlistPage() {
               <TableRow>
                 <TableHead>Email</TableHead>
                 <TableHead>Company</TableHead>
+                <TableHead>Source</TableHead>
                 <TableHead>Joined</TableHead>
               </TableRow>
             </TableHeader>
@@ -46,13 +47,18 @@ export default async function AdminWaitlistPage() {
                   <TableCell className="font-medium">{s.email}</TableCell>
                   <TableCell className="text-muted-foreground">{s.company_name ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground">
+                    {s.utm_source
+                      ? [s.utm_source, s.utm_medium, s.utm_campaign].filter(Boolean).join(" / ")
+                      : "—"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
                     {new Date(s.created_at).toLocaleDateString()}
                   </TableCell>
                 </TableRow>
               ))}
               {signups?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center text-muted-foreground">
                     No signups yet.
                   </TableCell>
                 </TableRow>

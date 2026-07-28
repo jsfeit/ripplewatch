@@ -10,6 +10,9 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const email = typeof body?.email === "string" ? body.email.trim() : "";
   const companyName = typeof body?.company === "string" ? body.company.trim() : "";
+  const utmSource = typeof body?.utm_source === "string" ? body.utm_source.trim().slice(0, 100) : "";
+  const utmMedium = typeof body?.utm_medium === "string" ? body.utm_medium.trim().slice(0, 100) : "";
+  const utmCampaign = typeof body?.utm_campaign === "string" ? body.utm_campaign.trim().slice(0, 100) : "";
 
   const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   if (!isValid) {
@@ -17,9 +20,13 @@ export async function POST(request: Request) {
   }
 
   const supabase = createAdminClient();
-  const { error } = await supabase
-    .from("waitlist_signups")
-    .insert({ email, company_name: companyName || null });
+  const { error } = await supabase.from("waitlist_signups").insert({
+    email,
+    company_name: companyName || null,
+    utm_source: utmSource || null,
+    utm_medium: utmMedium || null,
+    utm_campaign: utmCampaign || null,
+  });
 
   // Unique violation on email — treat re-signup as success rather than an error.
   if (error && error.code !== "23505") {

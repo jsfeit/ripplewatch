@@ -17,10 +17,17 @@ export function WaitlistForm() {
     setStatus("loading");
     setError("");
     try {
+      const params = new URLSearchParams(window.location.search);
       const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, company }),
+        body: JSON.stringify({
+          email,
+          company,
+          utm_source: params.get("utm_source") ?? "",
+          utm_medium: params.get("utm_medium") ?? "",
+          utm_campaign: params.get("utm_campaign") ?? "",
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
