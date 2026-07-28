@@ -78,6 +78,22 @@ export async function sendDigestEmail(
   });
 }
 
+// Marketing campaigns (waitlist notify, launch announcement) — distinct
+// from the transactional sends above. Body is already-personalized HTML;
+// callers build that via lib/campaigns.ts's personalize() first.
+export async function sendCampaignEmail(to: string, subject: string, html: string) {
+  if (!isResendConfigured()) throw new Error("RESEND_API_KEY/RESEND_FROM_EMAIL not configured.");
+
+  const result = await getResend().emails.send({
+    from: process.env.RESEND_FROM_EMAIL!,
+    to,
+    subject,
+    html,
+  });
+  if (result.error) throw new Error(result.error.message);
+  return result.data?.id ?? null;
+}
+
 export async function sendInviteEmail(to: string, inviterCompanyName: string, acceptUrl: string) {
   if (!isResendConfigured()) return;
 
