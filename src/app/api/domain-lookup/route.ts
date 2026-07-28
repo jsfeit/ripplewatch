@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import * as cheerio from "cheerio";
 import { DOMAIN_PATTERN, normalizeDomain } from "@/lib/domain";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 // One-line description pulled from the domain's own homepage meta tags —
 // no third-party enrichment API, just a quick fetch + parse. Logos are
 // handled entirely client-side via a free, keyless logo service.
 export async function GET(request: Request) {
+  if (!checkRateLimit(`domain-lookup:${getClientIp(request)}`, 30, 60_000)) {
+    return NextResponse.json({ description: null }, { status: 429 });
+  }
+
   const raw = new URL(request.url).searchParams.get("domain") ?? "";
   const domain = normalizeDomain(raw).toLowerCase();
   if (!domain || !DOMAIN_PATTERN.test(domain)) {
