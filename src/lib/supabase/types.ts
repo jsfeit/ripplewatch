@@ -58,6 +58,8 @@ export interface Database {
           subscription_status: string | null;
           contact_email: string | null;
           created_by: string | null;
+          payment_reminder_1_sent_at: string | null;
+          payment_reminder_2_sent_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -75,6 +77,8 @@ export interface Database {
           subscription_status?: string | null;
           contact_email?: string | null;
           created_by?: string | null;
+          payment_reminder_1_sent_at?: string | null;
+          payment_reminder_2_sent_at?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["accounts"]["Insert"]>;
