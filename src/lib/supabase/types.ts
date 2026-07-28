@@ -25,12 +25,18 @@ export interface Database {
           id: string;
           email: string;
           company_name: string | null;
+          utm_source: string | null;
+          utm_medium: string | null;
+          utm_campaign: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
           email: string;
           company_name?: string | null;
+          utm_source?: string | null;
+          utm_medium?: string | null;
+          utm_campaign?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["waitlist_signups"]["Insert"]>;
