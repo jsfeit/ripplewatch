@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import { suggestCompetitors } from "@/lib/anthropic";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 // Deliberately open to anonymous visitors — this runs during the onboarding
 // demo, before an account exists and often before anyone has signed in at
 // all. It's read-only against Claude, not account-scoped, so there's
 // nothing here that needs an authenticated user.
 export async function POST(request: Request) {
+  if (!checkRateLimit(`suggest-competitors:${getClientIp(request)}`, 10, 60_000)) {
+    return NextResponse.json({ competitors: [] }, { status: 429 });
+  }
+
   const body = await request.json().catch(() => null);
   const companyName = typeof body?.companyName === "string" ? body.companyName.trim() : "";
   const positioning = typeof body?.positioning === "string" ? body.positioning.trim() : null;
