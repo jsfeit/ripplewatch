@@ -95,6 +95,61 @@ export async function sendCampaignEmail(to: string, subject: string, html: strin
   return result.data?.id ?? null;
 }
 
+// "Signed up, never finished checkout" sequence — every tier requires
+// payment (no free plan), and the account is fully created and usable
+// before the Stripe redirect even happens, so abandoning that step today
+// leaves a customer with permanent free access and zero follow-up. Two
+// steps, sent by /api/cron/payment-reminders; each is generic about which
+// plan they were on since that's not reliably known pre-payment.
+export async function sendPaymentReminderEmail(
+  to: string,
+  companyName: string,
+  step: 1 | 2,
+  appUrl: string
+) {
+  if (!isResendConfigured()) return;
+
+  const settingsUrl = `${appUrl}/app/settings`;
+  const subject =
+    step === 1
+      ? "You're one step from real competitive alerts"
+      : "Still want Ripplewatch tracking your competitors?";
+
+  const body =
+    step === 1
+      ? `<p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+          You set up ${companyName} on Ripplewatch, but checkout never finished — nothing's actively
+          monitoring your competitors until a plan is active.
+        </p>
+        <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+          Every plan comes with a 30-day money-back guarantee, so there's no real risk in finishing now.
+        </p>`
+      : `<p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+          No pressure — just checking in one more time. Your account's ready whenever you are, but
+          competitors aren't being monitored until a plan is active.
+        </p>
+        <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+          If now isn't the right time, no worries at all. If it is, it takes about a minute.
+        </p>`;
+
+  const result = await getResend().emails.send({
+    from: process.env.RESEND_FROM_EMAIL!,
+    to,
+    subject,
+    html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+      <h2 style="margin:0 0 12px;">${subject}</h2>
+      ${body}
+      <a href="${settingsUrl}" style="display:inline-block;margin-top:8px;padding:10px 20px;background:#0f5f56;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">
+        Finish setting up your plan
+      </a>
+      <p style="color:#888;font-size:12px;margin-top:24px;">
+        Questions? Just reply — a person reads every one.
+      </p>
+    </div>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
 // Distinct from the transactional digest/invite emails above — a one-time
 // send right after onboarding completes, so a new signup doesn't churn
 // before their first real (scored) signal shows up days later.
