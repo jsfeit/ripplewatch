@@ -154,16 +154,11 @@ export function SettingsView({
           <CardContent className="space-y-3">
             <IntegrationConnector
               name="Gong"
-              description={
-                CALL_INTEL_ALLOWED[account.tier]
-                  ? "Pull competitor mentions from recent sales calls"
-                  : "Pull competitor mentions from recent sales calls — Plus and above"
-              }
-              connected={isConnected("gong")}
-              connectHref="/api/integrations/gong/connect"
+              description="Pull competitor mentions from recent sales calls"
+              connected={false}
+              connectHref="#"
               provider="gong"
-              disconnectAction={disconnectIntegrationAction}
-              requiresUpgrade={!CALL_INTEL_ALLOWED[account.tier]}
+              comingSoon
             />
             <IntegrationConnector
               name="Zoom"
