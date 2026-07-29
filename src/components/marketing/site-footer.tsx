@@ -33,13 +33,15 @@ export function SiteFooter() {
         </nav>
         <div className="flex items-center gap-4">
           <p className="text-xs text-muted-foreground">© 2026 Ripplewatch. ripplewatch.ai</p>
-          {/* No LinkedIn page yet — icon is a placeholder, not a link. */}
-          <span
-            className="flex size-6 items-center justify-center text-muted-foreground/50"
-            title="LinkedIn — coming soon"
+          <a
+            href="https://www.linkedin.com/company/ripplewatch/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex size-6 items-center justify-center text-muted-foreground hover:text-foreground"
+            title="Ripplewatch on LinkedIn"
           >
             <LinkedinIcon className="size-4" />
-          </span>
+          </a>
         </div>
       </div>
     </footer>
