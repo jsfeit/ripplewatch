@@ -499,9 +499,14 @@ export type SearchedHeadline = { title: string; summary: string; url: string | n
 // Exists as a working, tested option to switch to later if the free
 // approach still comes up thin after a few real days of crawling.
 export async function searchCompetitorNews(competitorName: string): Promise<SearchedHeadline[]> {
+  // web_search_20260209's built-in dynamic filtering runs a whole internal
+  // thinking/code-execution loop before producing the final answer — verified
+  // live that 1024 wasn't nearly enough and cut the response off mid-process
+  // (stop_reason: "max_tokens", zero headlines written yet). This is real
+  // overhead the free RSS scrape in scraping.ts doesn't have.
   const message = await getAnthropic().messages.create({
     model: "claude-sonnet-5",
-    max_tokens: 1024,
+    max_tokens: 8192,
     system: cachedSystemPrompt(NEWS_SEARCH_SYSTEM_PROMPT),
     tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
     output_config: { format: { type: "json_schema", schema: NEWS_SEARCH_SCHEMA } },
