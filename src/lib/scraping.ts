@@ -194,29 +194,43 @@ export async function checkJobPostingsDiff(
 // richer content would mean following the redirect to the source site,
 // which isn't worth the added fragility/latency in a cron loop for what's
 // still just a headline-level signal.
-async function fetchTopHeadline(
-  query: string
-): Promise<{ title: string; source: string | null; description: string | null; link: string | null } | null> {
+//
+// Returns up to `limit` items, not just the top one — a single feed fetch
+// commonly has 10+ genuinely distinct stories, and only ever looking at
+// item #1 meant nothing new surfaced on a given competitor until Google's
+// own ranking happened to change which story was first.
+const HEADLINES_PER_QUERY = 8;
+
+async function fetchHeadlines(
+  query: string,
+  limit: number = HEADLINES_PER_QUERY
+): Promise<{ title: string; source: string | null; description: string | null; link: string | null }[]> {
   const feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
   const res = await fetch(feedUrl, { signal: AbortSignal.timeout(15_000) });
-  if (!res.ok) return null;
+  if (!res.ok) return [];
 
   const xml = await res.text();
   const $ = cheerio.load(xml, { xmlMode: true });
-  const firstItem = $("item").first();
-  const title = firstItem.find("title").text().trim();
-  if (!title) return null;
 
-  const source = firstItem.find("source").text().trim() || null;
-  const link = firstItem.find("link").text().trim() || null;
-  const rawDescription = firstItem.find("description").text().trim();
-  // Strip the HTML the field is wrapped in and drop it if it's just the
-  // title again — only keep it when it actually adds information.
-  const cleanDescription = cheerio.load(rawDescription).text().replace(/\s+/g, " ").trim();
-  const description =
-    cleanDescription && cleanDescription !== title && !cleanDescription.startsWith(title) ? cleanDescription : null;
-
-  return { title, source, description, link };
+  return $("item")
+    .slice(0, limit)
+    .map((_, el) => {
+      const item = $(el);
+      const title = item.find("title").text().trim();
+      const source = item.find("source").text().trim() || null;
+      const link = item.find("link").text().trim() || null;
+      const rawDescription = item.find("description").text().trim();
+      // Strip the HTML the field is wrapped in and drop it if it's just the
+      // title again — only keep it when it actually adds information.
+      const cleanDescription = cheerio.load(rawDescription).text().replace(/\s+/g, " ").trim();
+      const description =
+        cleanDescription && cleanDescription !== title && !cleanDescription.startsWith(title)
+          ? cleanDescription
+          : null;
+      return { title, source, description, link };
+    })
+    .get()
+    .filter((item) => item.title);
 }
 
 async function existingSignalTitle(
@@ -238,51 +252,62 @@ async function existingSignalTitle(
 
 // News — free Google News RSS query, no API key required. De-duped against
 // existing signal titles for this competitor rather than a snapshot hash,
-// since RSS feeds don't have a stable "page" to diff.
-export async function checkNews(supabase: AdminClient, competitor: Competitor): Promise<Signal | null> {
-  const headline = await fetchTopHeadline(competitor.name);
-  if (!headline) return null;
-  if (await existingSignalTitle(supabase, competitor.id, headline.title)) return null;
+// since RSS feeds don't have a stable "page" to diff. Inserts every headline
+// from this run that isn't already a signal, not just one.
+export async function checkNews(supabase: AdminClient, competitor: Competitor): Promise<Signal[]> {
+  const headlines = await fetchHeadlines(competitor.name);
+  const inserted: Signal[] = [];
 
-  const { data } = await supabase
-    .from("signals")
-    .insert({
-      competitor_id: competitor.id,
-      type: "news",
-      title: headline.title,
-      summary: headline.description ?? headline.source,
-      url: headline.link,
-      scored: false,
-      source: "pipeline",
-    })
-    .select("*")
-    .single();
+  for (const headline of headlines) {
+    if (await existingSignalTitle(supabase, competitor.id, headline.title)) continue;
 
-  return data;
+    const { data } = await supabase
+      .from("signals")
+      .insert({
+        competitor_id: competitor.id,
+        type: "news",
+        title: headline.title,
+        summary: headline.description ?? headline.source,
+        url: headline.link,
+        scored: false,
+        source: "pipeline",
+      })
+      .select("*")
+      .single();
+
+    if (data) inserted.push(data);
+  }
+
+  return inserted;
 }
 
 // Funding — same free Google News RSS approach, but with a query weighted
 // toward funding-announcement language so raises/rounds get classified and
 // surfaced distinctly from general news instead of getting buried in it.
-export async function checkFunding(supabase: AdminClient, competitor: Competitor): Promise<Signal | null> {
+export async function checkFunding(supabase: AdminClient, competitor: Competitor): Promise<Signal[]> {
   const query = `"${competitor.name}" (raises OR "seed round" OR "series a" OR "series b" OR "series c" OR funding OR valuation)`;
-  const headline = await fetchTopHeadline(query);
-  if (!headline) return null;
-  if (await existingSignalTitle(supabase, competitor.id, headline.title)) return null;
+  const headlines = await fetchHeadlines(query);
+  const inserted: Signal[] = [];
 
-  const { data } = await supabase
-    .from("signals")
-    .insert({
-      competitor_id: competitor.id,
-      type: "funding",
-      title: headline.title,
-      summary: headline.description ?? headline.source,
-      url: headline.link,
-      scored: false,
-      source: "pipeline",
-    })
-    .select("*")
-    .single();
+  for (const headline of headlines) {
+    if (await existingSignalTitle(supabase, competitor.id, headline.title)) continue;
 
-  return data;
+    const { data } = await supabase
+      .from("signals")
+      .insert({
+        competitor_id: competitor.id,
+        type: "funding",
+        title: headline.title,
+        summary: headline.description ?? headline.source,
+        url: headline.link,
+        scored: false,
+        source: "pipeline",
+      })
+      .select("*")
+      .single();
+
+    if (data) inserted.push(data);
+  }
+
+  return inserted;
 }

@@ -109,16 +109,22 @@ export async function GET(request: Request) {
 
     const newSignals: Signal[] = [];
     for (const competitor of competitors) {
+      // Pricing/jobs surface at most one signal per run (a diff against the
+      // last snapshot); news/funding can surface several (every new
+      // headline in this run's feed) — normalized to arrays here so both
+      // shapes flatten into newSignals the same way.
       const checks = [
-        allowedSources.includes("pricing") ? checkPricingDiff(supabase, competitor) : null,
-        allowedSources.includes("job_posting") ? checkJobPostingsDiff(supabase, competitor) : null,
+        allowedSources.includes("pricing") ? checkPricingDiff(supabase, competitor).then((s) => (s ? [s] : [])) : null,
+        allowedSources.includes("job_posting")
+          ? checkJobPostingsDiff(supabase, competitor).then((s) => (s ? [s] : []))
+          : null,
         allowedSources.includes("news") ? checkNews(supabase, competitor) : null,
         allowedSources.includes("funding") ? checkFunding(supabase, competitor) : null,
-      ].filter((p): p is Promise<Signal | null> => p !== null);
+      ].filter((p): p is Promise<Signal[]> => p !== null);
 
       const results = await Promise.allSettled(checks);
       for (const result of results) {
-        if (result.status === "fulfilled" && result.value) newSignals.push(result.value);
+        if (result.status === "fulfilled") newSignals.push(...result.value);
       }
 
       // Refreshes the Pricing dashboard's current-state snapshot every run,
