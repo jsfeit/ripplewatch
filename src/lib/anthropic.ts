@@ -87,6 +87,16 @@ Respond with strict JSON only, no markdown, matching this shape exactly:
 
 If nothing business-relevant changed, respond {"meaningful": false, "summary": ""}.`;
 
+const DIFF_SCHEMA = {
+  type: "object",
+  properties: {
+    meaningful: { type: "boolean" },
+    summary: { type: "string" },
+  },
+  required: ["meaningful", "summary"],
+  additionalProperties: false,
+} as const;
+
 export async function summarizePricingChange(oldText: string, newText: string): Promise<DiffSummary> {
   const truncate = (s: string) => s.slice(0, 6000);
   const userPrompt = `BEFORE:\n${truncate(oldText)}\n\nAFTER:\n${truncate(newText)}\n\nWhat changed?`;
@@ -95,6 +105,7 @@ export async function summarizePricingChange(oldText: string, newText: string): 
     model: "claude-sonnet-5",
     max_tokens: 200,
     system: cachedSystemPrompt(DIFF_SYSTEM_PROMPT),
+    output_config: { format: { type: "json_schema", schema: DIFF_SCHEMA } },
     messages: [{ role: "user", content: userPrompt }],
   });
 
@@ -136,6 +147,31 @@ Respond with strict JSON only, no markdown, matching this shape exactly:
 
 Keep each feature phrase short (under 8 words) and specific — things like limits, integrations, and capabilities, not marketing fluff. If pricing isn't public, return tiers: [] and put the tier names you can still see (if any) in note instead. Cap features at 5 per tier — pick the ones a buyer would actually compare on (limits, seats, support level, integrations), not every bullet on the page.`;
 
+const PRICING_EXTRACTION_SCHEMA = {
+  type: "object",
+  properties: {
+    billingModel: { type: "string", enum: ["subscription", "per_seat", "usage_based", "custom", "unknown"] },
+    publiclyPriced: { type: "boolean" },
+    note: { anyOf: [{ type: "string" }, { type: "null" }] },
+    tiers: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          price: { anyOf: [{ type: "number" }, { type: "null" }] },
+          price_period: { anyOf: [{ type: "string" }, { type: "null" }] },
+          features: { type: "array", items: { type: "string" } },
+        },
+        required: ["name", "price", "price_period", "features"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["billingModel", "publiclyPriced", "note", "tiers"],
+  additionalProperties: false,
+} as const;
+
 export async function extractPricingStructure(pageText: string): Promise<PricingExtraction> {
   const userPrompt = `Pricing page text:\n${pageText.slice(0, 8000)}\n\nExtract the current pricing structure.`;
 
@@ -143,6 +179,7 @@ export async function extractPricingStructure(pageText: string): Promise<Pricing
     model: "claude-sonnet-5",
     max_tokens: 800,
     system: cachedSystemPrompt(PRICING_EXTRACTION_SYSTEM_PROMPT),
+    output_config: { format: { type: "json_schema", schema: PRICING_EXTRACTION_SCHEMA } },
     messages: [{ role: "user", content: userPrompt }],
   });
 
@@ -172,20 +209,19 @@ export async function extractPricingStructure(pageText: string): Promise<Pricing
   }
 }
 
-function parseScoringResponse(text: string): ScoringResult {
-  const parsed = JSON.parse(text);
-  const level = parsed.level;
-  if (level !== "High" && level !== "Medium" && level !== "Low") {
-    throw new Error(`Unexpected level in scoring response: ${level}`);
-  }
-  return { level, reasoning: String(parsed.reasoning ?? "") };
-}
+// Schema-enforced (output_config.format below), so a malformed level is no
+// longer a real failure mode — this used to need a same-prompt retry loop
+// for exactly that case, which schema enforcement made dead code.
+const SCORE_SIGNAL_SCHEMA = {
+  type: "object",
+  properties: {
+    level: { type: "string", enum: ["High", "Medium", "Low"] },
+    reasoning: { type: "string" },
+  },
+  required: ["level", "reasoning"],
+  additionalProperties: false,
+} as const;
 
-// One retry on a malformed response (bad JSON, or a level outside the three
-// enum values) rather than permanently leaving the signal unscored — a
-// single bad generation shouldn't cost a customer a signal they'd otherwise
-// see. The retry reiterates the strict-JSON requirement since that's the
-// most common failure mode.
 export async function scoreSignal(
   context: ScoringContext,
   signal: SignalToScore
@@ -204,34 +240,21 @@ ${signal.summary ? `Details: ${signal.summary}` : ""}
 
 Score this signal.`;
 
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const message = await getAnthropic().messages.create({
-      model: "claude-sonnet-5",
-      max_tokens: 300,
-      system: cachedSystemPrompt(SYSTEM_PROMPT),
-      messages: [
-        { role: "user", content: userPrompt },
-        ...(attempt > 0
-          ? [
-              {
-                role: "user" as const,
-                content:
-                  "Your last reply wasn't valid — respond with ONLY the JSON object, no markdown fences, no other text.",
-              },
-            ]
-          : []),
-      ],
-    });
+  const message = await getAnthropic().messages.create({
+    model: "claude-sonnet-5",
+    max_tokens: 300,
+    system: cachedSystemPrompt(SYSTEM_PROMPT),
+    output_config: { format: { type: "json_schema", schema: SCORE_SIGNAL_SCHEMA } },
+    messages: [{ role: "user", content: userPrompt }],
+  });
 
-    const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
-    try {
-      return parseScoringResponse(text);
-    } catch (err) {
-      if (attempt === 1) throw new Error(`Could not parse scoring response: ${text}`, { cause: err });
-    }
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  try {
+    const parsed = JSON.parse(text);
+    return { level: parsed.level, reasoning: String(parsed.reasoning ?? "") };
+  } catch (err) {
+    throw new Error(`Could not parse scoring response: ${text}`, { cause: err });
   }
-
-  throw new Error("Unreachable");
 }
 
 const MENTIONS_SYSTEM_PROMPT = `You read sales call transcripts and pull out only the moments where a named competitor came up — objections, comparisons, feature/price call-outs, or a prospect saying they're evaluating or switching from a competitor. Ignore everything else in the transcript (rapport-building, scheduling, unrelated product discussion).
@@ -240,6 +263,26 @@ Respond with strict JSON only, no markdown, matching this shape exactly:
 {"mentions": [{"competitor": "<name, must exactly match one from the watch list>", "mention": "<one sentence, e.g. 'Prospect said Acme's pricing was 30% cheaper for the same seat count'>"}]}
 
 If no named competitor was mentioned, respond {"mentions": []}. Keep each mention to one sentence, written as a plain fact a marketing lead can act on — no filler like "the prospect mentioned that". Tag each mention with exactly which competitor from the watch list it's about — don't guess if the transcript doesn't name one specifically.`;
+
+const MENTIONS_SCHEMA = {
+  type: "object",
+  properties: {
+    mentions: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          competitor: { type: "string" },
+          mention: { type: "string" },
+        },
+        required: ["competitor", "mention"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["mentions"],
+  additionalProperties: false,
+} as const;
 
 export type CompetitorMention = { competitor: string; mention: string };
 
@@ -268,6 +311,7 @@ Extract competitor mentions.`;
         model: "claude-sonnet-5",
         max_tokens: 400,
         system: cachedSystemPrompt(MENTIONS_SYSTEM_PROMPT),
+        output_config: { format: { type: "json_schema", schema: MENTIONS_SCHEMA } },
         messages: [{ role: "user", content: userPrompt }],
       });
 
@@ -294,6 +338,26 @@ Respond with strict JSON only, no markdown, matching this shape exactly:
 
 Return up to 8, ordered most-to-least likely to be a real competitive threat. If the positioning/ICP is too vague to infer a specific market, make a best-effort guess at the closest general category rather than returning an empty list.`;
 
+const SUGGEST_COMPETITORS_SCHEMA = {
+  type: "object",
+  properties: {
+    competitors: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          domain: { type: "string" },
+        },
+        required: ["name", "domain"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["competitors"],
+  additionalProperties: false,
+} as const;
+
 export type SuggestedCompetitor = { name: string; domain: string };
 
 export async function suggestCompetitors(
@@ -311,6 +375,7 @@ Suggest likely competitors.`;
     model: "claude-sonnet-5",
     max_tokens: 500,
     system: cachedSystemPrompt(SUGGEST_COMPETITORS_SYSTEM_PROMPT),
+    output_config: { format: { type: "json_schema", schema: SUGGEST_COMPETITORS_SCHEMA } },
     messages: [{ role: "user", content: userPrompt }],
   });
 
