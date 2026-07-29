@@ -85,7 +85,6 @@ export async function summarizePricingChange(oldText: string, newText: string): 
   const message = await getAnthropic().messages.create({
     model: "claude-sonnet-5",
     max_tokens: 200,
-    temperature: 0.2,
     system: DIFF_SYSTEM_PROMPT,
     messages: [{ role: "user", content: userPrompt }],
   });
@@ -134,7 +133,6 @@ export async function extractPricingStructure(pageText: string): Promise<Pricing
   const message = await getAnthropic().messages.create({
     model: "claude-sonnet-5",
     max_tokens: 800,
-    temperature: 0.2,
     system: PRICING_EXTRACTION_SYSTEM_PROMPT,
     messages: [{ role: "user", content: userPrompt }],
   });
@@ -201,7 +199,6 @@ Score this signal.`;
     const message = await getAnthropic().messages.create({
       model: "claude-sonnet-5",
       max_tokens: 300,
-      temperature: 0.2,
       system: SYSTEM_PROMPT,
       messages: [
         { role: "user", content: userPrompt },
@@ -261,7 +258,6 @@ Extract competitor mentions.`;
       const message = await getAnthropic().messages.create({
         model: "claude-sonnet-5",
         max_tokens: 400,
-        temperature: 0.2,
         system: MENTIONS_SYSTEM_PROMPT,
         messages: [{ role: "user", content: userPrompt }],
       });
@@ -305,7 +301,6 @@ Suggest likely competitors.`;
   const message = await getAnthropic().messages.create({
     model: "claude-sonnet-5",
     max_tokens: 500,
-    temperature: 0.4,
     system: SUGGEST_COMPETITORS_SYSTEM_PROMPT,
     messages: [{ role: "user", content: userPrompt }],
   });
@@ -374,7 +369,6 @@ Question: ${question}`;
   const message = await getAnthropic().messages.create({
     model: "claude-sonnet-5",
     max_tokens: 600,
-    temperature: 0.3,
     system: ASK_SYSTEM_PROMPT,
     messages: [{ role: "user", content: userPrompt }],
   });
