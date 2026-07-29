@@ -4,6 +4,7 @@ import { cn, avatarColor } from "@/lib/utils";
 import { AlertCard } from "@/components/app/alert-card";
 import { EmptyState } from "@/components/app/empty-state";
 import { CompetitorManager } from "@/components/app/competitor-manager";
+import { CompetitorMonitoringUrls } from "@/components/app/competitor-monitoring-urls";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -71,6 +72,22 @@ export default async function CompetitorDetailPage({
               {competitor.domain}
             </p>
           ) : null}
+        </div>
+      </div>
+
+      <div className="mt-8 rounded-lg border border-border p-4">
+        <h2 className="text-sm font-semibold text-muted-foreground">Monitoring sources</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Where we check for pricing and hiring changes. Pre-filled with a best guess from the domain — correct
+          them if we guessed wrong, or a competitor uses a different path.
+        </p>
+        <div className="mt-3">
+          <CompetitorMonitoringUrls
+            competitorId={competitor.id}
+            domain={competitor.domain}
+            initialPricingUrl={competitor.pricing_url}
+            initialCareersUrl={competitor.careers_url}
+          />
         </div>
       </div>
 

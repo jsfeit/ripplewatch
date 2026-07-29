@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { sendWelcomeEmail } from "@/lib/resend";
+import { guessPricingUrl, guessCareersUrl } from "@/lib/domain";
 
 type CompetitorInput = { name: string; domain: string };
 
@@ -79,11 +80,16 @@ export async function POST(request: Request) {
   }
 
   const { error: competitorsError } = await supabase.from("competitors").insert(
-    namedCompetitors.map((c) => ({
-      account_id: accountId,
-      name: c.name.trim(),
-      domain: c.domain?.trim() || null,
-    }))
+    namedCompetitors.map((c) => {
+      const domain = c.domain?.trim() || null;
+      return {
+        account_id: accountId,
+        name: c.name.trim(),
+        domain,
+        pricing_url: domain ? guessPricingUrl(domain) : null,
+        careers_url: domain ? guessCareersUrl(domain) : null,
+      };
+    })
   );
 
   if (competitorsError) {
