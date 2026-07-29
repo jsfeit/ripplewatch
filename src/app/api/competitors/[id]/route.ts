@@ -14,6 +14,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const body = await request.json().catch(() => null);
   const name = typeof body?.name === "string" ? body.name.trim() : undefined;
   const domain = typeof body?.domain === "string" ? body.domain.trim() : undefined;
+  const pricingUrl = typeof body?.pricing_url === "string" ? body.pricing_url.trim() : undefined;
+  const careersUrl = typeof body?.careers_url === "string" ? body.careers_url.trim() : undefined;
   if (name !== undefined && !name) {
     return NextResponse.json({ error: "Name is required." }, { status: 400 });
   }
@@ -21,7 +23,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   // RLS scopes this update to the caller's own account_id.
   const { data, error } = await supabase
     .from("competitors")
-    .update({ ...(name !== undefined ? { name } : {}), ...(domain !== undefined ? { domain: domain || null } : {}) })
+    .update({
+      ...(name !== undefined ? { name } : {}),
+      ...(domain !== undefined ? { domain: domain || null } : {}),
+      ...(pricingUrl !== undefined ? { pricing_url: pricingUrl || null } : {}),
+      ...(careersUrl !== undefined ? { careers_url: careersUrl || null } : {}),
+    })
     .eq("id", id)
     .select("*")
     .single();
