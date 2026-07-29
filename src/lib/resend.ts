@@ -185,6 +185,23 @@ export async function sendWelcomeEmail(to: string, companyName: string, appUrl: 
   if (result.error) throw new Error(result.error.message);
 }
 
+// Fired by /api/cron/uptime-check on a failed health check. Deliberately
+// plain text, no styling — this is an operational alert, not a customer
+// email, and needs to render instantly in any inbox.
+export async function sendUptimeAlertEmail(to: string[], detail: string) {
+  if (!isResendConfigured() || to.length === 0) return;
+
+  const result = await getResend().emails.send({
+    from: process.env.RESEND_FROM_EMAIL!,
+    to,
+    subject: "🔴 Ripplewatch health check failed",
+    html: `<p>The scheduled health check against <code>${process.env.NEXT_PUBLIC_APP_URL}</code> just failed.</p>
+      <p>${detail}</p>
+      <p style="color:#888;font-size:12px;">Sent by /api/cron/uptime-check.</p>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
 export async function sendInviteEmail(to: string, inviterCompanyName: string, acceptUrl: string) {
   if (!isResendConfigured()) return;
 

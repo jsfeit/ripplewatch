@@ -332,6 +332,20 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["email_campaign_recipients"]["Insert"]>;
         Relationships: [];
       };
+      system_health: {
+        Row: {
+          id: string;
+          last_status: "up" | "down";
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          last_status: "up" | "down";
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["system_health"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
