@@ -16,6 +16,15 @@ function getAnthropic(): Anthropic {
   return cachedClient;
 }
 
+// Every system prompt here is a fixed string reused across many calls (every
+// signal in a crawl, every competitor-mention extraction, etc.) — caching it
+// means only the first call in a ~5min window pays full price. Below the
+// model's cache-eligible size this is a harmless no-op (no cache entry, no
+// extra cost), so it's applied uniformly rather than sized per-prompt.
+function cachedSystemPrompt(prompt: string): Anthropic.Messages.TextBlockParam[] {
+  return [{ type: "text", text: prompt, cache_control: { type: "ephemeral" } }];
+}
+
 export type ScoringContext = {
   companyName: string;
   positioning: string | null;
@@ -85,7 +94,7 @@ export async function summarizePricingChange(oldText: string, newText: string): 
   const message = await getAnthropic().messages.create({
     model: "claude-sonnet-5",
     max_tokens: 200,
-    system: DIFF_SYSTEM_PROMPT,
+    system: cachedSystemPrompt(DIFF_SYSTEM_PROMPT),
     messages: [{ role: "user", content: userPrompt }],
   });
 
@@ -133,7 +142,7 @@ export async function extractPricingStructure(pageText: string): Promise<Pricing
   const message = await getAnthropic().messages.create({
     model: "claude-sonnet-5",
     max_tokens: 800,
-    system: PRICING_EXTRACTION_SYSTEM_PROMPT,
+    system: cachedSystemPrompt(PRICING_EXTRACTION_SYSTEM_PROMPT),
     messages: [{ role: "user", content: userPrompt }],
   });
 
@@ -199,7 +208,7 @@ Score this signal.`;
     const message = await getAnthropic().messages.create({
       model: "claude-sonnet-5",
       max_tokens: 300,
-      system: SYSTEM_PROMPT,
+      system: cachedSystemPrompt(SYSTEM_PROMPT),
       messages: [
         { role: "user", content: userPrompt },
         ...(attempt > 0
@@ -258,7 +267,7 @@ Extract competitor mentions.`;
       const message = await getAnthropic().messages.create({
         model: "claude-sonnet-5",
         max_tokens: 400,
-        system: MENTIONS_SYSTEM_PROMPT,
+        system: cachedSystemPrompt(MENTIONS_SYSTEM_PROMPT),
         messages: [{ role: "user", content: userPrompt }],
       });
 
@@ -301,7 +310,7 @@ Suggest likely competitors.`;
   const message = await getAnthropic().messages.create({
     model: "claude-sonnet-5",
     max_tokens: 500,
-    system: SUGGEST_COMPETITORS_SYSTEM_PROMPT,
+    system: cachedSystemPrompt(SUGGEST_COMPETITORS_SYSTEM_PROMPT),
     messages: [{ role: "user", content: userPrompt }],
   });
 
@@ -369,7 +378,7 @@ Question: ${question}`;
   const message = await getAnthropic().messages.create({
     model: "claude-sonnet-5",
     max_tokens: 600,
-    system: ASK_SYSTEM_PROMPT,
+    system: cachedSystemPrompt(ASK_SYSTEM_PROMPT),
     messages: [{ role: "user", content: userPrompt }],
   });
 
