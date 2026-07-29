@@ -17,6 +17,15 @@ export function isResendConfigured(): boolean {
   return Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL);
 }
 
+// Alerts (the digest emails customers actually signed up to receive, plus
+// internal uptime pages) send from a distinct address from everything else
+// — welcome/invite/campaign/billing mail reads as "the company," alerts
+// read as "the monitoring system." Falls back to the general address so a
+// deploy isn't broken if only RESEND_FROM_EMAIL is set.
+function getAlertsFromEmail(): string {
+  return process.env.RESEND_ALERTS_FROM_EMAIL || process.env.RESEND_FROM_EMAIL!;
+}
+
 export type DigestSignal = {
   competitorName: string;
   title: string;
@@ -71,7 +80,7 @@ export async function sendDigestEmail(
   const { noun } = CADENCE_COPY[cadence];
 
   const result = await getResend().emails.send({
-    from: process.env.RESEND_FROM_EMAIL!,
+    from: getAlertsFromEmail(),
     to,
     subject: `${signals.filter((s) => s.scored).length} scored alert${signals.length === 1 ? "" : "s"} ${noun}`,
     html: renderDigestHtml(companyName, signals, cadence),
@@ -192,7 +201,7 @@ export async function sendUptimeAlertEmail(to: string[], detail: string) {
   if (!isResendConfigured() || to.length === 0) return;
 
   const result = await getResend().emails.send({
-    from: process.env.RESEND_FROM_EMAIL!,
+    from: getAlertsFromEmail(),
     to,
     subject: "🔴 Ripplewatch health check failed",
     html: `<p>The scheduled health check against <code>${process.env.NEXT_PUBLIC_APP_URL}</code> just failed.</p>
