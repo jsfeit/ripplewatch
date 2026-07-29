@@ -222,11 +222,11 @@ const SCORE_SIGNAL_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-export async function scoreSignal(
-  context: ScoringContext,
-  signal: SignalToScore
-): Promise<ScoringResult> {
-  const userPrompt = `Company: ${context.companyName}
+// Shared by the live scoreSignal() call below and the batch eval/regression
+// path in eval-scoring.ts — both need the exact same prompt shape and
+// response parsing, just via a different Anthropic endpoint.
+export function buildScoringUserPrompt(context: ScoringContext, signal: SignalToScore): string {
+  return `Company: ${context.companyName}
 Positioning: ${context.positioning ?? "(not provided)"}
 ICP: ${context.icp ?? "(not provided)"}
 Known lost-deal reasons: ${context.lostDealNotes ?? "(none provided)"}
@@ -239,19 +239,32 @@ Signal: ${signal.title}
 ${signal.summary ? `Details: ${signal.summary}` : ""}
 
 Score this signal.`;
+}
 
-  const message = await getAnthropic().messages.create({
-    model: "claude-sonnet-5",
+export function parseScoringText(text: string): ScoringResult {
+  const parsed = JSON.parse(text);
+  return { level: parsed.level, reasoning: String(parsed.reasoning ?? "") };
+}
+
+export function scoringRequestParams(context: ScoringContext, signal: SignalToScore) {
+  return {
+    model: "claude-sonnet-5" as const,
     max_tokens: 300,
     system: cachedSystemPrompt(SYSTEM_PROMPT),
-    output_config: { format: { type: "json_schema", schema: SCORE_SIGNAL_SCHEMA } },
-    messages: [{ role: "user", content: userPrompt }],
-  });
+    output_config: { format: { type: "json_schema" as const, schema: SCORE_SIGNAL_SCHEMA } },
+    messages: [{ role: "user" as const, content: buildScoringUserPrompt(context, signal) }],
+  };
+}
+
+export async function scoreSignal(
+  context: ScoringContext,
+  signal: SignalToScore
+): Promise<ScoringResult> {
+  const message = await getAnthropic().messages.create(scoringRequestParams(context, signal));
 
   const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
   try {
-    const parsed = JSON.parse(text);
-    return { level: parsed.level, reasoning: String(parsed.reasoning ?? "") };
+    return parseScoringText(text);
   } catch (err) {
     throw new Error(`Could not parse scoring response: ${text}`, { cause: err });
   }
@@ -448,4 +461,68 @@ Question: ${question}`;
   });
 
   return message.content.find((block) => block.type === "text")?.text ?? "";
+}
+
+const NEWS_SEARCH_SYSTEM_PROMPT = `You research a named competitor using web search and report back only what's relevant to competitive intelligence for a B2B SaaS company: pricing or plan changes, new features, funding rounds, notable hires, leadership changes, or press coverage of a strategic shift. Ignore generic blog content, unrelated press mentions, and anything not tied to a specific dated event.
+
+Respond with strict JSON only, no markdown, matching this shape exactly:
+{"headlines": [{"title": "<factual headline, not a summary of the article's angle>", "summary": "<one sentence on what specifically happened>", "url": "<source URL, or null if unavailable>"}]}
+
+Return at most 8 items, most recent first. If nothing relevant turns up, respond {"headlines": []} rather than including generic or stale results just to fill the list.`;
+
+const NEWS_SEARCH_SCHEMA = {
+  type: "object",
+  properties: {
+    headlines: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          summary: { type: "string" },
+          url: { anyOf: [{ type: "string" }, { type: "null" }] },
+        },
+        required: ["title", "summary", "url"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["headlines"],
+  additionalProperties: false,
+} as const;
+
+export type SearchedHeadline = { title: string; summary: string; url: string | null };
+
+// Real alternative to the free Google News RSS scrape in scraping.ts —
+// costs a per-search fee on top of the model call (unlike the RSS path,
+// which is free), so this is deliberately NOT wired into the daily crawl.
+// Exists as a working, tested option to switch to later if the free
+// approach still comes up thin after a few real days of crawling.
+export async function searchCompetitorNews(competitorName: string): Promise<SearchedHeadline[]> {
+  const message = await getAnthropic().messages.create({
+    model: "claude-sonnet-5",
+    max_tokens: 1024,
+    system: cachedSystemPrompt(NEWS_SEARCH_SYSTEM_PROMPT),
+    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
+    output_config: { format: { type: "json_schema", schema: NEWS_SEARCH_SCHEMA } },
+    messages: [
+      {
+        role: "user",
+        content: `Research "${competitorName}" for recent competitive-intelligence-relevant news.`,
+      },
+    ],
+  });
+
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  try {
+    const parsed = JSON.parse(text);
+    const headlines = Array.isArray(parsed.headlines) ? parsed.headlines : [];
+    return headlines.map((h: { title?: unknown; summary?: unknown; url?: unknown }) => ({
+      title: String(h.title ?? ""),
+      summary: String(h.summary ?? ""),
+      url: h.url ? String(h.url) : null,
+    }));
+  } catch (err) {
+    throw new Error(`Could not parse news search response: ${text}`, { cause: err });
+  }
 }
