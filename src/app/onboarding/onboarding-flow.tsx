@@ -23,7 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { MockConnectorCard } from "@/components/app/mock-connector-card";
+import { IntegrationPreviewCard } from "@/components/app/integration-preview-card";
 import { CompetitorRow, type CompetitorInput } from "@/components/app/competitor-row";
 import { SuggestedCompetitors, type SuggestedCompetitor } from "@/components/app/suggested-competitors";
 import { DocumentUpload } from "@/components/app/document-upload";
@@ -74,11 +74,8 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
 
   const [hasSalesCrm, setHasSalesCrm] = useState(false);
   const [hasPlg, setHasPlg] = useState(false);
-  const [crmConnected, setCrmConnected] = useState(false);
   const [lostDealReasons, setLostDealReasons] = useState("");
-  const [churnToolConnected, setChurnToolConnected] = useState(false);
   const [churnReasons, setChurnReasons] = useState("");
-  const [slackConnected, setSlackConnected] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
@@ -220,8 +217,6 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
           hasPlg,
           lostDealReasons,
           churnReasons,
-          crmConnected,
-          churnToolConnected,
         }),
       });
       const data = await res.json();
@@ -429,22 +424,15 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
                     has to log in to Ripplewatch to know what changed.
                   </p>
                 </div>
-                <MockConnectorCard
-                  name="Slack"
-                  description="Connect after setup, from Settings — deliver scored alerts to a channel"
-                  connected={slackConnected}
-                  onConnect={() => setSlackConnected(true)}
-                />
+                <IntegrationPreviewCard name="Slack" description="Deliver scored alerts straight to a channel" />
               </div>
 
               {hasSalesCrm && (
                 <div className="space-y-3 rounded-lg border border-dashed border-border p-4">
                   <p className="text-sm font-medium">Connect your CRM</p>
-                  <MockConnectorCard
+                  <IntegrationPreviewCard
                     name="HubSpot"
-                    description="Connect after setup, from Settings — read-only pull of closed-lost deal reasons"
-                    connected={crmConnected}
-                    onConnect={() => setCrmConnected(true)}
+                    description="Read-only pull of closed-lost deal reasons"
                   />
                   <div className="space-y-2 pt-2">
                     <Label htmlFor="lostDealReasons">Or paste a few recent lost-deal reasons</Label>
@@ -471,11 +459,9 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
               {hasPlg && (
                 <div className="space-y-3 rounded-lg border border-dashed border-border p-4">
                   <p className="text-sm font-medium">Connect your churn / support tool</p>
-                  <MockConnectorCard
+                  <IntegrationPreviewCard
                     name="Intercom"
                     description="Read-only pull of churn and cancellation reasons"
-                    connected={churnToolConnected}
-                    onConnect={() => setChurnToolConnected(true)}
                   />
                   <div className="space-y-2 pt-2">
                     <Label htmlFor="churnReasons">Or paste a few recent churn reasons</Label>
