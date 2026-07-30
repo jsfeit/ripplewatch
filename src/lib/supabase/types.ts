@@ -372,6 +372,24 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["llm_usage"]["Insert"]>;
         Relationships: [];
       };
+      signal_eval_labels: {
+        Row: {
+          signal_id: string;
+          label: "correct" | "incorrect";
+          note: string | null;
+          labeled_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          signal_id: string;
+          label: "correct" | "incorrect";
+          note?: string | null;
+          labeled_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["signal_eval_labels"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

@@ -5,6 +5,7 @@ import { SupabaseNotConfigured } from "@/components/admin/not-configured";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SIGNAL_TYPE_LABELS } from "@/lib/mock-data";
+import { EvalLabelControl } from "@/components/admin/eval-label-control";
 
 export const metadata = { title: "Signals — Admin" };
 export const dynamic = "force-dynamic";
@@ -26,6 +27,7 @@ type Row = {
   competitorName: string;
   accountId: string | null;
   accountName: string | null;
+  evalLabel: "correct" | "incorrect" | null;
 };
 
 export default async function AdminSignalsPage() {
@@ -36,21 +38,24 @@ export default async function AdminSignalsPage() {
   if (configured) {
     const supabase = createAdminClient();
 
-    const [{ data: signals, error: signalsError }, { data: competitors }, { data: accounts }] = await Promise.all([
-      supabase
-        .from("signals")
-        .select("*")
-        .order("occurred_on", { ascending: false })
-        .limit(300),
-      supabase.from("competitors").select("id, name, account_id"),
-      supabase.from("accounts").select("id, name"),
-    ]);
+    const [{ data: signals, error: signalsError }, { data: competitors }, { data: accounts }, { data: evalLabels }] =
+      await Promise.all([
+        supabase
+          .from("signals")
+          .select("*")
+          .order("occurred_on", { ascending: false })
+          .limit(300),
+        supabase.from("competitors").select("id, name, account_id"),
+        supabase.from("accounts").select("id, name"),
+        supabase.from("signal_eval_labels").select("signal_id, label"),
+      ]);
 
     if (signalsError) {
       error = signalsError.message;
     } else {
       const competitorById = new Map((competitors ?? []).map((c) => [c.id, c]));
       const accountById = new Map((accounts ?? []).map((a) => [a.id, a]));
+      const evalLabelBySignalId = new Map((evalLabels ?? []).map((l) => [l.signal_id, l.label]));
 
       rows = (signals ?? []).map((s) => {
         const competitor = competitorById.get(s.competitor_id);
@@ -66,6 +71,7 @@ export default async function AdminSignalsPage() {
           competitorName: competitor?.name ?? "Unknown competitor",
           accountId: account?.id ?? null,
           accountName: account?.name ?? null,
+          evalLabel: evalLabelBySignalId.get(s.id) ?? null,
         };
       });
     }
@@ -95,6 +101,7 @@ export default async function AdminSignalsPage() {
                 <TableHead>Competitor</TableHead>
                 <TableHead>Signal</TableHead>
                 <TableHead>Relevance</TableHead>
+                <TableHead>Eval</TableHead>
                 <TableHead>Delivered</TableHead>
                 <TableHead>Date</TableHead>
               </TableRow>
@@ -128,6 +135,13 @@ export default async function AdminSignalsPage() {
                     )}
                   </TableCell>
                   <TableCell>
+                    {row.scored ? (
+                      <EvalLabelControl signalId={row.id} initialLabel={row.evalLabel} />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     {row.delivered ? (
                       <Badge variant="outline" className="text-primary">
                         Sent
@@ -143,7 +157,7 @@ export default async function AdminSignalsPage() {
               ))}
               {rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
                     No signals yet.
                   </TableCell>
                 </TableRow>
