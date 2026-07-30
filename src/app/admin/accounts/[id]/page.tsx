@@ -48,7 +48,9 @@ export default async function AdminAccountDetailPage({
   since.setUTCDate(since.getUTCDate() - LLM_USAGE_LOOKBACK_DAYS);
   const { data: usageRows } = await supabase
     .from("llm_usage")
-    .select("account_id, function_name, model, input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens")
+    .select(
+      "account_id, function_name, model, input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens, created_at"
+    )
     .eq("account_id", id)
     .gte("created_at", since.toISOString());
 

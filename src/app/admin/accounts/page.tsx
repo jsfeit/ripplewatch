@@ -52,7 +52,9 @@ export default async function AdminAccountsPage() {
     since.setUTCDate(since.getUTCDate() - LLM_COST_WINDOW_DAYS);
     const { data: usageRows } = await supabase
       .from("llm_usage")
-      .select("account_id, function_name, model, input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens")
+      .select(
+        "account_id, function_name, model, input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens, created_at"
+      )
       .gte("created_at", since.toISOString());
     llmCostByAccount = sumLlmUsageByAccount(usageRows ?? []);
   }
