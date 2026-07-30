@@ -3,7 +3,7 @@ import * as cheerio from "cheerio";
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
-import { summarizePricingChange, extractPricingStructure } from "@/lib/anthropic";
+import { summarizePricingChange, extractPricingStructure, searchCompetitorNews } from "@/lib/anthropic";
 
 type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
 type Signal = Database["public"]["Tables"]["signals"]["Row"];
@@ -300,6 +300,44 @@ export async function checkFunding(supabase: AdminClient, competitor: Competitor
         title: headline.title,
         summary: headline.description ?? headline.source,
         url: headline.link,
+        scored: false,
+        source: "pipeline",
+      })
+      .select("*")
+      .single();
+
+    if (data) inserted.push(data);
+  }
+
+  return inserted;
+}
+
+// Supplements checkNews with Claude's web search — costs a per-search fee
+// plus notably heavier tokens than the free RSS path (see anthropic.ts),
+// so this is gated behind ENABLE_WEB_SEARCH_NEWS and off by default. Not a
+// replacement: still de-dupes against the same signal titles checkNews and
+// checkFunding already wrote for this run, so the two sources never insert
+// the same real story twice.
+export async function checkSearchNews(
+  supabase: AdminClient,
+  competitor: Competitor,
+  accountId: string | null
+): Promise<Signal[]> {
+  const headlines = await searchCompetitorNews(competitor.name, accountId);
+  const inserted: Signal[] = [];
+
+  for (const headline of headlines) {
+    if (!headline.title) continue;
+    if (await existingSignalTitle(supabase, competitor.id, headline.title)) continue;
+
+    const { data } = await supabase
+      .from("signals")
+      .insert({
+        competitor_id: competitor.id,
+        type: "news",
+        title: headline.title,
+        summary: headline.summary,
+        url: headline.url,
         scored: false,
         source: "pipeline",
       })
