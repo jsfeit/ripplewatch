@@ -85,6 +85,11 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
         answer:
           "We keep it for a limited period in case you reactivate, and delete it sooner if you ask us to.",
       },
+      {
+        question: "How is my data encrypted?",
+        answer:
+          "Everything is encrypted in transit over HTTPS/TLS, and encrypted at rest in our database using our provider's standard AES-256 encryption. We never store your payment card details ourselves — Stripe handles all card processing directly on their own PCI-compliant infrastructure.",
+      },
     ],
   },
   {
