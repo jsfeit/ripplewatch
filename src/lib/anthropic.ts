@@ -1,6 +1,7 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import type { BillingModel, PricingTier } from "@/lib/supabase/types";
+import { recordLlmUsage } from "@/lib/usage";
 
 let cachedClient: Anthropic | null = null;
 
@@ -14,6 +15,15 @@ function getAnthropic(): Anthropic {
     cachedClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   }
   return cachedClient;
+}
+
+// Every system prompt here is a fixed string reused across many calls (every
+// signal in a crawl, every competitor-mention extraction, etc.) — caching it
+// means only the first call in a ~5min window pays full price. Below the
+// model's cache-eligible size this is a harmless no-op (no cache entry, no
+// extra cost), so it's applied uniformly rather than sized per-prompt.
+function cachedSystemPrompt(prompt: string): Anthropic.Messages.TextBlockParam[] {
+  return [{ type: "text", text: prompt, cache_control: { type: "ephemeral" } }];
 }
 
 export type ScoringContext = {
@@ -78,17 +88,32 @@ Respond with strict JSON only, no markdown, matching this shape exactly:
 
 If nothing business-relevant changed, respond {"meaningful": false, "summary": ""}.`;
 
-export async function summarizePricingChange(oldText: string, newText: string): Promise<DiffSummary> {
+const DIFF_SCHEMA = {
+  type: "object",
+  properties: {
+    meaningful: { type: "boolean" },
+    summary: { type: "string" },
+  },
+  required: ["meaningful", "summary"],
+  additionalProperties: false,
+} as const;
+
+export async function summarizePricingChange(
+  oldText: string,
+  newText: string,
+  accountId: string | null
+): Promise<DiffSummary> {
   const truncate = (s: string) => s.slice(0, 6000);
   const userPrompt = `BEFORE:\n${truncate(oldText)}\n\nAFTER:\n${truncate(newText)}\n\nWhat changed?`;
 
   const message = await getAnthropic().messages.create({
     model: "claude-sonnet-5",
     max_tokens: 200,
-    temperature: 0.2,
-    system: DIFF_SYSTEM_PROMPT,
+    system: cachedSystemPrompt(DIFF_SYSTEM_PROMPT),
+    output_config: { format: { type: "json_schema", schema: DIFF_SCHEMA } },
     messages: [{ role: "user", content: userPrompt }],
   });
+  recordLlmUsage(accountId, "summarizePricingChange", message.model, message.usage);
 
   const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
 
@@ -128,16 +153,45 @@ Respond with strict JSON only, no markdown, matching this shape exactly:
 
 Keep each feature phrase short (under 8 words) and specific — things like limits, integrations, and capabilities, not marketing fluff. If pricing isn't public, return tiers: [] and put the tier names you can still see (if any) in note instead. Cap features at 5 per tier — pick the ones a buyer would actually compare on (limits, seats, support level, integrations), not every bullet on the page.`;
 
-export async function extractPricingStructure(pageText: string): Promise<PricingExtraction> {
+const PRICING_EXTRACTION_SCHEMA = {
+  type: "object",
+  properties: {
+    billingModel: { type: "string", enum: ["subscription", "per_seat", "usage_based", "custom", "unknown"] },
+    publiclyPriced: { type: "boolean" },
+    note: { anyOf: [{ type: "string" }, { type: "null" }] },
+    tiers: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          price: { anyOf: [{ type: "number" }, { type: "null" }] },
+          price_period: { anyOf: [{ type: "string" }, { type: "null" }] },
+          features: { type: "array", items: { type: "string" } },
+        },
+        required: ["name", "price", "price_period", "features"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["billingModel", "publiclyPriced", "note", "tiers"],
+  additionalProperties: false,
+} as const;
+
+export async function extractPricingStructure(
+  pageText: string,
+  accountId: string | null
+): Promise<PricingExtraction> {
   const userPrompt = `Pricing page text:\n${pageText.slice(0, 8000)}\n\nExtract the current pricing structure.`;
 
   const message = await getAnthropic().messages.create({
     model: "claude-sonnet-5",
     max_tokens: 800,
-    temperature: 0.2,
-    system: PRICING_EXTRACTION_SYSTEM_PROMPT,
+    system: cachedSystemPrompt(PRICING_EXTRACTION_SYSTEM_PROMPT),
+    output_config: { format: { type: "json_schema", schema: PRICING_EXTRACTION_SCHEMA } },
     messages: [{ role: "user", content: userPrompt }],
   });
+  recordLlmUsage(accountId, "extractPricingStructure", message.model, message.usage);
 
   const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
 
@@ -165,25 +219,24 @@ export async function extractPricingStructure(pageText: string): Promise<Pricing
   }
 }
 
-function parseScoringResponse(text: string): ScoringResult {
-  const parsed = JSON.parse(text);
-  const level = parsed.level;
-  if (level !== "High" && level !== "Medium" && level !== "Low") {
-    throw new Error(`Unexpected level in scoring response: ${level}`);
-  }
-  return { level, reasoning: String(parsed.reasoning ?? "") };
-}
+// Schema-enforced (output_config.format below), so a malformed level is no
+// longer a real failure mode — this used to need a same-prompt retry loop
+// for exactly that case, which schema enforcement made dead code.
+const SCORE_SIGNAL_SCHEMA = {
+  type: "object",
+  properties: {
+    level: { type: "string", enum: ["High", "Medium", "Low"] },
+    reasoning: { type: "string" },
+  },
+  required: ["level", "reasoning"],
+  additionalProperties: false,
+} as const;
 
-// One retry on a malformed response (bad JSON, or a level outside the three
-// enum values) rather than permanently leaving the signal unscored — a
-// single bad generation shouldn't cost a customer a signal they'd otherwise
-// see. The retry reiterates the strict-JSON requirement since that's the
-// most common failure mode.
-export async function scoreSignal(
-  context: ScoringContext,
-  signal: SignalToScore
-): Promise<ScoringResult> {
-  const userPrompt = `Company: ${context.companyName}
+// Shared by the live scoreSignal() call below and the batch eval/regression
+// path in eval-scoring.ts — both need the exact same prompt shape and
+// response parsing, just via a different Anthropic endpoint.
+export function buildScoringUserPrompt(context: ScoringContext, signal: SignalToScore): string {
+  return `Company: ${context.companyName}
 Positioning: ${context.positioning ?? "(not provided)"}
 ICP: ${context.icp ?? "(not provided)"}
 Known lost-deal reasons: ${context.lostDealNotes ?? "(none provided)"}
@@ -196,36 +249,44 @@ Signal: ${signal.title}
 ${signal.summary ? `Details: ${signal.summary}` : ""}
 
 Score this signal.`;
+}
 
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const message = await getAnthropic().messages.create({
-      model: "claude-sonnet-5",
-      max_tokens: 300,
-      temperature: 0.2,
-      system: SYSTEM_PROMPT,
-      messages: [
-        { role: "user", content: userPrompt },
-        ...(attempt > 0
-          ? [
-              {
-                role: "user" as const,
-                content:
-                  "Your last reply wasn't valid — respond with ONLY the JSON object, no markdown fences, no other text.",
-              },
-            ]
-          : []),
-      ],
-    });
+export function parseScoringText(text: string): ScoringResult {
+  const parsed = JSON.parse(text);
+  return { level: parsed.level, reasoning: String(parsed.reasoning ?? "") };
+}
 
-    const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
-    try {
-      return parseScoringResponse(text);
-    } catch (err) {
-      if (attempt === 1) throw new Error(`Could not parse scoring response: ${text}`, { cause: err });
-    }
+// Bumped whenever SYSTEM_PROMPT, buildScoringUserPrompt, or SCORE_SIGNAL_SCHEMA
+// change meaningfully — stamped onto every scored signal (see the crawl
+// route) so accuracy from signal_eval_labels can eventually be sliced by
+// which prompt produced the score, instead of one number blended across
+// every prompt this has ever run.
+export const SCORING_PROMPT_VERSION = "v1";
+
+export function scoringRequestParams(context: ScoringContext, signal: SignalToScore) {
+  return {
+    model: "claude-sonnet-5" as const,
+    max_tokens: 300,
+    system: cachedSystemPrompt(SYSTEM_PROMPT),
+    output_config: { format: { type: "json_schema" as const, schema: SCORE_SIGNAL_SCHEMA } },
+    messages: [{ role: "user" as const, content: buildScoringUserPrompt(context, signal) }],
+  };
+}
+
+export async function scoreSignal(
+  context: ScoringContext,
+  signal: SignalToScore,
+  accountId: string | null
+): Promise<ScoringResult> {
+  const message = await getAnthropic().messages.create(scoringRequestParams(context, signal));
+  recordLlmUsage(accountId, "scoreSignal", message.model, message.usage);
+
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  try {
+    return parseScoringText(text);
+  } catch (err) {
+    throw new Error(`Could not parse scoring response: ${text}`, { cause: err });
   }
-
-  throw new Error("Unreachable");
 }
 
 const MENTIONS_SYSTEM_PROMPT = `You read sales call transcripts and pull out only the moments where a named competitor came up — objections, comparisons, feature/price call-outs, or a prospect saying they're evaluating or switching from a competitor. Ignore everything else in the transcript (rapport-building, scheduling, unrelated product discussion).
@@ -234,6 +295,26 @@ Respond with strict JSON only, no markdown, matching this shape exactly:
 {"mentions": [{"competitor": "<name, must exactly match one from the watch list>", "mention": "<one sentence, e.g. 'Prospect said Acme's pricing was 30% cheaper for the same seat count'>"}]}
 
 If no named competitor was mentioned, respond {"mentions": []}. Keep each mention to one sentence, written as a plain fact a marketing lead can act on — no filler like "the prospect mentioned that". Tag each mention with exactly which competitor from the watch list it's about — don't guess if the transcript doesn't name one specifically.`;
+
+const MENTIONS_SCHEMA = {
+  type: "object",
+  properties: {
+    mentions: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          competitor: { type: "string" },
+          mention: { type: "string" },
+        },
+        required: ["competitor", "mention"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["mentions"],
+  additionalProperties: false,
+} as const;
 
 export type CompetitorMention = { competitor: string; mention: string };
 
@@ -245,7 +326,8 @@ export type CompetitorMention = { competitor: string; mention: string };
 // scored using a call mention about Competitor B.
 export async function extractCompetitorMentions(
   transcripts: { title: string; transcriptText: string }[],
-  competitorNames: string[]
+  competitorNames: string[],
+  accountId: string | null
 ): Promise<CompetitorMention[]> {
   if (transcripts.length === 0 || competitorNames.length === 0) return [];
 
@@ -261,10 +343,11 @@ Extract competitor mentions.`;
       const message = await getAnthropic().messages.create({
         model: "claude-sonnet-5",
         max_tokens: 400,
-        temperature: 0.2,
-        system: MENTIONS_SYSTEM_PROMPT,
+        system: cachedSystemPrompt(MENTIONS_SYSTEM_PROMPT),
+        output_config: { format: { type: "json_schema", schema: MENTIONS_SCHEMA } },
         messages: [{ role: "user", content: userPrompt }],
       });
+      recordLlmUsage(accountId, "extractCompetitorMentions", message.model, message.usage);
 
       const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
       const parsed = JSON.parse(text);
@@ -289,6 +372,26 @@ Respond with strict JSON only, no markdown, matching this shape exactly:
 
 Return up to 8, ordered most-to-least likely to be a real competitive threat. If the positioning/ICP is too vague to infer a specific market, make a best-effort guess at the closest general category rather than returning an empty list.`;
 
+const SUGGEST_COMPETITORS_SCHEMA = {
+  type: "object",
+  properties: {
+    competitors: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          domain: { type: "string" },
+        },
+        required: ["name", "domain"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["competitors"],
+  additionalProperties: false,
+} as const;
+
 export type SuggestedCompetitor = { name: string; domain: string };
 
 export async function suggestCompetitors(
@@ -305,10 +408,12 @@ Suggest likely competitors.`;
   const message = await getAnthropic().messages.create({
     model: "claude-sonnet-5",
     max_tokens: 500,
-    temperature: 0.4,
-    system: SUGGEST_COMPETITORS_SYSTEM_PROMPT,
+    system: cachedSystemPrompt(SUGGEST_COMPETITORS_SYSTEM_PROMPT),
+    output_config: { format: { type: "json_schema", schema: SUGGEST_COMPETITORS_SCHEMA } },
     messages: [{ role: "user", content: userPrompt }],
   });
+  // Always pre-account (see the route's own comment) — nothing to attribute to.
+  recordLlmUsage(null, "suggestCompetitors", message.model, message.usage);
 
   const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
 
@@ -352,7 +457,8 @@ export async function answerQuestion(
     icp: string | null;
     competitors: string[];
     signals: AskContextSignal[];
-  }
+  },
+  accountId: string | null
 ): Promise<string> {
   const signalLines = context.signals
     .map((s) => {
@@ -374,10 +480,83 @@ Question: ${question}`;
   const message = await getAnthropic().messages.create({
     model: "claude-sonnet-5",
     max_tokens: 600,
-    temperature: 0.3,
-    system: ASK_SYSTEM_PROMPT,
+    system: cachedSystemPrompt(ASK_SYSTEM_PROMPT),
     messages: [{ role: "user", content: userPrompt }],
   });
+  recordLlmUsage(accountId, "answerQuestion", message.model, message.usage);
 
   return message.content.find((block) => block.type === "text")?.text ?? "";
+}
+
+const NEWS_SEARCH_SYSTEM_PROMPT = `You research a named competitor using web search and report back only what's relevant to competitive intelligence for a B2B SaaS company: pricing or plan changes, new features, funding rounds, notable hires, leadership changes, or press coverage of a strategic shift. Ignore generic blog content, unrelated press mentions, and anything not tied to a specific dated event.
+
+Respond with strict JSON only, no markdown, matching this shape exactly:
+{"headlines": [{"title": "<factual headline, not a summary of the article's angle>", "summary": "<one sentence on what specifically happened>", "url": "<source URL, or null if unavailable>"}]}
+
+Return at most 8 items, most recent first. If nothing relevant turns up, respond {"headlines": []} rather than including generic or stale results just to fill the list.`;
+
+const NEWS_SEARCH_SCHEMA = {
+  type: "object",
+  properties: {
+    headlines: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          summary: { type: "string" },
+          url: { anyOf: [{ type: "string" }, { type: "null" }] },
+        },
+        required: ["title", "summary", "url"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["headlines"],
+  additionalProperties: false,
+} as const;
+
+export type SearchedHeadline = { title: string; summary: string; url: string | null };
+
+// Real alternative to the free Google News RSS scrape in scraping.ts —
+// costs a per-search fee on top of the model call (unlike the RSS path,
+// which is free), so this is deliberately NOT wired into the daily crawl.
+// Exists as a working, tested option to switch to later if the free
+// approach still comes up thin after a few real days of crawling.
+export async function searchCompetitorNews(
+  competitorName: string,
+  accountId: string | null = null
+): Promise<SearchedHeadline[]> {
+  // web_search_20260209's built-in dynamic filtering runs a whole internal
+  // thinking/code-execution loop before producing the final answer — verified
+  // live that 1024 wasn't nearly enough and cut the response off mid-process
+  // (stop_reason: "max_tokens", zero headlines written yet). This is real
+  // overhead the free RSS scrape in scraping.ts doesn't have.
+  const message = await getAnthropic().messages.create({
+    model: "claude-sonnet-5",
+    max_tokens: 8192,
+    system: cachedSystemPrompt(NEWS_SEARCH_SYSTEM_PROMPT),
+    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
+    output_config: { format: { type: "json_schema", schema: NEWS_SEARCH_SCHEMA } },
+    messages: [
+      {
+        role: "user",
+        content: `Research "${competitorName}" for recent competitive-intelligence-relevant news.`,
+      },
+    ],
+  });
+  recordLlmUsage(accountId, "searchCompetitorNews", message.model, message.usage);
+
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  try {
+    const parsed = JSON.parse(text);
+    const headlines = Array.isArray(parsed.headlines) ? parsed.headlines : [];
+    return headlines.map((h: { title?: unknown; summary?: unknown; url?: unknown }) => ({
+      title: String(h.title ?? ""),
+      summary: String(h.summary ?? ""),
+      url: h.url ? String(h.url) : null,
+    }));
+  } catch (err) {
+    throw new Error(`Could not parse news search response: ${text}`, { cause: err });
+  }
 }

@@ -60,6 +60,7 @@ export interface Database {
           created_by: string | null;
           payment_reminder_1_sent_at: string | null;
           payment_reminder_2_sent_at: string | null;
+          cost_alert_sent_month: string | null;
           created_at: string;
         };
         Insert: {
@@ -79,6 +80,7 @@ export interface Database {
           created_by?: string | null;
           payment_reminder_1_sent_at?: string | null;
           payment_reminder_2_sent_at?: string | null;
+          cost_alert_sent_month?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["accounts"]["Insert"]>;
@@ -134,6 +136,7 @@ export interface Database {
           scored: boolean;
           relevance_level: RelevanceLevel | null;
           relevance_reasoning: string | null;
+          scoring_version: string | null;
           source: SignalSource;
           slack_sent_at: string | null;
           email_digest_sent_at: string | null;
@@ -150,6 +153,7 @@ export interface Database {
           scored?: boolean;
           relevance_level?: RelevanceLevel | null;
           relevance_reasoning?: string | null;
+          scoring_version?: string | null;
           source?: SignalSource;
           slack_sent_at?: string | null;
           email_digest_sent_at?: string | null;
@@ -330,6 +334,64 @@ export interface Database {
           sent_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["email_campaign_recipients"]["Insert"]>;
+        Relationships: [];
+      };
+      system_health: {
+        Row: {
+          id: string;
+          last_status: "up" | "down";
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          last_status: "up" | "down";
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["system_health"]["Insert"]>;
+        Relationships: [];
+      };
+      llm_usage: {
+        Row: {
+          id: string;
+          account_id: string | null;
+          function_name: string;
+          model: string;
+          input_tokens: number;
+          output_tokens: number;
+          cache_creation_tokens: number;
+          cache_read_tokens: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_id?: string | null;
+          function_name: string;
+          model: string;
+          input_tokens?: number;
+          output_tokens?: number;
+          cache_creation_tokens?: number;
+          cache_read_tokens?: number;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["llm_usage"]["Insert"]>;
+        Relationships: [];
+      };
+      signal_eval_labels: {
+        Row: {
+          signal_id: string;
+          label: "correct" | "incorrect";
+          note: string | null;
+          labeled_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          signal_id: string;
+          label: "correct" | "incorrect";
+          note?: string | null;
+          labeled_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["signal_eval_labels"]["Insert"]>;
         Relationships: [];
       };
     };

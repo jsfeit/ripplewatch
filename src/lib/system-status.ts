@@ -80,7 +80,13 @@ async function checkResend(): Promise<StatusCheck> {
     if (error && !/restricted to only send emails/i.test(error.message)) {
       throw new Error(error.message);
     }
-    return { name: "Resend", configured: true, ok: true, detail: `Sending as ${process.env.RESEND_FROM_EMAIL}.` };
+    const alertsFrom = process.env.RESEND_ALERTS_FROM_EMAIL || process.env.RESEND_FROM_EMAIL;
+    return {
+      name: "Resend",
+      configured: true,
+      ok: true,
+      detail: `Sending as ${process.env.RESEND_FROM_EMAIL} (alerts: ${alertsFrom}).`,
+    };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return { name: "Resend", configured: true, ok: false, detail: `Key rejected: ${message}` };

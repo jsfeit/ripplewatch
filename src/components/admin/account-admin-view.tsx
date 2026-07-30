@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -15,11 +16,13 @@ import {
 } from "@/components/ui/select";
 import { SIGNAL_TYPE_LABELS } from "@/lib/mock-data";
 import { SignalDialog, type SignalFormValues } from "./signal-dialog";
+import { TIERS } from "@/lib/tiers";
 import type { Database } from "@/lib/supabase/types";
 
 type Account = Database["public"]["Tables"]["accounts"]["Row"];
 type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
 type Signal = Database["public"]["Tables"]["signals"]["Row"];
+type LlmUsageByFunction = { functionName: string; tokens: number; costUsd: number; calls: number };
 
 const TIER_LABELS: Record<string, string> = {
   starter: "Starter",
@@ -27,14 +30,30 @@ const TIER_LABELS: Record<string, string> = {
   advanced: "Advanced",
 };
 
+const FUNCTION_LABELS: Record<string, string> = {
+  scoreSignal: "Relevance scoring",
+  summarizePricingChange: "Pricing diff summary",
+  extractPricingStructure: "Pricing structure extraction",
+  extractCompetitorMentions: "Call mention extraction",
+  suggestCompetitors: "Onboarding competitor suggestions",
+  answerQuestion: "Ask",
+  searchCompetitorNews: "Web search (news)",
+};
+
 export function AccountAdminView({
   account,
   competitors: initialCompetitors,
   signals: initialSignals,
+  llmUsageByFunction = [],
+  llmUsageTotalUsd = 0,
+  llmUsageWindowDays,
 }: {
   account: Account;
   competitors: Competitor[];
   signals: Signal[];
+  llmUsageByFunction?: LlmUsageByFunction[];
+  llmUsageTotalUsd?: number;
+  llmUsageWindowDays?: number;
 }) {
   const [tier, setTier] = useState(account.tier);
   const [savingTier, setSavingTier] = useState(false);
@@ -170,6 +189,70 @@ export function AccountAdminView({
           </p>
         </div>
       </div>
+
+      {llmUsageWindowDays !== undefined ? (
+        <Card>
+          <CardHeader>
+            <div className="flex items-baseline justify-between">
+              <h2 className="font-medium">LLM cost — last {llmUsageWindowDays} days</h2>
+              <span className="text-xs text-muted-foreground">Admin-only, estimated from token counts</span>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {(() => {
+              const tierPrice = TIERS.find((t) => t.id === account.tier)?.monthlyUsd;
+              const overTierPrice = tierPrice !== undefined && llmUsageTotalUsd > tierPrice;
+              return (
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
+                  <span>
+                    Estimated cost:{" "}
+                    <span className={overTierPrice ? "font-semibold text-destructive" : "font-semibold"}>
+                      ${llmUsageTotalUsd.toFixed(2)}
+                    </span>
+                  </span>
+                  {tierPrice !== undefined ? (
+                    <span className="text-muted-foreground">
+                      vs. ${tierPrice}/mo {TIER_LABELS[account.tier] ?? account.tier} price
+                    </span>
+                  ) : null}
+                  {overTierPrice ? (
+                    <Badge variant="outline" className="border-destructive/40 text-destructive">
+                      running over tier price
+                    </Badge>
+                  ) : null}
+                </div>
+              );
+            })()}
+
+            {llmUsageByFunction.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No LLM calls recorded for this account yet.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Function</TableHead>
+                    <TableHead>Calls</TableHead>
+                    <TableHead>Tokens</TableHead>
+                    <TableHead>Est. cost</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {llmUsageByFunction.map((row) => (
+                    <TableRow key={row.functionName}>
+                      <TableCell className="font-medium">
+                        {FUNCTION_LABELS[row.functionName] ?? row.functionName}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{row.calls}</TableCell>
+                      <TableCell className="text-muted-foreground">{row.tokens.toLocaleString()}</TableCell>
+                      <TableCell>${row.costUsd.toFixed(2)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

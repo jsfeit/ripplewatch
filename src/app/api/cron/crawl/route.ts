@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { checkPricingDiff, checkPricingStructure, checkJobPostingsDiff, checkNews, checkFunding } from "@/lib/scraping";
-import { scoreSignal, extractCompetitorMentions, type CompetitorMention } from "@/lib/anthropic";
+import {
+  checkPricingDiff,
+  checkPricingStructure,
+  checkJobPostingsDiff,
+  checkNews,
+  checkFunding,
+  checkSearchNews,
+} from "@/lib/scraping";
+import { scoreSignal, extractCompetitorMentions, SCORING_PROMPT_VERSION, type CompetitorMention } from "@/lib/anthropic";
 import { sendSlackAlert } from "@/lib/slack";
 import { fetchRecentGongTranscripts } from "@/lib/gong";
 import { fetchRecentZoomTranscripts } from "@/lib/zoom";
@@ -47,7 +54,7 @@ async function buildCallMentions(
   const transcripts = transcriptLists.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
   if (transcripts.length === 0) return [];
 
-  return extractCompetitorMentions(transcripts, competitorNames);
+  return extractCompetitorMentions(transcripts, competitorNames, accountId);
 }
 
 // HubSpot's closed-lost deal reasons, refreshed each run — supplements
@@ -109,16 +116,28 @@ export async function GET(request: Request) {
 
     const newSignals: Signal[] = [];
     for (const competitor of competitors) {
+      // Pricing/jobs surface at most one signal per run (a diff against the
+      // last snapshot); news/funding can surface several (every new
+      // headline in this run's feed) — normalized to arrays here so both
+      // shapes flatten into newSignals the same way.
       const checks = [
-        allowedSources.includes("pricing") ? checkPricingDiff(supabase, competitor) : null,
-        allowedSources.includes("job_posting") ? checkJobPostingsDiff(supabase, competitor) : null,
+        allowedSources.includes("pricing") ? checkPricingDiff(supabase, competitor).then((s) => (s ? [s] : [])) : null,
+        allowedSources.includes("job_posting")
+          ? checkJobPostingsDiff(supabase, competitor).then((s) => (s ? [s] : []))
+          : null,
         allowedSources.includes("news") ? checkNews(supabase, competitor) : null,
         allowedSources.includes("funding") ? checkFunding(supabase, competitor) : null,
-      ].filter((p): p is Promise<Signal | null> => p !== null);
+        // Supplements the free RSS news check above with Claude web search —
+        // off by default (real per-search cost, not modeled against tier
+        // pricing yet). Enable per the web-search-news-decision checklist item.
+        allowedSources.includes("news") && process.env.ENABLE_WEB_SEARCH_NEWS === "true"
+          ? checkSearchNews(supabase, competitor, account.id)
+          : null,
+      ].filter((p): p is Promise<Signal[]> => p !== null);
 
       const results = await Promise.allSettled(checks);
       for (const result of results) {
-        if (result.status === "fulfilled" && result.value) newSignals.push(result.value);
+        if (result.status === "fulfilled") newSignals.push(...result.value);
       }
 
       // Refreshes the Pricing dashboard's current-state snapshot every run,
@@ -188,12 +207,18 @@ export async function GET(request: Request) {
             churnNotes: account.churn_notes,
             callInsights,
           },
-          { competitorName: competitor.name, type: signal.type, title: signal.title, summary: signal.summary }
+          { competitorName: competitor.name, type: signal.type, title: signal.title, summary: signal.summary },
+          account.id
         );
 
         const { data: updated } = await supabase
           .from("signals")
-          .update({ scored: true, relevance_level: result.level, relevance_reasoning: result.reasoning })
+          .update({
+            scored: true,
+            relevance_level: result.level,
+            relevance_reasoning: result.reasoning,
+            scoring_version: SCORING_PROMPT_VERSION,
+          })
           .eq("id", signal.id)
           .select("*")
           .single();

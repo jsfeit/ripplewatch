@@ -17,6 +17,15 @@ export function isResendConfigured(): boolean {
   return Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL);
 }
 
+// Alerts (the digest emails customers actually signed up to receive, plus
+// internal uptime pages) send from a distinct address from everything else
+// — welcome/invite/campaign/billing mail reads as "the company," alerts
+// read as "the monitoring system." Falls back to the general address so a
+// deploy isn't broken if only RESEND_FROM_EMAIL is set.
+function getAlertsFromEmail(): string {
+  return process.env.RESEND_ALERTS_FROM_EMAIL || process.env.RESEND_FROM_EMAIL!;
+}
+
 export type DigestSignal = {
   competitorName: string;
   title: string;
@@ -71,7 +80,7 @@ export async function sendDigestEmail(
   const { noun } = CADENCE_COPY[cadence];
 
   const result = await getResend().emails.send({
-    from: process.env.RESEND_FROM_EMAIL!,
+    from: getAlertsFromEmail(),
     to,
     subject: `${signals.filter((s) => s.scored).length} scored alert${signals.length === 1 ? "" : "s"} ${noun}`,
     html: renderDigestHtml(companyName, signals, cadence),
@@ -181,6 +190,52 @@ export async function sendWelcomeEmail(to: string, companyName: string, appUrl: 
         Questions? Just reply — a person reads every one.
       </p>
     </div>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
+// Fired by /api/cron/uptime-check on a failed health check. Deliberately
+// plain text, no styling — this is an operational alert, not a customer
+// email, and needs to render instantly in any inbox.
+export async function sendUptimeAlertEmail(to: string[], detail: string) {
+  if (!isResendConfigured() || to.length === 0) return;
+
+  const result = await getResend().emails.send({
+    from: getAlertsFromEmail(),
+    to,
+    subject: "🔴 Ripplewatch health check failed",
+    html: `<p>The scheduled health check against <code>${process.env.NEXT_PUBLIC_APP_URL}</code> just failed.</p>
+      <p>${detail}</p>
+      <p style="color:#888;font-size:12px;">Sent by /api/cron/uptime-check.</p>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
+export type CostAlertAccount = { name: string; tier: string; tierPriceUsd: number; expectedUsd: number; actualUsd: number };
+
+// Fired by /api/cron/cost-alert when an account's LLM spend this calendar
+// month is running well ahead of what its tier price budgets for. Internal
+// admin alert, not a customer email — same treatment as sendUptimeAlertEmail.
+export async function sendCostAlertEmail(to: string[], accounts: CostAlertAccount[]) {
+  if (!isResendConfigured() || to.length === 0 || accounts.length === 0) return;
+
+  const rows = accounts
+    .map(
+      (a) =>
+        `<tr><td style="padding:4px 10px 4px 0">${a.name}</td><td style="padding:4px 10px">${a.tier}</td><td style="padding:4px 10px">$${a.expectedUsd.toFixed(2)}</td><td style="padding:4px 0">$${a.actualUsd.toFixed(2)}</td></tr>`
+    )
+    .join("");
+
+  const result = await getResend().emails.send({
+    from: getAlertsFromEmail(),
+    to,
+    subject: `⚠️ ${accounts.length} account${accounts.length === 1 ? "" : "s"} over LLM cost budget this month`,
+    html: `<p>These accounts' estimated LLM spend this calendar month is running well ahead of what their tier price budgets for (pro-rated by day-of-month elapsed):</p>
+      <table style="border-collapse:collapse;font-size:14px">
+        <tr style="text-align:left;color:#888"><th style="padding:4px 10px 4px 0">Account</th><th style="padding:4px 10px">Tier</th><th style="padding:4px 10px">Expected so far</th><th style="padding:4px 0">Actual</th></tr>
+        ${rows}
+      </table>
+      <p style="color:#888;font-size:12px;">Sent by /api/cron/cost-alert. See Admin → Accounts for the full breakdown.</p>`,
   });
   if (result.error) throw new Error(result.error.message);
 }
