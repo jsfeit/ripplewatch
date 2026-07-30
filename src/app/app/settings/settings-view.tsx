@@ -51,12 +51,19 @@ export function SettingsView({
     else setError(data.error ?? "Could not open billing portal.");
   }
 
+  // Existing subscribers go through /api/stripe/change-plan — a deep link
+  // straight into the Stripe Portal's "confirm this change" screen, already
+  // pre-filled with their card and email. Routing them through /checkout
+  // instead would create a second, simultaneous subscription rather than
+  // changing the one they have. Brand-new customers (no subscription yet)
+  // still use Checkout — there's nothing to "change" for them.
   async function handleUpgrade(tier: "starter" | "plus" | "advanced") {
     setBillingLoading(tier);
-    const res = await fetch("/api/stripe/checkout", {
+    const hasActiveSubscription = Boolean(account.stripe_customer_id && account.stripe_subscription_id);
+    const res = await fetch(hasActiveSubscription ? "/api/stripe/change-plan" : "/api/stripe/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tier, period: billingPeriod }),
+      body: JSON.stringify(hasActiveSubscription ? { tier } : { tier, period: billingPeriod }),
     });
     const data = await res.json();
     setBillingLoading(null);
@@ -226,52 +233,32 @@ export function SettingsView({
               />
             ) : null}
             <div className="flex flex-wrap gap-2">
+              {TIERS.filter((t) => t.id !== account.tier).map((t) => {
+                const isUpgrade = TIERS.findIndex((x) => x.id === t.id) > TIERS.findIndex((x) => x.id === account.tier);
+                return (
+                  <Button
+                    key={t.id}
+                    type="button"
+                    variant={isUpgrade ? "default" : "outline"}
+                    onClick={() => handleUpgrade(t.id)}
+                    disabled={billingLoading !== null}
+                  >
+                    {billingLoading === t.id ? <Loader2 className="size-4 animate-spin" /> : null}
+                    {isUpgrade ? "Upgrade to" : "Downgrade to"} {t.name}
+                  </Button>
+                );
+              })}
               {account.stripe_customer_id ? (
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   onClick={handleManageBilling}
                   disabled={billingLoading !== null}
                 >
                   {billingLoading === "portal" ? <Loader2 className="size-4 animate-spin" /> : null}
                   Manage billing
                 </Button>
-              ) : (
-                <>
-                  {account.tier !== "starter" ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => handleUpgrade("starter")}
-                      disabled={billingLoading !== null}
-                    >
-                      {billingLoading === "starter" ? <Loader2 className="size-4 animate-spin" /> : null}
-                      Switch to Starter
-                    </Button>
-                  ) : null}
-                  {account.tier !== "plus" ? (
-                    <Button
-                      type="button"
-                      onClick={() => handleUpgrade("plus")}
-                      disabled={billingLoading !== null}
-                    >
-                      {billingLoading === "plus" ? <Loader2 className="size-4 animate-spin" /> : null}
-                      Upgrade to Plus
-                    </Button>
-                  ) : null}
-                  {account.tier !== "advanced" ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => handleUpgrade("advanced")}
-                      disabled={billingLoading !== null}
-                    >
-                      {billingLoading === "advanced" ? <Loader2 className="size-4 animate-spin" /> : null}
-                      Upgrade to Advanced
-                    </Button>
-                  ) : null}
-                </>
-              )}
+              ) : null}
               <Link href="/pricing" className={buttonVariants({ variant: "ghost" })}>
                 Compare plans
               </Link>
