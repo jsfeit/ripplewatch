@@ -256,6 +256,13 @@ export function parseScoringText(text: string): ScoringResult {
   return { level: parsed.level, reasoning: String(parsed.reasoning ?? "") };
 }
 
+// Bumped whenever SYSTEM_PROMPT, buildScoringUserPrompt, or SCORE_SIGNAL_SCHEMA
+// change meaningfully — stamped onto every scored signal (see the crawl
+// route) so accuracy from signal_eval_labels can eventually be sliced by
+// which prompt produced the score, instead of one number blended across
+// every prompt this has ever run.
+export const SCORING_PROMPT_VERSION = "v1";
+
 export function scoringRequestParams(context: ScoringContext, signal: SignalToScore) {
   return {
     model: "claude-sonnet-5" as const,

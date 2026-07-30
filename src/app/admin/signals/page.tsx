@@ -30,6 +30,25 @@ type Row = {
   evalLabel: "correct" | "incorrect" | null;
 };
 
+type LevelAccuracy = { level: string; labeled: number; correct: number };
+
+function computeAccuracy(rows: Row[]): { totalLabeled: number; totalCorrect: number; byLevel: LevelAccuracy[] } {
+  const labeled = rows.filter((r) => r.evalLabel !== null);
+  const byLevelMap = new Map<string, LevelAccuracy>();
+  for (const row of labeled) {
+    const level = row.relevanceLevel ?? "Unknown";
+    const entry = byLevelMap.get(level) ?? { level, labeled: 0, correct: 0 };
+    entry.labeled += 1;
+    if (row.evalLabel === "correct") entry.correct += 1;
+    byLevelMap.set(level, entry);
+  }
+  return {
+    totalLabeled: labeled.length,
+    totalCorrect: labeled.filter((r) => r.evalLabel === "correct").length,
+    byLevel: Array.from(byLevelMap.values()).sort((a, b) => a.level.localeCompare(b.level)),
+  };
+}
+
 export default async function AdminSignalsPage() {
   const configured = isSupabaseConfigured();
   let rows: Row[] = [];
@@ -93,7 +112,9 @@ export default async function AdminSignalsPage() {
           Couldn&apos;t load signals: {error}
         </p>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-border">
+        <>
+          <AccuracyStats accuracy={computeAccuracy(rows)} />
+          <div className="overflow-hidden rounded-lg border border-border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -164,8 +185,48 @@ export default async function AdminSignalsPage() {
               ) : null}
             </TableBody>
           </Table>
-        </div>
+          </div>
+        </>
       )}
+    </div>
+  );
+}
+
+function AccuracyStats({
+  accuracy,
+}: {
+  accuracy: { totalLabeled: number; totalCorrect: number; byLevel: LevelAccuracy[] };
+}) {
+  if (accuracy.totalLabeled === 0) {
+    return (
+      <p className="mb-6 rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+        No signals labeled yet — use the thumbs up/down in the Eval column below to start building an accuracy
+        baseline for the scoring prompt.
+      </p>
+    );
+  }
+
+  const overallPct = Math.round((accuracy.totalCorrect / accuracy.totalLabeled) * 100);
+
+  return (
+    <div className="mb-6 rounded-lg border border-border p-4">
+      <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
+        <p className="text-sm">
+          Scoring accuracy: <span className="font-semibold">{overallPct}%</span>{" "}
+          <span className="text-muted-foreground">
+            ({accuracy.totalCorrect}/{accuracy.totalLabeled} labeled signals marked correct)
+          </span>
+        </p>
+      </div>
+      {accuracy.byLevel.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
+          {accuracy.byLevel.map((l) => (
+            <span key={l.level}>
+              {l.level}: {Math.round((l.correct / l.labeled) * 100)}% ({l.correct}/{l.labeled})
+            </span>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

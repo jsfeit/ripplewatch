@@ -211,6 +211,35 @@ export async function sendUptimeAlertEmail(to: string[], detail: string) {
   if (result.error) throw new Error(result.error.message);
 }
 
+export type CostAlertAccount = { name: string; tier: string; tierPriceUsd: number; expectedUsd: number; actualUsd: number };
+
+// Fired by /api/cron/cost-alert when an account's LLM spend this calendar
+// month is running well ahead of what its tier price budgets for. Internal
+// admin alert, not a customer email — same treatment as sendUptimeAlertEmail.
+export async function sendCostAlertEmail(to: string[], accounts: CostAlertAccount[]) {
+  if (!isResendConfigured() || to.length === 0 || accounts.length === 0) return;
+
+  const rows = accounts
+    .map(
+      (a) =>
+        `<tr><td style="padding:4px 10px 4px 0">${a.name}</td><td style="padding:4px 10px">${a.tier}</td><td style="padding:4px 10px">$${a.expectedUsd.toFixed(2)}</td><td style="padding:4px 0">$${a.actualUsd.toFixed(2)}</td></tr>`
+    )
+    .join("");
+
+  const result = await getResend().emails.send({
+    from: getAlertsFromEmail(),
+    to,
+    subject: `⚠️ ${accounts.length} account${accounts.length === 1 ? "" : "s"} over LLM cost budget this month`,
+    html: `<p>These accounts' estimated LLM spend this calendar month is running well ahead of what their tier price budgets for (pro-rated by day-of-month elapsed):</p>
+      <table style="border-collapse:collapse;font-size:14px">
+        <tr style="text-align:left;color:#888"><th style="padding:4px 10px 4px 0">Account</th><th style="padding:4px 10px">Tier</th><th style="padding:4px 10px">Expected so far</th><th style="padding:4px 0">Actual</th></tr>
+        ${rows}
+      </table>
+      <p style="color:#888;font-size:12px;">Sent by /api/cron/cost-alert. See Admin → Accounts for the full breakdown.</p>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
 export async function sendInviteEmail(to: string, inviterCompanyName: string, acceptUrl: string) {
   if (!isResendConfigured()) return;
 
