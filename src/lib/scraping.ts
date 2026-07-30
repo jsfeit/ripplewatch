@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { summarizePricingChange, extractPricingStructure, searchCompetitorNews } from "@/lib/anthropic";
+import { normalizeDomain, guessPricingUrl, guessCareersUrl } from "@/lib/domain";
 
 type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
 type Signal = Database["public"]["Tables"]["signals"]["Row"];
@@ -16,6 +17,67 @@ async function fetchHtml(url: string): Promise<string> {
   });
   if (!res.ok) throw new Error(`Fetch failed (${res.status}): ${url}`);
   return res.text();
+}
+
+// Heuristic-only, no LLM call: fetches the competitor's homepage once and
+// scans its links for pricing/careers-shaped text or hrefs. Free and fast,
+// but a heuristic — it can miss a pricing page that's JS-rendered, behind a
+// "Get a quote" CTA with no matching keyword, or linked from somewhere the
+// homepage doesn't surface. Falls back to the plain https://{domain}/pricing
+// guess (guessPricingUrl/guessCareersUrl) whenever the homepage fetch fails
+// or nothing matches — never leaves a competitor with no URL at all.
+const PRICING_LINK_PATTERN = /\bpricing\b|\bplans?\b/i;
+const CAREERS_LINK_PATTERN = /\bcareers?\b|\bjobs?\b|\bhiring\b|join[- ]us/i;
+const DISCOVERY_TIMEOUT_MS = 6_000;
+
+export async function discoverCompetitorUrls(
+  domain: string
+): Promise<{ pricingUrl: string | null; careersUrl: string | null }> {
+  const fallback = { pricingUrl: guessPricingUrl(domain), careersUrl: guessCareersUrl(domain) };
+  const clean = normalizeDomain(domain);
+  if (!clean) return fallback;
+
+  let html: string;
+  let baseUrl: string;
+  try {
+    const res = await fetch(`https://${clean}`, {
+      headers: { "User-Agent": "RipplewatchBot/1.0 (+https://ripplewatch.ai)" },
+      signal: AbortSignal.timeout(DISCOVERY_TIMEOUT_MS),
+    });
+    if (!res.ok) return fallback;
+    html = await res.text();
+    baseUrl = res.url;
+  } catch {
+    return fallback;
+  }
+
+  const $ = cheerio.load(html);
+  let pricingUrl: string | null = null;
+  let careersUrl: string | null = null;
+
+  $("a[href]").each((_, el) => {
+    if (pricingUrl && careersUrl) return false;
+    const href = $(el).attr("href");
+    if (!href) return;
+    const haystack = `${$(el).text()} ${href}`.toLowerCase();
+
+    if (!pricingUrl && PRICING_LINK_PATTERN.test(haystack)) {
+      try {
+        pricingUrl = new URL(href, baseUrl).toString();
+      } catch {
+        // malformed href — skip
+      }
+    }
+    if (!careersUrl && CAREERS_LINK_PATTERN.test(haystack)) {
+      try {
+        careersUrl = new URL(href, baseUrl).toString();
+      } catch {
+        // malformed href — skip
+      }
+    }
+  });
+
+  return { pricingUrl: pricingUrl ?? fallback.pricingUrl, careersUrl: careersUrl ?? fallback.careersUrl };
 }
 
 async function fetchPageText(url: string): Promise<string> {
