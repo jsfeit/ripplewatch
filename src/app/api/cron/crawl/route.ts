@@ -47,7 +47,7 @@ async function buildCallMentions(
   const transcripts = transcriptLists.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
   if (transcripts.length === 0) return [];
 
-  return extractCompetitorMentions(transcripts, competitorNames);
+  return extractCompetitorMentions(transcripts, competitorNames, accountId);
 }
 
 // HubSpot's closed-lost deal reasons, refreshed each run — supplements
@@ -194,7 +194,8 @@ export async function GET(request: Request) {
             churnNotes: account.churn_notes,
             callInsights,
           },
-          { competitorName: competitor.name, type: signal.type, title: signal.title, summary: signal.summary }
+          { competitorName: competitor.name, type: signal.type, title: signal.title, summary: signal.summary },
+          account.id
         );
 
         const { data: updated } = await supabase

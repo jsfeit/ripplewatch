@@ -1,6 +1,7 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import type { BillingModel, PricingTier } from "@/lib/supabase/types";
+import { recordLlmUsage } from "@/lib/usage";
 
 let cachedClient: Anthropic | null = null;
 
@@ -97,7 +98,11 @@ const DIFF_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-export async function summarizePricingChange(oldText: string, newText: string): Promise<DiffSummary> {
+export async function summarizePricingChange(
+  oldText: string,
+  newText: string,
+  accountId: string | null
+): Promise<DiffSummary> {
   const truncate = (s: string) => s.slice(0, 6000);
   const userPrompt = `BEFORE:\n${truncate(oldText)}\n\nAFTER:\n${truncate(newText)}\n\nWhat changed?`;
 
@@ -108,6 +113,7 @@ export async function summarizePricingChange(oldText: string, newText: string): 
     output_config: { format: { type: "json_schema", schema: DIFF_SCHEMA } },
     messages: [{ role: "user", content: userPrompt }],
   });
+  recordLlmUsage(accountId, "summarizePricingChange", message.model, message.usage);
 
   const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
 
@@ -172,7 +178,10 @@ const PRICING_EXTRACTION_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-export async function extractPricingStructure(pageText: string): Promise<PricingExtraction> {
+export async function extractPricingStructure(
+  pageText: string,
+  accountId: string | null
+): Promise<PricingExtraction> {
   const userPrompt = `Pricing page text:\n${pageText.slice(0, 8000)}\n\nExtract the current pricing structure.`;
 
   const message = await getAnthropic().messages.create({
@@ -182,6 +191,7 @@ export async function extractPricingStructure(pageText: string): Promise<Pricing
     output_config: { format: { type: "json_schema", schema: PRICING_EXTRACTION_SCHEMA } },
     messages: [{ role: "user", content: userPrompt }],
   });
+  recordLlmUsage(accountId, "extractPricingStructure", message.model, message.usage);
 
   const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
 
@@ -258,9 +268,11 @@ export function scoringRequestParams(context: ScoringContext, signal: SignalToSc
 
 export async function scoreSignal(
   context: ScoringContext,
-  signal: SignalToScore
+  signal: SignalToScore,
+  accountId: string | null
 ): Promise<ScoringResult> {
   const message = await getAnthropic().messages.create(scoringRequestParams(context, signal));
+  recordLlmUsage(accountId, "scoreSignal", message.model, message.usage);
 
   const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
   try {
@@ -307,7 +319,8 @@ export type CompetitorMention = { competitor: string; mention: string };
 // scored using a call mention about Competitor B.
 export async function extractCompetitorMentions(
   transcripts: { title: string; transcriptText: string }[],
-  competitorNames: string[]
+  competitorNames: string[],
+  accountId: string | null
 ): Promise<CompetitorMention[]> {
   if (transcripts.length === 0 || competitorNames.length === 0) return [];
 
@@ -327,6 +340,7 @@ Extract competitor mentions.`;
         output_config: { format: { type: "json_schema", schema: MENTIONS_SCHEMA } },
         messages: [{ role: "user", content: userPrompt }],
       });
+      recordLlmUsage(accountId, "extractCompetitorMentions", message.model, message.usage);
 
       const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
       const parsed = JSON.parse(text);
@@ -391,6 +405,8 @@ Suggest likely competitors.`;
     output_config: { format: { type: "json_schema", schema: SUGGEST_COMPETITORS_SCHEMA } },
     messages: [{ role: "user", content: userPrompt }],
   });
+  // Always pre-account (see the route's own comment) — nothing to attribute to.
+  recordLlmUsage(null, "suggestCompetitors", message.model, message.usage);
 
   const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
 
@@ -434,7 +450,8 @@ export async function answerQuestion(
     icp: string | null;
     competitors: string[];
     signals: AskContextSignal[];
-  }
+  },
+  accountId: string | null
 ): Promise<string> {
   const signalLines = context.signals
     .map((s) => {
@@ -459,6 +476,7 @@ Question: ${question}`;
     system: cachedSystemPrompt(ASK_SYSTEM_PROMPT),
     messages: [{ role: "user", content: userPrompt }],
   });
+  recordLlmUsage(accountId, "answerQuestion", message.model, message.usage);
 
   return message.content.find((block) => block.type === "text")?.text ?? "";
 }
@@ -498,7 +516,10 @@ export type SearchedHeadline = { title: string; summary: string; url: string | n
 // which is free), so this is deliberately NOT wired into the daily crawl.
 // Exists as a working, tested option to switch to later if the free
 // approach still comes up thin after a few real days of crawling.
-export async function searchCompetitorNews(competitorName: string): Promise<SearchedHeadline[]> {
+export async function searchCompetitorNews(
+  competitorName: string,
+  accountId: string | null = null
+): Promise<SearchedHeadline[]> {
   // web_search_20260209's built-in dynamic filtering runs a whole internal
   // thinking/code-execution loop before producing the final answer — verified
   // live that 1024 wasn't nearly enough and cut the response off mid-process
@@ -517,6 +538,7 @@ export async function searchCompetitorNews(competitorName: string): Promise<Sear
       },
     ],
   });
+  recordLlmUsage(accountId, "searchCompetitorNews", message.model, message.usage);
 
   const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
   try {

@@ -95,7 +95,7 @@ export async function checkPricingDiff(
 
   if (!existing || existing.content_hash === newHash) return null;
 
-  const diff = await summarizePricingChange(existing.raw_text ?? "", newText);
+  const diff = await summarizePricingChange(existing.raw_text ?? "", newText, competitor.account_id);
   if (!diff.meaningful || !diff.summary) return null;
 
   const { data } = await supabase
@@ -130,7 +130,7 @@ export async function checkPricingStructure(supabase: AdminClient, competitor: C
     return; // page unreachable this run — leave the last known snapshot in place
   }
 
-  const extraction = await extractPricingStructure(pageText);
+  const extraction = await extractPricingStructure(pageText, competitor.account_id);
 
   await supabase.from("competitor_pricing").upsert(
     {
