@@ -54,8 +54,19 @@ export async function POST(request: Request) {
   const origin = new URL(request.url).origin;
 
   try {
+    // Embedded (renders inline via @stripe/react-stripe-js) instead of the
+    // classic hosted redirect — same Stripe-managed form/PCI scope, just no
+    // full-page navigation away from the app. Embedded mode takes a single
+    // return_url (used after completion) rather than separate success/cancel
+    // URLs; the session_id lets the return page confirm what happened if it
+    // ever needs to.
     const session = await getStripe().checkout.sessions.create({
       mode: "subscription",
+      // Named "embedded_page" as of API version 2026-06-24.dahlia (the plain
+      // "embedded" value from older Stripe docs/examples was renamed) —
+      // this is still the prebuilt embedded form @stripe/react-stripe-js's
+      // <EmbeddedCheckout> expects, not the newer DIY "elements"/"form" modes.
+      ui_mode: "embedded_page",
       customer: account?.stripe_customer_id ?? undefined,
       customer_email: account?.stripe_customer_id ? undefined : user.email,
       client_reference_id: profile.account_id,
@@ -67,11 +78,10 @@ export async function POST(request: Request) {
       automatic_tax: { enabled: true },
       metadata: { account_id: profile.account_id, tier, period },
       subscription_data: { metadata: { account_id: profile.account_id, tier, period } },
-      success_url: `${origin}/app/settings?checkout=success`,
-      cancel_url: `${origin}/app/settings?checkout=cancelled`,
+      return_url: `${origin}/app/settings?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
     });
 
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({ clientSecret: session.client_secret });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Could not start checkout.";
     console.error("stripe checkout session creation failed:", message);

@@ -15,6 +15,7 @@ import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { TIER_BADGE } from "@/lib/tier-style";
 import { disconnectIntegrationAction } from "./actions";
+import { EmbeddedCheckoutModal } from "@/components/app/embedded-checkout-modal";
 import type { Database } from "@/lib/supabase/types";
 
 type Account = Database["public"]["Tables"]["accounts"]["Row"];
@@ -38,6 +39,10 @@ export function SettingsView({
   const [error, setError] = useState("");
   const [billingLoading, setBillingLoading] = useState<string | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
+  const [checkoutModal, setCheckoutModal] = useState<{
+    tier: "starter" | "plus" | "advanced";
+    period: "monthly" | "annual";
+  } | null>(null);
 
   const currentTier = TIERS.find((t) => t.id === account.tier) ?? TIERS[0];
   const isConnected = (provider: string) => integrations.some((i) => i.provider === provider && i.connected);
@@ -56,14 +61,21 @@ export function SettingsView({
   // pre-filled with their card and email. Routing them through /checkout
   // instead would create a second, simultaneous subscription rather than
   // changing the one they have. Brand-new customers (no subscription yet)
-  // still use Checkout — there's nothing to "change" for them.
+  // open the embedded Checkout modal instead — there's nothing to "change"
+  // for them, and this is their first payment, not a plan switch.
   async function handleUpgrade(tier: "starter" | "plus" | "advanced") {
-    setBillingLoading(tier);
     const hasActiveSubscription = Boolean(account.stripe_customer_id && account.stripe_subscription_id);
-    const res = await fetch(hasActiveSubscription ? "/api/stripe/change-plan" : "/api/stripe/checkout", {
+
+    if (!hasActiveSubscription) {
+      setCheckoutModal({ tier, period: billingPeriod });
+      return;
+    }
+
+    setBillingLoading(tier);
+    const res = await fetch("/api/stripe/change-plan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(hasActiveSubscription ? { tier } : { tier, period: billingPeriod }),
+      body: JSON.stringify({ tier }),
     });
     const data = await res.json();
     setBillingLoading(null);
@@ -72,7 +84,16 @@ export function SettingsView({
   }
 
   return (
-    <Tabs defaultValue="integrations">
+    <>
+      <EmbeddedCheckoutModal
+        open={checkoutModal !== null}
+        onOpenChange={(open) => {
+          if (!open) setCheckoutModal(null);
+        }}
+        tier={checkoutModal?.tier ?? "starter"}
+        period={checkoutModal?.period ?? "monthly"}
+      />
+      <Tabs defaultValue="integrations">
       <TabsList>
         <TabsTrigger value="integrations">Integrations</TabsTrigger>
         <TabsTrigger value="team">Team</TabsTrigger>
@@ -352,6 +373,7 @@ export function SettingsView({
           </>
         )}
       </TabsContent>
-    </Tabs>
+      </Tabs>
+    </>
   );
 }
