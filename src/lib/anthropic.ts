@@ -186,7 +186,11 @@ export async function extractPricingStructure(
 
   const message = await getAnthropic().messages.create({
     model: "claude-sonnet-5",
-    max_tokens: 800,
+    // Verified live against a real pricing page (Square's) that 800 wasn't
+    // enough — a page with several tiers × up to 5 features each plus JSON
+    // structural overhead genuinely needs more room, and running out
+    // mid-string produces invalid JSON, not a truncated-but-parseable object.
+    max_tokens: 2000,
     system: cachedSystemPrompt(PRICING_EXTRACTION_SYSTEM_PROMPT),
     output_config: { format: { type: "json_schema", schema: PRICING_EXTRACTION_SCHEMA } },
     messages: [{ role: "user", content: userPrompt }],
