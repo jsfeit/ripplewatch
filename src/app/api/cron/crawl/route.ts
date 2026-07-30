@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { checkPricingDiff, checkPricingStructure, checkJobPostingsDiff, checkNews, checkFunding } from "@/lib/scraping";
+import {
+  checkPricingDiff,
+  checkPricingStructure,
+  checkJobPostingsDiff,
+  checkNews,
+  checkFunding,
+  checkSearchNews,
+} from "@/lib/scraping";
 import { scoreSignal, extractCompetitorMentions, SCORING_PROMPT_VERSION, type CompetitorMention } from "@/lib/anthropic";
 import { sendSlackAlert } from "@/lib/slack";
 import { fetchRecentGongTranscripts } from "@/lib/gong";
@@ -120,6 +127,12 @@ export async function GET(request: Request) {
           : null,
         allowedSources.includes("news") ? checkNews(supabase, competitor) : null,
         allowedSources.includes("funding") ? checkFunding(supabase, competitor) : null,
+        // Supplements the free RSS news check above with Claude web search —
+        // off by default (real per-search cost, not modeled against tier
+        // pricing yet). Enable per the web-search-news-decision checklist item.
+        allowedSources.includes("news") && process.env.ENABLE_WEB_SEARCH_NEWS === "true"
+          ? checkSearchNews(supabase, competitor, account.id)
+          : null,
       ].filter((p): p is Promise<Signal[]> => p !== null);
 
       const results = await Promise.allSettled(checks);
