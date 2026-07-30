@@ -346,6 +346,32 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["system_health"]["Insert"]>;
         Relationships: [];
       };
+      llm_usage: {
+        Row: {
+          id: string;
+          account_id: string | null;
+          function_name: string;
+          model: string;
+          input_tokens: number;
+          output_tokens: number;
+          cache_creation_tokens: number;
+          cache_read_tokens: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_id?: string | null;
+          function_name: string;
+          model: string;
+          input_tokens?: number;
+          output_tokens?: number;
+          cache_creation_tokens?: number;
+          cache_read_tokens?: number;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["llm_usage"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

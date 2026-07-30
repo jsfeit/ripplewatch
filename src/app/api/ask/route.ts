@@ -72,7 +72,7 @@ export async function POST(request: Request) {
       icp: account?.icp ?? null,
       competitors: (competitors ?? []).map((c) => c.name),
       signals: contextSignals,
-    });
+    }, profile.account_id);
     return NextResponse.json({ answer });
   } catch (err) {
     console.error("ask failed:", err);
