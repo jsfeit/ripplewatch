@@ -60,6 +60,7 @@ export interface Database {
           created_by: string | null;
           payment_reminder_1_sent_at: string | null;
           payment_reminder_2_sent_at: string | null;
+          cost_alert_sent_month: string | null;
           created_at: string;
         };
         Insert: {
@@ -79,6 +80,7 @@ export interface Database {
           created_by?: string | null;
           payment_reminder_1_sent_at?: string | null;
           payment_reminder_2_sent_at?: string | null;
+          cost_alert_sent_month?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["accounts"]["Insert"]>;
@@ -134,6 +136,7 @@ export interface Database {
           scored: boolean;
           relevance_level: RelevanceLevel | null;
           relevance_reasoning: string | null;
+          scoring_version: string | null;
           source: SignalSource;
           slack_sent_at: string | null;
           email_digest_sent_at: string | null;
@@ -150,6 +153,7 @@ export interface Database {
           scored?: boolean;
           relevance_level?: RelevanceLevel | null;
           relevance_reasoning?: string | null;
+          scoring_version?: string | null;
           source?: SignalSource;
           slack_sent_at?: string | null;
           email_digest_sent_at?: string | null;

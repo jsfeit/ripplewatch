@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkPricingDiff, checkPricingStructure, checkJobPostingsDiff, checkNews, checkFunding } from "@/lib/scraping";
-import { scoreSignal, extractCompetitorMentions, type CompetitorMention } from "@/lib/anthropic";
+import { scoreSignal, extractCompetitorMentions, SCORING_PROMPT_VERSION, type CompetitorMention } from "@/lib/anthropic";
 import { sendSlackAlert } from "@/lib/slack";
 import { fetchRecentGongTranscripts } from "@/lib/gong";
 import { fetchRecentZoomTranscripts } from "@/lib/zoom";
@@ -200,7 +200,12 @@ export async function GET(request: Request) {
 
         const { data: updated } = await supabase
           .from("signals")
-          .update({ scored: true, relevance_level: result.level, relevance_reasoning: result.reasoning })
+          .update({
+            scored: true,
+            relevance_level: result.level,
+            relevance_reasoning: result.reasoning,
+            scoring_version: SCORING_PROMPT_VERSION,
+          })
           .eq("id", signal.id)
           .select("*")
           .single();
