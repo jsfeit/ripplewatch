@@ -27,6 +27,7 @@ import { IntegrationPreviewCard } from "@/components/app/integration-preview-car
 import { CompetitorRow, type CompetitorInput } from "@/components/app/competitor-row";
 import { SuggestedCompetitors, type SuggestedCompetitor } from "@/components/app/suggested-competitors";
 import { DocumentUpload } from "@/components/app/document-upload";
+import { EmbeddedCheckoutModal } from "@/components/app/embedded-checkout-modal";
 import { generatePreviewAlert } from "@/lib/onboarding-preview";
 import { DOMAIN_PATTERN } from "@/lib/domain";
 import { createClient } from "@/lib/supabase/client";
@@ -44,6 +45,9 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
   const [step, setStep] = useState(0);
   const [chosenPlanId, setChosenPlanId] = useState<string | null>(null);
   const finalPlan = selectedPlan ?? chosenPlanId;
+  const [checkoutModal, setCheckoutModal] = useState<{ tier: "starter" | "plus"; period: "monthly" | "annual" } | null>(
+    null
+  );
 
   const STEPS = useMemo(() => {
     const base = [
@@ -227,19 +231,14 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
       }
 
       if (finalPlan === "starter" || finalPlan === "plus") {
-        const checkoutRes = await fetch("/api/stripe/checkout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tier: finalPlan, period: selectedPeriod }),
-        });
-        const checkoutData = await checkoutRes.json();
-        if (checkoutRes.ok && checkoutData.url) {
-          window.location.href = checkoutData.url;
-          return;
-        }
-        // Checkout couldn't start (e.g. Stripe not fully configured yet) —
-        // the account still exists, so fall through to the dashboard rather
-        // than stranding the user on an error.
+        // Opens the embedded Checkout modal right over this step — the
+        // account already exists at this point regardless of payment
+        // outcome, so closing the modal (see the modal's onOpenChange
+        // below) always lands on the dashboard rather than stranding the
+        // user here.
+        setCheckoutModal({ tier: finalPlan, period: selectedPeriod });
+        setSubmitting(false);
+        return;
       }
 
       router.push("/app/dashboard");
@@ -267,6 +266,18 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
 
   return (
     <div>
+      <EmbeddedCheckoutModal
+        open={checkoutModal !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCheckoutModal(null);
+            router.push("/app/dashboard");
+            router.refresh();
+          }
+        }}
+        tier={checkoutModal?.tier ?? "starter"}
+        period={checkoutModal?.period ?? "monthly"}
+      />
       <div className="mb-10 flex items-center">
         {STEPS.map((s, i) => (
           <div key={s.title} className="flex flex-1 items-center last:flex-none">
@@ -586,7 +597,9 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
                 By creating an account, you agree to our{" "}
                 <Link href="/terms" className="text-primary hover:underline">Terms of Service</Link> and{" "}
                 <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>.
-                You&apos;ll be sent to Stripe to complete payment on the next step.
+                {finalPlan === "starter" || finalPlan === "plus"
+                  ? " You'll complete payment on the next step."
+                  : null}
               </p>
             </div>
           )}
