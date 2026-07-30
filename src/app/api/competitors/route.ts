@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { COMPETITOR_LIMIT, competitorLimitLabel } from "@/lib/tier-limits";
-import { guessPricingUrl, guessCareersUrl } from "@/lib/domain";
+import { discoverCompetitorUrls } from "@/lib/scraping";
 
 // Scoped to the caller's own account via RLS — unlike /api/admin/competitors,
 // this never touches other accounts' data even if account_id were spoofed.
@@ -50,14 +50,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Name is required." }, { status: 400 });
   }
 
+  const urls = domain ? await discoverCompetitorUrls(domain) : { pricingUrl: null, careersUrl: null };
+
   const { data, error } = await supabase
     .from("competitors")
     .insert({
       account_id: profile.account_id,
       name,
       domain: domain || null,
-      pricing_url: domain ? guessPricingUrl(domain) : null,
-      careers_url: domain ? guessCareersUrl(domain) : null,
+      pricing_url: urls.pricingUrl,
+      careers_url: urls.careersUrl,
     })
     .select("*")
     .single();

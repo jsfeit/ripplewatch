@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { sendWelcomeEmail } from "@/lib/resend";
-import { guessPricingUrl, guessCareersUrl } from "@/lib/domain";
+import { discoverCompetitorUrls } from "@/lib/scraping";
 
 type CompetitorInput = { name: string; domain: string };
 
@@ -79,17 +79,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not link account to your profile." }, { status: 500 });
   }
 
-  const { error: competitorsError } = await supabase.from("competitors").insert(
+  // Discovery fetches each competitor's homepage once, in parallel — with
+  // up to 20 competitors on the Advanced tier, doing this sequentially
+  // could add tens of seconds to onboarding completion.
+  const competitorUrls = await Promise.all(
     namedCompetitors.map((c) => {
       const domain = c.domain?.trim() || null;
-      return {
-        account_id: accountId,
-        name: c.name.trim(),
-        domain,
-        pricing_url: domain ? guessPricingUrl(domain) : null,
-        careers_url: domain ? guessCareersUrl(domain) : null,
-      };
+      return domain ? discoverCompetitorUrls(domain) : Promise.resolve({ pricingUrl: null, careersUrl: null });
     })
+  );
+
+  const { error: competitorsError } = await supabase.from("competitors").insert(
+    namedCompetitors.map((c, i) => ({
+      account_id: accountId,
+      name: c.name.trim(),
+      domain: c.domain?.trim() || null,
+      pricing_url: competitorUrls[i].pricingUrl,
+      careers_url: competitorUrls[i].careersUrl,
+    }))
   );
 
   if (competitorsError) {
