@@ -49,6 +49,11 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
           "Not a traditional free trial. Instead, every plan comes with that 30-day money-back guarantee, so you can actually use Ripplewatch for real, against your real competitors, before deciding it's for you.",
       },
       {
+        question: "Why don't you offer a free tier?",
+        answer:
+          "Because the value you're getting isn't a static dashboard, it's a live AI model reading and scoring every signal against your specific business context. Every pricing change, job posting, and news mention we surface has actually been analyzed by Claude in real time, not pulled from a cache and shown to everyone the same way. That analysis has a real, per-signal cost to us on every account, whether or not that account is paying. A free tier would mean covering that cost indefinitely for accounts that never convert, which isn't something we can sustain at our size. Instead we put that money into the 30-day guarantee, so you can use the real product risk-free without us subsidizing free usage forever.",
+      },
+      {
         question: "Do you offer annual billing?",
         answer: "Yes, on every plan: annual billing is 20% cheaper than paying monthly.",
       },
