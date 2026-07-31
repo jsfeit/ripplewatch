@@ -21,10 +21,10 @@ export const TIER_SIGNAL_SOURCES: Record<AccountTier, SignalType[]> = {
   advanced: ["pricing", "job_posting", "news", "funding"],
 };
 
-// CRM/churn-tool read-only pull is available on every tier now — Advanced's
-// premium is assisted onboarding and higher limits, not CRM access.
+// CRM (HubSpot) read-only pull is a Plus-and-above feature — same gate
+// shape as CALL_INTEL_ALLOWED below.
 export const CRM_ALLOWED: Record<AccountTier, boolean> = {
-  starter: true,
+  starter: false,
   plus: true,
   advanced: true,
 };
