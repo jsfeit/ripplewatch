@@ -10,8 +10,8 @@ export const metadata = {
   title: "Join the waitlist",
   description,
   alternates: { canonical: "/waitlist" },
-  openGraph: { title: "Join the waitlist — Ripplewatch", description, images: ["/opengraph-image"] },
-  twitter: { card: "summary_large_image", title: "Join the waitlist — Ripplewatch", description, images: ["/opengraph-image"] },
+  openGraph: { title: "Join the waitlist | Ripplewatch", description, images: ["/opengraph-image"] },
+  twitter: { card: "summary_large_image", title: "Join the waitlist | Ripplewatch", description, images: ["/opengraph-image"] },
 };
 
 const scoredExample = MOCK_SIGNALS.find((s) => s.id === "sig-1")!;
@@ -45,7 +45,7 @@ export default function WaitlistPage() {
         </div>
         <p className="mt-4 text-sm text-muted-foreground">
           Every alert arrives scored against your own positioning, ICP, and lost-deal
-          reasons — not just a list of what changed.
+          reasons: not just a list of what changed.
         </p>
       </div>
     </div>

@@ -104,7 +104,7 @@ export function CompetitorManager({
       <div>
         <h2 className="font-medium">Manage competitors</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {`${competitors.length} of ${competitorLimitLabel(tier)} tracked on your plan. Keep names and domains consistent once you start tracking a competitor — the scoring model learns from each one's history, so renaming or re-adding it under a slightly different name resets that context.`}
+          {`${competitors.length} of ${competitorLimitLabel(tier)} tracked on your plan. Keep names and domains consistent once you start tracking a competitor: the scoring model learns from each one's history, so renaming or re-adding it under a slightly different name resets that context.`}
         </p>
       </div>
 
@@ -114,7 +114,7 @@ export function CompetitorManager({
           <p>
             You have {competitors.length} competitors but your plan only monitors{" "}
             {competitorLimitLabel(tier)}. The {competitors.length - competitorLimit} most recently
-            added are no longer being crawled — remove some or{" "}
+            added are no longer being crawled; remove some or{" "}
             <Link href="/pricing" className="underline">
               upgrade
             </Link>{" "}
@@ -226,7 +226,7 @@ export function CompetitorManager({
           </div>
         ))}
         {competitors.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No competitors yet — add your first one above.</p>
+          <p className="text-sm text-muted-foreground">No competitors yet; add your first one above.</p>
         ) : null}
       </div>
     </div>

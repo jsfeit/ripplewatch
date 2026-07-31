@@ -71,7 +71,7 @@ export const MOCK_SIGNALS: Signal[] = [
     scored: true,
     relevanceLevel: "High",
     relevanceReasoning:
-      "Your ICP is self-serve marketing leads with no analyst on staff — onboarding clarity is one of your stated wedge differentiators. This is a live example to reference in sales conversations.",
+      "Your ICP is self-serve marketing leads with no analyst on staff: onboarding clarity is one of your stated wedge differentiators. This is a live example to reference in sales conversations.",
   },
   {
     id: "sig-3",
@@ -84,7 +84,7 @@ export const MOCK_SIGNALS: Signal[] = [
     scored: true,
     relevanceLevel: "Medium",
     relevanceReasoning:
-      "Signals a move upmarket toward analyst-led service, which could pull them away from your self-serve buyer segment — worth tracking but not an immediate threat to your ICP.",
+      "Signals a move upmarket toward analyst-led service, which could pull them away from your self-serve buyer segment; worth tracking but not an immediate threat to your ICP.",
   },
   {
     id: "sig-4",
@@ -144,7 +144,7 @@ export const MOCK_SIGNALS: Signal[] = [
     scored: true,
     relevanceLevel: "Low",
     relevanceReasoning:
-      "This only affects their top tier, which targets larger teams than your typical 5–100 person ICP — unlikely to come up in your deals.",
+      "This only affects their top tier, which targets larger teams than your typical 5–100 person ICP; unlikely to come up in your deals.",
   },
   {
     id: "sig-10",

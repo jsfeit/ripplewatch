@@ -119,7 +119,7 @@ function checkSentry(): StatusCheck {
     name: "Sentry",
     configured,
     ok: configured,
-    detail: configured ? "DSN set — error tracking active." : "NEXT_PUBLIC_SENTRY_DSN not set.",
+    detail: configured ? "DSN set; error tracking active." : "NEXT_PUBLIC_SENTRY_DSN not set.",
   };
 }
 
@@ -133,7 +133,7 @@ function checkCron(): StatusCheck {
     detail: !value
       ? "CRON_SECRET not set."
       : isPlaceholder
-        ? "Still using the dev placeholder — set a real random value before deploying."
+        ? "Still using the dev placeholder; set a real random value before deploying."
         : "Set.",
   };
 }

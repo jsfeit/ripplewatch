@@ -5,14 +5,14 @@ import { buttonVariants } from "@/components/ui/button";
 import Link from "next/link";
 
 const description =
-  "See how Ripplewatch turns a raw competitor signal into a relevance verdict — scored against your positioning, ICP, and the real reasons deals were lost.";
+  "See how Ripplewatch turns a raw competitor signal into a relevance verdict: scored against your positioning, ICP, and the real reasons deals were lost.";
 
 export const metadata = {
   title: "How it works",
   description,
   alternates: { canonical: "/how-it-works" },
-  openGraph: { title: "How it works — Ripplewatch", description },
-  twitter: { card: "summary_large_image", title: "How it works — Ripplewatch", description },
+  openGraph: { title: "How it works | Ripplewatch", description },
+  twitter: { card: "summary_large_image", title: "How it works | Ripplewatch", description },
 };
 
 const scoredExample = MOCK_SIGNALS.find((s) => s.id === "sig-2")!;
@@ -23,12 +23,12 @@ const STAGES = [
   {
     icon: Radar,
     title: "1. You give us context, not just competitor names",
-    body: "Most tools ask 'who are your competitors?' and stop there. We ask about your positioning, your ICP, and — critically — the actual reasons deals were lost or customers churned. That context is what turns a raw signal into a judgment call.",
+    body: "Most tools ask 'who are your competitors?' and stop there. We ask about your positioning, your ICP, and, critically, the actual reasons deals were lost or customers churned. That context is what turns a raw signal into a judgment call.",
   },
   {
     icon: Sparkles,
     title: "2. Every signal gets scored against that context",
-    body: "A pricing change, a job posting, a bad review — none of it means anything in isolation. We check it against your context profile and produce a relevance verdict: High, Medium, or Low, with the reasoning spelled out.",
+    body: "A pricing change, a job posting, a bad review: none of it means anything in isolation. We check it against your context profile and produce a relevance verdict: High, Medium, or Low, with the reasoning spelled out.",
   },
   {
     icon: Send,
@@ -44,7 +44,7 @@ export default function HowItWorksPage() {
         <h1 className="text-4xl font-semibold tracking-tight text-balance">
           Every competitor tool tells you what changed.
           <br />
-          We tell you whether it matters to you — and why.
+          We tell you whether it matters to you, and why.
         </h1>
         <p className="mt-4 text-muted-foreground">
           The difference isn&apos;t more data. It&apos;s a verdict you can act on.
@@ -77,7 +77,7 @@ export default function HowItWorksPage() {
             competitorInitial={competitorFor(scoredExample.competitorId).initial}
           />
           <p className="mt-3 text-xs text-muted-foreground">
-            Same category of signal — but scored against your ICP and known differentiators, with reasoning attached.
+            Same category of signal, but scored against your ICP and known differentiators, with reasoning attached.
           </p>
         </div>
       </div>

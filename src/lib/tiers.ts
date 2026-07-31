@@ -18,6 +18,8 @@ export type Tier = {
   delivery: string;
   crm?: string;
   callIntel?: string;
+  gong?: string;
+  intercom?: string;
   seats: string;
   cta: string;
   highlight?: boolean;
@@ -62,7 +64,6 @@ export const TIERS: Tier[] = [
     relevanceScoring: "Full scoring on every signal",
     delivery: "Slack + email",
     crm: "HubSpot (read-only pull)",
-    callIntel: "Zoom call insights (Gong coming soon)",
     seats: "Up to 10 seats",
     cta: "Start with Plus",
     highlight: true,
@@ -82,7 +83,9 @@ export const TIERS: Tier[] = [
     onboarding: "Onboarding support",
     delivery: "Slack + email",
     crm: "HubSpot (read-only pull)",
-    callIntel: "Zoom call insights (Gong coming soon)",
+    callIntel: "Zoom call insights",
+    gong: "Gong (coming soon)",
+    intercom: "Intercom (coming soon)",
     seats: "Unlimited",
     cta: "Start with Advanced",
   },

@@ -2,7 +2,7 @@ import { CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { getSystemStatus } from "@/lib/system-status";
 
-export const metadata = { title: "System status — Admin" };
+export const metadata = { title: "System status | Admin" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminStatusPage() {
@@ -13,7 +13,7 @@ export default async function AdminStatusPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight">System status</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Live checks against every integration this app depends on — run this after switching
+          Live checks against every integration this app depends on; run this after switching
           between test/sandbox and live keys to confirm the current environment is fully wired up.
         </p>
       </div>

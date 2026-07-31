@@ -1,7 +1,7 @@
 import { getStripe } from "@/lib/stripe";
 import { PromoCodesView, type PromoCode } from "@/components/admin/promo-codes-view";
 
-export const metadata = { title: "Promo codes — Admin" };
+export const metadata = { title: "Promo codes | Admin" };
 export const dynamic = "force-dynamic";
 
 async function loadCodes(): Promise<{ codes: PromoCode[]; error: string | null }> {
@@ -47,7 +47,7 @@ export default async function AdminPromoCodesPage() {
         <h1 className="text-2xl font-semibold tracking-tight">Promo codes</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Customers enter these at Stripe Checkout. Discount % and duration are locked once a code is
-          created — make a new code to change them.
+          created; make a new code to change them.
         </p>
       </div>
 

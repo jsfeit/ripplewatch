@@ -214,7 +214,7 @@ function PricingCard({
         </p>
       ) : !record ? (
         <p className="mt-3 text-xs text-muted-foreground">
-          Not checked yet — runs on the next scheduled crawl.
+          Not checked yet; runs on the next scheduled crawl.
         </p>
       ) : (
         <>

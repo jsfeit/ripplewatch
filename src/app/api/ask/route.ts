@@ -76,6 +76,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ answer });
   } catch (err) {
     console.error("ask failed:", err);
-    return NextResponse.json({ error: "Couldn't get an answer just now — try again in a moment." }, { status: 502 });
+    return NextResponse.json({ error: "Couldn't get an answer just now; try again in a moment." }, { status: 502 });
   }
 }

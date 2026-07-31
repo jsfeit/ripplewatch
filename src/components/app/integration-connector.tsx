@@ -74,7 +74,7 @@ export function IntegrationConnector({
           ) : null}
         </div>
       ) : requiresUpgrade ? (
-        <Link href="/pricing" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
+        <Link href="/app/settings?tab=plan" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
           Upgrade to connect
         </Link>
       ) : (

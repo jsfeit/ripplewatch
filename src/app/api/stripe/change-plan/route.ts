@@ -44,7 +44,7 @@ export async function POST(request: Request) {
 
   if (!account?.stripe_customer_id || !account.stripe_subscription_id) {
     return NextResponse.json(
-      { error: "No active subscription to change — start checkout instead." },
+      { error: "No active subscription to change; start checkout instead." },
       { status: 400 }
     );
   }

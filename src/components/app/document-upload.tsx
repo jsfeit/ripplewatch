@@ -59,7 +59,7 @@ export function DocumentUpload() {
       <div>
         <p className="text-sm font-medium">Attach supporting documents (optional)</p>
         <p className="text-xs text-muted-foreground">
-          Positioning decks, battlecards, sales call notes — anything that helps us understand
+          Positioning decks, battlecards, sales call notes: anything that helps us understand
           your business. Stored securely; up to 10MB per file.
         </p>
       </div>

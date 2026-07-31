@@ -5,7 +5,7 @@ import { SupabaseNotConfigured } from "@/components/admin/not-configured";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-export const metadata = { title: "Users — Admin" };
+export const metadata = { title: "Users | Admin" };
 export const dynamic = "force-dynamic";
 
 type Row = {
@@ -41,7 +41,7 @@ export default async function AdminUsersPage() {
           const account = profile?.account_id ? accountById.get(profile.account_id) : undefined;
           return {
             id: u.id,
-            email: u.email ?? "—",
+            email: u.email ?? "–",
             lastSignInAt: u.last_sign_in_at ?? null,
             role: profile?.role ?? null,
             accountId: account?.id ?? null,
@@ -102,7 +102,7 @@ export default async function AdminUsersPage() {
                         {row.role}
                       </Badge>
                     ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
+                      <span className="text-xs text-muted-foreground">–</span>
                     )}
                   </TableCell>
                   <TableCell className="text-muted-foreground">

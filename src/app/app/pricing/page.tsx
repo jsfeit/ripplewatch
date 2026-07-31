@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PricingBoard } from "./pricing-board";
 
-export const metadata = { title: "Pricing — Ripplewatch" };
+export const metadata = { title: "Pricing | Ripplewatch" };
 export const dynamic = "force-dynamic";
 
 export default async function PricingPage() {

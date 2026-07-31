@@ -48,6 +48,16 @@ export function SettingsView({
   const currentTier = TIERS.find((t) => t.id === account.tier) ?? TIERS[0];
   const isConnected = (provider: string) => integrations.some((i) => i.provider === provider && i.connected);
 
+  // Lets "Upgrade to connect" (an integration gated by tier) land directly
+  // on the Plan tab via /app/settings?tab=plan, instead of always opening
+  // on Integrations regardless of why someone arrived here. Lazy-initialized
+  // from window.location so this doesn't need useSearchParams/Suspense.
+  const [activeTab, setActiveTab] = useState(() =>
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "plan"
+      ? "plan"
+      : "integrations"
+  );
+
   // Fires once on landing back from Stripe's embedded Checkout via
   // return_url. Reads window.location directly (not useSearchParams) so
   // this doesn't need a Suspense boundary. transaction_id from session_id
@@ -111,7 +121,7 @@ export function SettingsView({
         tier={checkoutModal?.tier ?? "starter"}
         period={checkoutModal?.period ?? "monthly"}
       />
-      <Tabs defaultValue="integrations">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
       <TabsList>
         <TabsTrigger value="integrations">Integrations</TabsTrigger>
         <TabsTrigger value="team">Team</TabsTrigger>
@@ -124,7 +134,7 @@ export function SettingsView({
           <CardHeader>
             <h2 className="font-medium">Team</h2>
             <p className="text-sm text-muted-foreground">
-              Invite co-workers to your workspace — everyone shares the same competitors and alerts.
+              Invite co-workers to your workspace; everyone shares the same competitors and alerts.
             </p>
           </CardHeader>
           <CardContent>
@@ -171,7 +181,7 @@ export function SettingsView({
               description={
                 CRM_ALLOWED[account.tier]
                   ? "Read-only pull of closed-lost deal reasons"
-                  : "Read-only pull of closed-lost deal reasons — Plus and above"
+                  : "Read-only pull of closed-lost deal reasons, Plus and above"
               }
               connected={isConnected("hubspot")}
               connectHref="/api/integrations/hubspot/connect"
@@ -211,7 +221,7 @@ export function SettingsView({
               description={
                 CALL_INTEL_ALLOWED[account.tier]
                   ? "Pull competitor mentions from recorded meeting transcripts"
-                  : "Pull competitor mentions from recorded meeting transcripts — Plus and above"
+                  : "Pull competitor mentions from recorded meeting transcripts, Advanced only"
               }
               connected={isConnected("zoom")}
               connectHref="/api/integrations/zoom/connect"
@@ -310,7 +320,7 @@ export function SettingsView({
         {recentSignals.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-sm text-muted-foreground">
-              No signals yet — once crawling picks something up, this tab will preview exactly what
+              No signals yet; once crawling picks something up, this tab will preview exactly what
               gets sent to Slack and email.
             </CardContent>
           </Card>
@@ -375,7 +385,7 @@ export function SettingsView({
                             {competitorName} · {signal.title}
                           </p>
                           <p className="text-muted-foreground">
-                            {signal.relevance_level} relevance — {signal.relevance_reasoning}
+                            {signal.relevance_level} relevance: {signal.relevance_reasoning}
                           </p>
                         </div>
                       ) : (

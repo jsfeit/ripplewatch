@@ -42,11 +42,11 @@ export function seatLimitLabel(tier: AccountTier): string {
   return limit === Infinity ? "unlimited" : String(limit);
 }
 
-// Gong/Zoom call-intelligence integrations — same gate as CRM, kept as a
-// separate map so the two can diverge later without re-plumbing call sites.
+// Zoom call-intelligence is Advanced-only (Gong isn't connectable at all
+// yet — see "comingSoon" in settings-view.tsx, tier-independent).
 export const CALL_INTEL_ALLOWED: Record<AccountTier, boolean> = {
   starter: false,
-  plus: true,
+  plus: false,
   advanced: true,
 };
 

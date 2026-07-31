@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { buttonVariants } from "@/components/ui/button";
 import { Download } from "lucide-react";
 
-export const metadata = { title: "Careers — Admin" };
+export const metadata = { title: "Careers | Admin" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminCareersPage() {

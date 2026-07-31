@@ -50,7 +50,7 @@ export function WaitlistForm() {
         <CheckCircle2 className="size-8 text-primary" />
         <p className="font-medium">You&apos;re on the list.</p>
         <p className="text-sm text-muted-foreground">
-          We&apos;re onboarding teams in small batches — we&apos;ll reach out at {email}.
+          We&apos;re onboarding teams in small batches; we&apos;ll reach out at {email}.
         </p>
       </div>
     );

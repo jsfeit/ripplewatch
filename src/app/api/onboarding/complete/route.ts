@@ -55,7 +55,7 @@ export async function POST(request: Request) {
   const tierLimit = tier && tier in COMPETITOR_LIMIT ? COMPETITOR_LIMIT[tier as keyof typeof COMPETITOR_LIMIT] : null;
   if (tierLimit !== null && namedCompetitors.length > tierLimit) {
     return NextResponse.json(
-      { error: `The ${tier} plan tracks up to ${tierLimit} competitors — remove some to continue.` },
+      { error: `The ${tier} plan tracks up to ${tierLimit} competitors; remove some to continue.` },
       { status: 400 }
     );
   }

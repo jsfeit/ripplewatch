@@ -407,7 +407,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
                 Add competitor
               </Button>
               <p className="text-xs text-muted-foreground">
-                {filledCompetitors.length}/{maxCompetitors} named — minimum 3 required
+                {filledCompetitors.length}/{maxCompetitors} named, minimum 3 required
               </p>
 
               <SuggestedCompetitors
@@ -458,7 +458,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
                 <div>
                   <p className="text-sm font-medium">Connect Slack</p>
                   <p className="text-xs text-muted-foreground">
-                    We push every relevant signal straight to the channel of your choice — no one
+                    We push every relevant signal straight to the channel of your choice; no one
                     has to log in to Ripplewatch to know what changed.
                   </p>
                 </div>
@@ -478,7 +478,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
                       id="lostDealReasons"
                       value={lostDealReasons}
                       onChange={(e) => setLostDealReasons(e.target.value)}
-                      placeholder="Lost to Parano.ai — they were $30/mo cheaper on the entry tier"
+                      placeholder="Lost to Parano.ai, they were $30/mo cheaper on the entry tier"
                       rows={3}
                     />
                   </div>
@@ -487,7 +487,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
                       <DocumentUpload />
                     ) : (
                       <p className="text-xs text-muted-foreground">
-                        Or attach a win/loss report — available once you create your account.
+                        Or attach a win/loss report; available once you create your account.
                       </p>
                     )}
                   </div>
@@ -507,7 +507,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
                       id="churnReasons"
                       value={churnReasons}
                       onChange={(e) => setChurnReasons(e.target.value)}
-                      placeholder="Churned after 2 months — said RivalSense's onboarding was easier to get started with"
+                      placeholder="Churned after 2 months, said RivalSense's onboarding was easier to get started with"
                       rows={3}
                     />
                   </div>
@@ -516,7 +516,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
                       <DocumentUpload />
                     ) : (
                       <p className="text-xs text-muted-foreground">
-                        Or attach a churn report — available once you create your account.
+                        Or attach a churn report; available once you create your account.
                       </p>
                     )}
                   </div>
@@ -528,7 +528,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
           {step === 3 && (
             <div className="space-y-5">
               <p className="text-sm text-muted-foreground">
-                Here&apos;s a live sample of the kind of alert you&apos;ll get — updating as you filled in
+                Here&apos;s a live sample of the kind of alert you&apos;ll get, updating as you filled in
                 your context. Real signals will replace this once monitoring is live.
               </p>
               <div
@@ -556,7 +556,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
               </div>
               {!initiallySignedIn ? (
                 <p className="text-sm font-medium text-primary">
-                  Like what you see? This is just a one-alert teaser — sign up to start real monitoring
+                  Like what you see? This is just a one-alert teaser; sign up to start real monitoring
                   and get this on every signal, not just a sample.
                 </p>
               ) : null}
@@ -567,7 +567,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
             <div className="space-y-5">
               <p className="text-sm text-muted-foreground">
                 Create your account to start monitoring these competitors for real.
-                {selectedPlan ? null : " Pick a plan, then you're set — no trial, but every plan comes with a 30-day money-back guarantee."}
+                {selectedPlan ? null : " Pick a plan, then you're set: no trial, but every plan comes with a 30-day money-back guarantee."}
               </p>
 
               {!selectedPlan ? (
@@ -605,7 +605,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
                           </div>
                           <p className="mt-1 text-xs text-muted-foreground">
                             {tooFewSlots
-                              ? `Only monitors up to ${tierLimit} competitors — remove some to pick this plan`
+                              ? `Only monitors up to ${tierLimit} competitors, remove some to pick this plan`
                               : tier.tagline}
                           </p>
                         </button>
