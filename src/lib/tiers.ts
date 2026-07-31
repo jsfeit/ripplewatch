@@ -14,9 +14,9 @@ export type Tier = {
   competitors: string;
   signalSources: string;
   relevanceScoring: string;
-  onboarding: string;
+  onboarding?: string;
   delivery: string;
-  crm: string;
+  crm?: string;
   callIntel?: string;
   seats: string;
   cta: string;
@@ -43,10 +43,8 @@ export const TIERS: Tier[] = [
     tagline: "Get the signal, see the difference relevance makes.",
     competitors: "3 competitors",
     signalSources: "Pricing, job postings, news, funding",
-    relevanceScoring: "1 fully-scored alert/week (teaser) — rest raw & unscored",
-    onboarding: "Self-serve form",
+    relevanceScoring: "Unscored alerts",
     delivery: "Slack + email",
-    crm: "HubSpot (read-only pull)",
     seats: "3 logins",
     cta: "Start with Starter",
   },
@@ -62,7 +60,6 @@ export const TIERS: Tier[] = [
     competitors: "Up to 7 competitors",
     signalSources: "Pricing, job postings, news, funding",
     relevanceScoring: "Full scoring on every signal",
-    onboarding: "Self-serve form",
     delivery: "Slack + email",
     crm: "HubSpot (read-only pull)",
     callIntel: "Zoom call insights (Gong coming soon)",
