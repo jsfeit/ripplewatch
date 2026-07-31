@@ -159,6 +159,53 @@ export async function sendPaymentReminderEmail(
   if (result.error) throw new Error(result.error.message);
 }
 
+const TIER_DISPLAY_NAMES: Record<string, string> = { starter: "Starter", plus: "Plus", advanced: "Advanced" };
+const TIER_RANK: Record<string, number> = { starter: 0, plus: 1, advanced: 2 };
+
+// Fired by the customer.subscription.updated webhook handler whenever a
+// tier switch actually lands (comparing the account's tier before vs.
+// after the update) — never on the very first subscription creation,
+// which the welcome email already covers.
+export async function sendPlanChangeEmail(to: string, fromTier: string, toTier: string, appUrl: string) {
+  if (!isResendConfigured()) return;
+
+  const isUpgrade = (TIER_RANK[toTier] ?? 0) > (TIER_RANK[fromTier] ?? 0);
+  const fromName = TIER_DISPLAY_NAMES[fromTier] ?? fromTier;
+  const toName = TIER_DISPLAY_NAMES[toTier] ?? toTier;
+  const subject = isUpgrade
+    ? `You're now on the ${toName} plan`
+    : `Your plan is switching to ${toName}`;
+  const settingsUrl = `${appUrl}/app/settings`;
+
+  const body = isUpgrade
+    ? `<p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+        Your plan changed from ${fromName} to ${toName}, effective immediately — the difference was charged
+        on a prorated basis, and your new limits are active now.
+      </p>`
+    : `<p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+        Your plan is moving from ${fromName} to ${toName}. Since this is a downgrade, you'll keep your
+        current ${fromName} access through the end of the period you already paid for — the switch to
+        ${toName} takes effect at your next billing date, not immediately.
+      </p>`;
+
+  const result = await getResend().emails.send({
+    from: process.env.RESEND_FROM_EMAIL!,
+    to,
+    subject,
+    html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+      <h2 style="margin:0 0 12px;">${subject}</h2>
+      ${body}
+      <a href="${settingsUrl}" style="display:inline-block;margin-top:8px;padding:10px 20px;background:#0f5f56;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">
+        View billing
+      </a>
+      <p style="color:#888;font-size:12px;margin-top:24px;">
+        Questions? Just reply — a person reads every one.
+      </p>
+    </div>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
 // Distinct from the transactional digest/invite emails above — a one-time
 // send right after onboarding completes, so a new signup doesn't churn
 // before their first real (scored) signal shows up days later.
