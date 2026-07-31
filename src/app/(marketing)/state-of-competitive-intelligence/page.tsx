@@ -20,13 +20,11 @@ export const metadata = {
   openGraph: {
     title: "The State of Competitive Intelligence Tools — Ripplewatch",
     description,
-    images: ["/opengraph-image"],
   },
   twitter: {
     card: "summary_large_image",
     title: "The State of Competitive Intelligence Tools — Ripplewatch",
     description,
-    images: ["/opengraph-image"],
   },
 };
 
