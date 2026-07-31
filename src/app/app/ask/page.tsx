@@ -26,7 +26,7 @@ export default async function AskPage() {
     .order("created_at", { ascending: true });
 
   return (
-    <div className="mx-auto max-w-3xl px-10 py-10">
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-10 sm:py-10">
       <div className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight">Ask</h1>
         <p className="mt-1 text-sm text-muted-foreground">

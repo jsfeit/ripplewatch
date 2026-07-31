@@ -39,16 +39,16 @@ export function IntegrationConnector({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-4 rounded-lg border p-4 transition-colors",
+        "flex flex-col items-start gap-3 rounded-lg border p-4 transition-colors sm:flex-row sm:items-center sm:justify-between sm:gap-4",
         connected ? "border-primary/25 bg-primary/[0.03]" : "border-border bg-card",
         comingSoon && "opacity-60"
       )}
     >
-      <div className="flex items-center gap-3">
-        <span className={cn("flex size-9 items-center justify-center rounded-md", avatarColor(provider))}>
+      <div className="flex min-w-0 items-center gap-3">
+        <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-md", avatarColor(provider))}>
           <Icon className="size-4" />
         </span>
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-medium">{name}</p>
           <p className="text-xs text-muted-foreground">{description}</p>
         </div>

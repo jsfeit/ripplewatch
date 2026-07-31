@@ -123,7 +123,7 @@ export function CompetitorManager({
         </div>
       ) : null}
 
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <Input
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
@@ -148,7 +148,7 @@ export function CompetitorManager({
           <div
             key={c.id}
             className={cn(
-              "flex items-center justify-between gap-3 rounded-lg border p-3 transition-colors",
+              "flex flex-col items-start gap-3 rounded-lg border p-3 transition-colors sm:flex-row sm:items-center sm:justify-between",
               c.id === activeId
                 ? "border-primary/40 bg-primary/[0.03]"
                 : "border-border hover:border-border/80 hover:bg-secondary/30"
@@ -156,7 +156,7 @@ export function CompetitorManager({
           >
             {editingId === c.id ? (
               <>
-                <div className="flex flex-1 gap-2">
+                <div className="flex w-full flex-col gap-2 sm:flex-1 sm:flex-row">
                   <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="flex-1" />
                   <Input value={editDomain} onChange={(e) => setEditDomain(e.target.value)} className="flex-1" />
                 </div>
@@ -177,33 +177,33 @@ export function CompetitorManager({
               </>
             ) : (
               <>
-                <div className="flex items-center gap-3">
+                <div className="flex min-w-0 items-center gap-3">
                   <span
                     className={cn(
-                      "flex size-8 items-center justify-center rounded-full text-xs font-semibold",
+                      "flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
                       avatarColor(c.name)
                     )}
                   >
                     {c.name.charAt(0).toUpperCase()}
                   </span>
                   {c.id === activeId ? (
-                    <div>
-                      <p className="text-sm font-medium">{c.name}</p>
-                      <p className="text-xs text-muted-foreground">{c.domain ?? "No domain set"}</p>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{c.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">{c.domain ?? "No domain set"}</p>
                     </div>
                   ) : (
-                    <Link href={`/app/competitors/${c.id}`} className="group">
-                      <p className="text-sm font-medium group-hover:underline">{c.name}</p>
-                      <p className="text-xs text-muted-foreground">{c.domain ?? "No domain set"}</p>
+                    <Link href={`/app/competitors/${c.id}`} className="group min-w-0">
+                      <p className="truncate text-sm font-medium group-hover:underline">{c.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">{c.domain ?? "No domain set"}</p>
                     </Link>
                   )}
                   {!monitoredIds.has(c.id) ? (
-                    <Badge variant="outline" className="text-muted-foreground">
+                    <Badge variant="outline" className="shrink-0 text-muted-foreground">
                       Not monitored
                     </Badge>
                   ) : null}
                 </div>
-                <div className="flex gap-1">
+                <div className="flex shrink-0 gap-1">
                   <Button
                     variant="ghost"
                     size="icon"

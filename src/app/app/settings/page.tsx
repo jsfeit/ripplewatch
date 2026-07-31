@@ -48,7 +48,7 @@ export default async function SettingsPage() {
     : { data: [] };
 
   return (
-    <div className="mx-auto max-w-5xl px-10 py-10">
+    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-10 sm:py-10">
       <div className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">

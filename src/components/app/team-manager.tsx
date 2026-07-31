@@ -103,10 +103,10 @@ export function TeamManager({ tier, currentUserId }: { tier: Tier; currentUserId
         {(members ?? []).map((m) => (
           <div
             key={m.id}
-            className="flex items-center justify-between rounded-lg border border-border p-3 text-sm"
+            className="flex items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm"
           >
-            <div>
-              <p className="font-medium">{m.email}</p>
+            <div className="min-w-0">
+              <p className="truncate font-medium">{m.email}</p>
               <p className="text-xs text-muted-foreground capitalize">{m.role}</p>
             </div>
             {m.id !== currentUserId ? (
@@ -127,10 +127,10 @@ export function TeamManager({ tier, currentUserId }: { tier: Tier; currentUserId
         {invites.map((invite) => (
           <div
             key={invite.id}
-            className="flex items-center justify-between rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground"
+            className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground"
           >
-            <div>
-              <p className="font-medium text-foreground">{invite.email}</p>
+            <div className="min-w-0">
+              <p className="truncate font-medium text-foreground">{invite.email}</p>
               <p className="text-xs">Invite pending</p>
             </div>
             <Button

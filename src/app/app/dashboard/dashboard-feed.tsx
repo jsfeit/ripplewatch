@@ -84,19 +84,19 @@ export function DashboardFeed({
       <div className="mt-6 space-y-6">
         {groups.map(({ competitor, signals: competitorSignals, thisWeek, lastWeek }) => (
           <div key={competitor.id}>
-            <div className="mb-2 flex items-center justify-between">
-              <div className="flex items-center gap-2">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-2">
                 <span
                   className={cn(
-                    "flex size-6 items-center justify-center rounded-full text-[11px] font-semibold",
+                    "flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold",
                     avatarColor(competitor.name)
                   )}
                 >
                   {competitor.name.charAt(0).toUpperCase()}
                 </span>
-                <h3 className="text-sm font-semibold">{competitor.name}</h3>
+                <h3 className="truncate text-sm font-semibold">{competitor.name}</h3>
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="shrink-0 text-xs text-muted-foreground">
                 {thisWeek > lastWeek ? (
                   <span className="font-medium text-primary">
                     ▲ {thisWeek} signal{thisWeek === 1 ? "" : "s"}
