@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { SIGNAL_TYPE_LABELS } from "@/lib/mock-data";
 import { EvalLabelControl } from "@/components/admin/eval-label-control";
 
-export const metadata = { title: "Signals — Admin" };
+export const metadata = { title: "Signals | Admin" };
 export const dynamic = "force-dynamic";
 
 const LEVEL_BADGE: Record<string, string> = {
@@ -136,7 +136,7 @@ export default async function AdminSignalsPage() {
                         {row.accountName ?? "Unnamed account"}
                       </Link>
                     ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
+                      <span className="text-xs text-muted-foreground">–</span>
                     )}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{row.competitorName}</TableCell>
@@ -159,7 +159,7 @@ export default async function AdminSignalsPage() {
                     {row.scored ? (
                       <EvalLabelControl signalId={row.id} initialLabel={row.evalLabel} />
                     ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
+                      <span className="text-xs text-muted-foreground">–</span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -200,7 +200,7 @@ function AccuracyStats({
   if (accuracy.totalLabeled === 0) {
     return (
       <p className="mb-6 rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-        No signals labeled yet — use the thumbs up/down in the Eval column below to start building an accuracy
+        No signals labeled yet; use the thumbs up/down in the Eval column below to start building an accuracy
         baseline for the scoring prompt.
       </p>
     );

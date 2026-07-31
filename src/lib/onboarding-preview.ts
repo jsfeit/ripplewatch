@@ -37,7 +37,7 @@ export function generatePreviewAlert(inputs: PreviewInputs): PreviewAlert {
     inputs.lossReason.trim() ? `a recent lost deal came down to "${lossReason}"` : `you're still filling in why deals slip`
   }. ${competitorName} moving on price is the kind of change that matters for ${icp || FALLBACK.icp} evaluating ${
     positioning || FALLBACK.positioning
-  } against them — that's why this one is scored High, while a generic tool would just show you the price change with no read on whether it's worth your attention.`;
+  } against them: that's why this one is scored High, while a generic tool would just show you the price change with no read on whether it's worth your attention.`;
 
   return { competitorName, headline, reasoning };
 }

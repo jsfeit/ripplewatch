@@ -78,7 +78,7 @@ export default async function CompetitorDetailPage({
       <div className="mt-8 rounded-lg border border-border p-4">
         <h2 className="text-sm font-semibold text-muted-foreground">Monitoring sources</h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          Where we check for pricing and hiring changes. Pre-filled with a best guess from the domain — correct
+          Where we check for pricing and hiring changes. Pre-filled with a best guess from the domain: correct
           them if we guessed wrong, or a competitor uses a different path.
         </p>
         <div className="mt-3">

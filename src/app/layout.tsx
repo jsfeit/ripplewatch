@@ -16,13 +16,13 @@ const geistMono = Geist_Mono({
 });
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-const TITLE = "Ripplewatch — Competitive intelligence that knows what matters to you";
+const TITLE = "Ripplewatch | Competitive intelligence that knows what matters to you";
 const DESCRIPTION =
-  "AI-native competitive intelligence for startup marketing teams. Not just what changed — whether it matters to you, and why.";
+  "AI-native competitive intelligence for startup marketing teams. Not just what changed: whether it matters to you, and why.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
-  title: { default: TITLE, template: "%s — Ripplewatch" },
+  title: { default: TITLE, template: "%s | Ripplewatch" },
   description: DESCRIPTION,
   openGraph: {
     type: "website",

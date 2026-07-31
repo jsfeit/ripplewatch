@@ -8,7 +8,7 @@ import type { Database } from "@/lib/supabase/types";
 import { sumLlmUsageByAccount } from "@/lib/llm-pricing";
 import { TIERS } from "@/lib/tiers";
 
-export const metadata = { title: "Accounts — Admin" };
+export const metadata = { title: "Accounts | Admin" };
 export const dynamic = "force-dynamic";
 
 const TIER_LABELS: Record<string, string> = {
@@ -64,7 +64,7 @@ export default async function AdminAccountsPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight">Accounts</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {accounts?.length ?? 0} account{accounts?.length === 1 ? "" : "s"} — click one to manage its
+          {accounts?.length ?? 0} account{accounts?.length === 1 ? "" : "s"}; click one to manage its
           competitors and signals.
         </p>
       </div>
@@ -102,7 +102,7 @@ export default async function AdminAccountsPage() {
                   </TableCell>
                   <TableCell>
                     {!a.subscription_status ? (
-                      <span className="text-xs text-muted-foreground">—</span>
+                      <span className="text-xs text-muted-foreground">–</span>
                     ) : ["active", "trialing"].includes(a.subscription_status) ? (
                       <Badge variant="outline" className="text-primary">
                         {a.subscription_status}
@@ -121,7 +121,7 @@ export default async function AdminAccountsPage() {
                     {(() => {
                       const usage = llmCostByAccount.get(a.id);
                       if (!usage || usage.calls === 0) {
-                        return <span className="text-xs text-muted-foreground">—</span>;
+                        return <span className="text-xs text-muted-foreground">–</span>;
                       }
                       const tierPrice = MONTHLY_USD_BY_TIER[a.tier];
                       const overTierPrice = tierPrice !== undefined && usage.costUsd > tierPrice;

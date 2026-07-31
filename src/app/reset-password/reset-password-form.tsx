@@ -83,7 +83,7 @@ export function ResetPasswordForm() {
         <CardContent>
           <p className="text-sm text-muted-foreground">
             Verifying your reset link… if this doesn&apos;t update in a few seconds, the link may have
-            expired — request a new one from the{" "}
+            expired; request a new one from the{" "}
             <a href="/forgot-password" className="text-primary hover:underline">
               forgot password
             </a>{" "}

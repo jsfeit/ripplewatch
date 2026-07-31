@@ -194,7 +194,7 @@ export function AccountAdminView({
         <Card>
           <CardHeader>
             <div className="flex items-baseline justify-between">
-              <h2 className="font-medium">LLM cost — last {llmUsageWindowDays} days</h2>
+              <h2 className="font-medium">LLM cost, last {llmUsageWindowDays} days</h2>
               <span className="text-xs text-muted-foreground">Admin-only, estimated from token counts</span>
             </div>
           </CardHeader>

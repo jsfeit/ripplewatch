@@ -107,7 +107,7 @@ export function AlertCard({
           <p className="mt-3 text-sm font-medium">{signal.title}</p>
           <p className="mt-1 text-sm text-muted-foreground">{signal.summary}</p>
           <div className="mt-3 rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground">
-            No relevance score on this tier — upgrade to see why this would (or wouldn&apos;t) matter to you.
+            No relevance score on this tier; upgrade to see why this would (or wouldn&apos;t) matter to you.
           </div>
         </>
       )}

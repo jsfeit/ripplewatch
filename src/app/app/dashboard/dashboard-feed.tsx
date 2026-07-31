@@ -163,7 +163,7 @@ function SampleAlertPreview({
         <div className="absolute inset-y-0 left-0 w-1 bg-primary" />
         <div className="flex items-center gap-2 text-xs font-semibold text-primary">
           <Sparkles className="size-3.5" />
-          Sample — based on your setup
+          Sample, based on your setup
         </div>
         <p className="mt-3 text-sm font-medium">{preview.headline}</p>
         <div className="mt-3 rounded-md border border-primary/20 bg-accent/60 p-3">
@@ -176,7 +176,7 @@ function SampleAlertPreview({
       <EmptyState
         icon={Waves}
         title="Real signals are on the way"
-        description="Crawling runs on a schedule — this sample will be replaced by your first real alert."
+        description="Crawling runs on a schedule; this sample will be replaced by your first real alert."
       />
     </div>
   );

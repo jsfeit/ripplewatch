@@ -37,7 +37,7 @@ export const TOOL_PROFILES: ToolProfile[] = [
     tier: "mid-market",
     pricing: "Freemium, then $100s–$1,000s/mo",
     summary:
-      "A pure traffic and audience-analytics data terminal — rank, visit volume, traffic-source breakdown, audience overlap. No synthesis or \"why it matters\" layer; interpretation is left entirely to the analyst reading it.",
+      "A pure traffic and audience-analytics data terminal: rank, visit volume, traffic-source breakdown, audience overlap. No synthesis or \"why it matters\" layer; interpretation is left entirely to the analyst reading it.",
   },
   {
     name: "Owler",
@@ -53,7 +53,7 @@ export const TOOL_PROFILES: ToolProfile[] = [
     tier: "mid-market",
     pricing: "~$960/yr (Core tier)",
     summary:
-      "Not a monitoring dashboard by design — an account/lead intelligence tool repurposed for competitive intel via saved searches and alerts on job changes, company updates, and posts from people at tracked accounts.",
+      "Not a monitoring dashboard by design: an account/lead intelligence tool repurposed for competitive intel via saved searches and alerts on job changes, company updates, and posts from people at tracked accounts.",
   },
   // AI-native / lean
   {
@@ -86,7 +86,7 @@ export const TOOL_PROFILES: ToolProfile[] = [
     tier: "ai-native",
     pricing: "$44.99–$222.99/mo",
     summary:
-      "A weekly curated briefing pulling from 80+ sources, explicitly designed to avoid a \"Google Alerts flood\" — includes a downvote mechanic so the system learns which insight types a given user doesn't want to see again.",
+      "A weekly curated briefing pulling from 80+ sources, explicitly designed to avoid a \"Google Alerts flood\"; includes a downvote mechanic so the system learns which insight types a given user doesn't want to see again.",
   },
   {
     name: "Caelian",
@@ -94,7 +94,7 @@ export const TOOL_PROFILES: ToolProfile[] = [
     tier: "ai-native",
     pricing: "Free during beta",
     summary:
-      "Built around a P0/P1/P2 priority framework aimed at CEOs rather than analysts — a live dashboard plus a daily brief that suppresses everything below the priority threshold. Positions itself as predictive, treating hiring and regulatory filings as leading indicators.",
+      "Built around a P0/P1/P2 priority framework aimed at CEOs rather than analysts: a live dashboard plus a daily brief that suppresses everything below the priority threshold. Positions itself as predictive, treating hiring and regulatory filings as leading indicators.",
   },
   {
     name: "Seeto",
@@ -136,12 +136,12 @@ export const TOOL_PROFILES: ToolProfile[] = [
 // out to match the others.
 export const LEADER_NOTES = {
   crayon: "Crayon's Compete Hub pairs a per-competitor feed with \"Sparks,\" an importance-scoring layer that filters noise before it reaches the dashboard, plus native Slack Insights for push delivery.",
-  klue: "Klue's \"Ask Klue\" answers are drawn strictly from validated internal data — a trust mechanism more than a relevance one — feeding into sales battlecards.",
+  klue: "Klue's \"Ask Klue\" answers are drawn strictly from validated internal data, a trust mechanism more than a relevance one, feeding into sales battlecards.",
   alphaSense: "AlphaSense sits closer to enterprise financial research than startup competitive intel, with its public footprint concentrated on funding and market-news coverage rather than product-level signals.",
 };
 
 export const LONG_TAIL_NOTE =
-  "Further down the long tail: CompetAI (PDF reports for small businesses), Playwise HQ (positions directly against Crayon's \"bloated dashboards,\" ~$3,000+/yr), WatchMyCompetitor, Competitors App (tracks newsletters and blog updates alongside standard monitoring), IndustryLens (a Monday \"verified summary\" briefing), Valona Intelligence (enterprise financial-benchmarking dashboards), and a self-hosted \"Klue Alternative\" n8n template ($50 one-time plus API costs) — all with thinner independent detail than the tools profiled above, but worth noting as demand signals for the category.";
+  "Further down the long tail: CompetAI (PDF reports for small businesses), Playwise HQ (positions directly against Crayon's \"bloated dashboards,\" ~$3,000+/yr), WatchMyCompetitor, Competitors App (tracks newsletters and blog updates alongside standard monitoring), IndustryLens (a Monday \"verified summary\" briefing), Valona Intelligence (enterprise financial-benchmarking dashboards), and a self-hosted \"Klue Alternative\" n8n template ($50 one-time plus API costs), all with thinner independent detail than the tools profiled above, but worth noting as demand signals for the category.";
 
 export type CoverageRow = {
   name: string;

@@ -51,7 +51,7 @@ export async function GET(request: Request) {
       if (!ok) {
         await sendUptimeAlertEmail(adminEmails, detail);
       } else if (previous?.last_status === "down") {
-        await sendUptimeAlertEmail(adminEmails, "Recovered — the last check succeeded.");
+        await sendUptimeAlertEmail(adminEmails, "Recovered: the last check succeeded.");
       }
     } catch (err) {
       console.error("uptime-check: failed to send alert email", err);

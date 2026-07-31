@@ -40,7 +40,7 @@ const STEPS = [
 const ASK_EXCHANGE = {
   question: "What has Parano.ai changed recently that actually matters to us?",
   answer:
-    "Two things worth acting on. They cut their entry tier from $99 to $69/mo — that directly narrows the price gap you've lost two deals to this month. They also removed the competitor-count cap on their top tier, which undercuts the \"scales with you\" pitch you lead with in upmarket conversations.",
+    "Two things worth acting on. They cut their entry tier from $99 to $69/mo, which directly narrows the price gap you've lost two deals to this month. They also removed the competitor-count cap on their top tier, which undercuts the \"scales with you\" pitch you lead with in upmarket conversations.",
 };
 
 const STRUCTURED_DATA = {
@@ -50,7 +50,7 @@ const STRUCTURED_DATA = {
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   description:
-    "AI-native competitive intelligence for startup marketing teams. Scores every competitor signal against your own positioning, ICP, and lost-deal reasons — not just what changed, but whether it matters.",
+    "AI-native competitive intelligence for startup marketing teams. Scores every competitor signal against your own positioning, ICP, and lost-deal reasons: not just what changed, but whether it matters.",
   offers: [
     { "@type": "Offer", name: "Starter", price: "69", priceCurrency: "USD" },
     { "@type": "Offer", name: "Plus", price: "149", priceCurrency: "USD" },
@@ -157,7 +157,7 @@ export default function HomePage() {
                   {PRICE_HIKE_TITLE}
                 </p>
                 <p className="mt-2 text-sm leading-relaxed text-foreground">
-                  This closes the gap between Northlane and your Plus plan to just $25/mo — Northlane
+                  This closes the gap between Northlane and your Plus plan to just $25/mo. Northlane
                   came up as the price comparison in 20 of your last 100 lost deals. Worth revisiting
                   how you frame value at this price point, and reaching out to those lost deals given
                   this change.
@@ -204,7 +204,7 @@ export default function HomePage() {
               Don&apos;t wait for the alert. Just ask.
             </h2>
             <p className="mt-3 text-muted-foreground">
-              Ripplewatch isn&apos;t only a feed — it&apos;s an analyst you can question directly, scoped to
+              Ripplewatch isn&apos;t only a feed, it&apos;s an analyst you can question directly, scoped to
               your competitors, your positioning, and the last 90 days of signals.
             </p>
           </div>
@@ -246,7 +246,7 @@ export default function HomePage() {
       <section className="mx-auto max-w-3xl px-6 py-20 text-center">
         <h2 className="text-3xl font-semibold tracking-tight">Ready to stop guessing what matters?</h2>
         <p className="mt-3 text-muted-foreground">
-          Join the waitlist — we&apos;re onboarding teams in small batches to keep relevance scoring sharp.
+          Join the waitlist; we&apos;re onboarding teams in small batches to keep relevance scoring sharp.
         </p>
         <div className="mt-8">
           <Link href="/waitlist" className={buttonVariants({ size: "lg" })}>

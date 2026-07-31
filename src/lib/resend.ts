@@ -17,13 +17,19 @@ export function isResendConfigured(): boolean {
   return Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL);
 }
 
-// Alerts (the digest emails customers actually signed up to receive, plus
-// internal uptime pages) send from a distinct address from everything else
-// — welcome/invite/campaign/billing mail reads as "the company," alerts
-// read as "the monitoring system." Falls back to the general address so a
-// deploy isn't broken if only RESEND_FROM_EMAIL is set.
+// Display name wrapper — without one, recipients just see the bare
+// address in their inbox. General mail (welcome/invite/campaign/billing)
+// reads as "the company"; alerts read as "the monitoring system."
+function getFromEmail(): string {
+  return `Hello from Ripplewatch AI <${process.env.RESEND_FROM_EMAIL!}>`;
+}
+
+// Falls back to the general address so a deploy isn't broken if only
+// RESEND_FROM_EMAIL is set.
 function getAlertsFromEmail(): string {
-  return process.env.RESEND_ALERTS_FROM_EMAIL || process.env.RESEND_FROM_EMAIL!;
+  return process.env.RESEND_ALERTS_FROM_EMAIL
+    ? `Alerts from Ripplewatch AI <${process.env.RESEND_ALERTS_FROM_EMAIL}>`
+    : getFromEmail();
 }
 
 export type DigestSignal = {
@@ -47,7 +53,7 @@ function renderDigestHtml(companyName: string, signals: DigestSignal[], cadence:
       if (s.scored) {
         return `<div style="border:1px solid #b9dfd9;background:#effaf8;border-radius:8px;padding:12px;margin-bottom:8px;">
           <p style="margin:0;font-weight:600;">${s.competitorName} · ${s.title}</p>
-          <p style="margin:4px 0 0;color:#3a3a3a;font-size:14px;">${s.relevanceLevel} relevance — ${s.relevanceReasoning ?? ""}</p>
+          <p style="margin:4px 0 0;color:#3a3a3a;font-size:14px;">${s.relevanceLevel} relevance: ${s.relevanceReasoning ?? ""}</p>
         </div>`;
       }
       return `<div style="border:1px solid #e5e5e5;border-radius:8px;padding:12px;margin-bottom:8px;color:#666;">
@@ -63,7 +69,7 @@ function renderDigestHtml(companyName: string, signals: DigestSignal[], cadence:
     <p style="color:#888;font-size:13px;">${eyebrow}</p>
     <h2 style="margin:4px 0 16px;">${signals.length} signals, ${scoredCount} worth acting on</h2>
     ${rows}
-    <p style="color:#888;font-size:12px;margin-top:24px;">— Ripplewatch, for ${companyName}</p>
+    <p style="color:#888;font-size:12px;margin-top:24px;">Ripplewatch, for ${companyName}</p>
   </div>`;
 }
 
@@ -95,7 +101,7 @@ export async function sendCampaignEmail(to: string, subject: string, html: strin
   if (!isResendConfigured()) throw new Error("RESEND_API_KEY/RESEND_FROM_EMAIL not configured.");
 
   const result = await getResend().emails.send({
-    from: process.env.RESEND_FROM_EMAIL!,
+    from: getFromEmail(),
     to,
     subject,
     html,
@@ -127,14 +133,14 @@ export async function sendPaymentReminderEmail(
   const body =
     step === 1
       ? `<p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
-          You set up ${companyName} on Ripplewatch, but checkout never finished — nothing's actively
+          You set up ${companyName} on Ripplewatch, but checkout never finished; nothing's actively
           monitoring your competitors until a plan is active.
         </p>
         <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
           Every plan comes with a 30-day money-back guarantee, so there's no real risk in finishing now.
         </p>`
       : `<p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
-          No pressure — just checking in one more time. Your account's ready whenever you are, but
+          No pressure, just checking in one more time. Your account's ready whenever you are, but
           competitors aren't being monitored until a plan is active.
         </p>
         <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
@@ -142,7 +148,7 @@ export async function sendPaymentReminderEmail(
         </p>`;
 
   const result = await getResend().emails.send({
-    from: process.env.RESEND_FROM_EMAIL!,
+    from: getFromEmail(),
     to,
     subject,
     html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
@@ -152,7 +158,7 @@ export async function sendPaymentReminderEmail(
         Finish setting up your plan
       </a>
       <p style="color:#888;font-size:12px;margin-top:24px;">
-        Questions? Just reply — a person reads every one.
+        Questions? Just reply; a person reads every one.
       </p>
     </div>`,
   });
@@ -179,17 +185,17 @@ export async function sendPlanChangeEmail(to: string, fromTier: string, toTier: 
 
   const body = isUpgrade
     ? `<p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
-        Your plan changed from ${fromName} to ${toName}, effective immediately — the difference was charged
+        Your plan changed from ${fromName} to ${toName}, effective immediately; the difference was charged
         on a prorated basis, and your new limits are active now.
       </p>`
     : `<p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
         Your plan is moving from ${fromName} to ${toName}. Since this is a downgrade, you'll keep your
-        current ${fromName} access through the end of the period you already paid for — the switch to
+        current ${fromName} access through the end of the period you already paid for; the switch to
         ${toName} takes effect at your next billing date, not immediately.
       </p>`;
 
   const result = await getResend().emails.send({
-    from: process.env.RESEND_FROM_EMAIL!,
+    from: getFromEmail(),
     to,
     subject,
     html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
@@ -199,7 +205,7 @@ export async function sendPlanChangeEmail(to: string, fromTier: string, toTier: 
         View billing
       </a>
       <p style="color:#888;font-size:12px;margin-top:24px;">
-        Questions? Just reply — a person reads every one.
+        Questions? Just reply; a person reads every one.
       </p>
     </div>`,
   });
@@ -213,28 +219,28 @@ export async function sendWelcomeEmail(to: string, companyName: string, appUrl: 
   if (!isResendConfigured()) return;
 
   const result = await getResend().emails.send({
-    from: process.env.RESEND_FROM_EMAIL!,
+    from: getFromEmail(),
     to,
-    subject: "Welcome to Ripplewatch — here's how to get value this week",
+    subject: "Welcome to Ripplewatch: here's how to get value this week",
     html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
       <h2 style="margin:0 0 12px;">You're set up, ${companyName}.</h2>
       <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
-        Your dashboard has a sample scored alert right now — that's a placeholder built from your own
+        Your dashboard has a sample scored alert right now; that's a placeholder built from your own
         positioning and competitors, not a real signal yet. Real ones start showing up once the next
         scheduled crawl runs.
       </p>
       <p style="color:#3a3a3a;font-size:14px;line-height:1.6;"><strong>Three things worth doing this week:</strong></p>
       <ol style="color:#3a3a3a;font-size:14px;line-height:1.7;padding-left:20px;">
         <li>Connect Slack so alerts land where your team already works, instead of waiting on email.</li>
-        <li>Add any remaining competitors you're tracking — the more context, the sharper the scoring.</li>
-        <li>Try Ask — it's scoped to your own competitors and business context, so you can ask something
+        <li>Add any remaining competitors you're tracking: the more context, the sharper the scoring.</li>
+        <li>Try Ask: it's scoped to your own competitors and business context, so you can ask something
           like "what's changed with our top competitor recently?" instead of waiting for an alert.</li>
       </ol>
       <a href="${appUrl}/app/dashboard" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#0f5f56;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">
         Go to your dashboard
       </a>
       <p style="color:#888;font-size:12px;margin-top:24px;">
-        Questions? Just reply — a person reads every one.
+        Questions? Just reply; a person reads every one.
       </p>
     </div>`,
   });
@@ -291,7 +297,7 @@ export async function sendInviteEmail(to: string, inviterCompanyName: string, ac
   if (!isResendConfigured()) return;
 
   const result = await getResend().emails.send({
-    from: process.env.RESEND_FROM_EMAIL!,
+    from: getFromEmail(),
     to,
     subject: `You've been invited to ${inviterCompanyName}'s Ripplewatch workspace`,
     html: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;">

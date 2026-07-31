@@ -7,8 +7,8 @@ export const metadata = {
   title: "Terms of Service",
   description,
   alternates: { canonical: "/terms" },
-  openGraph: { title: "Terms of Service — Ripplewatch", description, images: ["/opengraph-image"] },
-  twitter: { card: "summary_large_image", title: "Terms of Service — Ripplewatch", description, images: ["/opengraph-image"] },
+  openGraph: { title: "Terms of Service | Ripplewatch", description, images: ["/opengraph-image"] },
+  twitter: { card: "summary_large_image", title: "Terms of Service | Ripplewatch", description, images: ["/opengraph-image"] },
 };
 
 export default function TermsPage() {
@@ -45,10 +45,10 @@ export default function TermsPage() {
           checkout. Subscriptions renew automatically each billing period unless canceled.
         </p>
         <ul>
-          <li>You can request a full refund on any charge within 30 days of that charge — just email us.</li>
+          <li>You can request a full refund on any charge within 30 days of that charge; just email us.</li>
           <li>
             After that 30-day window, you can cancel at any time. Cancellation stops future billing, but
-            takes effect at the end of your current billing period — we do not issue partial refunds for
+            takes effect at the end of your current billing period; we do not issue partial refunds for
             time remaining in a period you have already paid for.
           </li>
         </ul>
@@ -90,12 +90,12 @@ export default function TermsPage() {
         <h2 id="subprocessors">7. Subprocessors</h2>
         <p>
           We use a small number of third-party service providers (&ldquo;subprocessors&rdquo;) to run
-          Ripplewatch. Each one only processes the data described below, only for the purpose listed — see
+          Ripplewatch. Each one only processes the data described below, only for the purpose listed: see
           our <a href="/privacy">Privacy Policy</a> for the full picture of what we collect and why.
         </p>
-        <p className="mt-4"><strong>Core infrastructure</strong> — used to run Ripplewatch for every customer.</p>
+        <p className="mt-4"><strong>Core infrastructure</strong>: used to run Ripplewatch for every customer.</p>
         <SubprocessorTable rows={CORE_SUBPROCESSORS} />
-        <p className="mt-4"><strong>Optional integrations</strong> — only process your data if you choose to connect them in Settings.</p>
+        <p className="mt-4"><strong>Optional integrations</strong>: only process your data if you choose to connect them in Settings.</p>
         <SubprocessorTable rows={OPTIONAL_SUBPROCESSORS} />
         <p className="mt-4">
           If we add or remove a subprocessor, we&apos;ll update this section and notify customers on paid

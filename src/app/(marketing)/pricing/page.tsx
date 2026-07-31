@@ -10,8 +10,8 @@ export const metadata = {
   title: "Pricing",
   description,
   alternates: { canonical: "/pricing" },
-  openGraph: { title: "Pricing — Ripplewatch", description },
-  twitter: { card: "summary_large_image", title: "Pricing — Ripplewatch", description },
+  openGraph: { title: "Pricing | Ripplewatch", description },
+  twitter: { card: "summary_large_image", title: "Pricing | Ripplewatch", description },
 };
 
 export default function PricingPage() {
@@ -31,10 +31,10 @@ export default function PricingPage() {
       <div className="mx-auto mt-16 flex max-w-2xl items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 p-6">
         <ShieldCheck className="mt-0.5 size-5 shrink-0 text-primary" />
         <p className="text-sm leading-relaxed text-foreground">
-          <span className="font-semibold">30-day money-back guarantee, on every plan.</span> Use
-          Ripplewatch for real, against your real competitors — if it&apos;s not for you, email us within
-          30 days of any charge for a full refund. Cancel anytime from Settings, no penalty or
-          lock-in; it takes effect at the end of your current billing period.
+          <span className="font-semibold">30-day money-back guarantee, on every plan.</span>{" "}
+          Use Ripplewatch for real, against your real competitors. If it&apos;s not for you, email us
+          within 30 days of any charge for a full refund. Cancel anytime from Settings, no penalty
+          or lock-in; it takes effect at the end of your current billing period.
         </p>
       </div>
 

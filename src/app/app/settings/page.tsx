@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SettingsView } from "./settings-view";
 
-export const metadata = { title: "Settings — Ripplewatch" };
+export const metadata = { title: "Settings | Ripplewatch" };
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {

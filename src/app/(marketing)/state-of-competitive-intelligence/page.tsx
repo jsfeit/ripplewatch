@@ -11,19 +11,19 @@ import {
 } from "@/lib/ci-market-research";
 
 const description =
-  "A survey of 20+ competitive intelligence tools — from enterprise research platforms to the new wave of AI-native, lean monitoring tools — and what's still missing from the category.";
+  "A survey of 20+ competitive intelligence tools, from enterprise research platforms to the new wave of AI-native, lean monitoring tools, and what's still missing from the category.";
 
 export const metadata = {
   title: "The State of Competitive Intelligence Tools",
   description,
   alternates: { canonical: "/state-of-competitive-intelligence" },
   openGraph: {
-    title: "The State of Competitive Intelligence Tools — Ripplewatch",
+    title: "The State of Competitive Intelligence Tools | Ripplewatch",
     description,
   },
   twitter: {
     card: "summary_large_image",
-    title: "The State of Competitive Intelligence Tools — Ripplewatch",
+    title: "The State of Competitive Intelligence Tools | Ripplewatch",
     description,
   },
 };
@@ -36,7 +36,7 @@ function Cell({ on }: { on: boolean }) {
   return on ? (
     <Check className="mx-auto size-4 text-primary" />
   ) : (
-    <span className="mx-auto block text-muted-foreground/40">—</span>
+    <span className="mx-auto block text-muted-foreground/40">–</span>
   );
 }
 
@@ -67,8 +67,8 @@ export default function MarketResearchPage() {
           {LEADER_NOTES.crayon} {LEADER_NOTES.klue} {LEADER_NOTES.alphaSense}
         </p>
         <p className="mt-4 max-w-2xl leading-relaxed text-muted-foreground">
-          Below that sits a mid-market tier — tools like Kompyte, Contify, Similarweb, Owler, and
-          LinkedIn Sales Navigator — priced for teams with a real budget but not enterprise scale.
+          Below that sits a mid-market tier (tools like Kompyte, Contify, Similarweb, Owler, and
+          LinkedIn Sales Navigator), priced for teams with a real budget but not enterprise scale.
           And below that, a crowded new wave of AI-native, lean tools has emerged in the last two
           years, most charging under $100/mo and leaning on AI generation instead of an analyst team.
         </p>
@@ -92,7 +92,7 @@ export default function MarketResearchPage() {
       <section className="mt-16">
         <h2 className="text-2xl font-semibold tracking-tight">AI-native and lean</h2>
         <p className="mt-3 max-w-2xl leading-relaxed text-muted-foreground">
-          The crowded new wave — nine tools built in the last two years, mostly solo or small-team
+          The crowded new wave: nine tools built in the last two years, mostly solo or small-team
           products, mostly under $100/mo.
         </p>
         <div className="mt-6 grid gap-5 sm:grid-cols-2">
@@ -112,14 +112,14 @@ export default function MarketResearchPage() {
       <section className="mt-16">
         <h2 className="text-2xl font-semibold tracking-tight">The anatomy of a CI dashboard</h2>
         <p className="mt-3 max-w-2xl leading-relaxed text-muted-foreground">
-          Across all 20+ tools surveyed, four structural elements recur — almost every product is some
+          Across all 20+ tools surveyed, four structural elements recur; almost every product is some
           arrangement of these.
         </p>
         <div className="mt-6 space-y-5">
           {[
             {
               title: "A per-competitor feed",
-              body: "A list or set of cards, one per tracked competitor, as the primary navigation structure — nearly universal, from Crayon's Compete Hub to Owler's company profiles.",
+              body: "A list or set of cards, one per tracked competitor, as the primary navigation structure, nearly universal from Crayon's Compete Hub to Owler's company profiles.",
             },
             {
               title: "A reverse-chronological change stream",
@@ -199,21 +199,21 @@ export default function MarketResearchPage() {
       <section className="mt-16 rounded-2xl border border-border bg-secondary/30 p-8">
         <h2 className="text-2xl font-semibold tracking-tight">What&apos;s still missing</h2>
         <p className="mt-3 max-w-2xl leading-relaxed text-muted-foreground">
-          Ripplewatch&apos;s core bet — score signals for relevance, not just severity — isn&apos;t entirely
+          Ripplewatch&apos;s core bet, score signals for relevance, not just severity, isn&apos;t entirely
           unprecedented. A few tools have started reaching for it:
         </p>
         <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
           <li className="flex gap-2">
             <X className="mt-0.5 size-4 shrink-0 text-muted-foreground/60" />
             <span>
-              <strong className="text-foreground">Caelian&apos;s P0/P1/P2 framework</strong> — a generic
+              <strong className="text-foreground">Caelian&apos;s P0/P1/P2 framework</strong>: a generic
               severity scale, not tied to the reader&apos;s own business context.
             </span>
           </li>
           <li className="flex gap-2">
             <X className="mt-0.5 size-4 shrink-0 text-muted-foreground/60" />
             <span>
-              <strong className="text-foreground">RivalSense&apos;s downvote button</strong> — genuine
+              <strong className="text-foreground">RivalSense&apos;s downvote button</strong>: genuine
               feedback-loop personalization, but reactive: it learns what you don&apos;t want only after
               you&apos;ve told it, not upfront from your context.
             </span>
@@ -221,14 +221,14 @@ export default function MarketResearchPage() {
           <li className="flex gap-2">
             <X className="mt-0.5 size-4 shrink-0 text-muted-foreground/60" />
             <span>
-              <strong className="text-foreground">Klue&apos;s Ask Klue</strong> — answers drawn strictly
+              <strong className="text-foreground">Klue&apos;s Ask Klue</strong>: answers drawn strictly
               from validated internal data, a trust mechanism rather than a relevance-to-you mechanism.
             </span>
           </li>
           <li className="flex gap-2">
             <X className="mt-0.5 size-4 shrink-0 text-muted-foreground/60" />
             <span>
-              <strong className="text-foreground">Crayon&apos;s Sparks</strong> — importance-scoring that
+              <strong className="text-foreground">Crayon&apos;s Sparks</strong>: importance-scoring that
               filters noise before it reaches the dashboard, but general-purpose rather than keyed to a
               specific customer&apos;s lost-deal history.
             </span>
@@ -236,7 +236,7 @@ export default function MarketResearchPage() {
         </ul>
         <p className="mt-5 max-w-2xl leading-relaxed text-muted-foreground">
           None of these tie a signal&apos;s priority to the specific reasons a given company has actually
-          lost deals or churned customers. That&apos;s the gap Ripplewatch is built around — an AI that reads
+          lost deals or churned customers. That&apos;s the gap Ripplewatch is built around: an AI that reads
           every signal against your own positioning, ICP, and deal history, and tells you why it matters
           before you ever have to ask.
         </p>

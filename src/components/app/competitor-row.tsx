@@ -97,7 +97,7 @@ export function CompetitorRow({
       </div>
       {!domainValid ? (
         <p className="mt-1.5 pl-10 text-xs text-destructive">
-          Doesn&apos;t look like a valid domain — try something like acme.com
+          Doesn&apos;t look like a valid domain; try something like acme.com
         </p>
       ) : description?.domain === domain ? (
         <p className="mt-1.5 pl-10 text-xs text-muted-foreground">{description.text}</p>

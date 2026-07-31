@@ -3,7 +3,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/is-configured";
 import { SupabaseNotConfigured } from "@/components/admin/not-configured";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-export const metadata = { title: "Waitlist — Admin" };
+export const metadata = { title: "Waitlist | Admin" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminWaitlistPage() {
@@ -45,11 +45,11 @@ export default async function AdminWaitlistPage() {
               {signups?.map((s) => (
                 <TableRow key={s.id}>
                   <TableCell className="font-medium">{s.email}</TableCell>
-                  <TableCell className="text-muted-foreground">{s.company_name ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{s.company_name ?? "–"}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {s.utm_source
                       ? [s.utm_source, s.utm_medium, s.utm_campaign].filter(Boolean).join(" / ")
-                      : "—"}
+                      : "–"}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {new Date(s.created_at).toLocaleDateString()}

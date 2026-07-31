@@ -31,7 +31,7 @@ export async function POST(request: Request) {
 
   if (!account?.stripe_customer_id) {
     return NextResponse.json(
-      { error: "No billing account yet — choose a paid plan first." },
+      { error: "No billing account yet; choose a paid plan first." },
       { status: 400 }
     );
   }

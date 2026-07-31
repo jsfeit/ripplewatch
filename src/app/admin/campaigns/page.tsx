@@ -4,7 +4,7 @@ import { SupabaseNotConfigured } from "@/components/admin/not-configured";
 import { isResendConfigured } from "@/lib/resend";
 import { CampaignsView } from "@/components/admin/campaigns-view";
 
-export const metadata = { title: "Campaigns — Admin" };
+export const metadata = { title: "Campaigns | Admin" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminCampaignsPage() {
@@ -18,7 +18,7 @@ export default async function AdminCampaignsPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight">Campaigns</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          One-off marketing sends — distinct from the product&apos;s transactional emails (digests, invites).
+          One-off marketing sends, distinct from the product&apos;s transactional emails (digests, invites).
         </p>
       </div>
 
