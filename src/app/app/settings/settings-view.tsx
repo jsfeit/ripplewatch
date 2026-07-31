@@ -50,13 +50,17 @@ export function SettingsView({
 
   // Lets "Upgrade to connect" (an integration gated by tier) land directly
   // on the Plan tab via /app/settings?tab=plan, instead of always opening
-  // on Integrations regardless of why someone arrived here. Lazy-initialized
-  // from window.location so this doesn't need useSearchParams/Suspense.
-  const [activeTab, setActiveTab] = useState(() =>
-    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "plan"
-      ? "plan"
-      : "integrations"
-  );
+  // on Integrations regardless of why someone arrived here. Read in an
+  // effect (not a lazy useState initializer) so the server-rendered and
+  // first-client-render markup always agree on "integrations", avoiding a
+  // hydration mismatch; the effect then flips to "plan" post-mount.
+  const [activeTab, setActiveTab] = useState("integrations");
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("tab") === "plan") {
+      setActiveTab("plan");
+    }
+  }, []);
 
   // Fires once on landing back from Stripe's embedded Checkout via
   // return_url. Reads window.location directly (not useSearchParams) so
