@@ -28,6 +28,8 @@ import { CompetitorRow, type CompetitorInput } from "@/components/app/competitor
 import { SuggestedCompetitors, type SuggestedCompetitor } from "@/components/app/suggested-competitors";
 import { DocumentUpload } from "@/components/app/document-upload";
 import { EmbeddedCheckoutModal } from "@/components/app/embedded-checkout-modal";
+import { trackEvent } from "@/lib/analytics";
+import { MONTHLY_PRICE_USD, annualPriceUsd } from "@/lib/pricing";
 import { generatePreviewAlert } from "@/lib/onboarding-preview";
 import { DOMAIN_PATTERN } from "@/lib/domain";
 import { createClient } from "@/lib/supabase/client";
@@ -230,12 +232,16 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
         return;
       }
 
+      trackEvent("sign_up", { method: "email" });
+
       if (finalPlan === "starter" || finalPlan === "plus") {
         // Opens the embedded Checkout modal right over this step — the
         // account already exists at this point regardless of payment
         // outcome, so closing the modal (see the modal's onOpenChange
         // below) always lands on the dashboard rather than stranding the
         // user here.
+        const value = selectedPeriod === "annual" ? annualPriceUsd(MONTHLY_PRICE_USD[finalPlan]) : MONTHLY_PRICE_USD[finalPlan];
+        trackEvent("begin_checkout", { currency: "USD", value, item_name: finalPlan, item_variant: selectedPeriod });
         setCheckoutModal({ tier: finalPlan, period: selectedPeriod });
         setSubmitting(false);
         return;
