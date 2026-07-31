@@ -10,8 +10,8 @@ export const metadata = {
   title: "Pricing",
   description,
   alternates: { canonical: "/pricing" },
-  openGraph: { title: "Pricing — Ripplewatch", description, images: ["/opengraph-image"] },
-  twitter: { card: "summary_large_image", title: "Pricing — Ripplewatch", description, images: ["/opengraph-image"] },
+  openGraph: { title: "Pricing — Ripplewatch", description },
+  twitter: { card: "summary_large_image", title: "Pricing — Ripplewatch", description },
 };
 
 export default function PricingPage() {

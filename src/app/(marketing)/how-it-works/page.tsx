@@ -11,8 +11,8 @@ export const metadata = {
   title: "How it works",
   description,
   alternates: { canonical: "/how-it-works" },
-  openGraph: { title: "How it works — Ripplewatch", description, images: ["/opengraph-image"] },
-  twitter: { card: "summary_large_image", title: "How it works — Ripplewatch", description, images: ["/opengraph-image"] },
+  openGraph: { title: "How it works — Ripplewatch", description },
+  twitter: { card: "summary_large_image", title: "How it works — Ripplewatch", description },
 };
 
 const scoredExample = MOCK_SIGNALS.find((s) => s.id === "sig-2")!;

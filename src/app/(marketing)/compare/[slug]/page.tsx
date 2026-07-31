@@ -31,12 +31,11 @@ export async function generateMetadata({
     title,
     description,
     alternates: { canonical: `/compare/${entry.slug}` },
-    openGraph: { title: `${title} — Ripplewatch`, description, images: ["/opengraph-image"] },
+    openGraph: { title: `${title} — Ripplewatch`, description },
     twitter: {
       card: "summary_large_image",
       title: `${title} — Ripplewatch`,
       description,
-      images: ["/opengraph-image"],
     },
   };
 }
