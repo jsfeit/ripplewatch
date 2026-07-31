@@ -183,27 +183,39 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
     setSubmitting(true);
     setSubmitError("");
 
-    if (!initiallySignedIn) {
-      const supabase = createClient();
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: { emailRedirectTo: `${window.location.origin}/app/dashboard` },
-      });
+    // Already signed in means this is the demo/preview experience, not real
+    // onboarding — the UI already reflects that (no email/password fields,
+    // button says "Go to dashboard"). Calling completeOnboarding() here
+    // would try to create a second account and re-link this profile to it,
+    // which the account_id-reassignment guard in migration 0014 correctly
+    // rejects (protects against account hijacking) — surfacing as a
+    // confusing "Could not link account to your profile" error at the very
+    // last step for someone who already has a real account.
+    if (initiallySignedIn) {
+      router.push("/app/dashboard");
+      router.refresh();
+      return;
+    }
 
-      if (error) {
-        setSubmitError(error.message);
-        setSubmitting(false);
-        return;
-      }
+    const supabase = createClient();
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: { emailRedirectTo: `${window.location.origin}/app/dashboard` },
+    });
 
-      // Email confirmation is off in dev, but if it's ever re-enabled there's
-      // no session yet — nothing to persist the onboarding data against.
-      if (!data.session) {
-        setNeedsConfirmation(true);
-        setSubmitting(false);
-        return;
-      }
+    if (error) {
+      setSubmitError(error.message);
+      setSubmitting(false);
+      return;
+    }
+
+    // Email confirmation is off in dev, but if it's ever re-enabled there's
+    // no session yet — nothing to persist the onboarding data against.
+    if (!data.session) {
+      setNeedsConfirmation(true);
+      setSubmitting(false);
+      return;
     }
 
     await completeOnboarding();
