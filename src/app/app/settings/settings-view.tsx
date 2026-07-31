@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sparkles, Loader2, CheckCircle2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -9,7 +9,8 @@ import { IntegrationConnector } from "@/components/app/integration-connector";
 import { TeamManager } from "@/components/app/team-manager";
 import { BillingPeriodToggle, type BillingPeriod } from "@/components/marketing/billing-period-toggle";
 import { TIERS } from "@/lib/tiers";
-import { ANNUAL_DISCOUNT_PERCENT } from "@/lib/pricing";
+import { ANNUAL_DISCOUNT_PERCENT, annualPriceUsd } from "@/lib/pricing";
+import { trackEvent } from "@/lib/analytics";
 import { CRM_ALLOWED, CALL_INTEL_ALLOWED } from "@/lib/tier-limits";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
@@ -47,6 +48,20 @@ export function SettingsView({
   const currentTier = TIERS.find((t) => t.id === account.tier) ?? TIERS[0];
   const isConnected = (provider: string) => integrations.some((i) => i.provider === provider && i.connected);
 
+  // Fires once on landing back from Stripe's embedded Checkout via
+  // return_url. Reads window.location directly (not useSearchParams) so
+  // this doesn't need a Suspense boundary. transaction_id from session_id
+  // is a data-quality nicety, not real dedup — GA doesn't dedupe purchase
+  // events by transaction_id on its own, so a manual refresh of this exact
+  // URL would still fire it again. No price value included here since it's
+  // not reliably available client-side at this point.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("checkout") === "success") {
+      trackEvent("purchase", { currency: "USD", transaction_id: params.get("session_id") ?? undefined });
+    }
+  }, []);
+
   async function handleManageBilling() {
     setBillingLoading("portal");
     const res = await fetch("/api/stripe/portal", { method: "POST" });
@@ -67,6 +82,9 @@ export function SettingsView({
     const hasActiveSubscription = Boolean(account.stripe_customer_id && account.stripe_subscription_id);
 
     if (!hasActiveSubscription) {
+      const monthlyUsd = TIERS.find((t) => t.id === tier)?.monthlyUsd ?? 0;
+      const value = billingPeriod === "annual" ? annualPriceUsd(monthlyUsd) : monthlyUsd;
+      trackEvent("begin_checkout", { currency: "USD", value, item_name: tier, item_variant: billingPeriod });
       setCheckoutModal({ tier, period: billingPeriod });
       return;
     }
