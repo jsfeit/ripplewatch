@@ -16,12 +16,12 @@ export function IntegrationPreviewCard({ name, description }: { name: string; de
   const Icon = NAME_ICON[name.toLowerCase()] ?? Plug;
 
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card p-4">
-      <div className="flex items-center gap-3">
-        <span className={cn("flex size-9 items-center justify-center rounded-md", avatarColor(name))}>
+    <div className="flex flex-col items-start gap-3 rounded-lg border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-md", avatarColor(name))}>
           <Icon className="size-4" />
         </span>
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-medium">{name}</p>
           <p className="text-xs text-muted-foreground">{description}</p>
         </div>
