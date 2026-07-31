@@ -39,7 +39,13 @@ import { COMPETITOR_LIMIT } from "@/lib/tier-limits";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SELF_SERVE_TIERS = TIERS.filter((t) => t.selfServe);
 
-export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boolean }) {
+export function OnboardingFlow({
+  initiallySignedIn,
+  hasAccount,
+}: {
+  initiallySignedIn: boolean;
+  hasAccount: boolean;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedPlan = searchParams.get("plan");
@@ -59,6 +65,11 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
     null
   );
 
+  // hasAccount (not initiallySignedIn) decides whether this last step
+  // exists at all: a signed-in user with no account yet (e.g. their
+  // signUp() succeeded but the page reloaded before onboarding completion
+  // ran) still needs to go through it, just without email/password fields
+  // since they're already authenticated.
   const STEPS = useMemo(() => {
     const base = [
       { title: "Company basics", icon: Building2 },
@@ -66,11 +77,11 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
       { title: "Growth Monitoring", icon: Users },
       { title: "Live preview", icon: Sparkles },
     ];
-    return initiallySignedIn ? base : [...base, { title: "Create account", icon: Mail }];
-  }, [initiallySignedIn]);
+    return hasAccount ? base : [...base, { title: initiallySignedIn ? "Finish setup" : "Create account", icon: Mail }];
+  }, [hasAccount, initiallySignedIn]);
   const STEP_TITLES = STEPS.map((s) => s.title);
   const isFinalStep = step === STEPS.length - 1;
-  const isAccountStep = !initiallySignedIn && isFinalStep;
+  const isAccountStep = !hasAccount && isFinalStep;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -107,6 +118,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
     if (step === 1) return filledCompetitors.length >= 3 && domainsValid;
     if (step === 2) return hasSalesCrm || hasPlg;
     if (isAccountStep) {
+      if (initiallySignedIn) return Boolean(finalPlan);
       return EMAIL_PATTERN.test(email.trim()) && password.length >= 6 && Boolean(finalPlan);
     }
     return true;
@@ -119,6 +131,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
     domainsValid,
     hasSalesCrm,
     hasPlg,
+    initiallySignedIn,
     isAccountStep,
     finalPlan,
     email,
@@ -191,17 +204,26 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
     setSubmitting(true);
     setSubmitError("");
 
-    // Already signed in means this is the demo/preview experience, not real
-    // onboarding — the UI already reflects that (no email/password fields,
-    // button says "Go to dashboard"). Calling completeOnboarding() here
+    // Already has a real account means this is the demo/preview experience,
+    // not real onboarding — the UI already reflects that (no account step at
+    // all, button says "Go to dashboard"). Calling completeOnboarding() here
     // would try to create a second account and re-link this profile to it,
     // which the account_id-reassignment guard in migration 0014 correctly
     // rejects (protects against account hijacking) — surfacing as a
     // confusing "Could not link account to your profile" error at the very
     // last step for someone who already has a real account.
-    if (initiallySignedIn) {
+    if (hasAccount) {
       router.push("/app/dashboard");
       router.refresh();
+      return;
+    }
+
+    // Signed in but no account yet: signUp() already succeeded in an earlier
+    // attempt (e.g. the page reloaded before completeOnboarding() finished),
+    // so calling signUp() again would fail with "already registered" and
+    // strand this session for good. Skip straight to account creation.
+    if (initiallySignedIn) {
+      await completeOnboarding();
       return;
     }
 
@@ -566,7 +588,9 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
           {isAccountStep && (
             <div className="space-y-5">
               <p className="text-sm text-muted-foreground">
-                Create your account to start monitoring these competitors for real.
+                {initiallySignedIn
+                  ? "Finish setting up your account to start monitoring these competitors for real."
+                  : "Create your account to start monitoring these competitors for real."}
                 {selectedPlan ? null : " Pick a plan, then you're set: no trial, but every plan comes with a 30-day money-back guarantee."}
               </p>
 
@@ -615,28 +639,32 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
                 </div>
               ) : null}
 
-              <div className="space-y-2">
-                <Label htmlFor="onboardingEmail">Work email</Label>
-                <Input
-                  id="onboardingEmail"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@company.com"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="onboardingPassword">Password</Label>
-                <Input
-                  id="onboardingPassword"
-                  type="password"
-                  minLength={6}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
+              {!initiallySignedIn ? (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="onboardingEmail">Work email</Label>
+                    <Input
+                      id="onboardingEmail"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@company.com"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="onboardingPassword">Password</Label>
+                    <Input
+                      id="onboardingPassword"
+                      type="password"
+                      minLength={6}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </div>
+                </>
+              ) : null}
               <p className="text-xs text-muted-foreground">
-                By creating an account, you agree to our{" "}
+                {initiallySignedIn ? "By continuing, you agree to our" : "By creating an account, you agree to our"}{" "}
                 <Link href="/terms" className="text-primary hover:underline">Terms of Service</Link> and{" "}
                 <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>.
                 {finalPlan === "starter" || finalPlan === "plus"
@@ -668,7 +696,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
         ) : (
           <Button type="button" onClick={handleFinish} disabled={submitting || !canProceed}>
             {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
-            {isAccountStep ? "Create account & go to dashboard" : "Go to dashboard"}
+            {isAccountStep ? (initiallySignedIn ? "Finish setup & go to dashboard" : "Create account & go to dashboard") : "Go to dashboard"}
             <ArrowRight className="size-4" />
           </Button>
         )}
