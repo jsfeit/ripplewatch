@@ -17,6 +17,7 @@ export type Tier = {
   onboarding: string;
   delivery: string;
   crm: string;
+  callIntel?: string;
   seats: string;
   cta: string;
   highlight?: boolean;
@@ -45,7 +46,7 @@ export const TIERS: Tier[] = [
     relevanceScoring: "1 fully-scored alert/week (teaser) — rest raw & unscored",
     onboarding: "Self-serve form",
     delivery: "Slack + email",
-    crm: "Read-only pull",
+    crm: "HubSpot (read-only pull)",
     seats: "3 logins",
     cta: "Start with Starter",
   },
@@ -63,7 +64,8 @@ export const TIERS: Tier[] = [
     relevanceScoring: "Full scoring on every signal",
     onboarding: "Self-serve form",
     delivery: "Slack + email",
-    crm: "Read-only pull",
+    crm: "HubSpot (read-only pull)",
+    callIntel: "Zoom call insights (Gong coming soon)",
     seats: "Up to 10 seats",
     cta: "Start with Plus",
     highlight: true,
@@ -80,9 +82,10 @@ export const TIERS: Tier[] = [
     competitors: "Up to 20 competitors",
     signalSources: "Pricing, job postings, news, funding",
     relevanceScoring: "Full scoring on every signal",
-    onboarding: "Assisted onboarding call",
+    onboarding: "Onboarding support",
     delivery: "Slack + email",
-    crm: "Read-only pull",
+    crm: "HubSpot (read-only pull)",
+    callIntel: "Zoom call insights (Gong coming soon)",
     seats: "Unlimited",
     cta: "Start with Advanced",
   },

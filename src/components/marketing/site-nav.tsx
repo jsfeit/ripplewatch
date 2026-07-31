@@ -32,6 +32,12 @@ export function SiteNav() {
           >
             See it in action
           </Link>
+          <Link
+            href="/login"
+            className={cn(buttonVariants({ variant: "ghost" }), "hidden sm:inline-flex")}
+          >
+            Sign in
+          </Link>
           <Link href="/waitlist" className={buttonVariants()}>
             Join waitlist
           </Link>

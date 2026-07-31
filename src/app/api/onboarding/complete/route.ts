@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { sendWelcomeEmail } from "@/lib/resend";
 import { discoverCompetitorUrls } from "@/lib/scraping";
+import { COMPETITOR_LIMIT } from "@/lib/tier-limits";
 
 type CompetitorInput = { name: string; domain: string };
 
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
     hasPlg,
     lostDealReasons,
     churnReasons,
+    tier,
   }: {
     companyName: string;
     positioning: string;
@@ -39,11 +41,23 @@ export async function POST(request: Request) {
     hasPlg: boolean;
     lostDealReasons: string;
     churnReasons: string;
+    tier?: string;
   } = body;
 
   const namedCompetitors = (competitors ?? []).filter((c) => c.name?.trim());
   if (!companyName?.trim() || namedCompetitors.length < 3) {
     return NextResponse.json({ error: "Missing required onboarding fields." }, { status: 400 });
+  }
+
+  // Backstop for the client-side cap on the competitors step — keeps the
+  // funnel consistent with the pricing page's per-tier limits (3/7/20) even
+  // if this endpoint is hit directly rather than through the UI.
+  const tierLimit = tier && tier in COMPETITOR_LIMIT ? COMPETITOR_LIMIT[tier as keyof typeof COMPETITOR_LIMIT] : null;
+  if (tierLimit !== null && namedCompetitors.length > tierLimit) {
+    return NextResponse.json(
+      { error: `The ${tier} plan tracks up to ${tierLimit} competitors — remove some to continue.` },
+      { status: 400 }
+    );
   }
 
   // Generated up front rather than read back via `.select()` after insert:
