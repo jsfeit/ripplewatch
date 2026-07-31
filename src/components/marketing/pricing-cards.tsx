@@ -64,6 +64,7 @@ export function PricingCards() {
                     <FeatureRow label={tier.onboarding} />
                     <FeatureRow label={tier.delivery} />
                     <FeatureRow label={tier.crm} />
+                    {tier.callIntel ? <FeatureRow label={tier.callIntel} /> : null}
                     <FeatureRow label={tier.seats === "Unlimited" ? "Unlimited logins" : tier.seats} />
                   </ul>
                   <Link

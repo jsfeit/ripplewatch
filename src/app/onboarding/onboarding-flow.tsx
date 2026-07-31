@@ -34,8 +34,8 @@ import { generatePreviewAlert } from "@/lib/onboarding-preview";
 import { DOMAIN_PATTERN } from "@/lib/domain";
 import { createClient } from "@/lib/supabase/client";
 import { TIERS } from "@/lib/tiers";
+import { COMPETITOR_LIMIT } from "@/lib/tier-limits";
 
-const MAX_COMPETITORS = 20;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SELF_SERVE_TIERS = TIERS.filter((t) => t.selfServe);
 
@@ -47,6 +47,14 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
   const [step, setStep] = useState(0);
   const [chosenPlanId, setChosenPlanId] = useState<string | null>(null);
   const finalPlan = selectedPlan ?? chosenPlanId;
+  // Consistent with the pricing page's per-tier competitor caps (3/7/20).
+  // Defaults to Advanced's limit (the most permissive) until a plan is
+  // actually chosen — e.g. the no-query-param "Live demo" path, where plan
+  // selection happens at the last step, after competitors are entered.
+  const maxCompetitors =
+    finalPlan && finalPlan in COMPETITOR_LIMIT
+      ? COMPETITOR_LIMIT[finalPlan as keyof typeof COMPETITOR_LIMIT]
+      : COMPETITOR_LIMIT.advanced;
   const [checkoutModal, setCheckoutModal] = useState<{ tier: "starter" | "plus"; period: "monthly" | "annual" } | null>(
     null
   );
@@ -134,7 +142,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
   }
 
   function addCompetitor() {
-    if (competitors.length >= MAX_COMPETITORS) return;
+    if (competitors.length >= maxCompetitors) return;
     setCompetitors((prev) => [...prev, { name: "", domain: "" }]);
   }
 
@@ -169,7 +177,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
       if (emptyIndex !== -1) {
         return prev.map((c, i) => (i === emptyIndex ? { name: suggestion.name, domain: suggestion.domain } : c));
       }
-      if (prev.length >= MAX_COMPETITORS) return prev;
+      if (prev.length >= maxCompetitors) return prev;
       return [...prev, { name: suggestion.name, domain: suggestion.domain }];
     });
   }
@@ -235,6 +243,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
           hasPlg,
           lostDealReasons,
           churnReasons,
+          tier: finalPlan,
         }),
       });
       const data = await res.json();
@@ -374,7 +383,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
           {step === 1 && (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Add 3–{MAX_COMPETITORS} competitors by name and domain.
+                Add 3–{maxCompetitors} competitors by name and domain.
               </p>
               <div className="space-y-2">
                 {competitors.map((c, i) => (
@@ -392,13 +401,13 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
                 variant="outline"
                 size="sm"
                 onClick={addCompetitor}
-                disabled={competitors.length >= MAX_COMPETITORS}
+                disabled={competitors.length >= maxCompetitors}
               >
                 <Plus className="size-4" />
                 Add competitor
               </Button>
               <p className="text-xs text-muted-foreground">
-                {filledCompetitors.length}/{MAX_COMPETITORS} named — minimum 3 required
+                {filledCompetitors.length}/{maxCompetitors} named — minimum 3 required
               </p>
 
               <SuggestedCompetitors
@@ -565,28 +574,43 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
                 <div className="space-y-2">
                   <Label>Choose a plan</Label>
                   <div className="grid gap-3 sm:grid-cols-3">
-                    {SELF_SERVE_TIERS.map((tier) => (
-                      <button
-                        key={tier.id}
-                        type="button"
-                        onClick={() => setChosenPlanId(tier.id)}
-                        className={cn(
-                          "rounded-lg border p-4 text-left transition-colors",
-                          chosenPlanId === tier.id
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:border-primary/40"
-                        )}
-                      >
-                        <div className="flex items-baseline justify-between">
-                          <span className="font-medium">{tier.name}</span>
-                          <span className="text-sm text-muted-foreground">
-                            {tier.price}
-                            {tier.priceNote}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-xs text-muted-foreground">{tier.tagline}</p>
-                      </button>
-                    ))}
+                    {SELF_SERVE_TIERS.map((tier) => {
+                      // Competitors are entered before a plan's chosen on this
+                      // no-preselected-plan path — a tier too small for what's
+                      // already entered is disabled rather than silently
+                      // letting the account end up over its own limit.
+                      const tierLimit = COMPETITOR_LIMIT[tier.id];
+                      const tooFewSlots = filledCompetitors.length > tierLimit;
+                      return (
+                        <button
+                          key={tier.id}
+                          type="button"
+                          onClick={() => !tooFewSlots && setChosenPlanId(tier.id)}
+                          disabled={tooFewSlots}
+                          className={cn(
+                            "rounded-lg border p-4 text-left transition-colors",
+                            tooFewSlots
+                              ? "cursor-not-allowed border-border opacity-50"
+                              : chosenPlanId === tier.id
+                                ? "border-primary bg-primary/5"
+                                : "border-border hover:border-primary/40"
+                          )}
+                        >
+                          <div className="flex items-baseline justify-between">
+                            <span className="font-medium">{tier.name}</span>
+                            <span className="text-sm text-muted-foreground">
+                              {tier.price}
+                              {tier.priceNote}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {tooFewSlots
+                              ? `Only monitors up to ${tierLimit} competitors — remove some to pick this plan`
+                              : tier.tagline}
+                          </p>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               ) : null}
