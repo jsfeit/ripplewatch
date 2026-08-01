@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DashboardFeed } from "./dashboard-feed";
 import { ArticlesFeed } from "./articles-feed";
 
-export const metadata = { title: "Dashboard | Ripplewatch" };
+export const metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
