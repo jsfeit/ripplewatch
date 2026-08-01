@@ -24,6 +24,7 @@ export function IntegrationConnector({
   disconnectAction,
   requiresUpgrade,
   comingSoon,
+  onUpgradeClick,
 }: {
   name: string;
   description: string;
@@ -33,6 +34,7 @@ export function IntegrationConnector({
   disconnectAction?: (formData: FormData) => void;
   requiresUpgrade?: boolean;
   comingSoon?: boolean;
+  onUpgradeClick?: () => void;
 }) {
   const Icon = PROVIDER_ICON[provider] ?? Plug;
 
@@ -74,9 +76,15 @@ export function IntegrationConnector({
           ) : null}
         </div>
       ) : requiresUpgrade ? (
-        <Link href="/app/settings?tab=plan" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
-          Upgrade to connect
-        </Link>
+        onUpgradeClick ? (
+          <Button type="button" variant="ghost" size="sm" onClick={onUpgradeClick}>
+            Upgrade to connect
+          </Button>
+        ) : (
+          <Link href="/app/settings?tab=plan" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
+            Upgrade to connect
+          </Link>
+        )
       ) : (
         <Link href={connectHref} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
           Connect

@@ -48,12 +48,13 @@ export function SettingsView({
   const currentTier = TIERS.find((t) => t.id === account.tier) ?? TIERS[0];
   const isConnected = (provider: string) => integrations.some((i) => i.provider === provider && i.connected);
 
-  // Lets "Upgrade to connect" (an integration gated by tier) land directly
-  // on the Plan tab via /app/settings?tab=plan, instead of always opening
-  // on Integrations regardless of why someone arrived here. Read in an
-  // effect (not a lazy useState initializer) so the server-rendered and
-  // first-client-render markup always agree on "integrations", avoiding a
-  // hydration mismatch; the effect then flips to "plan" post-mount.
+  // Lets a direct/bookmarked link to /app/settings?tab=plan land on the Plan
+  // tab instead of always opening on Integrations. Read in an effect (not a
+  // lazy useState initializer) so the server-rendered and first-client-render
+  // markup always agree on "integrations", avoiding a hydration mismatch;
+  // the effect then flips to "plan" post-mount. This only fires once on
+  // mount, so it doesn't cover in-app "Upgrade to connect" clicks below
+  // (those call setActiveTab directly via onUpgradeClick instead).
   const [activeTab, setActiveTab] = useState("integrations");
 
   useEffect(() => {
@@ -192,6 +193,7 @@ export function SettingsView({
               provider="hubspot"
               disconnectAction={disconnectIntegrationAction}
               requiresUpgrade={!CRM_ALLOWED[account.tier]}
+              onUpgradeClick={() => setActiveTab("plan")}
             />
             <IntegrationConnector
               name="Intercom"
@@ -232,6 +234,7 @@ export function SettingsView({
               provider="zoom"
               disconnectAction={disconnectIntegrationAction}
               requiresUpgrade={!CALL_INTEL_ALLOWED[account.tier]}
+              onUpgradeClick={() => setActiveTab("plan")}
             />
           </CardContent>
         </Card>
