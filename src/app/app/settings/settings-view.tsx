@@ -11,7 +11,7 @@ import { BillingPeriodToggle, type BillingPeriod } from "@/components/marketing/
 import { TIERS } from "@/lib/tiers";
 import { ANNUAL_DISCOUNT_PERCENT, annualPriceUsd } from "@/lib/pricing";
 import { trackEvent } from "@/lib/analytics";
-import { CRM_ALLOWED, CALL_INTEL_ALLOWED } from "@/lib/tier-limits";
+import { CRM_ALLOWED, CALL_INTEL_ALLOWED, INTERCOM_ALLOWED } from "@/lib/tier-limits";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { TIER_BADGE } from "@/lib/tier-style";
@@ -197,11 +197,17 @@ export function SettingsView({
             />
             <IntegrationConnector
               name="Intercom"
-              description="Read-only pull of churn and cancellation reasons"
-              connected={false}
-              connectHref="#"
+              description={
+                INTERCOM_ALLOWED[account.tier]
+                  ? "Read-only pull of churn and cancellation reasons"
+                  : "Read-only pull of churn and cancellation reasons, Advanced only"
+              }
+              connected={isConnected("intercom")}
+              connectHref="/api/integrations/intercom/connect"
               provider="intercom"
-              comingSoon
+              disconnectAction={disconnectIntegrationAction}
+              requiresUpgrade={!INTERCOM_ALLOWED[account.tier]}
+              onUpgradeClick={() => setActiveTab("plan")}
             />
           </CardContent>
         </Card>

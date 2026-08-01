@@ -13,7 +13,8 @@ import { sendSlackAlert } from "@/lib/slack";
 import { fetchRecentGongTranscripts } from "@/lib/gong";
 import { fetchRecentZoomTranscripts } from "@/lib/zoom";
 import { fetchClosedLostDealNotes } from "@/lib/hubspot";
-import { TIER_SIGNAL_SOURCES, COMPETITOR_LIMIT, CALL_INTEL_ALLOWED, CRM_ALLOWED } from "@/lib/tier-limits";
+import { fetchRecentIntercomChurnNotes } from "@/lib/intercom";
+import { TIER_SIGNAL_SOURCES, COMPETITOR_LIMIT, CALL_INTEL_ALLOWED, CRM_ALLOWED, INTERCOM_ALLOWED } from "@/lib/tier-limits";
 import type { Database } from "@/lib/supabase/types";
 
 export const maxDuration = 300; // Vercel Cron functions get a longer budget than normal requests
@@ -76,6 +77,29 @@ async function buildHubspotNotes(
   if (!credentials?.access_token) return null;
 
   const notes = await fetchClosedLostDealNotes(credentials.access_token);
+  return notes.length > 0 ? notes.join(" ") : null;
+}
+
+// Intercom's recent-conversation openers, refreshed each run — same role as
+// buildHubspotNotes above but merged into churnNotes instead of
+// lostDealNotes, since Intercom is the self-serve/PLG-side signal (customers
+// churning) rather than the sales-led one (deals lost).
+async function buildIntercomNotes(
+  supabase: ReturnType<typeof createAdminClient>,
+  accountId: string
+): Promise<string | null> {
+  const { data: integration } = await supabase
+    .from("integrations")
+    .select("*")
+    .eq("account_id", accountId)
+    .eq("provider", "intercom")
+    .eq("connected", true)
+    .maybeSingle();
+
+  const credentials = integration?.credentials as { access_token: string } | null;
+  if (!credentials?.access_token) return null;
+
+  const notes = await fetchRecentIntercomChurnNotes(credentials.access_token);
   return notes.length > 0 ? notes.join(" ") : null;
 }
 
@@ -180,6 +204,9 @@ export async function GET(request: Request) {
     const hubspotNotes = CRM_ALLOWED[account.tier] ? await buildHubspotNotes(supabase, account.id) : null;
     const lostDealNotes = [account.lost_deal_notes, hubspotNotes].filter(Boolean).join(" ") || null;
 
+    const intercomNotes = INTERCOM_ALLOWED[account.tier] ? await buildIntercomNotes(supabase, account.id) : null;
+    const churnNotes = [account.churn_notes, intercomNotes].filter(Boolean).join(" ") || null;
+
     const scoredSignals: (Signal & { competitorName: string })[] = [];
 
     for (const signal of newSignals) {
@@ -204,7 +231,7 @@ export async function GET(request: Request) {
             positioning: account.positioning,
             icp: account.icp,
             lostDealNotes,
-            churnNotes: account.churn_notes,
+            churnNotes,
             callInsights,
           },
           { competitorName: competitor.name, type: signal.type, title: signal.title, summary: signal.summary },

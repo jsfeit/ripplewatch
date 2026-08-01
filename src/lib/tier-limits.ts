@@ -50,6 +50,14 @@ export const CALL_INTEL_ALLOWED: Record<AccountTier, boolean> = {
   advanced: true,
 };
 
+// Intercom (churn/cancellation reasons) is Advanced-only, matching the
+// pricing page's "Intercom (coming soon)" line item under Advanced.
+export const INTERCOM_ALLOWED: Record<AccountTier, boolean> = {
+  starter: false,
+  plus: false,
+  advanced: true,
+};
+
 export function competitorLimitLabel(tier: AccountTier): string {
   const limit = COMPETITOR_LIMIT[tier];
   return limit === Infinity ? "unlimited" : String(limit);
