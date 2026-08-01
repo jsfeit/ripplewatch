@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AskChat } from "./ask-chat";
 
-export const metadata = { title: "Ask | Ripplewatch" };
+export const metadata = { title: "Ask" };
 
 export default async function AskPage() {
   const supabase = await createClient();
