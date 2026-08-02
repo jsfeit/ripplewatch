@@ -14,6 +14,31 @@ export type ToolProfile = {
 };
 
 export const TOOL_PROFILES: ToolProfile[] = [
+  // Category leaders
+  {
+    name: "Crayon",
+    domain: "crayon.co",
+    tier: "leaders",
+    pricing: "Custom quote (enterprise, sales-led)",
+    summary:
+      "Compete Hub pairs a per-competitor feed with \"Sparks,\" an importance-scoring layer that filters noise before it reaches the dashboard, plus native Slack Insights for push delivery. Broad data coverage and a mature battlecard workflow built for large product-marketing teams.",
+  },
+  {
+    name: "Klue",
+    domain: "klue.com",
+    tier: "leaders",
+    pricing: "Custom quote (enterprise, sales-led)",
+    summary:
+      "\"Ask Klue\" answers are drawn strictly from validated internal data, a trust mechanism more than a relevance one, feeding into sales battlecards. Strong on governance and answer accuracy; the tradeoff is everything has to be curated in before it's useful.",
+  },
+  {
+    name: "AlphaSense",
+    domain: "alpha-sense.com",
+    tier: "leaders",
+    pricing: "Custom quote (enterprise, sales-led)",
+    summary:
+      "Sits closer to enterprise financial research than startup competitive intel, with its public footprint concentrated on funding and market-news coverage rather than product-level signals. The category's highest-end, highest-cost option.",
+  },
   // Mid-market
   {
     name: "Kompyte",
@@ -156,6 +181,7 @@ export type CoverageRow = {
 };
 
 export const COVERAGE_HEATMAP: CoverageRow[] = [
+  { name: "Ripplewatch", pricing: true, features: true, seoTraffic: false, hiring: true, reviews: false, social: false, fundingNews: true, crmDealData: true },
   { name: "Crayon", pricing: true, features: true, seoTraffic: false, hiring: true, reviews: true, social: true, fundingNews: true, crmDealData: true },
   { name: "Klue", pricing: true, features: true, seoTraffic: false, hiring: false, reviews: false, social: false, fundingNews: false, crmDealData: true },
   { name: "AlphaSense", pricing: false, features: false, seoTraffic: false, hiring: false, reviews: false, social: false, fundingNews: true, crmDealData: false },

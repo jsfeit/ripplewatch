@@ -1,17 +1,17 @@
 import Link from "next/link";
-import { ArrowRight, Check, X } from "lucide-react";
+import { ArrowRight, Check, Sparkles, X } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { MONTHLY_PRICE_USD } from "@/lib/pricing";
 import {
   TOOL_PROFILES,
-  LEADER_NOTES,
   LONG_TAIL_NOTE,
   COVERAGE_HEATMAP,
   type ToolProfile,
 } from "@/lib/ci-market-research";
 
 const description =
-  "A survey of 20+ competitive intelligence tools, from enterprise research platforms to the new wave of AI-native, lean monitoring tools, and what's still missing from the category.";
+  "How Ripplewatch compares to Crayon, Klue, and AlphaSense: enterprise-grade relevance scoring without the analyst team or six-figure contract, plus a survey of 20+ competitive intelligence tools and what's still missing from the category.";
 
 export const metadata = {
   title: "The State of Competitive Intelligence Tools",
@@ -32,6 +32,18 @@ function profilesFor(tier: ToolProfile["tier"]) {
   return TOOL_PROFILES.filter((p) => p.tier === tier);
 }
 
+const AI_NATIVE_NAMES = [
+  "Parano.ai",
+  "Compttr",
+  "Competely",
+  "RivalSense",
+  "Caelian",
+  "Seeto",
+  "Analook",
+  "Outmano",
+  "Steve",
+];
+
 function Cell({ on }: { on: boolean }) {
   return on ? (
     <Check className="mx-auto size-4 text-primary" />
@@ -41,8 +53,8 @@ function Cell({ on }: { on: boolean }) {
 }
 
 export default function MarketResearchPage() {
+  const leaders = profilesFor("leaders");
   const midMarket = profilesFor("mid-market");
-  const aiNative = profilesFor("ai-native");
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-20">
@@ -63,15 +75,48 @@ export default function MarketResearchPage() {
           research platforms like <strong className="text-foreground">AlphaSense</strong> and category
           leaders like <strong className="text-foreground">Crayon</strong> and{" "}
           <strong className="text-foreground">Klue</strong> serve larger sales and product-marketing
-          orgs with analyst-grade research and battlecard workflows.{" "}
-          {LEADER_NOTES.crayon} {LEADER_NOTES.klue} {LEADER_NOTES.alphaSense}
+          orgs with analyst-grade research and battlecard workflows. Below that sits a mid-market tier
+          (tools like Kompyte, Contify, Similarweb, Owler, and LinkedIn Sales Navigator), priced for
+          teams with a real budget but not enterprise scale. And further down, a crowded new wave of
+          cheap, AI-native monitoring tools has emerged in the last two years.
         </p>
-        <p className="mt-4 max-w-2xl leading-relaxed text-muted-foreground">
-          Below that sits a mid-market tier (tools like Kompyte, Contify, Similarweb, Owler, and
-          LinkedIn Sales Navigator), priced for teams with a real budget but not enterprise scale.
-          And below that, a crowded new wave of AI-native, lean tools has emerged in the last two
-          years, most charging under $100/mo and leaning on AI generation instead of an analyst team.
+      </section>
+
+      <section className="mt-16 rounded-2xl border border-primary/25 bg-primary/[0.03] p-8">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+          <Sparkles className="size-3.5" />
+          Where Ripplewatch fits
+        </div>
+        <p className="mt-3 max-w-2xl leading-relaxed text-foreground">
+          Ripplewatch is built to compete with the category leaders above, not the AI-native tools
+          further down this page: enterprise-grade relevance scoring, without the analyst team or the
+          six-figure contract to get it.
         </p>
+        <div className="mt-6 grid gap-5 sm:grid-cols-2">
+          <div className="rounded-xl border border-primary/40 bg-card p-5 shadow-sm shadow-primary/10">
+            <div className="flex items-baseline justify-between gap-2">
+              <h3 className="font-medium text-primary">Ripplewatch</h3>
+              <span className="text-xs text-muted-foreground">
+                ${MONTHLY_PRICE_USD.starter}–${MONTHLY_PRICE_USD.advanced}/mo, self-serve
+              </span>
+            </div>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              Every signal scored against your own positioning, ICP, and actual lost-deal and churn
+              history, not a generic severity scale. No analyst team, no onboarding project: connect
+              your competitors and you&apos;re live in minutes, at a fraction of what the leaders below
+              charge.
+            </p>
+          </div>
+          {leaders.map((tool) => (
+            <div key={tool.name} className="rounded-xl border border-border bg-card p-5">
+              <div className="flex items-baseline justify-between gap-2">
+                <h3 className="font-medium">{tool.name}</h3>
+                <span className="text-xs text-muted-foreground">{tool.pricing}</span>
+              </div>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{tool.summary}</p>
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="mt-16">
@@ -90,23 +135,12 @@ export default function MarketResearchPage() {
       </section>
 
       <section className="mt-16">
-        <h2 className="text-2xl font-semibold tracking-tight">AI-native and lean</h2>
-        <p className="mt-3 max-w-2xl leading-relaxed text-muted-foreground">
-          The crowded new wave: nine tools built in the last two years, mostly solo or small-team
-          products, mostly under $100/mo.
+        <h2 className="text-lg font-medium text-muted-foreground">AI-native and lean</h2>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+          Further down market, a crowded new wave has emerged in the last two years, most under
+          $100/mo and leaning on AI generation instead of an analyst team: {AI_NATIVE_NAMES.join(", ")}.
         </p>
-        <div className="mt-6 grid gap-5 sm:grid-cols-2">
-          {aiNative.map((tool) => (
-            <div key={tool.name} className="rounded-xl border border-border bg-card p-5">
-              <div className="flex items-baseline justify-between gap-2">
-                <h3 className="font-medium">{tool.name}</h3>
-                <span className="text-xs text-muted-foreground">{tool.pricing}</span>
-              </div>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{tool.summary}</p>
-            </div>
-          ))}
-        </div>
-        <p className="mt-6 max-w-2xl text-sm leading-relaxed text-muted-foreground">{LONG_TAIL_NOTE}</p>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">{LONG_TAIL_NOTE}</p>
       </section>
 
       <section className="mt-16">
@@ -168,15 +202,20 @@ export default function MarketResearchPage() {
               </tr>
             </thead>
             <tbody>
-              {COVERAGE_HEATMAP.map((row, i) => (
+              {COVERAGE_HEATMAP.map((row, i) => {
+                const isRipplewatch = row.name === "Ripplewatch";
+                return (
                 <tr
                   key={row.name}
-                  className={cn("border-b border-border last:border-0", i % 2 === 1 && "bg-secondary/20")}
+                  className={cn(
+                    "border-b border-border last:border-0",
+                    isRipplewatch ? "bg-primary/[0.06]" : i % 2 === 1 && "bg-secondary/20"
+                  )}
                 >
                   <td
                     className={cn(
                       "sticky left-0 z-10 p-3 font-medium",
-                      i % 2 === 1 ? "bg-secondary/20" : "bg-background"
+                      isRipplewatch ? "bg-primary/[0.06] text-primary" : i % 2 === 1 ? "bg-secondary/20" : "bg-background"
                     )}
                   >
                     {row.name}
@@ -190,7 +229,8 @@ export default function MarketResearchPage() {
                   <td className="p-3"><Cell on={row.fundingNews} /></td>
                   <td className="p-3"><Cell on={row.crmDealData} /></td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
