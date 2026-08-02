@@ -5,13 +5,14 @@ import { cn } from "@/lib/utils";
 import { MONTHLY_PRICE_USD } from "@/lib/pricing";
 import {
   TOOL_PROFILES,
+  LEADER_NOTES,
   LONG_TAIL_NOTE,
   COVERAGE_HEATMAP,
   type ToolProfile,
 } from "@/lib/ci-market-research";
 
 const description =
-  "How Ripplewatch compares to Crayon, Klue, and AlphaSense: enterprise-grade relevance scoring without the analyst team or six-figure contract, plus a survey of 20+ competitive intelligence tools and what's still missing from the category.";
+  "How Ripplewatch compares to mid-market tools like Kompyte and Contify: relevance scoring built for the SMB and early-stage teams that tier was never priced for, plus a survey of 20+ competitive intelligence tools and what's still missing from the category.";
 
 export const metadata = {
   title: "The State of Competitive Intelligence Tools",
@@ -53,7 +54,6 @@ function Cell({ on }: { on: boolean }) {
 }
 
 export default function MarketResearchPage() {
-  const leaders = profilesFor("leaders");
   const midMarket = profilesFor("mid-market");
 
   return (
@@ -77,8 +77,9 @@ export default function MarketResearchPage() {
           <strong className="text-foreground">Klue</strong> serve larger sales and product-marketing
           orgs with analyst-grade research and battlecard workflows. Below that sits a mid-market tier
           (tools like Kompyte, Contify, Similarweb, Owler, and LinkedIn Sales Navigator), priced for
-          teams with a real budget but not enterprise scale. And further down, a crowded new wave of
-          cheap, AI-native monitoring tools has emerged in the last two years.
+          teams with a real budget but not enterprise scale, custom quotes and a sales process included.
+          And further down, a crowded new wave of cheap, AI-native monitoring tools has emerged in the
+          last two years.
         </p>
       </section>
 
@@ -88,9 +89,10 @@ export default function MarketResearchPage() {
           Where Ripplewatch fits
         </div>
         <p className="mt-3 max-w-2xl leading-relaxed text-foreground">
-          Ripplewatch is built to compete with the category leaders above, not the AI-native tools
-          further down this page: enterprise-grade relevance scoring, without the analyst team or the
-          six-figure contract to get it.
+          Ripplewatch is built for the SMB and early-stage teams the mid-market tier below was never
+          priced for: self-serve setup, transparent per-seat pricing, and no minimum contract or sales
+          call, while still scoring every signal against your own context instead of just surfacing
+          raw changes.
         </p>
         <div className="mt-6 grid gap-5 sm:grid-cols-2">
           <div className="rounded-xl border border-primary/40 bg-card p-5 shadow-sm shadow-primary/10">
@@ -102,12 +104,12 @@ export default function MarketResearchPage() {
             </div>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               Every signal scored against your own positioning, ICP, and actual lost-deal and churn
-              history, not a generic severity scale. No analyst team, no onboarding project: connect
-              your competitors and you&apos;re live in minutes, at a fraction of what the leaders below
+              history, not a generic severity scale. No sales call, no onboarding project: connect
+              your competitors and you&apos;re live in minutes, at a fraction of what the tools below
               charge.
             </p>
           </div>
-          {leaders.map((tool) => (
+          {midMarket.map((tool) => (
             <div key={tool.name} className="rounded-xl border border-border bg-card p-5">
               <div className="flex items-baseline justify-between gap-2">
                 <h3 className="font-medium">{tool.name}</h3>
@@ -120,18 +122,15 @@ export default function MarketResearchPage() {
       </section>
 
       <section className="mt-16">
-        <h2 className="text-2xl font-semibold tracking-tight">Mid-market</h2>
-        <div className="mt-6 grid gap-5 sm:grid-cols-2">
-          {midMarket.map((tool) => (
-            <div key={tool.name} className="rounded-xl border border-border bg-card p-5">
-              <div className="flex items-baseline justify-between gap-2">
-                <h3 className="font-medium">{tool.name}</h3>
-                <span className="text-xs text-muted-foreground">{tool.pricing}</span>
-              </div>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{tool.summary}</p>
-            </div>
-          ))}
-        </div>
+        <h2 className="text-lg font-medium text-muted-foreground">Category leaders</h2>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+          At the top of the market, <strong className="text-foreground">Crayon</strong> and{" "}
+          <strong className="text-foreground">Klue</strong> serve larger sales and
+          product-marketing orgs with analyst-grade research and battlecard workflows, and{" "}
+          <strong className="text-foreground">AlphaSense</strong> covers enterprise financial
+          research; all three are custom-quoted and sales-led, a different buyer than Ripplewatch is
+          built for today. {LEADER_NOTES.crayon} {LEADER_NOTES.klue} {LEADER_NOTES.alphaSense}
+        </p>
       </section>
 
       <section className="mt-16">
