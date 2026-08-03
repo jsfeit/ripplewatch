@@ -369,6 +369,67 @@ Extract competitor mentions.`;
   return results.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
 }
 
+const HEADLINE_RELEVANCE_SYSTEM_PROMPT = `You check whether news headlines actually refer to a specific named company, not a different entity (a place, fund, person, or unrelated business) that merely shares part of its name. This matters because some company names are common words or short strings that collide with unrelated proper nouns — e.g. a company called "Square" versus "Union Square," "Times Square," or "Madison Square Garden," which are unrelated places, funds, or venues.
+
+Respond with strict JSON only, no markdown, matching this shape exactly:
+{"relevant": [true, false, ...]}
+
+One boolean per headline, in the same order given. true only if the headline is genuinely about the named company itself (its product, business, funding, leadership, or industry activity) — not merely containing the same word as part of an unrelated proper noun. If genuinely unsure, default to true (better to keep a maybe than to hide something real).`;
+
+const HEADLINE_RELEVANCE_SCHEMA = {
+  type: "object",
+  properties: {
+    relevant: { type: "array", items: { type: "boolean" } },
+  },
+  required: ["relevant"],
+  additionalProperties: false,
+} as const;
+
+// Filters out headlines that just happen to contain a competitor's name as
+// part of an unrelated proper noun (a company called "Square" vs. "Union
+// Square Ventures", "Times Square", etc.) — the keyword-AND at the query
+// level in scraping.ts catches most sports/idiom/hobby noise, but can't
+// distinguish two legitimately business-shaped entities from a bare keyword
+// match alone. One batched call per competitor per crawl run, not one per
+// headline, to keep this cheap.
+export async function filterRelevantHeadlines(
+  competitorName: string,
+  competitorDomain: string | null,
+  headlines: { title: string }[],
+  accountId: string | null
+): Promise<boolean[]> {
+  if (headlines.length === 0) return [];
+
+  const userPrompt = `Company: ${competitorName}${competitorDomain ? ` (${competitorDomain})` : ""}
+
+Headlines:
+${headlines.map((h, i) => `${i}. ${h.title}`).join("\n")}
+
+For each headline, is it genuinely about this company?`;
+
+  const message = await getAnthropic().messages.create({
+    model: "claude-sonnet-5",
+    max_tokens: 600,
+    system: cachedSystemPrompt(HEADLINE_RELEVANCE_SYSTEM_PROMPT),
+    output_config: { format: { type: "json_schema", schema: HEADLINE_RELEVANCE_SCHEMA } },
+    messages: [{ role: "user", content: userPrompt }],
+  });
+  recordLlmUsage(accountId, "filterRelevantHeadlines", message.model, message.usage);
+
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  try {
+    const parsed = JSON.parse(text);
+    const relevant = Array.isArray(parsed.relevant) ? parsed.relevant : [];
+    // Pad/truncate defensively to match headline count, defaulting to true
+    // (keep) for any mismatch rather than silently dropping real signals.
+    return headlines.map((_, i) => (typeof relevant[i] === "boolean" ? relevant[i] : true));
+  } catch {
+    // Parse failure: fail open (keep everything) rather than lose real
+    // signals to a formatting glitch in the filter itself.
+    return headlines.map(() => true);
+  }
+}
+
 const SUGGEST_COMPETITORS_SYSTEM_PROMPT = `You suggest likely competitors for a B2B company based on its positioning and ideal customer profile. Infer the industry/category from that text, then name real, well-known companies or products that plausibly compete for the same buyers — the kind of names a marketing lead would actually want to track, not obscure or fabricated ones.
 
 Respond with strict JSON only, no markdown, matching this shape exactly:

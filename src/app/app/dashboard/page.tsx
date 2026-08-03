@@ -1,8 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DashboardFeed } from "./dashboard-feed";
-import { ArticlesFeed } from "./articles-feed";
 
 export const metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";
@@ -53,29 +51,16 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="feed">
-        <TabsList>
-          <TabsTrigger value="feed">Alert feed</TabsTrigger>
-          <TabsTrigger value="articles">Articles</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="feed" className="mt-6">
-          <DashboardFeed
-            competitors={competitors ?? []}
-            signals={signals ?? []}
-            previewContext={{
-              companyName: account?.name ?? "",
-              positioning: account?.positioning ?? "",
-              icp: account?.icp ?? "",
-              lossReason: account?.lost_deal_notes || account?.churn_notes || "",
-            }}
-          />
-        </TabsContent>
-
-        <TabsContent value="articles" className="mt-6">
-          <ArticlesFeed competitors={competitors ?? []} signals={signals ?? []} />
-        </TabsContent>
-      </Tabs>
+      <DashboardFeed
+        competitors={competitors ?? []}
+        signals={signals ?? []}
+        previewContext={{
+          companyName: account?.name ?? "",
+          positioning: account?.positioning ?? "",
+          icp: account?.icp ?? "",
+          lossReason: account?.lost_deal_notes || account?.churn_notes || "",
+        }}
+      />
     </div>
   );
 }
