@@ -301,6 +301,35 @@ export async function sendCostAlertEmail(to: string[], accounts: CostAlertAccoun
   if (result.error) throw new Error(result.error.message);
 }
 
+// Replaces Supabase Auth's own default recovery email (generic "Supabase
+// Auth" sender, unbranded copy) — the route calling this generates the
+// reset link via the admin API's generateLink() instead of
+// resetPasswordForEmail(), which would otherwise trigger Supabase's built-in
+// send and bypass Resend entirely.
+export async function sendPasswordResetEmail(to: string, resetUrl: string) {
+  if (!isResendConfigured()) return;
+
+  const result = await getResend().emails.send({
+    from: getFromEmail(),
+    to,
+    subject: "Reset your Ripplewatch password",
+    html: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;">
+      <h2 style="margin:0 0 12px;">Reset your password</h2>
+      <p style="color:#3a3a3a;font-size:14px;line-height:1.5;">
+        We received a request to reset the password for your Ripplewatch account. Click below to
+        choose a new one. This link expires in an hour.
+      </p>
+      <a href="${resetUrl}" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#0f5f56;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">
+        Reset password
+      </a>
+      <p style="color:#888;font-size:12px;margin-top:24px;">
+        If you didn't request this, you can safely ignore this email; your password won't change.
+      </p>
+    </div>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
 export async function sendInviteEmail(to: string, inviterCompanyName: string, acceptUrl: string) {
   if (!isResendConfigured()) return;
 
