@@ -47,8 +47,16 @@ const CADENCE_COPY: Record<DigestCadence, { eyebrow: string; noun: string }> = {
   weekly: { eyebrow: "The quieter signals from this week", noun: "this week" },
 };
 
+const RELEVANCE_RANK: Record<string, number> = { High: 0, Medium: 1, Low: 2 };
+
+function digestSignalRank(s: DigestSignal): number {
+  if (!s.scored || !s.relevanceLevel) return 3;
+  return RELEVANCE_RANK[s.relevanceLevel] ?? 3;
+}
+
 function renderDigestHtml(companyName: string, signals: DigestSignal[], cadence: DigestCadence): string {
-  const rows = signals
+  const rows = [...signals]
+    .sort((a, b) => digestSignalRank(a) - digestSignalRank(b))
     .map((s) => {
       if (s.scored) {
         return `<div style="border:1px solid #b9dfd9;background:#effaf8;border-radius:8px;padding:12px;margin-bottom:8px;">

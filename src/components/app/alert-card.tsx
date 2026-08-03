@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, CircleDashed } from "lucide-react";
+import { Sparkles, CircleDashed, ExternalLink } from "lucide-react";
 import { cn, avatarColor } from "@/lib/utils";
 import { SIGNAL_TYPE_LABELS } from "@/lib/mock-data";
 import type { SignalType, RelevanceLevel } from "@/lib/supabase/types";
@@ -25,6 +25,9 @@ export type AlertCardSignal = {
   scored: boolean;
   relevanceLevel?: RelevanceLevel | null;
   relevanceReasoning?: string | null;
+  // Absent on the marketing site's mock examples, which have no real source
+  // to link to; present for every real signal in the app.
+  url?: string | null;
 };
 
 export function AlertCard({
@@ -96,7 +99,19 @@ export function AlertCard({
             {signal.relevanceReasoning}
           </p>
           <div className="mt-3 border-l-2 border-border/80 pl-3">
-            <p className="text-xs font-medium text-muted-foreground/90">{signal.title}</p>
+            {signal.url ? (
+              <a
+                href={signal.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground/90 hover:text-foreground hover:underline"
+              >
+                {signal.title}
+                <ExternalLink className="size-3 shrink-0" />
+              </a>
+            ) : (
+              <p className="text-xs font-medium text-muted-foreground/90">{signal.title}</p>
+            )}
             {signal.summary ? (
               <p className="mt-0.5 text-xs text-muted-foreground/70">{signal.summary}</p>
             ) : null}
@@ -104,7 +119,19 @@ export function AlertCard({
         </>
       ) : (
         <>
-          <p className="mt-3 text-sm font-medium">{signal.title}</p>
+          {signal.url ? (
+            <a
+              href={signal.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 flex items-center gap-1.5 text-sm font-medium hover:underline"
+            >
+              {signal.title}
+              <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
+            </a>
+          ) : (
+            <p className="mt-3 text-sm font-medium">{signal.title}</p>
+          )}
           <p className="mt-1 text-sm text-muted-foreground">{signal.summary}</p>
           <div className="mt-3 rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground">
             No relevance score on this tier; upgrade to see why this would (or wouldn&apos;t) matter to you.

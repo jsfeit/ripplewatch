@@ -3,7 +3,7 @@ import * as cheerio from "cheerio";
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
-import { summarizePricingChange, extractPricingStructure, searchCompetitorNews } from "@/lib/anthropic";
+import { summarizePricingChange, extractPricingStructure, searchCompetitorNews, filterRelevantHeadlines } from "@/lib/anthropic";
 import { normalizeDomain, guessPricingUrl, guessCareersUrl } from "@/lib/domain";
 
 type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
@@ -322,13 +322,27 @@ async function existingSignalTitle(
 const BUSINESS_CONTEXT_TERMS =
   "(company OR software OR startup OR business OR app OR platform OR product OR pricing OR CEO OR customers)";
 
+// Last line of defense against name collisions the query-level AND above
+// can't catch — two genuinely business-shaped entities that share a name
+// (a company called "Square" vs. "Union Square Ventures"). One batched LLM
+// call per competitor per check, so cost stays bounded regardless of how
+// many headlines came back.
+async function filterHeadlinesForCompetitor<T extends { title: string }>(
+  competitor: Competitor,
+  headlines: T[]
+): Promise<T[]> {
+  if (headlines.length === 0) return headlines;
+  const relevant = await filterRelevantHeadlines(competitor.name, competitor.domain, headlines, competitor.account_id);
+  return headlines.filter((_, i) => relevant[i]);
+}
+
 // News — free Google News RSS query, no API key required. De-duped against
 // existing signal titles for this competitor rather than a snapshot hash,
 // since RSS feeds don't have a stable "page" to diff. Inserts every headline
 // from this run that isn't already a signal, not just one.
 export async function checkNews(supabase: AdminClient, competitor: Competitor): Promise<Signal[]> {
   const query = `"${competitor.name}" ${BUSINESS_CONTEXT_TERMS}`;
-  const headlines = await fetchHeadlines(query);
+  const headlines = await filterHeadlinesForCompetitor(competitor, await fetchHeadlines(query));
   const inserted: Signal[] = [];
 
   for (const headline of headlines) {
@@ -359,7 +373,7 @@ export async function checkNews(supabase: AdminClient, competitor: Competitor): 
 // surfaced distinctly from general news instead of getting buried in it.
 export async function checkFunding(supabase: AdminClient, competitor: Competitor): Promise<Signal[]> {
   const query = `"${competitor.name}" (raises OR "seed round" OR "series a" OR "series b" OR "series c" OR funding OR valuation) ${BUSINESS_CONTEXT_TERMS}`;
-  const headlines = await fetchHeadlines(query);
+  const headlines = await filterHeadlinesForCompetitor(competitor, await fetchHeadlines(query));
   const inserted: Signal[] = [];
 
   for (const headline of headlines) {
