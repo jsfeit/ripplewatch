@@ -312,12 +312,23 @@ async function existingSignalTitle(
   return Boolean(data);
 }
 
+// AND-ed onto every news/funding query below so a bare company name that's
+// also a common word or unrelated brand ("Sage", "Wave", "Square") doesn't
+// pull in sports/entertainment/idiom noise — narrows results to ones that
+// actually read as business coverage. Not perfect (won't disambiguate two
+// different companies that share a name and both plausibly get called "a
+// company"), but eliminates the dominant class of false positives seen in
+// practice.
+const BUSINESS_CONTEXT_TERMS =
+  "(company OR software OR startup OR business OR app OR platform OR product OR pricing OR CEO OR customers)";
+
 // News — free Google News RSS query, no API key required. De-duped against
 // existing signal titles for this competitor rather than a snapshot hash,
 // since RSS feeds don't have a stable "page" to diff. Inserts every headline
 // from this run that isn't already a signal, not just one.
 export async function checkNews(supabase: AdminClient, competitor: Competitor): Promise<Signal[]> {
-  const headlines = await fetchHeadlines(competitor.name);
+  const query = `"${competitor.name}" ${BUSINESS_CONTEXT_TERMS}`;
+  const headlines = await fetchHeadlines(query);
   const inserted: Signal[] = [];
 
   for (const headline of headlines) {
@@ -347,7 +358,7 @@ export async function checkNews(supabase: AdminClient, competitor: Competitor): 
 // toward funding-announcement language so raises/rounds get classified and
 // surfaced distinctly from general news instead of getting buried in it.
 export async function checkFunding(supabase: AdminClient, competitor: Competitor): Promise<Signal[]> {
-  const query = `"${competitor.name}" (raises OR "seed round" OR "series a" OR "series b" OR "series c" OR funding OR valuation)`;
+  const query = `"${competitor.name}" (raises OR "seed round" OR "series a" OR "series b" OR "series c" OR funding OR valuation) ${BUSINESS_CONTEXT_TERMS}`;
   const headlines = await fetchHeadlines(query);
   const inserted: Signal[] = [];
 
