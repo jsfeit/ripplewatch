@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { runCrawlForAccount } from "@/lib/crawl";
 
+export const maxDuration = 300; // Same budget as the scheduled cron — a full account crawl can take a while
+
 // Manual single-account trigger for support/testing use — runs the exact
 // same checks as the scheduled crawl cron, just scoped to one account
 // instead of looping every account in the database. Lets support seed real
