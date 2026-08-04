@@ -807,3 +807,87 @@ export async function searchCompetitorNews(
     throw new Error(`Could not parse news search response: ${text}`, { cause: err });
   }
 }
+
+const DISCOVER_COMPETITORS_SYSTEM_PROMPT = `You use web search to find B2B companies that compete for the same buyers as the company described, that are NOT already in its tracked-competitors list. Prioritize companies that are newly launched, recently funded, or showing increasing visibility (recent press, product launches, funding rounds) over long-established players the company almost certainly already knows about — the goal is surfacing what a busy marketing/product lead might have missed, not repeating obvious incumbents.
+
+Respond with strict JSON only, no markdown, matching this shape exactly:
+{"competitors": [{"name": "<company name>", "domain": "<best-guess bare domain, e.g. 'acme.com', no protocol>", "category": "<short business category/description, under 8 words>", "reasoning": "<one sentence on why this looks like a real competitive threat, e.g. what's new/notable about them>"}]}
+
+Return up to 5, most compelling first. If nothing genuinely new turns up beyond the already-tracked list, respond {"competitors": []} rather than padding the list with obvious/already-known names.`;
+
+const DISCOVER_COMPETITORS_SCHEMA = {
+  type: "object",
+  properties: {
+    competitors: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          domain: { type: "string" },
+          category: { type: "string" },
+          reasoning: { type: "string" },
+        },
+        required: ["name", "domain", "category", "reasoning"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["competitors"],
+  additionalProperties: false,
+} as const;
+
+export type DiscoveredCompetitor = { name: string; domain: string; category: string; reasoning: string };
+
+// Weekly discovery job (see /api/cron/discover-competitors) — distinct from
+// suggestCompetitors (onboarding, model-knowledge-only, no web search): this
+// one is grounded in real current search results specifically so it can
+// find companies that didn't exist or weren't notable when the model was
+// trained, and is explicitly told what's already tracked so it doesn't just
+// repeat the account's existing competitor list back.
+export async function discoverNewCompetitors(
+  context: { companyName: string; positioning: string | null; icp: string | null },
+  existingCompetitorNames: string[],
+  accountId: string | null
+): Promise<DiscoveredCompetitor[]> {
+  const userPrompt = `Company: ${context.companyName}
+Positioning: ${context.positioning ?? "(not provided)"}
+ICP: ${context.icp ?? "(not provided)"}
+
+Already tracked (do not suggest these): ${existingCompetitorNames.length > 0 ? existingCompetitorNames.join(", ") : "(none yet)"}
+
+Search for competitors this company isn't already tracking.`;
+
+  const message = await getAnthropic().messages.create({
+    model: "claude-sonnet-5",
+    // Same overhead as searchCompetitorNews's web_search tool — see that
+    // function's comment on why this needs real headroom, not the ~1000
+    // tokens a non-search structured call would need.
+    max_tokens: 8192,
+    system: cachedSystemPrompt(DISCOVER_COMPETITORS_SYSTEM_PROMPT),
+    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
+    output_config: { format: { type: "json_schema", schema: DISCOVER_COMPETITORS_SCHEMA } },
+    messages: [{ role: "user", content: userPrompt }],
+  });
+  recordLlmUsage(accountId, "discoverNewCompetitors", message.model, message.usage);
+
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  try {
+    const parsed = JSON.parse(text);
+    const competitors = Array.isArray(parsed.competitors) ? parsed.competitors : [];
+    return competitors
+      .map((c: { name?: unknown; domain?: unknown; category?: unknown; reasoning?: unknown }) => ({
+        name: String(c.name ?? "").trim(),
+        domain: String(c.domain ?? "")
+          .trim()
+          .toLowerCase()
+          .replace(/^https?:\/\//, "")
+          .replace(/\/$/, ""),
+        category: String(c.category ?? "").trim(),
+        reasoning: String(c.reasoning ?? "").trim(),
+      }))
+      .filter((c: DiscoveredCompetitor) => c.name);
+  } catch (err) {
+    throw new Error(`Could not parse competitor discovery response: ${text}`, { cause: err });
+  }
+}

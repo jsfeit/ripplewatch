@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { CompetitorManager } from "@/components/app/competitor-manager";
+import { SuggestedCompetitorsPanel } from "@/components/app/suggested-competitors-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,13 @@ export default async function CompetitorsIndexPage() {
     redirect(`/app/competitors/${competitors[0].id}`);
   }
 
+  const { data: suggestions } = await supabase
+    .from("suggested_competitors")
+    .select("*")
+    .eq("account_id", profile.account_id)
+    .eq("status", "pending")
+    .order("discovered_at", { ascending: false });
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-10 sm:py-10">
       <div className="mb-8">
@@ -44,6 +52,7 @@ export default async function CompetitorsIndexPage() {
           Add your first competitor to start tracking signals.
         </p>
       </div>
+      <SuggestedCompetitorsPanel suggestions={suggestions ?? []} />
       <CompetitorManager competitors={[]} tier={account.tier} />
     </div>
   );
