@@ -490,12 +490,12 @@ For each headline, is it genuinely about this company, operating in the stated c
   }
 }
 
-const DEDUPE_STORIES_SYSTEM_PROMPT = `You are given news headlines about the same company, some of which may be different publishers covering the exact same underlying event (e.g. two articles about the same acquisition, the same funding round, the same product launch) rather than genuinely different news. Group headlines that describe the same real-world event together, then pick the single best headline per group to keep — the more informative one (concrete numbers/details over a vaguer rewrite of the same facts; a substantive publication over a wire/aggregator mirror when it's a toss-up).
+const DEDUPE_STORIES_SYSTEM_PROMPT = `You are given (1) a list of new candidate headlines about a company, and (2) a list of stories already covered in previous checks for this same company. Some new headlines may be different publishers covering the exact same underlying event as each other, or the exact same event as one already covered previously — not genuinely new information.
 
 Respond with strict JSON only, no markdown, matching this shape exactly:
 {"keepIndices": [<index>, ...]}
 
-Each index is the headline's 0-based position in the list given. Include exactly one index per distinct real-world event — if every headline is about a genuinely different event, keep all of them.`;
+Each index refers to a position in the "New headlines" list (0-based). Keep exactly one index per distinct real-world event among the new headlines — pick the more informative one per group (concrete numbers/details over a vaguer rewrite of the same facts). Exclude any new headline, entirely, that describes the same event as something in "Already covered." If a new headline is about a genuinely different event from everything else (new and already-covered), keep it.`;
 
 const DEDUPE_STORIES_SCHEMA = {
   type: "object",
@@ -511,16 +511,24 @@ const DEDUPE_STORIES_SCHEMA = {
 // only catches literally identical titles, so "Gusto Acquires Guideline for
 // $600M" (techbuzz.ai) and "Gusto agrees to buy retirement plan provider
 // Guideline" (CNBC) both slipped through as separate signals and got scored
-// independently (and inconsistently — 78 vs 55 for the same event). One
-// batched call per competitor per check, same cost shape as
-// filterRelevantHeadlines.
+// independently (and inconsistently — 78 vs 55 for the same event). Checking
+// against existingRecentTitles too (not just the current batch) catches the
+// same story resurfacing from a *later* crawl run, or from checkNews and
+// checkFunding both finding it in the same run — see scraping.ts, which now
+// runs those two sequentially per competitor specifically so this check can
+// see what the first one just inserted. One batched call per competitor per
+// check, same cost shape as filterRelevantHeadlines.
 export async function dedupeSameStoryHeadlines(
   headlines: { title: string; description?: string | null }[],
+  existingRecentTitles: string[],
   accountId: string | null
 ): Promise<number[]> {
-  if (headlines.length <= 1) return headlines.map((_, i) => i);
+  if (headlines.length === 0) return [];
+  if (headlines.length === 1 && existingRecentTitles.length === 0) return [0];
 
-  const userPrompt = `Headlines:\n${headlines.map((h, i) => `${i}. ${h.title}${h.description ? ` — ${h.description}` : ""}`).join("\n")}\n\nWhich headlines describe genuinely different events? Return one index to keep per distinct event.`;
+  const userPrompt = `Already covered:\n${
+    existingRecentTitles.length > 0 ? existingRecentTitles.map((t) => `- ${t}`).join("\n") : "(none)"
+  }\n\nNew headlines:\n${headlines.map((h, i) => `${i}. ${h.title}${h.description ? ` — ${h.description}` : ""}`).join("\n")}\n\nWhich new headlines are genuinely new stories?`;
 
   const message = await getAnthropic().messages.create({
     model: "claude-sonnet-5",

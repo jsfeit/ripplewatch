@@ -311,6 +311,22 @@ async function fetchHeadlines(
     .filter((item) => item.title);
 }
 
+// Recent (not all-time) so a genuinely new story that happens to echo
+// something from months ago isn't wrongly suppressed — same freshness
+// window as isFresh() below, since anything older than that has already
+// aged out of "still relevant to compare against" territory anyway.
+async function fetchRecentSignalTitles(supabase: AdminClient, competitorId: string): Promise<string[]> {
+  const cutoff = new Date();
+  cutoff.setUTCDate(cutoff.getUTCDate() - FRESHNESS_WINDOW_DAYS);
+  const { data } = await supabase
+    .from("signals")
+    .select("title")
+    .eq("competitor_id", competitorId)
+    .in("type", ["news", "funding"])
+    .gte("created_at", cutoff.toISOString());
+  return (data ?? []).map((s) => s.title);
+}
+
 async function existingSignalTitle(
   supabase: AdminClient,
   competitorId: string,
@@ -381,6 +397,7 @@ const BUSINESS_CONTEXT_TERMS =
 // call per competitor per check, so cost stays bounded regardless of how
 // many headlines came back.
 async function filterHeadlinesForCompetitor<T extends { title: string; description?: string | null }>(
+  supabase: AdminClient,
   competitor: Competitor,
   headlines: T[]
 ): Promise<T[]> {
@@ -393,11 +410,17 @@ async function filterHeadlinesForCompetitor<T extends { title: string; descripti
     competitor.account_id
   );
   const relevantHeadlines = headlines.filter((_, i) => relevant[i]);
+  if (relevantHeadlines.length === 0) return relevantHeadlines;
 
   // Different publishers covering the exact same event (an acquisition, a
   // funding round) otherwise both survive as separate signals and get
-  // scored independently — collapse to one per distinct story.
-  const keepIndices = await dedupeSameStoryHeadlines(relevantHeadlines, competitor.account_id);
+  // scored independently — collapse to one per distinct story. Checked
+  // against recent existing signals too, not just this batch, so the same
+  // event resurfacing in a later crawl run (or via the other check —
+  // checkNews/checkFunding now run sequentially per competitor precisely so
+  // this sees what the other just inserted) gets caught as well.
+  const existingTitles = await fetchRecentSignalTitles(supabase, competitor.id);
+  const keepIndices = await dedupeSameStoryHeadlines(relevantHeadlines, existingTitles, competitor.account_id);
   const keepSet = new Set(keepIndices);
   return relevantHeadlines.filter((_, i) => keepSet.has(i));
 }
@@ -408,7 +431,7 @@ async function filterHeadlinesForCompetitor<T extends { title: string; descripti
 // from this run that isn't already a signal, not just one.
 export async function checkNews(supabase: AdminClient, competitor: Competitor, isFirstCheck: boolean): Promise<Signal[]> {
   const query = `"${competitor.name}" ${BUSINESS_CONTEXT_TERMS}`;
-  let headlines = await filterHeadlinesForCompetitor(competitor, await fetchHeadlines(query));
+  let headlines = await filterHeadlinesForCompetitor(supabase, competitor, await fetchHeadlines(query));
   if (!isFirstCheck) headlines = headlines.filter((h) => isFresh(h.publishedAt));
   const inserted: Signal[] = [];
 
@@ -441,7 +464,7 @@ export async function checkNews(supabase: AdminClient, competitor: Competitor, i
 // surfaced distinctly from general news instead of getting buried in it.
 export async function checkFunding(supabase: AdminClient, competitor: Competitor, isFirstCheck: boolean): Promise<Signal[]> {
   const query = `"${competitor.name}" (raises OR "seed round" OR "series a" OR "series b" OR "series c" OR funding OR valuation) ${BUSINESS_CONTEXT_TERMS}`;
-  let headlines = await filterHeadlinesForCompetitor(competitor, await fetchHeadlines(query));
+  let headlines = await filterHeadlinesForCompetitor(supabase, competitor, await fetchHeadlines(query));
   if (!isFirstCheck) headlines = headlines.filter((h) => isFresh(h.publishedAt));
   const inserted: Signal[] = [];
 

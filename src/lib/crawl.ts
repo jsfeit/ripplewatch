@@ -142,17 +142,27 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
         ? await isFirstNewsCheck(supabase, competitor.id)
         : false;
 
+    // checkNews and checkFunding run sequentially, not alongside the other
+    // checks below — each one's same-story dedup (see
+    // filterHeadlinesForCompetitor in scraping.ts) compares against this
+    // competitor's recent signals, and running them in parallel would mean
+    // checkFunding can't see what checkNews just inserted (and vice versa),
+    // letting the same event slip through as two separate signals.
+    if (allowedSources.includes("news")) {
+      newSignals.push(...(await checkNews(supabase, competitor, isFirstCheck)));
+    }
+    if (allowedSources.includes("funding")) {
+      newSignals.push(...(await checkFunding(supabase, competitor, isFirstCheck)));
+    }
+
     // Pricing/jobs surface at most one signal per run (a diff against the
-    // last snapshot); news/funding can surface several (every new headline
-    // in this run's feed) — normalized to arrays here so both shapes
-    // flatten into newSignals the same way.
+    // last snapshot) — normalized to arrays here so both shapes flatten into
+    // newSignals the same way as the sequential checks above.
     const checks = [
       allowedSources.includes("pricing") ? checkPricingDiff(supabase, competitor).then((s) => (s ? [s] : [])) : null,
       allowedSources.includes("job_posting")
         ? checkJobPostingsDiff(supabase, competitor).then((s) => (s ? [s] : []))
         : null,
-      allowedSources.includes("news") ? checkNews(supabase, competitor, isFirstCheck) : null,
-      allowedSources.includes("funding") ? checkFunding(supabase, competitor, isFirstCheck) : null,
       // Supplements the free RSS news check above with Claude web search —
       // off by default (real per-search cost, not modeled against tier
       // pricing yet). Enable per the web-search-news-decision checklist item.
