@@ -171,12 +171,19 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
   // they haven't already seen by title, so a signal left at scored:false
   // after an interrupted run would otherwise never be revisited. Folded into
   // this run's scoring pass so nothing stays permanently stuck as "Raw".
+  // Capped and oldest-first: an unbounded rescue would retry the whole
+  // backlog on every run, which is exactly the runaway-duration failure
+  // mode that produced this backlog in the first place. Any excess just
+  // gets picked up a few signals at a time over subsequent runs instead.
+  const STALE_RESCUE_LIMIT = 20;
   const { data: staleUnscored } = await supabase
     .from("signals")
     .select("*")
     .in("competitor_id", competitorIds)
     .eq("scored", false)
-    .not("id", "in", `(${[...newSignals.map((s) => s.id), "00000000-0000-0000-0000-000000000000"].join(",")})`);
+    .not("id", "in", `(${[...newSignals.map((s) => s.id), "00000000-0000-0000-0000-000000000000"].join(",")})`)
+    .order("created_at", { ascending: true })
+    .limit(STALE_RESCUE_LIMIT);
 
   const signalsToScore: Signal[] = [...newSignals, ...(staleUnscored ?? [])];
 

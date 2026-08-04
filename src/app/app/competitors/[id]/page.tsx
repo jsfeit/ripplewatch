@@ -122,6 +122,7 @@ export default async function CompetitorDetailPage({
                 }}
                 competitorName={competitor.name}
                 competitorInitial={competitor.name.charAt(0).toUpperCase()}
+                unscoredReason={account.tier === "starter" ? "tier" : "pending"}
               />
             </div>
           ))}
