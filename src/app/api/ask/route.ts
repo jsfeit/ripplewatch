@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { answerQuestion, type AskContextSignal } from "@/lib/anthropic";
+import { isOldSignal } from "@/lib/signal-freshness";
 
 const LOOKBACK_DAYS = 90;
 
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
 
   const { data: competitors } = await supabase
     .from("competitors")
-    .select("id, name")
+    .select("id, name, category")
     .eq("account_id", profile.account_id);
 
   const competitorIds = (competitors ?? []).map((c) => c.id);
@@ -45,15 +46,24 @@ export async function POST(request: Request) {
   const sinceDate = new Date();
   sinceDate.setUTCDate(sinceDate.getUTCDate() - LOOKBACK_DAYS);
 
-  const { data: signals } = competitorIds.length
-    ? await supabase
-        .from("signals")
-        .select("competitor_id, type, title, occurred_on, relevance_level, relevance_reasoning, summary")
-        .in("competitor_id", competitorIds)
-        .gte("occurred_on", sinceDate.toISOString().slice(0, 10))
-        .order("occurred_on", { ascending: false })
-        .limit(200)
-    : { data: [] };
+  const [{ data: signals }, { data: suggestedCompetitors }] = await Promise.all([
+    competitorIds.length
+      ? supabase
+          .from("signals")
+          .select("competitor_id, type, title, occurred_on, relevance_level, relevance_score, relevance_reasoning, summary")
+          .in("competitor_id", competitorIds)
+          .gte("occurred_on", sinceDate.toISOString().slice(0, 10))
+          .order("occurred_on", { ascending: false })
+          .limit(200)
+      : Promise.resolve({ data: [] }),
+    // Dismissed suggestions are deliberately excluded — a closed decision,
+    // not something Ask should relitigate if asked "did we consider X."
+    supabase
+      .from("suggested_competitors")
+      .select("name, category, reasoning")
+      .eq("account_id", profile.account_id)
+      .eq("status", "pending"),
+  ]);
 
   const contextSignals: AskContextSignal[] = (signals ?? []).map((s) => ({
     competitor: competitorNameById.get(s.competitor_id) ?? "Unknown",
@@ -61,8 +71,10 @@ export async function POST(request: Request) {
     title: s.title,
     occurredOn: s.occurred_on,
     relevanceLevel: s.relevance_level,
+    relevanceScore: s.relevance_score,
     relevanceReasoning: s.relevance_reasoning,
     summary: s.summary,
+    isBackground: isOldSignal(s.occurred_on),
   }));
 
   try {
@@ -70,8 +82,13 @@ export async function POST(request: Request) {
       companyName: account?.name ?? "Your company",
       positioning: account?.positioning ?? null,
       icp: account?.icp ?? null,
-      competitors: (competitors ?? []).map((c) => c.name),
+      competitors: (competitors ?? []).map((c) => ({ name: c.name, category: c.category })),
       signals: contextSignals,
+      suggestedCompetitors: (suggestedCompetitors ?? []).map((s) => ({
+        name: s.name,
+        category: s.category,
+        reasoning: s.reasoning,
+      })),
     }, profile.account_id);
     return NextResponse.json({ answer });
   } catch (err) {

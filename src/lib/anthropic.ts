@@ -682,7 +682,11 @@ export async function suggestCompetitorCategories(
   }
 }
 
-const ASK_SYSTEM_PROMPT = `You are Ripplewatch's competitive-intelligence analyst for one specific company. Answer the user's question using only the business context and recent signals provided below — don't invent competitor facts that aren't in the context. If the context doesn't contain enough to answer, say so plainly and suggest what to track instead of guessing.
+const ASK_SYSTEM_PROMPT = `You are Ripplewatch's competitive-intelligence analyst for one specific company. Answer the user's question using only the business context and signals provided below — don't invent competitor facts that aren't in the context. If the context doesn't contain enough to answer, say so plainly and suggest what to track instead of guessing.
+
+Each signal is tagged [recent] or [background]. [background] signals were seeded when a competitor was first added, to give initial landscape context — they are not new developments, so never present one as if it just happened or as "recent" activity, even if the question is about what's new. They're still fair to cite for broader questions (e.g. "what does our competitive landscape look like," "what does Competitor X do") where older context is genuinely useful.
+
+Suggested-but-not-yet-tracked competitors are listed separately, if any. Only bring them up when the question is specifically about discovering, finding, or whether there are competitors the company might be missing — not as a proactive aside on unrelated questions.
 
 Write like an analyst briefing a colleague, not a search engine: a direct answer first, then the specific signals that back it up (name the competitor and what happened). Keep it tight — a few sentences to a short paragraph, not a report. Plain text only, no markdown headers.`;
 
@@ -692,9 +696,14 @@ export type AskContextSignal = {
   title: string;
   occurredOn: string;
   relevanceLevel: string | null;
+  relevanceScore: number | null;
   relevanceReasoning: string | null;
   summary: string | null;
+  isBackground: boolean;
 };
+
+export type AskContextCompetitor = { name: string; category: string | null };
+export type AskContextSuggestion = { name: string; category: string | null; reasoning: string | null };
 
 export async function answerQuestion(
   question: string,
@@ -702,25 +711,40 @@ export async function answerQuestion(
     companyName: string;
     positioning: string | null;
     icp: string | null;
-    competitors: string[];
+    competitors: AskContextCompetitor[];
     signals: AskContextSignal[];
+    suggestedCompetitors: AskContextSuggestion[];
   },
   accountId: string | null
 ): Promise<string> {
   const signalLines = context.signals
     .map((s) => {
-      const verdict = s.relevanceLevel ? `[${s.relevanceLevel}] ${s.relevanceReasoning ?? ""}` : s.summary ?? "";
-      return `- ${s.occurredOn} · ${s.competitor} · ${s.type} · ${s.title} — ${verdict}`;
+      const verdict = s.relevanceLevel
+        ? `[${s.relevanceLevel}${s.relevanceScore !== null ? ` ${s.relevanceScore}/100` : ""}] ${s.relevanceReasoning ?? ""}`
+        : s.summary ?? "";
+      const recency = s.isBackground ? "background" : "recent";
+      return `- [${recency}] ${s.occurredOn} · ${s.competitor} · ${s.type} · ${s.title} — ${verdict}`;
     })
+    .join("\n");
+
+  const competitorLines = context.competitors
+    .map((c) => `${c.name}${c.category ? ` (${c.category})` : ""}`)
+    .join(", ");
+
+  const suggestionLines = context.suggestedCompetitors
+    .map((s) => `${s.name}${s.category ? ` (${s.category})` : ""}${s.reasoning ? ` — ${s.reasoning}` : ""}`)
     .join("\n");
 
   const userPrompt = `Company: ${context.companyName}
 Positioning: ${context.positioning ?? "(not provided)"}
 ICP: ${context.icp ?? "(not provided)"}
-Tracked competitors: ${context.competitors.join(", ") || "(none)"}
+Tracked competitors: ${competitorLines || "(none)"}
 
-Recent signals (last ~90 days):
+Signals:
 ${signalLines || "(none recorded yet)"}
+
+Suggested but not yet tracked competitors (only mention if the question is about discovering/missing competitors):
+${suggestionLines || "(none pending)"}
 
 Question: ${question}`;
 
