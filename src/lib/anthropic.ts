@@ -311,7 +311,11 @@ export const SCORING_PROMPT_VERSION = "v2";
 export function scoringRequestParams(context: ScoringContext, signal: SignalToScore) {
   return {
     model: "claude-sonnet-5" as const,
-    max_tokens: 300,
+    // 300 was occasionally too tight for a 1-3 sentence reasoning string,
+    // truncating mid-string and producing invalid JSON (silently dropping
+    // the signal — see crawl.ts's per-signal catch). Headroom, not a bump
+    // for the score field itself (that's a single number).
+    max_tokens: 600,
     system: cachedSystemPrompt(SYSTEM_PROMPT),
     output_config: { format: { type: "json_schema" as const, schema: SCORE_SIGNAL_SCHEMA } },
     messages: [{ role: "user" as const, content: buildScoringUserPrompt(context, signal) }],
