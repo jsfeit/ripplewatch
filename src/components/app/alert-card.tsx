@@ -28,10 +28,13 @@ export type AlertCardSignal = {
   // Absent on the marketing site's mock examples, which have no real source
   // to link to; present for every real signal in the app.
   url?: string | null;
-  // True for a competitor's first-ever crawl, which deliberately looks back
-  // further than ongoing crawls to seed initial context — badged as
-  // "Background" so an old article doesn't read as if it just happened.
-  isBackfill?: boolean;
+  // True when the article's real publish date is older than the dashboard's
+  // recency window (see signal-freshness.ts) — badged "Background" so an
+  // old article doesn't read as if it just happened. Based on the article's
+  // actual age, not on how it was sourced: a competitor's very first crawl
+  // can still turn up genuinely fresh news, which shouldn't get this badge
+  // just because of when it was discovered.
+  isBackground?: boolean;
 };
 
 export function AlertCard({
@@ -84,8 +87,8 @@ export function AlertCard({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          {signal.isBackfill ? (
-            <Badge variant="outline" className="gap-1 text-muted-foreground" title="Seeded when you added this competitor, not newly detected">
+          {signal.isBackground ? (
+            <Badge variant="outline" className="gap-1 text-muted-foreground" title="Older article, not recently discovered">
               <History className="size-3" />
               Background
             </Badge>

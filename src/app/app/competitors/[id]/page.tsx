@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/app/empty-state";
 import { CompetitorManager } from "@/components/app/competitor-manager";
 import { CompetitorMonitoringUrls } from "@/components/app/competitor-monitoring-urls";
 import { createClient } from "@/lib/supabase/server";
+import { isOldSignal } from "@/lib/signal-freshness";
 
 export const dynamic = "force-dynamic";
 
@@ -119,7 +120,7 @@ export default async function CompetitorDetailPage({
                   scored: signal.scored,
                   relevanceLevel: signal.relevance_level,
                   relevanceReasoning: signal.relevance_reasoning,
-                  isBackfill: signal.source === "backfill",
+                  isBackground: isOldSignal(signal.occurred_on),
                 }}
                 competitorName={competitor.name}
                 competitorInitial={competitor.name.charAt(0).toUpperCase()}
