@@ -266,7 +266,9 @@ const HEADLINES_PER_QUERY = 8;
 async function fetchHeadlines(
   query: string,
   limit: number = HEADLINES_PER_QUERY
-): Promise<{ title: string; source: string | null; description: string | null; link: string | null }[]> {
+): Promise<
+  { title: string; source: string | null; description: string | null; link: string | null; publishedAt: string | null }[]
+> {
   const feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
   const res = await fetch(feedUrl, { signal: AbortSignal.timeout(15_000) });
   if (!res.ok) return [];
@@ -289,7 +291,15 @@ async function fetchHeadlines(
         cleanDescription && cleanDescription !== title && !cleanDescription.startsWith(title)
           ? cleanDescription
           : null;
-      return { title, source, description, link };
+      // Google News RSS items carry a real RFC822 pubDate — without this,
+      // every signal's occurred_on defaulted to whenever it was inserted,
+      // making a months-old article look exactly as fresh as one from
+      // today. Stored as an ISO date string; null if missing/unparseable
+      // rather than guessing.
+      const rawPubDate = item.find("pubDate").text().trim();
+      const parsedDate = rawPubDate ? new Date(rawPubDate) : null;
+      const publishedAt = parsedDate && !isNaN(parsedDate.getTime()) ? parsedDate.toISOString().slice(0, 10) : null;
+      return { title, source, description, link, publishedAt };
     })
     .get()
     .filter((item) => item.title);
@@ -310,6 +320,35 @@ async function existingSignalTitle(
     .eq("title", title)
     .maybeSingle();
   return Boolean(data);
+}
+
+// True the first time a competitor's news/funding gets checked at all — that
+// crawl deliberately allows older articles through (see FRESHNESS_WINDOW_DAYS
+// below) to seed real competitive context for a brand-new account, tagged
+// "backfill" so it reads as "here's the landscape" rather than "here's what
+// just happened." Every check after that is "pipeline" and freshness-filtered.
+async function isFirstNewsCheck(supabase: AdminClient, competitorId: string): Promise<boolean> {
+  const { count } = await supabase
+    .from("signals")
+    .select("id", { count: "exact", head: true })
+    .eq("competitor_id", competitorId)
+    .in("type", ["news", "funding"]);
+  return (count ?? 0) === 0;
+}
+
+// Google News RSS is a relevance search, not a chronological feed — for a
+// quiet competitor, the same months-old article can keep coming back as the
+// best match run after run. Ongoing (non-backfill) crawls drop anything
+// older than this so old news can't masquerade as a new alert; an item
+// without a parseable date is kept rather than dropped (fail open, same
+// stance as the other headline filters here).
+const FRESHNESS_WINDOW_DAYS = 30;
+
+function isFresh(publishedAt: string | null): boolean {
+  if (!publishedAt) return true;
+  const cutoff = new Date();
+  cutoff.setUTCDate(cutoff.getUTCDate() - FRESHNESS_WINDOW_DAYS);
+  return new Date(publishedAt) >= cutoff;
 }
 
 // AND-ed onto every news/funding query below so a bare company name that's
@@ -348,7 +387,9 @@ async function filterHeadlinesForCompetitor<T extends { title: string }>(
 // from this run that isn't already a signal, not just one.
 export async function checkNews(supabase: AdminClient, competitor: Competitor): Promise<Signal[]> {
   const query = `"${competitor.name}" ${BUSINESS_CONTEXT_TERMS}`;
-  const headlines = await filterHeadlinesForCompetitor(competitor, await fetchHeadlines(query));
+  const isFirstCheck = await isFirstNewsCheck(supabase, competitor.id);
+  let headlines = await filterHeadlinesForCompetitor(competitor, await fetchHeadlines(query));
+  if (!isFirstCheck) headlines = headlines.filter((h) => isFresh(h.publishedAt));
   const inserted: Signal[] = [];
 
   for (const headline of headlines) {
@@ -362,8 +403,9 @@ export async function checkNews(supabase: AdminClient, competitor: Competitor): 
         title: headline.title,
         summary: headline.description ?? headline.source,
         url: headline.link,
+        occurred_on: headline.publishedAt ?? undefined,
         scored: false,
-        source: "pipeline",
+        source: isFirstCheck ? "backfill" : "pipeline",
       })
       .select("*")
       .single();
@@ -379,7 +421,9 @@ export async function checkNews(supabase: AdminClient, competitor: Competitor): 
 // surfaced distinctly from general news instead of getting buried in it.
 export async function checkFunding(supabase: AdminClient, competitor: Competitor): Promise<Signal[]> {
   const query = `"${competitor.name}" (raises OR "seed round" OR "series a" OR "series b" OR "series c" OR funding OR valuation) ${BUSINESS_CONTEXT_TERMS}`;
-  const headlines = await filterHeadlinesForCompetitor(competitor, await fetchHeadlines(query));
+  const isFirstCheck = await isFirstNewsCheck(supabase, competitor.id);
+  let headlines = await filterHeadlinesForCompetitor(competitor, await fetchHeadlines(query));
+  if (!isFirstCheck) headlines = headlines.filter((h) => isFresh(h.publishedAt));
   const inserted: Signal[] = [];
 
   for (const headline of headlines) {
@@ -393,8 +437,9 @@ export async function checkFunding(supabase: AdminClient, competitor: Competitor
         title: headline.title,
         summary: headline.description ?? headline.source,
         url: headline.link,
+        occurred_on: headline.publishedAt ?? undefined,
         scored: false,
-        source: "pipeline",
+        source: isFirstCheck ? "backfill" : "pipeline",
       })
       .select("*")
       .single();

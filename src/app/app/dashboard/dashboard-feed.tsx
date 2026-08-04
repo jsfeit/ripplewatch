@@ -79,11 +79,18 @@ export function DashboardFeed({
           .sort((a, b) => {
             const rankDiff = levelRank(a) - levelRank(b);
             if (rankDiff !== 0) return rankDiff;
-            return b.created_at.localeCompare(a.created_at);
+            // occurred_on (the article's real date), not created_at (when we
+            // happened to discover it) — otherwise a backfilled months-old
+            // article, just inserted, would outrank a genuinely fresh one.
+            return b.occurred_on.localeCompare(a.occurred_on);
           });
 
-        const thisWeek = competitorSignals.filter((s) => new Date(s.created_at) >= startOfThisWeek).length;
-        const lastWeek = competitorSignals.filter(
+        // Backfill signals are excluded here too — they were seeded once at
+        // signup, not newly detected this week, so counting them would
+        // overstate this week's real activity.
+        const freshSignals = competitorSignals.filter((s) => s.source !== "backfill");
+        const thisWeek = freshSignals.filter((s) => new Date(s.created_at) >= startOfThisWeek).length;
+        const lastWeek = freshSignals.filter(
           (s) => new Date(s.created_at) >= startOfLastWeek && new Date(s.created_at) < startOfThisWeek
         ).length;
 
@@ -175,6 +182,7 @@ export function DashboardFeed({
                     relevanceLevel: signal.relevance_level,
                     relevanceReasoning: signal.relevance_reasoning,
                     url: resolveUrl(signal, competitor),
+                    isBackfill: signal.source === "backfill",
                   }}
                   competitorName={competitor.name}
                   competitorInitial={competitor.name.charAt(0).toUpperCase()}
