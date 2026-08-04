@@ -257,11 +257,16 @@ export async function extractPricingStructure(
 
 // Schema-enforced (output_config.format below), so a malformed score is no
 // longer a real failure mode — this used to need a same-prompt retry loop
-// for exactly that case, which schema enforcement made dead code.
+// for exactly that case, which schema enforcement made dead code. Plain
+// "number" with no minimum/maximum, matching every other numeric field in
+// this file's schemas (e.g. PRICING_EXTRACTION_SCHEMA's price) — those
+// constraint keywords aren't part of Anthropic's structured-output subset
+// and caused every scoring call to fail outright when added here. Range is
+// enforced in code instead, via the clamp in parseScoringText below.
 const SCORE_SIGNAL_SCHEMA = {
   type: "object",
   properties: {
-    score: { type: "integer", minimum: 0, maximum: 100 },
+    score: { type: "number" },
     reasoning: { type: "string" },
   },
   required: ["score", "reasoning"],
