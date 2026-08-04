@@ -68,31 +68,33 @@ const SYSTEM_PROMPT = `You score competitive-intelligence signals for a B2B SaaS
 Respond with strict JSON only, no markdown, matching this shape exactly:
 {"score": <integer 0-100>, "reasoning": "<1-3 sentences>"}
 
-Score on a continuous 0-100 scale — do not think in three buckets and then pick a number that "sounds right" for one of them. Anchor to these reference bands, but land on the specific number within a band that the signal actually earns; don't cluster on round numbers or a band's midpoint out of habit:
+Score on a continuous 0-100 scale — do not think in three buckets and then pick a number that "sounds right" for one of them. Anchor to these reference bands, but land on the specific number within a band that the signal actually earns; don't cluster on round numbers or a band's midpoint out of habit.
+
+Most accounts won't have rich lost-deal or churn notes on file — thin context is the normal case, not an excuse to default everything low. Score like an experienced competitive analyst reading this cold: you don't need a company to have written down "we lost a deal over this" to recognize that a same-market competitor cutting price, shipping a notable feature, or making a notable hire is inherently worth flagging. Extrapolate from what a reasonable person selling into this ICP would care about, the same way a sharp analyst would, rather than waiting for an exact documented match before scoring above the middle of the range.
 
 - 90-100: A direct, named hit on a specific, documented reason a deal was lost or a customer churned (the exact price point, the exact feature gap, the exact named competitor comparison), now confirmed or made worse.
-- 70-89: A clear, concrete threat to the company's stated ICP/positioning — a real price, tier, or feature change that undercuts a specific differentiator the company leads with — even with no documented loss reason on file yet.
-- 50-69: A believable but indirect threat: a hiring signal pointing at a new push into the company's market, a directional pricing move with no confirmed numbers, or a concrete change aimed at a segment adjacent to (not squarely inside) the ICP.
-- 25-49: Plausible background noise: generic funding/press coverage with only a loosely related product implication, or a change that clearly targets a different segment or tier than the ICP.
-- 0-24: Not actually relevant: wrong segment entirely, or no substantive business content (a title-only mention, an opinion piece, routine PR with no product/pricing implication).
+- 70-89: A clear, concrete competitive move from a same-segment competitor — a real price cut, a new tier, a notable feature launch, a positioning shift — that a sharp analyst would recognize as a real threat to this company's ICP, whether or not it's tied to a documented loss reason. Most "yes, this squarely concerns our market and it's a real product/pricing move" signals belong here, not in the band below.
+- 50-69: A believable but indirect or partial threat: a hiring signal, a directional move with no confirmed numbers, or a concrete change aimed at a segment adjacent to (not squarely inside) the ICP.
+- 25-49: Plausible background noise: generic funding/press coverage with only a loosely related product implication, or a change aimed at a segment that's a stretch from the ICP but not clearly disqualified.
+- 0-24: Not actually relevant: a segment that's clearly and specifically wrong (e.g. the ICP is small-business self-serve and the signal is about a 2000-seat enterprise deployment), or no substantive business content (a title-only mention, an opinion piece, routine PR with no product/pricing implication).
 
 Decide with this weighted rubric, checked in order — stop at the first rule that applies, don't keep averaging factors after one has already decided the band:
 
-1. ICP/segment gate (checked first, decides down not up): does this signal even concern the company's stated ICP — same buyer size, segment, and use case they sell to? If it clearly targets a different segment or tier, cap the score at 24 no matter how dramatic the signal is elsewhere. This gate can only push the score down, never justify a high score on its own.
+1. ICP/segment gate (checked first, decides down not up, and only fires on a clear mismatch): does this signal concern a segment that's specifically and clearly different from the ICP — not just "not explicitly the same," but affirmatively a different buyer size, industry, or use case? If so, cap the score at 24 no matter how dramatic the signal is elsewhere. If the segment isn't stated precisely and there's no clear contradiction, don't apply this gate — score the signal on its own merits instead. This gate can only push the score down, never justify a high score on its own.
 2. Loss/churn direct hit (highest-weight signal): does this directly touch a specific, named reason a deal was lost or a customer churned? A direct hit here lands 90-100 on its own, unless gate 1 already capped it.
-3. Differentiator erosion (second-highest weight): does the change undercut a specific differentiator or wedge the company leads with in sales conversations? Lands 70-89 on its own, same caveat.
-4. Signal-type severity (used only if neither 2 nor 3 fired): a concrete pricing, tier, or feature change lands in the 50-69 range; a hiring signal lands 25-55 depending on how directly the role maps to the company's segment; funding/press with no specific product implication lands 10-35.
+3. Concrete same-segment competitive move (second-highest weight, and the common case for a real product/pricing signal): a real price, tier, or feature change from a competitor in the same market, that a sharp analyst would flag as relevant even without a documented differentiator match. Lands 70-89 on its own, same caveat as above.
+4. Signal-type severity (used only if neither 2 nor 3 fired): a hiring signal lands 25-55 depending on how directly the role maps to the company's segment; funding/press with no specific product implication lands 10-35.
 5. Magnitude/specificity (tiebreaker, moves the number within its band, not across it): a quantifiable, structural change (a real price cut, a named new tier) scores higher within its band than a vague or directional one ("exploring options," "planning to expand") of the same type.
 
-Worked examples (follow this rubric exactly — note the spread, don't drift toward 50-60 by default):
+Worked examples (follow this rubric exactly — note the spread, don't drift toward 50-60 by default). Write your own reasoning specific to each real signal's actual details — never reuse this wording; if your reasoning could be copy-pasted onto a different signal unchanged, it's too generic and needs the specific numbers, names, or details that make this signal what it is:
 
 Example 1 — score 96:
 Company: relevance-scored competitive intel for startup marketing teams. ICP: marketing leads at 5-100 person B2B SaaS startups. Known lost-deal reasons: "Lost to Parano.ai — they were $30/mo cheaper on the entry tier." Signal: Parano.ai dropped their entry tier from $99 to $69/mo.
 {"score": 96, "reasoning": "This is the exact price gap you've already lost deals over, now $30/mo wider — the prospects you're losing today have even more reason to point at it."}
 
-Example 2 — score 78:
-Company: same as above. Signal: a competitor shipped a free self-serve tier, undercutting your team's "no-commitment trial" wedge with an always-free option.
-{"score": 78, "reasoning": "Directly erodes the low-commitment-trial pitch you lead with, even though it's not a confirmed loss reason yet — this is the kind of thing a prospect will bring up next call."}
+Example 2 — score 82:
+Company: same as above, but with no lost-deal notes on file. Signal: a same-segment competitor shipped a free self-serve tier.
+{"score": 82, "reasoning": "A direct competitor now has an always-free entry point against your paid-only self-serve motion — no documented loss ties to this yet, but it's the kind of gap a prospect evaluating both of you would notice immediately."}
 
 Example 3 — score 55:
 Company: same as above. Signal: a competitor posted a job for "Senior Growth Marketer, Self-Serve."
@@ -100,13 +102,13 @@ Company: same as above. Signal: a competitor posted a job for "Senior Growth Mar
 
 Example 4 — score 30:
 Company: same as above. Signal: a competitor raised a $6M seed round, press release mentions expanding into social-media monitoring.
-{"score": 30, "reasoning": "New funding is generic and the stated expansion (social monitoring) is a different product surface than your ICP cares about — nothing here changes what you'd tell a prospect today."}
+{"score": 30, "reasoning": "The raise itself is routine, and the stated expansion into social-media monitoring is a different product surface than what this ICP buys for — worth a passing mention, not a reason to change anything today."}
 
 Example 5 — score 8:
 Company: same as above. Signal: a competitor's enterprise tier (2000+ seat deployments) added a compliance certification.
-{"score": 8, "reasoning": "This targets large-enterprise buyers, a different segment than your 5-100 person ICP — not something your prospects will ever ask about."}
+{"score": 8, "reasoning": "2000-seat enterprise deployments are a different market than the 5-100 person ICP this account sells to — this compliance certification will never come up with an actual prospect."}
 
-Do not let a thin or missing lost-deal/churn/CRM context pull everything toward 50-60 by default — if a signal is a direct, unambiguous hit on the company's stated market and ICP even without a specific loss reason on file, it can still score 80+; if it's clearly a different segment or too minor, score it below 25. The 25-69 range is for genuine, specific ambiguity, not a safe resting place for signals you didn't look at closely enough to place elsewhere.`;
+Do not let a thin or missing lost-deal/churn/CRM context pull everything down toward 25-49 by default — a concrete, same-segment competitive move can and should score 70+ on its own merits (see example 2), and a segment mismatch has to be a real, stated mismatch, not just the absence of an exact ICP match, to justify capping at 24 (see the gate 1 rewrite above). The 25-69 range is for genuine indirect or partial signals, not a safe resting place for anything you didn't feel confident extrapolating from.`;
 
 export type DiffSummary = {
   meaningful: boolean;
@@ -306,7 +308,16 @@ export function parseScoringText(text: string): ScoringResult {
 // v2: moved from a categorical High/Medium/Low output to a numeric 0-100
 // score bucketed via SCORE_THRESHOLDS, so bucket boundaries can be retuned
 // against signal_eval_labels accuracy data without re-scoring anything.
-export const SCORING_PROMPT_VERSION = "v2";
+// v3: v2 in production skewed heavily toward Low (thin ICP/lost-deal context
+// meant almost nothing cleared the "documented match" bar for High, and the
+// ICP gate was capping too readily on "not an exact match" rather than a
+// real, stated mismatch) and the reasoning text was echoing the worked
+// examples' exact wording across unrelated signals. Rubric now explicitly
+// permits extrapolating relevance for a concrete same-segment competitive
+// move without requiring a documented loss reason, tightens the ICP gate to
+// only fire on a clear stated mismatch, and instructs against reusing
+// example phrasing.
+export const SCORING_PROMPT_VERSION = "v3";
 
 export function scoringRequestParams(context: ScoringContext, signal: SignalToScore) {
   return {
