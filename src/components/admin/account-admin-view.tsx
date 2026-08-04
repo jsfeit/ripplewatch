@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Plus, Trash2, Loader2 } from "lucide-react";
+import { Pencil, Plus, Trash2, Loader2, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +57,8 @@ export function AccountAdminView({
 }) {
   const [tier, setTier] = useState(account.tier);
   const [savingTier, setSavingTier] = useState(false);
+  const [recrawling, setRecrawling] = useState(false);
+  const [recrawlResult, setRecrawlResult] = useState<string | null>(null);
   const [competitors, setCompetitors] = useState(initialCompetitors);
   const [signals, setSignals] = useState(initialSignals);
   const [newCompetitorName, setNewCompetitorName] = useState("");
@@ -150,6 +152,19 @@ export function AccountAdminView({
     if (!res.ok) setTier(previous);
   }
 
+  async function handleRecrawl() {
+    setRecrawling(true);
+    setRecrawlResult(null);
+    const res = await fetch(`/api/admin/accounts/${account.id}/recrawl`, { method: "POST" });
+    const data = await res.json().catch(() => null);
+    setRecrawling(false);
+    setRecrawlResult(
+      res.ok
+        ? `${data.summary.newSignals} new, ${data.summary.scored} scored`
+        : data?.error ?? "Recrawl failed."
+    );
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -173,6 +188,11 @@ export function AccountAdminView({
               {account.subscription_status}
             </Badge>
           ) : null}
+          <Button variant="outline" size="sm" onClick={handleRecrawl} disabled={recrawling}>
+            {recrawling ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+            Recrawl now
+          </Button>
+          {recrawlResult ? <span className="text-xs text-muted-foreground">{recrawlResult}</span> : null}
         </div>
         <div className="mt-2 space-y-1 text-sm text-muted-foreground">
           {account.positioning ? <p>{account.positioning}</p> : null}
