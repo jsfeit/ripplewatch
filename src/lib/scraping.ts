@@ -3,7 +3,13 @@ import * as cheerio from "cheerio";
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
-import { summarizePricingChange, extractPricingStructure, searchCompetitorNews, filterRelevantHeadlines } from "@/lib/anthropic";
+import {
+  summarizePricingChange,
+  extractPricingStructure,
+  searchCompetitorNews,
+  filterRelevantHeadlines,
+  dedupeSameStoryHeadlines,
+} from "@/lib/anthropic";
 import { normalizeDomain, guessPricingUrl, guessCareersUrl } from "@/lib/domain";
 
 type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
@@ -327,7 +333,15 @@ async function existingSignalTitle(
 // below) to seed real competitive context for a brand-new account, tagged
 // "backfill" so it reads as "here's the landscape" rather than "here's what
 // just happened." Every check after that is "pipeline" and freshness-filtered.
-async function isFirstNewsCheck(supabase: AdminClient, competitorId: string): Promise<boolean> {
+//
+// Callers (checkNews, checkFunding) run concurrently for the same
+// competitor in a single crawl — this must be computed ONCE up front (see
+// runCrawlForAccount in crawl.ts) and passed to both, not called
+// independently by each. Two concurrent callers each checking "is the count
+// still zero?" right before their own insert is a classic
+// check-then-act race: whichever inserts first makes the other see a
+// nonzero count and wrongly conclude it's no longer the first check.
+export async function isFirstNewsCheck(supabase: AdminClient, competitorId: string): Promise<boolean> {
   const { count } = await supabase
     .from("signals")
     .select("id", { count: "exact", head: true })
@@ -366,7 +380,7 @@ const BUSINESS_CONTEXT_TERMS =
 // (a company called "Square" vs. "Union Square Ventures"). One batched LLM
 // call per competitor per check, so cost stays bounded regardless of how
 // many headlines came back.
-async function filterHeadlinesForCompetitor<T extends { title: string }>(
+async function filterHeadlinesForCompetitor<T extends { title: string; description?: string | null }>(
   competitor: Competitor,
   headlines: T[]
 ): Promise<T[]> {
@@ -378,16 +392,22 @@ async function filterHeadlinesForCompetitor<T extends { title: string }>(
     headlines,
     competitor.account_id
   );
-  return headlines.filter((_, i) => relevant[i]);
+  const relevantHeadlines = headlines.filter((_, i) => relevant[i]);
+
+  // Different publishers covering the exact same event (an acquisition, a
+  // funding round) otherwise both survive as separate signals and get
+  // scored independently — collapse to one per distinct story.
+  const keepIndices = await dedupeSameStoryHeadlines(relevantHeadlines, competitor.account_id);
+  const keepSet = new Set(keepIndices);
+  return relevantHeadlines.filter((_, i) => keepSet.has(i));
 }
 
 // News — free Google News RSS query, no API key required. De-duped against
 // existing signal titles for this competitor rather than a snapshot hash,
 // since RSS feeds don't have a stable "page" to diff. Inserts every headline
 // from this run that isn't already a signal, not just one.
-export async function checkNews(supabase: AdminClient, competitor: Competitor): Promise<Signal[]> {
+export async function checkNews(supabase: AdminClient, competitor: Competitor, isFirstCheck: boolean): Promise<Signal[]> {
   const query = `"${competitor.name}" ${BUSINESS_CONTEXT_TERMS}`;
-  const isFirstCheck = await isFirstNewsCheck(supabase, competitor.id);
   let headlines = await filterHeadlinesForCompetitor(competitor, await fetchHeadlines(query));
   if (!isFirstCheck) headlines = headlines.filter((h) => isFresh(h.publishedAt));
   const inserted: Signal[] = [];
@@ -419,9 +439,8 @@ export async function checkNews(supabase: AdminClient, competitor: Competitor): 
 // Funding — same free Google News RSS approach, but with a query weighted
 // toward funding-announcement language so raises/rounds get classified and
 // surfaced distinctly from general news instead of getting buried in it.
-export async function checkFunding(supabase: AdminClient, competitor: Competitor): Promise<Signal[]> {
+export async function checkFunding(supabase: AdminClient, competitor: Competitor, isFirstCheck: boolean): Promise<Signal[]> {
   const query = `"${competitor.name}" (raises OR "seed round" OR "series a" OR "series b" OR "series c" OR funding OR valuation) ${BUSINESS_CONTEXT_TERMS}`;
-  const isFirstCheck = await isFirstNewsCheck(supabase, competitor.id);
   let headlines = await filterHeadlinesForCompetitor(competitor, await fetchHeadlines(query));
   if (!isFirstCheck) headlines = headlines.filter((h) => isFresh(h.publishedAt));
   const inserted: Signal[] = [];

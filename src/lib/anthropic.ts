@@ -490,6 +490,61 @@ For each headline, is it genuinely about this company, operating in the stated c
   }
 }
 
+const DEDUPE_STORIES_SYSTEM_PROMPT = `You are given news headlines about the same company, some of which may be different publishers covering the exact same underlying event (e.g. two articles about the same acquisition, the same funding round, the same product launch) rather than genuinely different news. Group headlines that describe the same real-world event together, then pick the single best headline per group to keep — the more informative one (concrete numbers/details over a vaguer rewrite of the same facts; a substantive publication over a wire/aggregator mirror when it's a toss-up).
+
+Respond with strict JSON only, no markdown, matching this shape exactly:
+{"keepIndices": [<index>, ...]}
+
+Each index is the headline's 0-based position in the list given. Include exactly one index per distinct real-world event — if every headline is about a genuinely different event, keep all of them.`;
+
+const DEDUPE_STORIES_SCHEMA = {
+  type: "object",
+  properties: {
+    keepIndices: { type: "array", items: { type: "integer" } },
+  },
+  required: ["keepIndices"],
+  additionalProperties: false,
+} as const;
+
+// Google News RSS often returns several publishers' coverage of the exact
+// same event in one search — title-based dedup against existing signals
+// only catches literally identical titles, so "Gusto Acquires Guideline for
+// $600M" (techbuzz.ai) and "Gusto agrees to buy retirement plan provider
+// Guideline" (CNBC) both slipped through as separate signals and got scored
+// independently (and inconsistently — 78 vs 55 for the same event). One
+// batched call per competitor per check, same cost shape as
+// filterRelevantHeadlines.
+export async function dedupeSameStoryHeadlines(
+  headlines: { title: string; description?: string | null }[],
+  accountId: string | null
+): Promise<number[]> {
+  if (headlines.length <= 1) return headlines.map((_, i) => i);
+
+  const userPrompt = `Headlines:\n${headlines.map((h, i) => `${i}. ${h.title}${h.description ? ` — ${h.description}` : ""}`).join("\n")}\n\nWhich headlines describe genuinely different events? Return one index to keep per distinct event.`;
+
+  const message = await getAnthropic().messages.create({
+    model: "claude-sonnet-5",
+    max_tokens: 300,
+    system: cachedSystemPrompt(DEDUPE_STORIES_SYSTEM_PROMPT),
+    output_config: { format: { type: "json_schema", schema: DEDUPE_STORIES_SCHEMA } },
+    messages: [{ role: "user", content: userPrompt }],
+  });
+  recordLlmUsage(accountId, "dedupeSameStoryHeadlines", message.model, message.usage);
+
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  try {
+    const parsed = JSON.parse(text);
+    const keepIndices = Array.isArray(parsed.keepIndices)
+      ? parsed.keepIndices.filter((i: unknown): i is number => typeof i === "number" && i >= 0 && i < headlines.length)
+      : [];
+    // Parse succeeded but produced nothing usable (e.g. empty array) — fail
+    // open to every headline rather than silently dropping all of them.
+    return keepIndices.length > 0 ? keepIndices : headlines.map((_, i) => i);
+  } catch {
+    return headlines.map((_, i) => i);
+  }
+}
+
 const SUGGEST_COMPETITORS_SYSTEM_PROMPT = `You suggest likely competitors for a B2B company based on its positioning and ideal customer profile. Infer the industry/category from that text, then name real, well-known companies or products that plausibly compete for the same buyers — the kind of names a marketing lead would actually want to track, not obscure or fabricated ones.
 
 Respond with strict JSON only, no markdown, matching this shape exactly:
