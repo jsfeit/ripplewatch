@@ -17,6 +17,19 @@ type LevelFilter = "all" | "High" | "Medium" | "Low" | "unscored";
 const LEVEL_FILTERS: LevelFilter[] = ["all", "High", "Medium", "Low", "unscored"];
 const TYPE_FILTERS: Array<SignalType | "all"> = ["all", "pricing", "job_posting", "news", "funding"];
 
+// Defaults to hiding older signals (including backfill/"Background" ones)
+// so the feed reads as "what's happening now" rather than being dominated
+// by whatever was seeded at signup — "All time" is one click away for
+// anyone who wants the full history.
+type DateFilter = "recent" | "all";
+const DATE_WINDOW_DAYS = 14;
+function matchesDateFilter(signal: Signal, filter: DateFilter): boolean {
+  if (filter === "all") return true;
+  const cutoff = new Date();
+  cutoff.setUTCDate(cutoff.getUTCDate() - DATE_WINDOW_DAYS);
+  return new Date(signal.occurred_on) >= cutoff;
+}
+
 function levelRank(signal: Signal): number {
   if (!signal.scored || !signal.relevance_level) return 3;
   return LEVEL_RANK[signal.relevance_level] ?? 3;
@@ -63,13 +76,17 @@ export function DashboardFeed({
   const [filter, setFilter] = useState<string | "all">("all");
   const [levelFilter, setLevelFilter] = useState<LevelFilter>("all");
   const [typeFilter, setTypeFilter] = useState<SignalType | "all">("all");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("recent");
 
   const { startOfThisWeek, startOfLastWeek } = useMemo(() => weekBounds(), []);
 
   const groups = useMemo(() => {
     const visibleCompetitors = competitors.filter((c) => filter === "all" || c.id === filter);
     const filteredSignals = signals.filter(
-      (s) => matchesLevelFilter(s, levelFilter) && (typeFilter === "all" || s.type === typeFilter)
+      (s) =>
+        matchesLevelFilter(s, levelFilter) &&
+        (typeFilter === "all" || s.type === typeFilter) &&
+        matchesDateFilter(s, dateFilter)
     );
 
     return visibleCompetitors
@@ -103,7 +120,7 @@ export function DashboardFeed({
       // sorted High-to-Low, so its first signal's rank represents its best);
       // this-week volume only breaks ties within the same top relevance.
       .sort((a, b) => a.topRank - b.topRank || b.thisWeek - a.thisWeek || b.signals.length - a.signals.length);
-  }, [competitors, signals, filter, levelFilter, typeFilter, startOfThisWeek, startOfLastWeek]);
+  }, [competitors, signals, filter, levelFilter, typeFilter, dateFilter, startOfThisWeek, startOfLastWeek]);
 
   return (
     <div>
@@ -140,6 +157,15 @@ export function DashboardFeed({
             label={type === "all" ? "All types" : SIGNAL_TYPE_LABELS[type]}
           />
         ))}
+      </div>
+
+      <div className="mt-2 flex flex-wrap gap-2">
+        <FilterChip
+          active={dateFilter === "recent"}
+          onClick={() => setDateFilter("recent")}
+          label={`Last ${DATE_WINDOW_DAYS / 7} weeks`}
+        />
+        <FilterChip active={dateFilter === "all"} onClick={() => setDateFilter("all")} label="All time" />
       </div>
 
       <div className="mt-6 space-y-6">
