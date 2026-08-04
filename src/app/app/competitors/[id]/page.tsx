@@ -4,6 +4,7 @@ import { cn, avatarColor } from "@/lib/utils";
 import { AlertCard } from "@/components/app/alert-card";
 import { EmptyState } from "@/components/app/empty-state";
 import { CompetitorManager } from "@/components/app/competitor-manager";
+import { SuggestedCompetitorsPanel } from "@/components/app/suggested-competitors-panel";
 import { CompetitorMonitoringUrls } from "@/components/app/competitor-monitoring-urls";
 import { createClient } from "@/lib/supabase/server";
 import { isOldSignal } from "@/lib/signal-freshness";
@@ -52,8 +53,16 @@ export default async function CompetitorDetailPage({
     .eq("competitor_id", id)
     .order("occurred_on", { ascending: false });
 
+  const { data: suggestions } = await supabase
+    .from("suggested_competitors")
+    .select("*")
+    .eq("account_id", profile.account_id)
+    .eq("status", "pending")
+    .order("discovered_at", { ascending: false });
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-10 sm:py-10">
+      <SuggestedCompetitorsPanel suggestions={suggestions ?? []} />
       <CompetitorManager competitors={competitors ?? []} tier={account.tier} activeId={id} />
 
       <div className="mt-6 flex items-center gap-3">

@@ -9,6 +9,7 @@ export type SignalSource = "manual" | "pipeline" | "backfill";
 export type IntegrationProvider = "slack" | "email" | "hubspot" | "salesforce" | "intercom" | "gong" | "zoom";
 export type ProfileRole = "member" | "admin";
 export type BillingModel = "subscription" | "per_seat" | "usage_based" | "custom" | "unknown";
+export type SuggestedCompetitorStatus = "pending" | "dismissed" | "added";
 
 export type PricingTier = {
   name: string;
@@ -124,6 +125,32 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["competitors"]["Insert"]>;
+        Relationships: [];
+      };
+      suggested_competitors: {
+        Row: {
+          id: string;
+          account_id: string;
+          name: string;
+          domain: string | null;
+          category: string | null;
+          reasoning: string | null;
+          status: SuggestedCompetitorStatus;
+          discovered_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_id: string;
+          name: string;
+          domain?: string | null;
+          category?: string | null;
+          reasoning?: string | null;
+          status?: SuggestedCompetitorStatus;
+          discovered_at?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["suggested_competitors"]["Insert"]>;
         Relationships: [];
       };
       signals: {
