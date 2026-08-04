@@ -332,7 +332,13 @@ async function filterHeadlinesForCompetitor<T extends { title: string }>(
   headlines: T[]
 ): Promise<T[]> {
   if (headlines.length === 0) return headlines;
-  const relevant = await filterRelevantHeadlines(competitor.name, competitor.domain, headlines, competitor.account_id);
+  const relevant = await filterRelevantHeadlines(
+    competitor.name,
+    competitor.domain,
+    competitor.category,
+    headlines,
+    competitor.account_id
+  );
   return headlines.filter((_, i) => relevant[i]);
 }
 

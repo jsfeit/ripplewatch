@@ -108,6 +108,7 @@ export interface Database {
           account_id: string;
           name: string;
           domain: string | null;
+          category: string | null;
           pricing_url: string | null;
           careers_url: string | null;
           created_at: string;
@@ -117,6 +118,7 @@ export interface Database {
           account_id: string;
           name: string;
           domain?: string | null;
+          category?: string | null;
           pricing_url?: string | null;
           careers_url?: string | null;
           created_at?: string;
@@ -135,6 +137,7 @@ export interface Database {
           occurred_on: string;
           scored: boolean;
           relevance_level: RelevanceLevel | null;
+          relevance_score: number | null;
           relevance_reasoning: string | null;
           scoring_version: string | null;
           source: SignalSource;
@@ -152,6 +155,7 @@ export interface Database {
           occurred_on?: string;
           scored?: boolean;
           relevance_level?: RelevanceLevel | null;
+          relevance_score?: number | null;
           relevance_reasoning?: string | null;
           scoring_version?: string | null;
           source?: SignalSource;

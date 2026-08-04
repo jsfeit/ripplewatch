@@ -23,6 +23,7 @@ type Row = {
   occurredOn: string;
   scored: boolean;
   relevanceLevel: string | null;
+  relevanceScore: number | null;
   delivered: boolean;
   competitorName: string;
   accountId: string | null;
@@ -86,6 +87,7 @@ export default async function AdminSignalsPage() {
           occurredOn: s.occurred_on,
           scored: s.scored,
           relevanceLevel: s.relevance_level,
+          relevanceScore: s.relevance_score,
           delivered: Boolean(s.slack_sent_at || s.email_digest_sent_at),
           competitorName: competitor?.name ?? "Unknown competitor",
           accountId: account?.id ?? null,
@@ -148,9 +150,14 @@ export default async function AdminSignalsPage() {
                   </TableCell>
                   <TableCell>
                     {row.scored && row.relevanceLevel ? (
-                      <Badge variant="outline" className={LEVEL_BADGE[row.relevanceLevel]}>
-                        {row.relevanceLevel}
-                      </Badge>
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="outline" className={LEVEL_BADGE[row.relevanceLevel]}>
+                          {row.relevanceLevel}
+                        </Badge>
+                        {row.relevanceScore !== null ? (
+                          <span className="text-xs text-muted-foreground">{row.relevanceScore}</span>
+                        ) : null}
+                      </div>
                     ) : (
                       <span className="text-xs text-muted-foreground">Raw</span>
                     )}
