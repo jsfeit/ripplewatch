@@ -23,7 +23,7 @@ export default async function DashboardPage() {
 
   const { data: account } = await supabase
     .from("accounts")
-    .select("name, positioning, icp, lost_deal_notes, churn_notes")
+    .select("name, positioning, icp, lost_deal_notes, churn_notes, tier")
     .eq("id", profile.account_id)
     .single();
 
@@ -54,6 +54,7 @@ export default async function DashboardPage() {
       <DashboardFeed
         competitors={competitors ?? []}
         signals={signals ?? []}
+        tier={account?.tier ?? "starter"}
         previewContext={{
           companyName: account?.name ?? "",
           positioning: account?.positioning ?? "",

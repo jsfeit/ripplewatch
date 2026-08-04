@@ -53,10 +53,12 @@ export function DashboardFeed({
   competitors,
   signals,
   previewContext,
+  tier,
 }: {
   competitors: Competitor[];
   signals: Signal[];
   previewContext: Omit<PreviewInputs, "competitorName">;
+  tier: Database["public"]["Tables"]["accounts"]["Row"]["tier"];
 }) {
   const [filter, setFilter] = useState<string | "all">("all");
   const [levelFilter, setLevelFilter] = useState<LevelFilter>("all");
@@ -176,6 +178,7 @@ export function DashboardFeed({
                   }}
                   competitorName={competitor.name}
                   competitorInitial={competitor.name.charAt(0).toUpperCase()}
+                  unscoredReason={tier === "starter" ? "tier" : "pending"}
                 />
               ))}
             </div>
