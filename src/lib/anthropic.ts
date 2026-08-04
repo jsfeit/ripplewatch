@@ -492,10 +492,12 @@ For each headline, is it genuinely about this company, operating in the stated c
 
 const DEDUPE_STORIES_SYSTEM_PROMPT = `You are given (1) a list of new candidate headlines about a company, and (2) a list of stories already covered in previous checks for this same company. Some new headlines may be different publishers covering the exact same underlying event as each other, or the exact same event as one already covered previously — not genuinely new information.
 
+The test is the underlying business action or decision, not the angle, audience, or emphasis a given article takes on it. "Xero raises prices, accountants consider switching" and "Xero raises prices, customers and investors react" are the SAME event — one price increase — even though one focuses on switching behavior and the other on stakeholder reaction; they are not two things that happened. Likewise "Company X acquires Company Y" and "Company X buys retirement-plan provider Y" are the same acquisition even with different framing. Only treat headlines as different events if they describe different business actions/decisions (a price change vs. a separate feature launch vs. a separate hire), not different articles' takes on the same one. When in doubt about whether two headlines are the same underlying action, they almost always are — err toward merging rather than keeping both.
+
 Respond with strict JSON only, no markdown, matching this shape exactly:
 {"keepIndices": [<index>, ...]}
 
-Each index refers to a position in the "New headlines" list (0-based). Keep exactly one index per distinct real-world event among the new headlines — pick the more informative one per group (concrete numbers/details over a vaguer rewrite of the same facts). Exclude any new headline, entirely, that describes the same event as something in "Already covered." If a new headline is about a genuinely different event from everything else (new and already-covered), keep it.`;
+Each index refers to a position in the "New headlines" list (0-based). Keep exactly one index per distinct real-world event among the new headlines — pick the more informative one per group (concrete numbers/details over a vaguer rewrite of the same facts). Exclude any new headline, entirely, that describes the same event as something in "Already covered." If a new headline is about a genuinely different business action from everything else (new and already-covered), keep it.`;
 
 const DEDUPE_STORIES_SCHEMA = {
   type: "object",

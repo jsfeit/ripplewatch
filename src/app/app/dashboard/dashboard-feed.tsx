@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/app/empty-state";
 import { generatePreviewAlert, type PreviewInputs } from "@/lib/onboarding-preview";
 import { SIGNAL_TYPE_LABELS } from "@/lib/mock-data";
 import { cn, avatarColor, avatarDotColor } from "@/lib/utils";
+import { RECENCY_WINDOW_DAYS, isOldSignal } from "@/lib/signal-freshness";
 import type { Database, SignalType } from "@/lib/supabase/types";
 
 type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
@@ -17,17 +18,16 @@ type LevelFilter = "all" | "High" | "Medium" | "Low" | "unscored";
 const LEVEL_FILTERS: LevelFilter[] = ["all", "High", "Medium", "Low", "unscored"];
 const TYPE_FILTERS: Array<SignalType | "all"> = ["all", "pricing", "job_posting", "news", "funding"];
 
-// Defaults to hiding older signals (including backfill/"Background" ones)
-// so the feed reads as "what's happening now" rather than being dominated
-// by whatever was seeded at signup — "All time" is one click away for
-// anyone who wants the full history.
+// Defaults to hiding older signals (including "Background"-badged ones) so
+// the feed reads as "what's happening now" rather than being dominated by
+// old context — "All time" is one click away for anyone who wants the full
+// history. Same RECENCY_WINDOW_DAYS threshold AlertCard uses for the
+// "Background" badge, so what's hidden by default and what's badged when
+// shown stay in sync.
 type DateFilter = "recent" | "all";
-const DATE_WINDOW_DAYS = 14;
 function matchesDateFilter(signal: Signal, filter: DateFilter): boolean {
   if (filter === "all") return true;
-  const cutoff = new Date();
-  cutoff.setUTCDate(cutoff.getUTCDate() - DATE_WINDOW_DAYS);
-  return new Date(signal.occurred_on) >= cutoff;
+  return !isOldSignal(signal.occurred_on);
 }
 
 function levelRank(signal: Signal): number {
@@ -163,7 +163,7 @@ export function DashboardFeed({
         <FilterChip
           active={dateFilter === "recent"}
           onClick={() => setDateFilter("recent")}
-          label={`Last ${DATE_WINDOW_DAYS / 7} weeks`}
+          label={`Last ${RECENCY_WINDOW_DAYS / 7} weeks`}
         />
         <FilterChip active={dateFilter === "all"} onClick={() => setDateFilter("all")} label="All time" />
       </div>
@@ -208,7 +208,7 @@ export function DashboardFeed({
                     relevanceLevel: signal.relevance_level,
                     relevanceReasoning: signal.relevance_reasoning,
                     url: resolveUrl(signal, competitor),
-                    isBackfill: signal.source === "backfill",
+                    isBackground: isOldSignal(signal.occurred_on),
                   }}
                   competitorName={competitor.name}
                   competitorInitial={competitor.name.charAt(0).toUpperCase()}
