@@ -14,6 +14,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const body = await request.json().catch(() => null);
   const name = typeof body?.name === "string" ? body.name.trim() : undefined;
   const domain = typeof body?.domain === "string" ? body.domain.trim() : undefined;
+  const category = typeof body?.category === "string" ? body.category.trim() : undefined;
   const pricingUrl = typeof body?.pricing_url === "string" ? body.pricing_url.trim() : undefined;
   const careersUrl = typeof body?.careers_url === "string" ? body.careers_url.trim() : undefined;
   if (name !== undefined && !name) {
@@ -26,6 +27,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     .update({
       ...(name !== undefined ? { name } : {}),
       ...(domain !== undefined ? { domain: domain || null } : {}),
+      ...(category !== undefined ? { category: category || null } : {}),
       ...(pricingUrl !== undefined ? { pricing_url: pricingUrl || null } : {}),
       ...(careersUrl !== undefined ? { careers_url: careersUrl || null } : {}),
     })

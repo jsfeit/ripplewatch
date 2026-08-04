@@ -232,6 +232,7 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
         .update({
           scored: true,
           relevance_level: result.level,
+          relevance_score: result.score,
           relevance_reasoning: result.reasoning,
           scoring_version: SCORING_PROMPT_VERSION,
         })

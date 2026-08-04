@@ -42,39 +42,71 @@ export type SignalToScore = {
   summary: string | null;
 };
 
+export type RelevanceLevel = "High" | "Medium" | "Low";
+
 export type ScoringResult = {
-  level: "High" | "Medium" | "Low";
+  score: number;
+  level: RelevanceLevel;
   reasoning: string;
 };
 
-const SYSTEM_PROMPT = `You score competitive-intelligence signals for a B2B SaaS company. Your job is not to summarize the signal — the customer can already read it. Your job is to judge whether it actually matters to THIS company, given their positioning, ICP, and the real reasons they've lost deals or churned customers, and to say why in plain language a marketing lead would use in a Slack message.
+// Derives the bucket from the raw 0-100 score rather than having the model
+// output a bucket directly — keeps the boundary a plain constant that can be
+// retuned against signal_eval_labels accuracy data without re-prompting or
+// re-scoring anything, and forces the model to commit to a specific number
+// instead of defaulting to a middle label when uncertain.
+export const SCORE_THRESHOLDS = { high: 70, medium: 35 } as const;
+
+export function scoreToLevel(score: number): RelevanceLevel {
+  if (score >= SCORE_THRESHOLDS.high) return "High";
+  if (score >= SCORE_THRESHOLDS.medium) return "Medium";
+  return "Low";
+}
+
+const SYSTEM_PROMPT = `You score competitive-intelligence signals for a B2B SaaS company. Your job is not to summarize the signal — the customer can already read it. Your job is to judge how much it actually matters to THIS company, given their positioning, ICP, and the real reasons they've lost deals or churned customers, and to say why in plain language a marketing lead would use in a Slack message.
 
 Respond with strict JSON only, no markdown, matching this shape exactly:
-{"level": "High" | "Medium" | "Low", "reasoning": "<1-3 sentences>"}
+{"score": <integer 0-100>, "reasoning": "<1-3 sentences>"}
 
-Decide the level with this weighted rubric, checked in order — stop at the first rule that applies, don't keep averaging factors after one has already decided it:
+Score on a continuous 0-100 scale — do not think in three buckets and then pick a number that "sounds right" for one of them. Anchor to these reference bands, but land on the specific number within a band that the signal actually earns; don't cluster on round numbers or a band's midpoint out of habit:
 
-1. ICP/segment gate (checked first, decides down not up): does this signal even concern the company's stated ICP — same buyer size, segment, and use case they sell to? If it clearly targets a different segment or tier, cap the level at Low no matter how dramatic the signal is elsewhere. This gate can only push toward Low, never justify High on its own.
-2. Loss/churn direct hit (highest-weight signal for High): does this directly touch a specific, named reason a deal was lost or a customer churned (a price point, a named feature gap, a named competitor comparison)? A direct hit here is High on its own, unless gate 1 already capped it.
-3. Differentiator erosion (second-highest weight): does the change undercut a specific differentiator or wedge the company leads with in sales conversations? Also High on its own, same caveat.
-4. Signal-type severity (used only if neither 2 nor 3 fired): a concrete pricing, tier, or feature change outweighs a hiring signal, which outweighs generic funding/press coverage. Concrete product/pricing changes default toward Medium; hiring signals toward Medium-to-Low depending on how directly the role maps to the company's segment; funding/press with no specific product implication defaults toward Low.
-5. Magnitude/specificity (tiebreaker within step 4): a quantifiable, structural change (a real price cut, a named new tier) outranks a vague or directional one ("exploring options," "planning to expand") of the same type.
+- 90-100: A direct, named hit on a specific, documented reason a deal was lost or a customer churned (the exact price point, the exact feature gap, the exact named competitor comparison), now confirmed or made worse.
+- 70-89: A clear, concrete threat to the company's stated ICP/positioning — a real price, tier, or feature change that undercuts a specific differentiator the company leads with — even with no documented loss reason on file yet.
+- 50-69: A believable but indirect threat: a hiring signal pointing at a new push into the company's market, a directional pricing move with no confirmed numbers, or a concrete change aimed at a segment adjacent to (not squarely inside) the ICP.
+- 25-49: Plausible background noise: generic funding/press coverage with only a loosely related product implication, or a change that clearly targets a different segment or tier than the ICP.
+- 0-24: Not actually relevant: wrong segment entirely, or no substantive business content (a title-only mention, an opinion piece, routine PR with no product/pricing implication).
 
-Worked examples (follow this rubric exactly, don't drift toward the middle by default):
+Decide with this weighted rubric, checked in order — stop at the first rule that applies, don't keep averaging factors after one has already decided the band:
 
-Example 1 — High:
+1. ICP/segment gate (checked first, decides down not up): does this signal even concern the company's stated ICP — same buyer size, segment, and use case they sell to? If it clearly targets a different segment or tier, cap the score at 24 no matter how dramatic the signal is elsewhere. This gate can only push the score down, never justify a high score on its own.
+2. Loss/churn direct hit (highest-weight signal): does this directly touch a specific, named reason a deal was lost or a customer churned? A direct hit here lands 90-100 on its own, unless gate 1 already capped it.
+3. Differentiator erosion (second-highest weight): does the change undercut a specific differentiator or wedge the company leads with in sales conversations? Lands 70-89 on its own, same caveat.
+4. Signal-type severity (used only if neither 2 nor 3 fired): a concrete pricing, tier, or feature change lands in the 50-69 range; a hiring signal lands 25-55 depending on how directly the role maps to the company's segment; funding/press with no specific product implication lands 10-35.
+5. Magnitude/specificity (tiebreaker, moves the number within its band, not across it): a quantifiable, structural change (a real price cut, a named new tier) scores higher within its band than a vague or directional one ("exploring options," "planning to expand") of the same type.
+
+Worked examples (follow this rubric exactly — note the spread, don't drift toward 50-60 by default):
+
+Example 1 — score 96:
 Company: relevance-scored competitive intel for startup marketing teams. ICP: marketing leads at 5-100 person B2B SaaS startups. Known lost-deal reasons: "Lost to Parano.ai — they were $30/mo cheaper on the entry tier." Signal: Parano.ai dropped their entry tier from $99 to $69/mo.
-{"level": "High", "reasoning": "This is the exact price gap you've already lost deals over, now $30/mo wider — the prospects you're losing today have even more reason to point at it."}
+{"score": 96, "reasoning": "This is the exact price gap you've already lost deals over, now $30/mo wider — the prospects you're losing today have even more reason to point at it."}
 
-Example 2 — Medium:
+Example 2 — score 78:
+Company: same as above. Signal: a competitor shipped a free self-serve tier, undercutting your team's "no-commitment trial" wedge with an always-free option.
+{"score": 78, "reasoning": "Directly erodes the low-commitment-trial pitch you lead with, even though it's not a confirmed loss reason yet — this is the kind of thing a prospect will bring up next call."}
+
+Example 3 — score 55:
 Company: same as above. Signal: a competitor posted a job for "Senior Growth Marketer, Self-Serve."
-{"level": "Medium", "reasoning": "Signals a push toward self-serve motion in your market, but it's a hiring signal, not a shipped product or pricing change — worth watching, not yet a confirmed threat."}
+{"score": 55, "reasoning": "Signals a push toward self-serve motion in your market, but it's a hiring signal, not a shipped product or pricing change — worth watching, not yet a confirmed threat."}
 
-Example 3 — Low:
+Example 4 — score 30:
 Company: same as above. Signal: a competitor raised a $6M seed round, press release mentions expanding into social-media monitoring.
-{"level": "Low", "reasoning": "New funding is generic and the stated expansion (social monitoring) is a different product surface than your ICP cares about — nothing here changes what you'd tell a prospect today."}
+{"score": 30, "reasoning": "New funding is generic and the stated expansion (social monitoring) is a different product surface than your ICP cares about — nothing here changes what you'd tell a prospect today."}
 
-Do not let a thin or missing lost-deal/churn/CRM context push everything to Medium by default — if a signal is a direct, unambiguous hit on the company's stated market and ICP even without a specific loss reason on file, it can still be High; if it's clearly a different segment or too minor, call it Low. Reserve Medium for genuine ambiguity, not as a safe default.`;
+Example 5 — score 8:
+Company: same as above. Signal: a competitor's enterprise tier (2000+ seat deployments) added a compliance certification.
+{"score": 8, "reasoning": "This targets large-enterprise buyers, a different segment than your 5-100 person ICP — not something your prospects will ever ask about."}
+
+Do not let a thin or missing lost-deal/churn/CRM context pull everything toward 50-60 by default — if a signal is a direct, unambiguous hit on the company's stated market and ICP even without a specific loss reason on file, it can still score 80+; if it's clearly a different segment or too minor, score it below 25. The 25-69 range is for genuine, specific ambiguity, not a safe resting place for signals you didn't look at closely enough to place elsewhere.`;
 
 export type DiffSummary = {
   meaningful: boolean;
@@ -223,16 +255,16 @@ export async function extractPricingStructure(
   }
 }
 
-// Schema-enforced (output_config.format below), so a malformed level is no
+// Schema-enforced (output_config.format below), so a malformed score is no
 // longer a real failure mode — this used to need a same-prompt retry loop
 // for exactly that case, which schema enforcement made dead code.
 const SCORE_SIGNAL_SCHEMA = {
   type: "object",
   properties: {
-    level: { type: "string", enum: ["High", "Medium", "Low"] },
+    score: { type: "integer", minimum: 0, maximum: 100 },
     reasoning: { type: "string" },
   },
-  required: ["level", "reasoning"],
+  required: ["score", "reasoning"],
   additionalProperties: false,
 } as const;
 
@@ -257,7 +289,8 @@ Score this signal.`;
 
 export function parseScoringText(text: string): ScoringResult {
   const parsed = JSON.parse(text);
-  return { level: parsed.level, reasoning: String(parsed.reasoning ?? "") };
+  const score = Math.max(0, Math.min(100, Math.round(Number(parsed.score))));
+  return { score, level: scoreToLevel(score), reasoning: String(parsed.reasoning ?? "") };
 }
 
 // Bumped whenever SYSTEM_PROMPT, buildScoringUserPrompt, or SCORE_SIGNAL_SCHEMA
@@ -265,7 +298,10 @@ export function parseScoringText(text: string): ScoringResult {
 // route) so accuracy from signal_eval_labels can eventually be sliced by
 // which prompt produced the score, instead of one number blended across
 // every prompt this has ever run.
-export const SCORING_PROMPT_VERSION = "v1";
+// v2: moved from a categorical High/Medium/Low output to a numeric 0-100
+// score bucketed via SCORE_THRESHOLDS, so bucket boundaries can be retuned
+// against signal_eval_labels accuracy data without re-scoring anything.
+export const SCORING_PROMPT_VERSION = "v2";
 
 export function scoringRequestParams(context: ScoringContext, signal: SignalToScore) {
   return {
@@ -369,12 +405,14 @@ Extract competitor mentions.`;
   return results.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
 }
 
-const HEADLINE_RELEVANCE_SYSTEM_PROMPT = `You check whether news headlines actually refer to a specific named company, not a different entity (a place, fund, person, or unrelated business) that merely shares part of its name. This matters because some company names are common words or short strings that collide with unrelated proper nouns — e.g. a company called "Square" versus "Union Square," "Times Square," or "Madison Square Garden," which are unrelated places, funds, or venues.
+const HEADLINE_RELEVANCE_SYSTEM_PROMPT = `You check whether news headlines actually refer to a specific named company, not a different entity (a place, fund, person, or a DIFFERENT company that merely shares its name). This matters because some company names are common words, short strings, or names reused by multiple unrelated businesses — e.g. a company called "Square" versus "Union Square," "Times Square," or "Madison Square Garden" (unrelated places/venues), or a company called "Sage" that sells accounting software versus an unrelated healthcare/senior-care company also called "Sage."
+
+When a business category/description is given for the company, use it as the deciding test: the headline must be about a company operating in THAT category, not just any company with the same name. A headline about a same-named company in a clearly different industry is NOT a match, even though it reads as legitimate business news.
 
 Respond with strict JSON only, no markdown, matching this shape exactly:
 {"relevant": [true, false, ...]}
 
-One boolean per headline, in the same order given. true only if the headline is genuinely about the named company itself (its product, business, funding, leadership, or industry activity) — not merely containing the same word as part of an unrelated proper noun. If genuinely unsure, default to true (better to keep a maybe than to hide something real).`;
+One boolean per headline, in the same order given. true only if the headline is genuinely about the named company itself, operating in its stated category — not a different entity, and not a different company in a different industry that happens to share the name. If genuinely unsure and no category was given to check against, default to true (better to keep a maybe than to hide something real). If a category was given and the headline clearly describes a different industry, default to false.`;
 
 const HEADLINE_RELEVANCE_SCHEMA = {
   type: "object",
@@ -395,17 +433,19 @@ const HEADLINE_RELEVANCE_SCHEMA = {
 export async function filterRelevantHeadlines(
   competitorName: string,
   competitorDomain: string | null,
+  competitorCategory: string | null,
   headlines: { title: string }[],
   accountId: string | null
 ): Promise<boolean[]> {
   if (headlines.length === 0) return [];
 
   const userPrompt = `Company: ${competitorName}${competitorDomain ? ` (${competitorDomain})` : ""}
+${competitorCategory ? `Category: ${competitorCategory}` : "Category: (not provided)"}
 
 Headlines:
 ${headlines.map((h, i) => `${i}. ${h.title}`).join("\n")}
 
-For each headline, is it genuinely about this company?`;
+For each headline, is it genuinely about this company, operating in the stated category?`;
 
   const message = await getAnthropic().messages.create({
     model: "claude-sonnet-5",
@@ -433,9 +473,9 @@ For each headline, is it genuinely about this company?`;
 const SUGGEST_COMPETITORS_SYSTEM_PROMPT = `You suggest likely competitors for a B2B company based on its positioning and ideal customer profile. Infer the industry/category from that text, then name real, well-known companies or products that plausibly compete for the same buyers — the kind of names a marketing lead would actually want to track, not obscure or fabricated ones.
 
 Respond with strict JSON only, no markdown, matching this shape exactly:
-{"competitors": [{"name": "<company name>", "domain": "<best-guess bare domain, e.g. 'acme.com', no protocol>"}]}
+{"competitors": [{"name": "<company name>", "domain": "<best-guess bare domain, e.g. 'acme.com', no protocol>", "category": "<short business category/description, e.g. 'Accounting/ERP software for SMBs', under 8 words>"}]}
 
-Return up to 8, ordered most-to-least likely to be a real competitive threat. If the positioning/ICP is too vague to infer a specific market, make a best-effort guess at the closest general category rather than returning an empty list.`;
+Return up to 8, ordered most-to-least likely to be a real competitive threat. If the positioning/ICP is too vague to infer a specific market, make a best-effort guess at the closest general category rather than returning an empty list. The category field must describe what the SUGGESTED COMPANY actually does/sells — specific enough to tell it apart from an unrelated company that happens to share its name (e.g. "Sage" the accounting/ERP vendor vs. "Sage" a senior-care company).`;
 
 const SUGGEST_COMPETITORS_SCHEMA = {
   type: "object",
@@ -447,8 +487,9 @@ const SUGGEST_COMPETITORS_SCHEMA = {
         properties: {
           name: { type: "string" },
           domain: { type: "string" },
+          category: { type: "string" },
         },
-        required: ["name", "domain"],
+        required: ["name", "domain", "category"],
         additionalProperties: false,
       },
     },
@@ -457,7 +498,7 @@ const SUGGEST_COMPETITORS_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-export type SuggestedCompetitor = { name: string; domain: string };
+export type SuggestedCompetitor = { name: string; domain: string; category: string };
 
 export async function suggestCompetitors(
   companyName: string,
@@ -486,17 +527,66 @@ Suggest likely competitors.`;
     const parsed = JSON.parse(text);
     const competitors = Array.isArray(parsed.competitors) ? parsed.competitors : [];
     return competitors
-      .map((c: { name?: unknown; domain?: unknown }) => ({
+      .map((c: { name?: unknown; domain?: unknown; category?: unknown }) => ({
         name: String(c.name ?? "").trim(),
         domain: String(c.domain ?? "")
           .trim()
           .toLowerCase()
           .replace(/^https?:\/\//, "")
           .replace(/\/$/, ""),
+        category: String(c.category ?? "").trim(),
       }))
       .filter((c: SuggestedCompetitor) => c.name);
   } catch (err) {
     throw new Error(`Could not parse competitor suggestion response: ${text}`, { cause: err });
+  }
+}
+
+const CATEGORIZE_COMPETITORS_SYSTEM_PROMPT = `You write a short business category/description for each named company, for a list of competitors a B2B SaaS company is tracking. The description must be specific enough to tell the company apart from an unrelated company or entity that happens to share its name (e.g. "Sage" the accounting/ERP vendor vs. "Sage" a senior-care company, or "Wave" the small-business finance app vs. "Wave" a wireless carrier).
+
+Respond with strict JSON only, no markdown, matching this shape exactly:
+{"categories": ["<short category/description, under 8 words>", ...]}
+
+One string per company, in the same order given. If you don't recognize the company or domain, make your best-effort guess from the name alone rather than leaving it vague — still return something specific-sounding, not "a company."`;
+
+const CATEGORIZE_COMPETITORS_SCHEMA = {
+  type: "object",
+  properties: {
+    categories: { type: "array", items: { type: "string" } },
+  },
+  required: ["categories"],
+  additionalProperties: false,
+} as const;
+
+// Used whenever a competitor is added outside the onboarding suggestion flow
+// (manual add in Settings, admin add) where no category was already
+// generated alongside the name — one batched call so adding several at once
+// (e.g. re-categorizing an existing account) still costs one request.
+export async function suggestCompetitorCategories(
+  companies: { name: string; domain: string | null }[],
+  accountId: string | null
+): Promise<string[]> {
+  if (companies.length === 0) return [];
+
+  const userPrompt = `Companies:\n${companies.map((c, i) => `${i}. ${c.name}${c.domain ? ` (${c.domain})` : ""}`).join("\n")}\n\nWrite a short category/description for each.`;
+
+  const message = await getAnthropic().messages.create({
+    model: "claude-sonnet-5",
+    max_tokens: 400,
+    system: cachedSystemPrompt(CATEGORIZE_COMPETITORS_SYSTEM_PROMPT),
+    output_config: { format: { type: "json_schema", schema: CATEGORIZE_COMPETITORS_SCHEMA } },
+    messages: [{ role: "user", content: userPrompt }],
+  });
+  recordLlmUsage(accountId, "suggestCompetitorCategories", message.model, message.usage);
+
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  try {
+    const parsed = JSON.parse(text);
+    const categories = Array.isArray(parsed.categories) ? parsed.categories : [];
+    return companies.map((_, i) => (typeof categories[i] === "string" ? categories[i].trim() : ""));
+  } catch {
+    // Fail open with blanks rather than blocking the competitor add itself.
+    return companies.map(() => "");
   }
 }
 

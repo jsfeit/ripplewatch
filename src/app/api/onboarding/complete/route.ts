@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { sendWelcomeEmail } from "@/lib/resend";
 import { discoverCompetitorUrls } from "@/lib/scraping";
+import { suggestCompetitorCategories } from "@/lib/anthropic";
 import { COMPETITOR_LIMIT } from "@/lib/tier-limits";
 
 type CompetitorInput = { name: string; domain: string };
@@ -95,19 +96,28 @@ export async function POST(request: Request) {
 
   // Discovery fetches each competitor's homepage once, in parallel — with
   // up to 20 competitors on the Advanced tier, doing this sequentially
-  // could add tens of seconds to onboarding completion.
-  const competitorUrls = await Promise.all(
-    namedCompetitors.map((c) => {
-      const domain = c.domain?.trim() || null;
-      return domain ? discoverCompetitorUrls(domain) : Promise.resolve({ pricingUrl: null, careersUrl: null });
-    })
-  );
+  // could add tens of seconds to onboarding completion. Category is
+  // resolved the same way (one batched call, not per-competitor) so the
+  // news-relevance filter has real disambiguating context from day one.
+  const [competitorUrls, categories] = await Promise.all([
+    Promise.all(
+      namedCompetitors.map((c) => {
+        const domain = c.domain?.trim() || null;
+        return domain ? discoverCompetitorUrls(domain) : Promise.resolve({ pricingUrl: null, careersUrl: null });
+      })
+    ),
+    suggestCompetitorCategories(
+      namedCompetitors.map((c) => ({ name: c.name.trim(), domain: c.domain?.trim() || null })),
+      accountId
+    ).catch(() => namedCompetitors.map(() => "")),
+  ]);
 
   const { error: competitorsError } = await supabase.from("competitors").insert(
     namedCompetitors.map((c, i) => ({
       account_id: accountId,
       name: c.name.trim(),
       domain: c.domain?.trim() || null,
+      category: categories[i] || null,
       pricing_url: competitorUrls[i].pricingUrl,
       careers_url: competitorUrls[i].careersUrl,
     }))

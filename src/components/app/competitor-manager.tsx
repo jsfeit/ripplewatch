@@ -32,6 +32,7 @@ export function CompetitorManager({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editDomain, setEditDomain] = useState("");
+  const [editCategory, setEditCategory] = useState("");
   const [saving, setSaving] = useState(false);
 
   const competitorLimit = COMPETITOR_LIMIT[tier];
@@ -80,6 +81,7 @@ export function CompetitorManager({
     setEditingId(c.id);
     setEditName(c.name);
     setEditDomain(c.domain ?? "");
+    setEditCategory(c.category ?? "");
   }
 
   async function handleSaveEdit(id: string) {
@@ -88,7 +90,7 @@ export function CompetitorManager({
     const res = await fetch(`/api/competitors/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: editName, domain: editDomain }),
+      body: JSON.stringify({ name: editName, domain: editDomain, category: editCategory }),
     });
     const data = await res.json();
     setSaving(false);
@@ -156,9 +158,16 @@ export function CompetitorManager({
           >
             {editingId === c.id ? (
               <>
-                <div className="flex w-full flex-col gap-2 sm:flex-1 sm:flex-row">
-                  <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="flex-1" />
-                  <Input value={editDomain} onChange={(e) => setEditDomain(e.target.value)} className="flex-1" />
+                <div className="flex w-full flex-col gap-2 sm:flex-1">
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="flex-1" placeholder="Name" />
+                    <Input value={editDomain} onChange={(e) => setEditDomain(e.target.value)} className="flex-1" placeholder="domain.com" />
+                  </div>
+                  <Input
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    placeholder="Category, e.g. Accounting/ERP software for SMBs"
+                  />
                 </div>
                 <div className="flex gap-1">
                   <Button
@@ -189,12 +198,18 @@ export function CompetitorManager({
                   {c.id === activeId ? (
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{c.name}</p>
-                      <p className="truncate text-xs text-muted-foreground">{c.domain ?? "No domain set"}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {c.domain ?? "No domain set"}
+                        {c.category ? ` · ${c.category}` : ""}
+                      </p>
                     </div>
                   ) : (
                     <Link href={`/app/competitors/${c.id}`} className="group min-w-0">
                       <p className="truncate text-sm font-medium group-hover:underline">{c.name}</p>
-                      <p className="truncate text-xs text-muted-foreground">{c.domain ?? "No domain set"}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {c.domain ?? "No domain set"}
+                        {c.category ? ` · ${c.category}` : ""}
+                      </p>
                     </Link>
                   )}
                   {!monitoredIds.has(c.id) ? (
