@@ -37,7 +37,11 @@ export async function GET(request: Request) {
       .select("*")
       .in("competitor_id", competitorIds)
       .is("email_digest_sent_at", null)
-      .or("relevance_level.eq.Low,scored.eq.false");
+      .or("relevance_level.eq.Low,scored.eq.false")
+      // Backfill (a competitor's first-ever crawl, seeding landscape context
+      // for a new account) is deliberately excluded from digests too — this
+      // email is "what happened recently," not "here's the history."
+      .neq("source", "backfill");
 
     const pending = (signals ?? []) as Signal[];
     if (pending.length === 0) {

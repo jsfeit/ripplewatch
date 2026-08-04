@@ -119,6 +119,7 @@ export default async function CompetitorDetailPage({
                   scored: signal.scored,
                   relevanceLevel: signal.relevance_level,
                   relevanceReasoning: signal.relevance_reasoning,
+                  isBackfill: signal.source === "backfill",
                 }}
                 competitorName={competitor.name}
                 competitorInitial={competitor.name.charAt(0).toUpperCase()}

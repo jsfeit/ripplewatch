@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, CircleDashed, ExternalLink } from "lucide-react";
+import { Sparkles, CircleDashed, ExternalLink, History } from "lucide-react";
 import { cn, avatarColor } from "@/lib/utils";
 import { SIGNAL_TYPE_LABELS } from "@/lib/mock-data";
 import type { SignalType, RelevanceLevel } from "@/lib/supabase/types";
@@ -28,6 +28,10 @@ export type AlertCardSignal = {
   // Absent on the marketing site's mock examples, which have no real source
   // to link to; present for every real signal in the app.
   url?: string | null;
+  // True for a competitor's first-ever crawl, which deliberately looks back
+  // further than ongoing crawls to seed initial context — badged as
+  // "Background" so an old article doesn't read as if it just happened.
+  isBackfill?: boolean;
 };
 
 export function AlertCard({
@@ -79,17 +83,25 @@ export function AlertCard({
             <p className="mt-1 text-xs text-muted-foreground">{SIGNAL_TYPE_LABELS[signal.type]}</p>
           </div>
         </div>
-        {signal.scored ? (
-          <Badge className="gap-1 border-primary/30 bg-primary/10 text-primary hover:bg-primary/10">
-            <Sparkles className="size-3" />
-            Scored
-          </Badge>
-        ) : (
-          <Badge variant="outline" className="gap-1 text-muted-foreground">
-            <CircleDashed className="size-3" />
-            Raw signal
-          </Badge>
-        )}
+        <div className="flex shrink-0 items-center gap-1.5">
+          {signal.isBackfill ? (
+            <Badge variant="outline" className="gap-1 text-muted-foreground" title="Seeded when you added this competitor, not newly detected">
+              <History className="size-3" />
+              Background
+            </Badge>
+          ) : null}
+          {signal.scored ? (
+            <Badge className="gap-1 border-primary/30 bg-primary/10 text-primary hover:bg-primary/10">
+              <Sparkles className="size-3" />
+              Scored
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="gap-1 text-muted-foreground">
+              <CircleDashed className="size-3" />
+              Raw signal
+            </Badge>
+          )}
+        </div>
       </div>
 
       {signal.scored && signal.relevanceLevel ? (

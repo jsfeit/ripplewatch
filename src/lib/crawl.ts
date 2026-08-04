@@ -274,7 +274,11 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
   // digest crons instead, keyed off relevance_level so a signal is never
   // pushed AND digested twice through the same channel. See
   // /api/cron/digest-daily and /api/cron/digest-weekly.
-  const highRelevanceSignals = scoredSignals.filter((s) => s.relevance_level === "High");
+  // Backfill signals (a competitor's first-ever news/funding check, seeding
+  // landscape context for a brand-new account — see scraping.ts) are
+  // deliberately excluded from the real-time Slack push: Slack is for "this
+  // just happened," and a backfilled article from months ago hasn't.
+  const highRelevanceSignals = scoredSignals.filter((s) => s.relevance_level === "High" && s.source !== "backfill");
   if (highRelevanceSignals.length > 0) {
     const { data: slackIntegration } = await supabase
       .from("integrations")

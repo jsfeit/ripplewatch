@@ -5,7 +5,7 @@
 export type Tier = "starter" | "plus" | "advanced";
 export type SignalType = "pricing" | "job_posting" | "review" | "news" | "funding";
 export type RelevanceLevel = "High" | "Medium" | "Low";
-export type SignalSource = "manual" | "pipeline";
+export type SignalSource = "manual" | "pipeline" | "backfill";
 export type IntegrationProvider = "slack" | "email" | "hubspot" | "salesforce" | "intercom" | "gong" | "zoom";
 export type ProfileRole = "member" | "admin";
 export type BillingModel = "subscription" | "per_seat" | "usage_based" | "custom" | "unknown";
