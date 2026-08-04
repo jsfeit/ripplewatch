@@ -6,6 +6,7 @@ import {
   checkNews,
   checkFunding,
   checkSearchNews,
+  isFirstNewsCheck,
 } from "@/lib/scraping";
 import { scoreSignal, extractCompetitorMentions, SCORING_PROMPT_VERSION, type CompetitorMention } from "@/lib/anthropic";
 import { sendSlackAlert } from "@/lib/slack";
@@ -130,6 +131,17 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
 
   const newSignals: Signal[] = [];
   for (const competitor of competitors) {
+    // Computed once per competitor, before checkNews/checkFunding run
+    // concurrently below — both need to agree on whether this is the
+    // competitor's first-ever news/funding check (backfill vs. ongoing), and
+    // letting each query it independently mid-flight is a race: whichever
+    // inserts first makes the other see a nonzero count and wrongly
+    // conclude it's no longer the first check.
+    const isFirstCheck =
+      allowedSources.includes("news") || allowedSources.includes("funding")
+        ? await isFirstNewsCheck(supabase, competitor.id)
+        : false;
+
     // Pricing/jobs surface at most one signal per run (a diff against the
     // last snapshot); news/funding can surface several (every new headline
     // in this run's feed) — normalized to arrays here so both shapes
@@ -139,8 +151,8 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
       allowedSources.includes("job_posting")
         ? checkJobPostingsDiff(supabase, competitor).then((s) => (s ? [s] : []))
         : null,
-      allowedSources.includes("news") ? checkNews(supabase, competitor) : null,
-      allowedSources.includes("funding") ? checkFunding(supabase, competitor) : null,
+      allowedSources.includes("news") ? checkNews(supabase, competitor, isFirstCheck) : null,
+      allowedSources.includes("funding") ? checkFunding(supabase, competitor, isFirstCheck) : null,
       // Supplements the free RSS news check above with Claude web search —
       // off by default (real per-search cost, not modeled against tier
       // pricing yet). Enable per the web-search-news-decision checklist item.
