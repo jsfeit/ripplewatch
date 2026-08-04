@@ -164,7 +164,23 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
     }
   }
 
-  if (newSignals.length === 0) {
+  const competitorIds = competitors.map((c) => c.id);
+
+  // Leftover unscored signals from a previous run that got cut short (e.g. a
+  // Vercel timeout mid-crawl) — checkNews/checkFunding only insert headlines
+  // they haven't already seen by title, so a signal left at scored:false
+  // after an interrupted run would otherwise never be revisited. Folded into
+  // this run's scoring pass so nothing stays permanently stuck as "Raw".
+  const { data: staleUnscored } = await supabase
+    .from("signals")
+    .select("*")
+    .in("competitor_id", competitorIds)
+    .eq("scored", false)
+    .not("id", "in", `(${[...newSignals.map((s) => s.id), "00000000-0000-0000-0000-000000000000"].join(",")})`);
+
+  const signalsToScore: Signal[] = [...newSignals, ...(staleUnscored ?? [])];
+
+  if (signalsToScore.length === 0) {
     return { account: account.name, newSignals: 0, scored: 0 };
   }
 
@@ -172,7 +188,6 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
   // Advanced score every new signal.
   let alreadyScoredThisWeek = false;
   if (account.tier === "starter") {
-    const competitorIds = competitors.map((c) => c.id);
     const { count } = await supabase
       .from("signals")
       .select("id", { count: "exact", head: true })
@@ -198,7 +213,7 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
 
   const scoredSignals: (Signal & { competitorName: string })[] = [];
 
-  for (const signal of newSignals) {
+  for (const signal of signalsToScore) {
     const shouldScore = account.tier !== "starter" ? true : !alreadyScoredThisWeek && scoredSignals.length === 0;
     if (!shouldScore) continue;
 
