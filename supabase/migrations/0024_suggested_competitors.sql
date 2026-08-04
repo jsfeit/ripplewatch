@@ -31,11 +31,13 @@ alter table suggested_competitors enable row level security;
 -- suggestions; only the discovery cron inserts new rows, via the
 -- service-role admin client, which bypasses RLS — no insert policy needed
 -- for regular users.
+drop policy if exists "users can read their account's suggested competitors" on suggested_competitors;
 create policy "users can read their account's suggested competitors"
   on suggested_competitors for select
   to authenticated
   using (account_id = auth_account_id());
 
+drop policy if exists "users can update their account's suggested competitors" on suggested_competitors;
 create policy "users can update their account's suggested competitors"
   on suggested_competitors for update
   to authenticated
