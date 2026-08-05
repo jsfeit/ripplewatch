@@ -311,6 +311,16 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
         account.id
       );
 
+      // The pre-insertion filter is supposed to catch a signal about an
+      // unrelated company that just shares the competitor's name, but has
+      // proven unreliable on real cases — scoring is a second, independent
+      // check, and when it flags this the signal is removed outright rather
+      // than kept around as low-relevance noise.
+      if (result.wrongCompany) {
+        await supabase.from("signals").delete().eq("id", signal.id);
+        return null;
+      }
+
       const { data: updated } = await supabase
         .from("signals")
         .update({
