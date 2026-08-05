@@ -7,6 +7,7 @@ import {
   checkFunding,
   checkSearchNews,
   isFirstNewsCheck,
+  ensureMonitoringUrls,
 } from "@/lib/scraping";
 import { scoreSignal, extractCompetitorMentions, SCORING_PROMPT_VERSION, type CompetitorMention } from "@/lib/anthropic";
 import { sendSlackAlert } from "@/lib/slack";
@@ -158,8 +159,18 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
   // before funding, for dedup) is within a single competitor's own checks,
   // preserved below.
   const COMPETITOR_CONCURRENCY = 4;
-  const perCompetitorSignals = await mapWithConcurrency(competitors, COMPETITOR_CONCURRENCY, async (competitor) => {
+  const perCompetitorSignals = await mapWithConcurrency(competitors, COMPETITOR_CONCURRENCY, async (rawCompetitor) => {
     const found: Signal[] = [];
+
+    // Backfills pricing_url/careers_url for a competitor that was added
+    // without a domain (so the URL-guessing at add-time never ran) — a
+    // no-op for the common case where both are already set. Without this,
+    // checkPricingDiff/checkPricingStructure/checkJobPostingsDiff below all
+    // just silently no-op forever, showing as permanently "Not yet checked."
+    const competitor =
+      allowedSources.includes("pricing") || allowedSources.includes("job_posting")
+        ? await ensureMonitoringUrls(supabase, rawCompetitor)
+        : rawCompetitor;
 
     // Computed once per competitor, before checkNews/checkFunding run
     // sequentially below — both need to agree on whether this is the

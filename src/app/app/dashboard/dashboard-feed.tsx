@@ -51,17 +51,6 @@ function resolveUrl(signal: Signal, competitor: Competitor | undefined): string 
   return null;
 }
 
-function weekBounds() {
-  const now = new Date();
-  const day = now.getUTCDay();
-  const startOfThisWeek = new Date(now);
-  startOfThisWeek.setUTCDate(now.getUTCDate() - ((day + 6) % 7));
-  startOfThisWeek.setUTCHours(0, 0, 0, 0);
-  const startOfLastWeek = new Date(startOfThisWeek);
-  startOfLastWeek.setUTCDate(startOfThisWeek.getUTCDate() - 7);
-  return { startOfThisWeek, startOfLastWeek };
-}
-
 export function DashboardFeed({
   competitors,
   signals,
@@ -79,8 +68,6 @@ export function DashboardFeed({
   const [levelFilter, setLevelFilter] = useState<LevelFilter>("all");
   const [typeFilter, setTypeFilter] = useState<SignalType | "all">("all");
   const [dateFilter, setDateFilter] = useState<DateFilter>("recent");
-
-  const { startOfThisWeek, startOfLastWeek } = useMemo(() => weekBounds(), []);
 
   const groups = useMemo(() => {
     const visibleCompetitors = competitors.filter((c) => filter === "all" || c.id === filter);
@@ -104,25 +91,16 @@ export function DashboardFeed({
             return b.occurred_on.localeCompare(a.occurred_on);
           });
 
-        // Backfill signals are excluded here too — they were seeded once at
-        // signup, not newly detected this week, so counting them would
-        // overstate this week's real activity.
-        const freshSignals = competitorSignals.filter((s) => s.source !== "backfill");
-        const thisWeek = freshSignals.filter((s) => new Date(s.created_at) >= startOfThisWeek).length;
-        const lastWeek = freshSignals.filter(
-          (s) => new Date(s.created_at) >= startOfLastWeek && new Date(s.created_at) < startOfThisWeek
-        ).length;
-
         const topRank = competitorSignals.length > 0 ? levelRank(competitorSignals[0]) : 4;
 
-        return { competitor, signals: competitorSignals, thisWeek, lastWeek, topRank };
+        return { competitor, signals: competitorSignals, topRank };
       })
       .filter((g) => g.signals.length > 0)
       // Highest-relevance competitor first (a group's signals are already
       // sorted High-to-Low, so its first signal's rank represents its best);
-      // this-week volume only breaks ties within the same top relevance.
-      .sort((a, b) => a.topRank - b.topRank || b.thisWeek - a.thisWeek || b.signals.length - a.signals.length);
-  }, [competitors, signals, filter, levelFilter, typeFilter, dateFilter, startOfThisWeek, startOfLastWeek]);
+      // volume only breaks ties within the same top relevance.
+      .sort((a, b) => a.topRank - b.topRank || b.signals.length - a.signals.length);
+  }, [competitors, signals, filter, levelFilter, typeFilter, dateFilter]);
 
   return (
     <div>
@@ -173,7 +151,7 @@ export function DashboardFeed({
       </div>
 
       <div className="mt-4 space-y-6">
-        {groups.map(({ competitor, signals: competitorSignals, thisWeek, lastWeek }) => (
+        {groups.map(({ competitor, signals: competitorSignals }) => (
           <div key={competitor.id}>
             <div className="mb-2 flex items-center justify-between gap-2">
               <div className="flex min-w-0 items-center gap-2">
@@ -187,17 +165,11 @@ export function DashboardFeed({
                 </span>
                 <h3 className="truncate text-sm font-semibold">{competitor.name}</h3>
               </div>
+              {/* Matches whatever the filters above (including the date
+                  toggle) currently show — no separate calendar-week logic
+                  that could disagree with what's on screen. */}
               <p className="shrink-0 text-xs text-muted-foreground">
-                {thisWeek > lastWeek ? (
-                  <span className="font-medium text-primary">
-                    ▲ {thisWeek} signal{thisWeek === 1 ? "" : "s"}
-                  </span>
-                ) : (
-                  <span>
-                    {thisWeek} signal{thisWeek === 1 ? "" : "s"}
-                  </span>
-                )}{" "}
-                this week, vs {lastWeek} last week
+                {competitorSignals.length} signal{competitorSignals.length === 1 ? "" : "s"}
               </p>
             </div>
             <div className="space-y-3">
