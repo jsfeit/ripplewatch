@@ -48,6 +48,16 @@ export type ScoringResult = {
   score: number;
   level: RelevanceLevel;
   reasoning: string;
+  // True when this signal is about a different, unrelated company that
+  // merely shares (or nearly shares) the tracked competitor's name — the
+  // pre-insertion filter (filterRelevantHeadlines) is supposed to catch
+  // this before a signal ever gets this far, but has proven unreliable on
+  // real cases (e.g. an unrelated healthcare company also named "Sage"),
+  // so this is a second, independent check at scoring time. Distinct from
+  // a low score for a same-company signal that's just not very relevant —
+  // this means the company itself is wrong, and the caller should delete
+  // the signal outright rather than keep it around Low-scored.
+  wrongCompany: boolean;
 };
 
 // Derives the bucket from the raw 0-100 score rather than having the model
@@ -65,8 +75,10 @@ export function scoreToLevel(score: number): RelevanceLevel {
 
 const SYSTEM_PROMPT = `You score competitive-intelligence signals for a B2B SaaS company. Your job is not to summarize the signal — the customer can already read it. Your job is to judge how much it actually matters to THIS company, given their positioning, ICP, and the real reasons they've lost deals or churned customers, and to say why in plain language a marketing lead would use in a Slack message.
 
+Before scoring, check whether this signal is even about the right company. Competitor names sometimes collide with a completely unrelated company (e.g. a company called "Sage" that sells accounting software vs. an unrelated healthcare/senior-care company also called "Sage"). If the signal is clearly about a different, unrelated company that just happens to share the name — not a different segment or product line of the SAME company, but a genuinely different business — set "wrongCompany": true, score it 0-5, and say in the reasoning which unrelated company it's actually about. This is different from a same-company signal that's just not very relevant (that still gets "wrongCompany": false and scored normally on the rubric below).
+
 Respond with strict JSON only, no markdown, matching this shape exactly:
-{"score": <integer 0-100>, "reasoning": "<1-3 sentences>"}
+{"score": <integer 0-100>, "wrongCompany": true | false, "reasoning": "<1-3 sentences>"}
 
 Score on a continuous 0-100 scale — do not think in three buckets and then pick a number that "sounds right" for one of them. Anchor to these reference bands, but land on the specific number within a band that the signal actually earns; don't cluster on round numbers or a band's midpoint out of habit.
 
@@ -269,9 +281,10 @@ const SCORE_SIGNAL_SCHEMA = {
   type: "object",
   properties: {
     score: { type: "number" },
+    wrongCompany: { type: "boolean" },
     reasoning: { type: "string" },
   },
-  required: ["score", "reasoning"],
+  required: ["score", "wrongCompany", "reasoning"],
   additionalProperties: false,
 } as const;
 
@@ -297,7 +310,12 @@ Score this signal.`;
 export function parseScoringText(text: string): ScoringResult {
   const parsed = JSON.parse(text);
   const score = Math.max(0, Math.min(100, Math.round(Number(parsed.score))));
-  return { score, level: scoreToLevel(score), reasoning: String(parsed.reasoning ?? "") };
+  return {
+    score,
+    level: scoreToLevel(score),
+    reasoning: String(parsed.reasoning ?? ""),
+    wrongCompany: Boolean(parsed.wrongCompany),
+  };
 }
 
 // Bumped whenever SYSTEM_PROMPT, buildScoringUserPrompt, or SCORE_SIGNAL_SCHEMA
@@ -317,7 +335,14 @@ export function parseScoringText(text: string): ScoringResult {
 // move without requiring a documented loss reason, tightens the ICP gate to
 // only fire on a clear stated mismatch, and instructs against reusing
 // example phrasing.
-export const SCORING_PROMPT_VERSION = "v3";
+// v4: adds a wrongCompany flag — the pre-insertion filter
+// (filterRelevantHeadlines) is supposed to block signals about an unrelated
+// company that just shares the tracked competitor's name, but proved
+// unreliable on real cases (an unrelated healthcare company also named
+// "Sage" slipped through and got Low-scored instead of removed). Scoring
+// now independently flags this so the caller can delete the signal outright
+// instead of leaving it sitting in the feed as low-relevance noise.
+export const SCORING_PROMPT_VERSION = "v4";
 
 export function scoringRequestParams(context: ScoringContext, signal: SignalToScore) {
   return {
