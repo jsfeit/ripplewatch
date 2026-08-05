@@ -400,16 +400,23 @@ async function filterHeadlinesForCompetitor<T extends { title: string; descripti
   supabase: AdminClient,
   competitor: Competitor,
   headlines: T[]
-): Promise<T[]> {
-  if (headlines.length === 0) return headlines;
-  const relevant = await filterRelevantHeadlines(
+): Promise<(T & { classifiedType: "news" | "funding" })[]> {
+  if (headlines.length === 0) return [];
+  const classified = await filterRelevantHeadlines(
     competitor.name,
     competitor.domain,
     competitor.category,
     headlines,
     competitor.account_id
   );
-  const relevantHeadlines = headlines.filter((_, i) => relevant[i]);
+  // Reclassified here rather than trusting which query (news vs. funding
+  // search) originally found the headline — "raises" matches the funding
+  // query whether it means "raised money" or "raised prices," so the query
+  // that surfaced a headline isn't a reliable signal of what it's actually
+  // about.
+  const relevantHeadlines = headlines
+    .map((h, i) => ({ ...h, classifiedType: classified[i].type }))
+    .filter((_, i) => classified[i].relevant);
   if (relevantHeadlines.length === 0) return relevantHeadlines;
 
   // Different publishers covering the exact same event (an acquisition, a
@@ -442,7 +449,7 @@ export async function checkNews(supabase: AdminClient, competitor: Competitor, i
       .from("signals")
       .insert({
         competitor_id: competitor.id,
-        type: "news",
+        type: headline.classifiedType,
         title: headline.title,
         summary: headline.description ?? headline.source,
         url: headline.link,
@@ -475,7 +482,7 @@ export async function checkFunding(supabase: AdminClient, competitor: Competitor
       .from("signals")
       .insert({
         competitor_id: competitor.id,
-        type: "funding",
+        type: headline.classifiedType,
         title: headline.title,
         summary: headline.description ?? headline.source,
         url: headline.link,

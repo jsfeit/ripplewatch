@@ -425,38 +425,56 @@ Extract competitor mentions.`;
   return results.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
 }
 
-const HEADLINE_RELEVANCE_SYSTEM_PROMPT = `You check whether news headlines actually refer to a specific named company, not a different entity (a place, fund, person, or a DIFFERENT company that merely shares its name). This matters because some company names are common words, short strings, or names reused by multiple unrelated businesses — e.g. a company called "Square" versus "Union Square," "Times Square," or "Madison Square Garden" (unrelated places/venues), or a company called "Sage" that sells accounting software versus an unrelated healthcare/senior-care company also called "Sage."
+const HEADLINE_RELEVANCE_SYSTEM_PROMPT = `You check whether news headlines actually refer to a specific named company, not a different entity (a place, fund, person, or a DIFFERENT company that merely shares its name), and classify what each headline is actually about. This matters because some company names are common words, short strings, or names reused by multiple unrelated businesses — e.g. a company called "Square" versus "Union Square," "Times Square," or "Madison Square Garden" (unrelated places/venues), or a company called "Sage" that sells accounting software versus an unrelated healthcare/senior-care company also called "Sage."
 
 When a business category/description is given for the company, use it as the deciding test: the headline must be about a company operating in THAT category, not just any company with the same name. A headline about a same-named company in a clearly different industry is NOT a match, even though it reads as legitimate business news.
 
-Respond with strict JSON only, no markdown, matching this shape exactly:
-{"relevant": [true, false, ...]}
+These headlines were found via a keyword search, which can surface false matches on an ambiguous word — most commonly "raises," which means both "raised money" (funding) and "raised prices" (not funding at all). Classify each headline's real content instead of trusting why it matched the search: "type": "funding" only for an actual capital raise, acquisition, or investment round; everything else (a price change, a product launch, a hire, general press) is "news."
 
-One boolean per headline, in the same order given. true only if the headline is genuinely about the named company itself, operating in its stated category — not a different entity, and not a different company in a different industry that happens to share the name. If genuinely unsure and no category was given to check against, default to true (better to keep a maybe than to hide something real). If a category was given and the headline clearly describes a different industry, default to false.`;
+Respond with strict JSON only, no markdown, matching this shape exactly:
+{"headlines": [{"relevant": true | false, "type": "news" | "funding"}, ...]}
+
+One entry per headline, in the same order given. relevant: true only if the headline is genuinely about the named company itself, operating in its stated category — not a different entity, and not a different company in a different industry that happens to share the name. If genuinely unsure and no category was given to check against, default relevant to true (better to keep a maybe than to hide something real). If a category was given and the headline clearly describes a different industry, default relevant to false.`;
 
 const HEADLINE_RELEVANCE_SCHEMA = {
   type: "object",
   properties: {
-    relevant: { type: "array", items: { type: "boolean" } },
+    headlines: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          relevant: { type: "boolean" },
+          type: { type: "string", enum: ["news", "funding"] },
+        },
+        required: ["relevant", "type"],
+        additionalProperties: false,
+      },
+    },
   },
-  required: ["relevant"],
+  required: ["headlines"],
   additionalProperties: false,
 } as const;
+
+export type ClassifiedHeadline = { relevant: boolean; type: "news" | "funding" };
 
 // Filters out headlines that just happen to contain a competitor's name as
 // part of an unrelated proper noun (a company called "Square" vs. "Union
 // Square Ventures", "Times Square", etc.) — the keyword-AND at the query
 // level in scraping.ts catches most sports/idiom/hobby noise, but can't
 // distinguish two legitimately business-shaped entities from a bare keyword
-// match alone. One batched call per competitor per crawl run, not one per
-// headline, to keep this cheap.
+// match alone. Also reclassifies each headline's true type, since checkFunding's
+// query matches on the word "raises" regardless of whether it means "raised
+// money" or "raised prices" — the query that found a headline isn't a
+// reliable signal of what it's actually about. One batched call per
+// competitor per crawl run, not one per headline, to keep this cheap.
 export async function filterRelevantHeadlines(
   competitorName: string,
   competitorDomain: string | null,
   competitorCategory: string | null,
   headlines: { title: string }[],
   accountId: string | null
-): Promise<boolean[]> {
+): Promise<ClassifiedHeadline[]> {
   if (headlines.length === 0) return [];
 
   const userPrompt = `Company: ${competitorName}${competitorDomain ? ` (${competitorDomain})` : ""}
@@ -465,7 +483,7 @@ ${competitorCategory ? `Category: ${competitorCategory}` : "Category: (not provi
 Headlines:
 ${headlines.map((h, i) => `${i}. ${h.title}`).join("\n")}
 
-For each headline, is it genuinely about this company, operating in the stated category?`;
+For each headline, is it genuinely about this company, and is it actually a funding/investment story or just news?`;
 
   const message = await getAnthropic().messages.create({
     model: "claude-sonnet-5",
@@ -479,14 +497,21 @@ For each headline, is it genuinely about this company, operating in the stated c
   const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
   try {
     const parsed = JSON.parse(text);
-    const relevant = Array.isArray(parsed.relevant) ? parsed.relevant : [];
-    // Pad/truncate defensively to match headline count, defaulting to true
-    // (keep) for any mismatch rather than silently dropping real signals.
-    return headlines.map((_, i) => (typeof relevant[i] === "boolean" ? relevant[i] : true));
+    const results = Array.isArray(parsed.headlines) ? parsed.headlines : [];
+    // Pad/truncate defensively to match headline count, defaulting to
+    // relevant:true (better to keep a maybe than to hide something real)
+    // and type:"news" (the safer default when unsure) for any mismatch.
+    return headlines.map((_, i) => {
+      const r = results[i];
+      return {
+        relevant: typeof r?.relevant === "boolean" ? r.relevant : true,
+        type: r?.type === "funding" ? "funding" : "news",
+      };
+    });
   } catch {
-    // Parse failure: fail open (keep everything) rather than lose real
-    // signals to a formatting glitch in the filter itself.
-    return headlines.map(() => true);
+    // Parse failure: fail open (keep everything, default type) rather than
+    // lose real signals to a formatting glitch in the filter itself.
+    return headlines.map(() => ({ relevant: true, type: "news" as const }));
   }
 }
 
