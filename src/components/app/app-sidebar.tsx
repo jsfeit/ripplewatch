@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import { TIER_DOT } from "@/lib/tier-style";
 
 const NAV = [
-  { href: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/app/dashboard", label: "News", icon: LayoutDashboard },
   { href: "/app/ask", label: "Ask", icon: Sparkles },
   { href: "/app/pricing", label: "Pricing", icon: DollarSign },
   { href: "/app/competitors", label: "Competitors", icon: Radar },

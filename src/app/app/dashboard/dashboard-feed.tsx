@@ -67,11 +67,13 @@ export function DashboardFeed({
   signals,
   previewContext,
   tier,
+  evalLabelBySignalId,
 }: {
   competitors: Competitor[];
   signals: Signal[];
   previewContext: Omit<PreviewInputs, "competitorName">;
   tier: Database["public"]["Tables"]["accounts"]["Row"]["tier"];
+  evalLabelBySignalId: Record<string, "correct" | "incorrect">;
 }) {
   const [filter, setFilter] = useState<string | "all">("all");
   const [levelFilter, setLevelFilter] = useState<LevelFilter>("all");
@@ -124,7 +126,7 @@ export function DashboardFeed({
 
   return (
     <div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-1.5">
         <FilterChip active={filter === "all"} onClick={() => setFilter("all")} label="All competitors" />
         {competitors.map((c) => (
           <FilterChip
@@ -137,38 +139,40 @@ export function DashboardFeed({
         ))}
       </div>
 
-      <div className="mt-2 flex flex-wrap gap-2">
-        {LEVEL_FILTERS.map((level) => (
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <div className="flex flex-wrap gap-1.5">
+          {LEVEL_FILTERS.map((level) => (
+            <FilterChip
+              key={level}
+              active={levelFilter === level}
+              onClick={() => setLevelFilter(level)}
+              label={level === "all" ? "All relevance" : level === "unscored" ? "Unscored" : level}
+            />
+          ))}
+        </div>
+        <div className="h-4 w-px bg-border" />
+        <div className="flex flex-wrap gap-1.5">
+          {TYPE_FILTERS.map((type) => (
+            <FilterChip
+              key={type}
+              active={typeFilter === type}
+              onClick={() => setTypeFilter(type)}
+              label={type === "all" ? "All types" : SIGNAL_TYPE_LABELS[type]}
+            />
+          ))}
+        </div>
+        <div className="h-4 w-px bg-border" />
+        <div className="flex flex-wrap gap-1.5">
           <FilterChip
-            key={level}
-            active={levelFilter === level}
-            onClick={() => setLevelFilter(level)}
-            label={level === "all" ? "All relevance" : level === "unscored" ? "Unscored" : level}
+            active={dateFilter === "recent"}
+            onClick={() => setDateFilter("recent")}
+            label={`Last ${RECENCY_WINDOW_DAYS / 7} weeks`}
           />
-        ))}
+          <FilterChip active={dateFilter === "all"} onClick={() => setDateFilter("all")} label="All time" />
+        </div>
       </div>
 
-      <div className="mt-2 flex flex-wrap gap-2">
-        {TYPE_FILTERS.map((type) => (
-          <FilterChip
-            key={type}
-            active={typeFilter === type}
-            onClick={() => setTypeFilter(type)}
-            label={type === "all" ? "All types" : SIGNAL_TYPE_LABELS[type]}
-          />
-        ))}
-      </div>
-
-      <div className="mt-2 flex flex-wrap gap-2">
-        <FilterChip
-          active={dateFilter === "recent"}
-          onClick={() => setDateFilter("recent")}
-          label={`Last ${RECENCY_WINDOW_DAYS / 7} weeks`}
-        />
-        <FilterChip active={dateFilter === "all"} onClick={() => setDateFilter("all")} label="All time" />
-      </div>
-
-      <div className="mt-6 space-y-6">
+      <div className="mt-4 space-y-6">
         {groups.map(({ competitor, signals: competitorSignals, thisWeek, lastWeek }) => (
           <div key={competitor.id}>
             <div className="mb-2 flex items-center justify-between gap-2">
@@ -201,14 +205,17 @@ export function DashboardFeed({
                 <AlertCard
                   key={signal.id}
                   signal={{
+                    id: signal.id,
                     type: signal.type,
                     title: signal.title,
                     summary: signal.summary,
                     scored: signal.scored,
                     relevanceLevel: signal.relevance_level,
+                    relevanceScore: signal.relevance_score,
                     relevanceReasoning: signal.relevance_reasoning,
                     url: resolveUrl(signal, competitor),
                     isBackground: isOldSignal(signal.occurred_on),
+                    evalLabel: evalLabelBySignalId[signal.id] ?? null,
                   }}
                   competitorName={competitor.name}
                   competitorInitial={competitor.name.charAt(0).toUpperCase()}
@@ -294,7 +301,7 @@ function FilterChip({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+        "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
         active
           ? "border-primary bg-primary text-primary-foreground"
           : "border-border bg-card text-muted-foreground hover:text-foreground"
