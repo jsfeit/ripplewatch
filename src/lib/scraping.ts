@@ -221,8 +221,27 @@ export async function checkPricingStructure(supabase: AdminClient, competitor: C
   let pageText: string;
   try {
     pageText = await fetchPageText(competitor.pricing_url);
-  } catch {
-    return; // page unreachable this run — leave the last known snapshot in place
+  } catch (err) {
+    // Previously a silent no-op — a page that consistently 403s (bot
+    // protection on the pricing page, confirmed on several real competitor
+    // domains: same block with a real browser User-Agent, so not a UA-string
+    // fix) left the competitor stuck showing "Not yet checked" forever, with
+    // nothing in the logs to explain why. Logged now, and an honest record
+    // is written so the UI can say "couldn't check automatically" instead of
+    // implying a check just hasn't happened yet.
+    console.error(`pricing page unreachable for ${competitor.name} (${competitor.pricing_url}):`, err);
+    await supabase.from("competitor_pricing").upsert(
+      {
+        competitor_id: competitor.id,
+        billing_model: "unknown",
+        publicly_priced: false,
+        note: "Couldn't load this pricing page automatically (it blocks automated requests) — check it directly.",
+        tiers: [],
+        last_checked_at: new Date().toISOString(),
+      },
+      { onConflict: "competitor_id" }
+    );
+    return;
   }
 
   const extraction = await extractPricingStructure(pageText, competitor.account_id);

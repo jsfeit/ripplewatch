@@ -231,6 +231,19 @@ function PricingCard({
           {!record.publicly_priced || record.tiers.length === 0 ? (
             <p className="mt-3 text-xs italic text-muted-foreground">
               {record.note ?? "No public pricing found."}
+              {competitor.pricing_url ? (
+                <>
+                  {" "}
+                  <a
+                    href={competitor.pricing_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="not-italic text-primary hover:underline"
+                  >
+                    View page
+                  </a>
+                </>
+              ) : null}
             </p>
           ) : (
             <div className="mt-1">
