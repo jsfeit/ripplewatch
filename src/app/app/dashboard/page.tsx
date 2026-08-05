@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { DashboardFeed } from "./dashboard-feed";
 
-export const metadata = { title: "Dashboard" };
+export const metadata = { title: "News" };
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
@@ -42,10 +42,16 @@ export default async function DashboardPage() {
         .order("occurred_on", { ascending: false })
     : { data: [] };
 
+  const signalIds = (signals ?? []).map((s) => s.id);
+  const { data: evalLabels } = signalIds.length
+    ? await supabase.from("signal_eval_labels").select("signal_id, label").in("signal_id", signalIds)
+    : { data: [] };
+  const evalLabelBySignalId = Object.fromEntries((evalLabels ?? []).map((l) => [l.signal_id, l.label]));
+
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-10 sm:py-10">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-10 sm:py-8">
+      <div className="mb-4">
+        <h1 className="text-2xl font-semibold tracking-tight">News</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Signals across every tracked competitor. Scored alerts include the reasoning behind the verdict.
         </p>
@@ -54,6 +60,7 @@ export default async function DashboardPage() {
       <DashboardFeed
         competitors={competitors ?? []}
         signals={signals ?? []}
+        evalLabelBySignalId={evalLabelBySignalId}
         tier={account?.tier ?? "starter"}
         previewContext={{
           companyName: account?.name ?? "",

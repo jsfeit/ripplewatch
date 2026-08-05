@@ -53,6 +53,12 @@ export default async function CompetitorDetailPage({
     .eq("competitor_id", id)
     .order("occurred_on", { ascending: false });
 
+  const signalIds = (signals ?? []).map((s) => s.id);
+  const { data: evalLabels } = signalIds.length
+    ? await supabase.from("signal_eval_labels").select("signal_id, label").in("signal_id", signalIds)
+    : { data: [] };
+  const evalLabelBySignalId = Object.fromEntries((evalLabels ?? []).map((l) => [l.signal_id, l.label]));
+
   const { data: suggestions } = await supabase
     .from("suggested_competitors")
     .select("*")
@@ -123,13 +129,16 @@ export default async function CompetitorDetailPage({
               <p className="mb-2 text-xs text-muted-foreground">{signal.occurred_on}</p>
               <AlertCard
                 signal={{
+                  id: signal.id,
                   type: signal.type,
                   title: signal.title,
                   summary: signal.summary,
                   scored: signal.scored,
                   relevanceLevel: signal.relevance_level,
+                  relevanceScore: signal.relevance_score,
                   relevanceReasoning: signal.relevance_reasoning,
                   isBackground: isOldSignal(signal.occurred_on),
+                  evalLabel: evalLabelBySignalId[signal.id] ?? null,
                 }}
                 competitorName={competitor.name}
                 competitorInitial={competitor.name.charAt(0).toUpperCase()}

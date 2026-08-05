@@ -1,7 +1,8 @@
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, CircleDashed, ExternalLink, History } from "lucide-react";
+import { CircleDashed, ExternalLink, History } from "lucide-react";
 import { cn, avatarColor } from "@/lib/utils";
 import { SIGNAL_TYPE_LABELS } from "@/lib/mock-data";
+import { SignalRatingControl } from "@/components/app/signal-rating-control";
 import type { SignalType, RelevanceLevel } from "@/lib/supabase/types";
 
 const LEVEL_STYLES: Record<string, string> = {
@@ -24,6 +25,7 @@ export type AlertCardSignal = {
   summary: string | null;
   scored: boolean;
   relevanceLevel?: RelevanceLevel | null;
+  relevanceScore?: number | null;
   relevanceReasoning?: string | null;
   // Absent on the marketing site's mock examples, which have no real source
   // to link to; present for every real signal in the app.
@@ -35,6 +37,10 @@ export type AlertCardSignal = {
   // can still turn up genuinely fresh news, which shouldn't get this badge
   // just because of when it was discovered.
   isBackground?: boolean;
+  // Absent on marketing-site mock examples (no real row to rate) and on
+  // unscored signals (nothing to judge the accuracy of yet).
+  id?: string;
+  evalLabel?: "correct" | "incorrect" | null;
 };
 
 export function AlertCard({
@@ -93,11 +99,18 @@ export function AlertCard({
               Background
             </Badge>
           ) : null}
-          {signal.scored ? (
-            <Badge className="gap-1 border-primary/30 bg-primary/10 text-primary hover:bg-primary/10">
-              <Sparkles className="size-3" />
-              Scored
+          {signal.scored && signal.relevanceScore !== null && signal.relevanceScore !== undefined ? (
+            <Badge
+              className={cn(
+                "border font-semibold tabular-nums",
+                signal.relevanceLevel ? LEVEL_STYLES[signal.relevanceLevel] : "border-primary/30 bg-primary/10 text-primary"
+              )}
+              title="Relevance score, 0-100"
+            >
+              {signal.relevanceScore}
             </Badge>
+          ) : signal.scored ? (
+            <Badge className="border-primary/30 bg-primary/10 text-primary">Scored</Badge>
           ) : (
             <Badge variant="outline" className="gap-1 text-muted-foreground">
               <CircleDashed className="size-3" />
@@ -109,7 +122,7 @@ export function AlertCard({
 
       {signal.scored && signal.relevanceLevel ? (
         <>
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-3 flex items-center justify-between gap-2">
             <span
               className={cn(
                 "rounded-full border px-2 py-0.5 text-[11px] font-semibold",
@@ -118,6 +131,7 @@ export function AlertCard({
             >
               {signal.relevanceLevel} relevance
             </span>
+            {signal.id ? <SignalRatingControl signalId={signal.id} initialLabel={signal.evalLabel ?? null} /> : null}
           </div>
           <p className="mt-2 text-[15px] font-medium leading-relaxed text-foreground">
             {signal.relevanceReasoning}
