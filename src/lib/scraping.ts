@@ -86,6 +86,33 @@ export async function discoverCompetitorUrls(
   return { pricingUrl: pricingUrl ?? fallback.pricingUrl, careersUrl: careersUrl ?? fallback.careersUrl };
 }
 
+// Self-heals a competitor stuck with no pricing_url/careers_url — e.g. one
+// added without a domain at the time (discoverCompetitorUrls was never
+// called, since the add routes only call it when a domain is present), so
+// it silently never gets checked by checkPricingDiff/checkPricingStructure/
+// checkJobPostingsDiff (all of which just no-op when the URL is null) —
+// forever, since nothing else ever revisits it. Runs once per crawl, cheap
+// no-op when both URLs are already set or there's still no domain to guess
+// from.
+export async function ensureMonitoringUrls(supabase: AdminClient, competitor: Competitor): Promise<Competitor> {
+  if ((competitor.pricing_url && competitor.careers_url) || !competitor.domain) return competitor;
+
+  const { pricingUrl, careersUrl } = await discoverCompetitorUrls(competitor.domain);
+  const patch: { pricing_url?: string | null; careers_url?: string | null } = {};
+  if (!competitor.pricing_url && pricingUrl) patch.pricing_url = pricingUrl;
+  if (!competitor.careers_url && careersUrl) patch.careers_url = careersUrl;
+  if (Object.keys(patch).length === 0) return competitor;
+
+  const { data: updated } = await supabase
+    .from("competitors")
+    .update(patch)
+    .eq("id", competitor.id)
+    .select("*")
+    .single();
+
+  return updated ?? competitor;
+}
+
 async function fetchPageText(url: string): Promise<string> {
   const html = await fetchHtml(url);
   const $ = cheerio.load(html);
