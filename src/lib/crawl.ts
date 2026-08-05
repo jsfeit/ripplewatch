@@ -22,6 +22,26 @@ type AdminSupabase = ReturnType<typeof createAdminClient>;
 type Account = Database["public"]["Tables"]["accounts"]["Row"];
 type Signal = Database["public"]["Tables"]["signals"]["Row"];
 
+// Runs fn over items with at most `concurrency` in flight at once, instead
+// of either a fully sequential loop (too slow once each item does several
+// LLM calls) or an unbounded Promise.all (risks bursting past API rate
+// limits). A plain sequential for-loop across competitors — each now doing
+// several sequential LLM calls of its own after the news/funding dedup
+// changes — is what pushed a 9-competitor recrawl past Vercel's 300s
+// function timeout; this is the fix.
+async function mapWithConcurrency<T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
+  return results;
+}
+
 // Pulls recent Gong/Zoom call transcripts (if connected) and distills them
 // down to competitor-mention sentences via Claude. Fetched once per account
 // per crawl run, not per-signal — it's the same context for every signal
@@ -129,10 +149,20 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
 
   const allowedSources = TIER_SIGNAL_SOURCES[account.tier];
 
-  const newSignals: Signal[] = [];
-  for (const competitor of competitors) {
+  // Competitors run concurrently (bounded — see mapWithConcurrency), not one
+  // at a time: each one can now make several sequential LLM calls (news
+  // check, funding check, each with its own relevance + dedup pass), and a
+  // plain sequential loop across every tracked competitor was what pushed a
+  // 9-competitor recrawl past Vercel's 300s timeout. Concurrency is safe
+  // across different competitors — the only sequencing requirement (news
+  // before funding, for dedup) is within a single competitor's own checks,
+  // preserved below.
+  const COMPETITOR_CONCURRENCY = 4;
+  const perCompetitorSignals = await mapWithConcurrency(competitors, COMPETITOR_CONCURRENCY, async (competitor) => {
+    const found: Signal[] = [];
+
     // Computed once per competitor, before checkNews/checkFunding run
-    // concurrently below — both need to agree on whether this is the
+    // sequentially below — both need to agree on whether this is the
     // competitor's first-ever news/funding check (backfill vs. ongoing), and
     // letting each query it independently mid-flight is a race: whichever
     // inserts first makes the other see a nonzero count and wrongly
@@ -149,15 +179,15 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
     // checkFunding can't see what checkNews just inserted (and vice versa),
     // letting the same event slip through as two separate signals.
     if (allowedSources.includes("news")) {
-      newSignals.push(...(await checkNews(supabase, competitor, isFirstCheck)));
+      found.push(...(await checkNews(supabase, competitor, isFirstCheck)));
     }
     if (allowedSources.includes("funding")) {
-      newSignals.push(...(await checkFunding(supabase, competitor, isFirstCheck)));
+      found.push(...(await checkFunding(supabase, competitor, isFirstCheck)));
     }
 
     // Pricing/jobs surface at most one signal per run (a diff against the
     // last snapshot) — normalized to arrays here so both shapes flatten into
-    // newSignals the same way as the sequential checks above.
+    // `found` the same way as the sequential checks above.
     const checks = [
       allowedSources.includes("pricing") ? checkPricingDiff(supabase, competitor).then((s) => (s ? [s] : [])) : null,
       allowedSources.includes("job_posting")
@@ -173,7 +203,7 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
 
     const results = await Promise.allSettled(checks);
     for (const result of results) {
-      if (result.status === "fulfilled") newSignals.push(...result.value);
+      if (result.status === "fulfilled") found.push(...result.value);
     }
 
     // Refreshes the Pricing dashboard's current-state snapshot every run,
@@ -184,7 +214,11 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
         console.error(`pricing structure extraction failed for ${competitor.name}:`, err)
       );
     }
-  }
+
+    return found;
+  });
+
+  const newSignals: Signal[] = perCompetitorSignals.flat();
 
   const competitorIds = competitors.map((c) => c.id);
 
@@ -240,14 +274,9 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
   const intercomNotes = INTERCOM_ALLOWED[account.tier] ? await buildIntercomNotes(supabase, account.id) : null;
   const churnNotes = [account.churn_notes, intercomNotes].filter(Boolean).join(" ") || null;
 
-  const scoredSignals: (Signal & { competitorName: string })[] = [];
-
-  for (const signal of signalsToScore) {
-    const shouldScore = account.tier !== "starter" ? true : !alreadyScoredThisWeek && scoredSignals.length === 0;
-    if (!shouldScore) continue;
-
+  async function scoreOneSignal(signal: Signal): Promise<(Signal & { competitorName: string }) | null> {
     const competitor = competitors.find((c) => c.id === signal.competitor_id);
-    if (!competitor) continue;
+    if (!competitor) return null;
 
     // Only this competitor's call mentions — a mention about a different
     // competitor shouldn't influence this signal's score.
@@ -284,9 +313,32 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
         .select("*")
         .single();
 
-      if (updated) scoredSignals.push({ ...updated, competitorName: competitor.name });
+      return updated ? { ...updated, competitorName: competitor.name } : null;
     } catch (err) {
       console.error(`scoring failed for signal ${signal.id}:`, err);
+      return null;
+    }
+  }
+
+  const scoredSignals: (Signal & { competitorName: string })[] = [];
+
+  if (account.tier === "starter") {
+    // Starter scores at most one signal total, so there's nothing to gain
+    // from concurrency here — stays sequential so the "already scored one
+    // this week" check can short-circuit immediately.
+    for (const signal of signalsToScore) {
+      if (alreadyScoredThisWeek || scoredSignals.length > 0) break;
+      const scored = await scoreOneSignal(signal);
+      if (scored) scoredSignals.push(scored);
+    }
+  } else {
+    // Plus/Advanced score every new signal — the backlog rescue cap (20)
+    // bounds how many that can ever be in one run, so concurrency here is
+    // both safe and the main lever on total crawl duration.
+    const SCORE_CONCURRENCY = 5;
+    const results = await mapWithConcurrency(signalsToScore, SCORE_CONCURRENCY, scoreOneSignal);
+    for (const result of results) {
+      if (result) scoredSignals.push(result);
     }
   }
 
