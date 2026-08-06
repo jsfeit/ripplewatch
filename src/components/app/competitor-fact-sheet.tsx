@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, Plus, Printer, RefreshCw, Trash2, ThumbsDown, ThumbsUp } from "lucide-react";
+import { useRef, useState } from "react";
+import Link from "next/link";
+import { Loader2, Plus, Printer, RefreshCw, Trash2, ThumbsDown, ThumbsUp, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +15,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 import type { WinLossOutcome } from "@/lib/supabase/types";
 
 type WinLossEntry = {
@@ -34,6 +36,7 @@ export function CompetitorFactSheet({
   competitorId,
   competitorName,
   accountName,
+  hubspotConnected,
   initialWhyWeWin,
   initialWhyWeLose,
   initialGeneratedAt,
@@ -42,6 +45,7 @@ export function CompetitorFactSheet({
   competitorId: string;
   competitorName: string;
   accountName: string;
+  hubspotConnected: boolean;
   initialWhyWeWin: string | null;
   initialWhyWeLose: string | null;
   initialGeneratedAt: string | null;
@@ -59,6 +63,67 @@ export function CompetitorFactSheet({
   const [outcome, setOutcome] = useState<WinLossOutcome>("lost");
   const [reason, setReason] = useState("");
   const [savingEntry, setSavingEntry] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [importMessage, setImportMessage] = useState<string | null>(null);
+
+  // CSV/HubSpot import is account-wide (one file or sync can touch every
+  // competitor, not just this one), so the insert response only carries
+  // counts, not rows — refetch this competitor's own entries afterward
+  // rather than trying to reconstruct them from a count.
+  async function refetchEntries() {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("competitor_win_loss")
+      .select("id, outcome, reason, created_at")
+      .eq("competitor_id", competitorId)
+      .order("created_at", { ascending: false });
+    if (data) setEntries(data);
+  }
+
+  async function handleCsvFile(file: File) {
+    setUploading(true);
+    setImportMessage(null);
+    try {
+      const text = await file.text();
+      const res = await fetch("/api/competitors/win-loss/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Import failed.");
+      setImportMessage(
+        `CSV: imported ${data.imported}, skipped ${data.skipped}${data.skipped > 0 ? " (no clear competitor match)" : ""}.`
+      );
+      await refetchEntries();
+    } catch (err) {
+      setImportMessage(err instanceof Error ? err.message : "Import failed.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function handleHubspotSync() {
+    setSyncing(true);
+    setImportMessage(null);
+    try {
+      const res = await fetch("/api/competitors/win-loss/sync-hubspot", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Sync failed.");
+      setImportMessage(
+        `HubSpot: imported ${data.imported}, skipped ${data.skipped}${data.skipped > 0 ? " (no clear competitor match)" : ""}.`
+      );
+      await refetchEntries();
+    } catch (err) {
+      setImportMessage(err instanceof Error ? err.message : "Sync failed.");
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   async function generate() {
     setGenerating(true);
@@ -188,13 +253,41 @@ export function CompetitorFactSheet({
       )}
 
       <div className="mt-6 border-t border-border pt-4 print:hidden">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-semibold text-muted-foreground">Win/loss log</p>
-          <Button variant="ghost" size="sm" onClick={() => setFormOpen((v) => !v)}>
-            <Plus className="size-3.5" />
-            Log a win/loss
-          </Button>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,text/csv,text/plain"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleCsvFile(file);
+              }}
+            />
+            <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+              {uploading ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
+              Upload CSV
+            </Button>
+            {hubspotConnected ? (
+              <Button variant="ghost" size="sm" onClick={handleHubspotSync} disabled={syncing}>
+                {syncing ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+                Sync HubSpot
+              </Button>
+            ) : (
+              <Link href="/app/settings" className="text-xs text-muted-foreground underline">
+                Connect HubSpot
+              </Link>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => setFormOpen((v) => !v)}>
+              <Plus className="size-3.5" />
+              Log a win/loss
+            </Button>
+          </div>
         </div>
+
+        {importMessage ? <p className="mt-1.5 text-xs text-muted-foreground">{importMessage}</p> : null}
 
         {entries.length === 0 ? (
           <p className="mt-2 text-xs text-muted-foreground">
