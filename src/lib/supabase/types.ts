@@ -10,6 +10,7 @@ export type IntegrationProvider = "slack" | "email" | "hubspot" | "salesforce" |
 export type ProfileRole = "member" | "admin";
 export type BillingModel = "subscription" | "per_seat" | "usage_based" | "custom" | "unknown";
 export type SuggestedCompetitorStatus = "pending" | "dismissed" | "added";
+export type WinLossOutcome = "won" | "lost";
 
 export type PricingTier = {
   name: string;
@@ -116,6 +117,9 @@ export interface Database {
           category: string | null;
           pricing_url: string | null;
           careers_url: string | null;
+          fact_sheet_why_we_win: string | null;
+          fact_sheet_why_we_lose: string | null;
+          fact_sheet_generated_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -126,9 +130,32 @@ export interface Database {
           category?: string | null;
           pricing_url?: string | null;
           careers_url?: string | null;
+          fact_sheet_why_we_win?: string | null;
+          fact_sheet_why_we_lose?: string | null;
+          fact_sheet_generated_at?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["competitors"]["Insert"]>;
+        Relationships: [];
+      };
+      competitor_win_loss: {
+        Row: {
+          id: string;
+          competitor_id: string;
+          outcome: WinLossOutcome;
+          reason: string;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          competitor_id: string;
+          outcome: WinLossOutcome;
+          reason: string;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["competitor_win_loss"]["Insert"]>;
         Relationships: [];
       };
       suggested_competitors: {

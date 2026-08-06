@@ -1035,3 +1035,96 @@ export async function researchCompanyContext(
     throw new Error(`Could not parse company research response: ${text}`, { cause: err });
   }
 }
+
+export type FactSheetWinLossEntry = { outcome: "won" | "lost"; reason: string };
+export type FactSheetSignal = { title: string; reasoning: string | null; score: number | null; occurredOn: string };
+export type FactSheetResult = { whyWeWin: string[]; whyWeLose: string[] };
+
+// Every bullet here can end up quoted verbatim by a rep in front of a
+// prospect (why we win) or read by leadership as a risk assessment (why we
+// lose) — unlike scoreSignal, where a wrong number is just a bad ranking, a
+// fabricated claim here is something a real person might repeat as fact.
+// So the instruction is deliberately narrow and evidence-bound: every
+// bullet must trace to something explicitly given (a logged win/loss, a
+// real signal, researched positioning, or a structural pricing fact), never
+// a plausible-sounding but unverified product/feature comparison.
+const FACT_SHEET_SYSTEM_PROMPT = `You write a short, factual competitive fact sheet comparing a company to one specific competitor, for that company's own internal sales/product team — not customer-facing marketing collateral.
+
+Produce two short bullet lists:
+- "whyWeWin": concrete, evidence-backed reasons this company has an edge over the competitor.
+- "whyWeLose": concrete, evidence-backed reasons the competitor is a real threat or wins deals against this company.
+
+Ground every single bullet in something explicitly provided below — a logged win/loss reason, a real recent signal (with its date), researched market positioning, or a structural pricing fact (e.g. one is self-serve/transparent, the other is custom/sales-led). Never invent a feature, capability, or customer-preference claim that isn't backed by one of these. If there is little or no evidence for one side, say so plainly in a single bullet ("Not enough logged win data yet to state a confirmed reason") rather than padding it out with a generic, unverifiable claim — a short honest list is more useful than a longer speculative one.
+
+Write each bullet as one plain sentence a busy person can scan in a few seconds. Prefer specific numbers, dates, and names over vague language ("cheaper" is weak; "$30/mo cheaper on the entry tier, per the March pricing check" is strong).
+
+Respond with strict JSON only, no markdown, matching this shape exactly:
+{"whyWeWin": ["<bullet>", "..."], "whyWeLose": ["<bullet>", "..."]}
+
+Each list should have 2-5 bullets. Do not pad either list to hit a minimum — a single honest bullet beats three restatements of the same point.`;
+
+const FACT_SHEET_SCHEMA = {
+  type: "object",
+  properties: {
+    whyWeWin: { type: "array", items: { type: "string" } },
+    whyWeLose: { type: "array", items: { type: "string" } },
+  },
+  required: ["whyWeWin", "whyWeLose"],
+  additionalProperties: false,
+} as const;
+
+export async function generateFactSheet(
+  companyName: string,
+  positioning: string | null,
+  companyResearch: string | null,
+  competitorName: string,
+  competitorCategory: string | null,
+  pricingSummary: string | null,
+  winLossEntries: FactSheetWinLossEntry[],
+  recentSignals: FactSheetSignal[],
+  accountId: string | null
+): Promise<FactSheetResult> {
+  const wins = winLossEntries.filter((e) => e.outcome === "won");
+  const losses = winLossEntries.filter((e) => e.outcome === "lost");
+
+  const userPrompt = `Company: ${companyName}${positioning ? `\nSelf-reported positioning: ${positioning}` : ""}${companyResearch ? `\nResearched market position: ${companyResearch}` : ""}
+
+Competitor: ${competitorName}${competitorCategory ? ` (${competitorCategory})` : ""}${pricingSummary ? `\nPricing structure: ${pricingSummary}` : ""}
+
+Logged wins against this competitor:
+${wins.length > 0 ? wins.map((w) => `- ${w.reason}`).join("\n") : "(none logged yet)"}
+
+Logged losses to this competitor:
+${losses.length > 0 ? losses.map((l) => `- ${l.reason}`).join("\n") : "(none logged yet)"}
+
+Recent signals about this competitor:
+${
+  recentSignals.length > 0
+    ? recentSignals
+        .map((s) => `- [${s.occurredOn}] ${s.title}${s.score !== null ? ` (relevance ${s.score}/100)` : ""}${s.reasoning ? ` — ${s.reasoning}` : ""}`)
+        .join("\n")
+    : "(none)"
+}
+
+Write the fact sheet.`;
+
+  const message = await getAnthropic().messages.create({
+    model: "claude-sonnet-5",
+    max_tokens: 1200,
+    system: cachedSystemPrompt(FACT_SHEET_SYSTEM_PROMPT),
+    output_config: { format: { type: "json_schema", schema: FACT_SHEET_SCHEMA } },
+    messages: [{ role: "user", content: userPrompt }],
+  });
+  recordLlmUsage(accountId, "generateFactSheet", message.model, message.usage);
+
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  try {
+    const parsed = JSON.parse(text);
+    return {
+      whyWeWin: Array.isArray(parsed.whyWeWin) ? parsed.whyWeWin.map(String) : [],
+      whyWeLose: Array.isArray(parsed.whyWeLose) ? parsed.whyWeLose.map(String) : [],
+    };
+  } catch (err) {
+    throw new Error(`Could not parse fact sheet response: ${text}`, { cause: err });
+  }
+}
