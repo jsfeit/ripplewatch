@@ -8,7 +8,7 @@ import {
   extractPricingStructure,
   searchCompetitorNews,
   filterRelevantHeadlines,
-  dedupeSameStoryHeadlines,
+  canonicalizeHeadlines,
 } from "@/lib/anthropic";
 import { normalizeDomain, guessPricingUrl, guessCareersUrl } from "@/lib/domain";
 
@@ -499,6 +499,48 @@ function dedupeByTokenOverlap<T extends { title: string }>(
   return kept;
 }
 
+// Catches paraphrase duplicates the raw-headline token check above can't —
+// two headlines about the same event but with zero shared distinctive words
+// (e.g. "Xero price hike has some accountants looking for alternatives" vs
+// "Xero raises its prices, compounding the annoyance for investors,
+// customers"). Rather than asking an LLM to judge "are these the same
+// story" directly on raw headlines — the previous approach, which missed
+// three real near-duplicates in a row (Gusto/Guideline, this exact Xero
+// case, and a FreshBooks/Grasshopper partnership) despite worked examples —
+// this asks a narrower, more mechanical question first: normalize each
+// headline into a neutral "what happened" sentence. Same real event should
+// canonicalize to near-identical text even when the original headlines
+// share no vocabulary; the actual sameness call is then made
+// deterministically (same token-overlap check as above, just applied to the
+// canonical sentences instead of the raw headlines).
+async function dedupeByCanonicalEvent<T extends { title: string; description?: string | null }>(
+  headlines: T[],
+  existingTitles: string[],
+  competitorName: string,
+  accountId: string | null
+): Promise<T[]> {
+  if (headlines.length === 0) return headlines;
+
+  const [canonicalNew, canonicalExisting] = await Promise.all([
+    canonicalizeHeadlines(headlines, accountId),
+    existingTitles.length > 0 ? canonicalizeHeadlines(existingTitles.map((title) => ({ title })), accountId) : Promise.resolve([]),
+  ]);
+
+  const kept: T[] = [];
+  const keptCanonical: string[] = [];
+  headlines.forEach((headline, i) => {
+    const canonical = canonicalNew[i];
+    const isDuplicate =
+      keptCanonical.some((k) => sharesSignificantTokens(canonical, k, competitorName)) ||
+      canonicalExisting.some((c) => sharesSignificantTokens(canonical, c, competitorName));
+    if (!isDuplicate) {
+      kept.push(headline);
+      keptCanonical.push(canonical);
+    }
+  });
+  return kept;
+}
+
 // Last line of defense against name collisions the query-level AND above
 // can't catch — two genuinely business-shaped entities that share a name
 // (a company called "Square" vs. "Union Square Ventures"). One batched LLM
@@ -537,16 +579,12 @@ async function filterHeadlinesForCompetitor<T extends { title: string; descripti
   const existingTitles = await fetchRecentSignalTitles(supabase, competitor.id);
 
   // Deterministic pass first — catches the obvious cases (a shared partner/
-  // acquired-company name) without depending on the LLM call below getting
-  // it right, and shrinks what that call has to consider. The LLM pass
-  // still runs on survivors for subtler paraphrases with no shared
-  // distinctive words.
+  // acquired-company name) cheaply, no LLM call needed, and shrinks what the
+  // canonicalization pass below has to process.
   const tokenDeduped = dedupeByTokenOverlap(relevantHeadlines, existingTitles, competitor.name);
   if (tokenDeduped.length === 0) return tokenDeduped;
 
-  const keepIndices = await dedupeSameStoryHeadlines(tokenDeduped, existingTitles, competitor.account_id);
-  const keepSet = new Set(keepIndices);
-  return tokenDeduped.filter((_, i) => keepSet.has(i));
+  return dedupeByCanonicalEvent(tokenDeduped, existingTitles, competitor.name, competitor.account_id);
 }
 
 // News — free Google News RSS query, no API key required. De-duped against

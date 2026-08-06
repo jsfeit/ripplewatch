@@ -552,75 +552,72 @@ For each headline, is it genuinely about this company, and is it actually a fund
   }
 }
 
-const DEDUPE_STORIES_SYSTEM_PROMPT = `You are given (1) a list of new candidate headlines about a company, and (2) a list of stories already covered in previous checks for this same company. Some new headlines may be different publishers covering the exact same underlying event as each other, or the exact same event as one already covered previously — not genuinely new information.
+const CANONICALIZE_HEADLINES_SYSTEM_PROMPT = `You read news headlines about a company and rewrite each one as a single short, plain, factual sentence stating the underlying business action — strip out publisher framing, which stakeholder or audience the headline foregrounds, and stylistic flourish. State just the core fact (who did what) in a consistent, neutral form.
 
-The test is a single, narrow, mechanical question: did the SAME thing happen? Not "do these articles read differently" — ask specifically whether they name the same concrete action (the same price change, the same acquisition, the same funding round, the same hire), regardless of which stakeholder, audience, or consequence the headline foregrounds. A company doesn't raise its prices twice in the same news cycle, so two headlines that both say a company raised/hiked/increased its prices — even with completely different focal points — are reporting the same single price change until proven otherwise.
+The test that matters: two headlines describing the SAME real-world event, however differently worded or angled, must produce nearly IDENTICAL canonical sentences — same key entities, same core verb, same structure. Two headlines describing genuinely DIFFERENT events must produce clearly different sentences.
 
-Worked examples of headline pairs that MUST be merged (this is the failure mode to watch for — don't be fooled by different wording or different emphasis):
-- "Xero price hike has some accountants looking for alternatives" + "Xero raises its prices, compounding the annoyance for investors, customers" → SAME event (one price increase, two different reactions to it).
-- "Gusto Acquires Guideline for $600M, Plans Rival Customer Selloff" + "Gusto agrees to buy retirement plan provider Guideline" → SAME event (one acquisition, two different summaries of it).
-- "Acme lays off 200 engineers amid slowdown" + "Acme's engineering team hit hard in latest cuts" → SAME event (one layoff, described two ways).
-
-These are NOT the same event, and both should be kept: "Acme raises prices on its entry tier" + "Acme raises $10M in Series A funding" — different actions (a price change vs. a funding round) that both happen to use the word "raises."
+Worked examples:
+- "Xero price hike has some accountants looking for alternatives" → "Xero raised its subscription prices."
+- "Xero raises its prices, compounding the annoyance for investors, customers" → "Xero raised its subscription prices."
+(Same canonical sentence — these are the same price increase, just two different angles on the reaction to it.)
+- "Gusto Acquires Guideline for $600M, Plans Rival Customer Selloff" → "Gusto acquired Guideline for $600 million."
+- "Gusto agrees to buy retirement plan provider Guideline" → "Gusto acquired Guideline."
+(Near-identical canonical sentences — same acquisition, one just has the dollar figure.)
+- "Acme raises prices on its entry tier" → "Acme raised prices on its entry-tier plan."
+- "Acme raises $10M in Series A funding" → "Acme raised $10 million in Series A funding."
+(Clearly different canonical sentences — a price change and a funding round are different actions, even though both headlines use the word "raises.")
 
 Respond with strict JSON only, no markdown, matching this shape exactly:
-{"keepIndices": [<index>, ...]}
+{"canonical": ["<sentence>", ...]}
 
-Each index refers to a position in the "New headlines" list (0-based). Keep exactly one index per distinct real-world event among the new headlines — pick the more informative one per group (concrete numbers/details over a vaguer rewrite of the same facts). Exclude any new headline, entirely, that describes the same event as something in "Already covered." If a new headline is about a genuinely different action from everything else (new and already-covered), keep it.`;
+One sentence per headline, in the same order given.`;
 
-const DEDUPE_STORIES_SCHEMA = {
+const CANONICALIZE_HEADLINES_SCHEMA = {
   type: "object",
   properties: {
-    keepIndices: { type: "array", items: { type: "integer" } },
+    canonical: { type: "array", items: { type: "string" } },
   },
-  required: ["keepIndices"],
+  required: ["canonical"],
   additionalProperties: false,
 } as const;
 
-// Google News RSS often returns several publishers' coverage of the exact
-// same event in one search — title-based dedup against existing signals
-// only catches literally identical titles, so "Gusto Acquires Guideline for
-// $600M" (techbuzz.ai) and "Gusto agrees to buy retirement plan provider
-// Guideline" (CNBC) both slipped through as separate signals and got scored
-// independently (and inconsistently — 78 vs 55 for the same event). Checking
-// against existingRecentTitles too (not just the current batch) catches the
-// same story resurfacing from a *later* crawl run, or from checkNews and
-// checkFunding both finding it in the same run — see scraping.ts, which now
-// runs those two sequentially per competitor specifically so this check can
-// see what the first one just inserted. One batched call per competitor per
-// check, same cost shape as filterRelevantHeadlines.
-export async function dedupeSameStoryHeadlines(
+// Deliberately does NOT decide "are these duplicates" itself — that holistic
+// same/different judgment (the previous approach here) proved unreliable in
+// practice, missing real near-duplicates (Gusto/Guideline, Xero price hikes,
+// a FreshBooks/Grasshopper partnership from two publishers) despite worked
+// examples in the prompt. This function only normalizes each headline into
+// a consistent factual sentence; the caller (dedupeByCanonicalOverlap in
+// scraping.ts) then compares those sentences deterministically. Same
+// underlying events should produce near-identical canonical text even when
+// the original headlines share zero vocabulary, which is what a pure
+// token-overlap check on the RAW headlines can't catch on its own.
+export async function canonicalizeHeadlines(
   headlines: { title: string; description?: string | null }[],
-  existingRecentTitles: string[],
   accountId: string | null
-): Promise<number[]> {
+): Promise<string[]> {
   if (headlines.length === 0) return [];
-  if (headlines.length === 1 && existingRecentTitles.length === 0) return [0];
 
-  const userPrompt = `Already covered:\n${
-    existingRecentTitles.length > 0 ? existingRecentTitles.map((t) => `- ${t}`).join("\n") : "(none)"
-  }\n\nNew headlines:\n${headlines.map((h, i) => `${i}. ${h.title}${h.description ? ` — ${h.description}` : ""}`).join("\n")}\n\nWhich new headlines are genuinely new stories?`;
+  const userPrompt = `Headlines:\n${headlines.map((h, i) => `${i}. ${h.title}${h.description ? ` — ${h.description}` : ""}`).join("\n")}\n\nRewrite each as a short canonical factual sentence.`;
 
   const message = await getAnthropic().messages.create({
     model: "claude-sonnet-5",
-    max_tokens: 300,
-    system: cachedSystemPrompt(DEDUPE_STORIES_SYSTEM_PROMPT),
-    output_config: { format: { type: "json_schema", schema: DEDUPE_STORIES_SCHEMA } },
+    max_tokens: 600,
+    system: cachedSystemPrompt(CANONICALIZE_HEADLINES_SYSTEM_PROMPT),
+    output_config: { format: { type: "json_schema", schema: CANONICALIZE_HEADLINES_SCHEMA } },
     messages: [{ role: "user", content: userPrompt }],
   });
-  recordLlmUsage(accountId, "dedupeSameStoryHeadlines", message.model, message.usage);
+  recordLlmUsage(accountId, "canonicalizeHeadlines", message.model, message.usage);
 
   const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
   try {
     const parsed = JSON.parse(text);
-    const keepIndices = Array.isArray(parsed.keepIndices)
-      ? parsed.keepIndices.filter((i: unknown): i is number => typeof i === "number" && i >= 0 && i < headlines.length)
-      : [];
-    // Parse succeeded but produced nothing usable (e.g. empty array) — fail
-    // open to every headline rather than silently dropping all of them.
-    return keepIndices.length > 0 ? keepIndices : headlines.map((_, i) => i);
+    const canonical = Array.isArray(parsed.canonical) ? parsed.canonical : [];
+    // Pad defensively with the original title (worst case: compares as its
+    // own distinct "event," never merged — fails open toward keeping a
+    // signal rather than silently dropping one on a malformed response).
+    return headlines.map((h, i) => (typeof canonical[i] === "string" && canonical[i] ? canonical[i] : h.title));
   } catch {
-    return headlines.map((_, i) => i);
+    return headlines.map((h) => h.title);
   }
 }
 
