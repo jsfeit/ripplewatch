@@ -317,7 +317,13 @@ export function CompetitorFactSheet({
           </div>
         </div>
 
-        {importMessage ? <p className="mt-1.5 text-xs text-muted-foreground">{importMessage}</p> : null}
+        {uploading || syncing ? (
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            Processing... large files can take a minute or two, this reads every row.
+          </p>
+        ) : importMessage ? (
+          <p className="mt-1.5 text-xs text-muted-foreground">{importMessage}</p>
+        ) : null}
 
         {entries.length === 0 ? (
           <p className="mt-2 text-xs text-muted-foreground">

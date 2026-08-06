@@ -3,13 +3,21 @@ import { createClient } from "@/lib/supabase/server";
 import { extractWinLossEntries } from "@/lib/anthropic";
 import { applyExtractedWinLossEntries } from "@/lib/win-loss-import";
 
-// extractWinLossEntries caps itself at 80 lines per call to keep a single
-// call cheap — a real CRM export can easily be 1,000+ rows, so the route
-// chunks the file itself (header repeated on each chunk for column
-// context) rather than silently only ever looking at the first 80 rows.
-const CHUNK_ROWS = 70;
-const MAX_CHUNKS = 40; // bounds cost on a pathologically large paste (~2,800 rows)
-const CHUNK_CONCURRENCY = 4;
+// A 1,500-row real-world test took several minutes with no maxDuration set
+// (Vercel's default is far shorter) — bigger batches per call and more
+// concurrency cuts the number of round trips substantially, and this stops
+// a genuinely large file from getting killed mid-run instead of just
+// returning a slow-but-honest result.
+export const maxDuration = 300;
+
+// extractWinLossEntries caps itself at WIN_LOSS_EXTRACT_LINE_LIMIT lines per
+// call to keep a single call cheap — a real CRM export can easily be
+// 1,000+ rows, so the route chunks the file itself (header repeated on each
+// chunk for column context) rather than silently only ever looking at the
+// first N rows.
+const CHUNK_ROWS = 150;
+const MAX_CHUNKS = 30; // bounds cost on a pathologically large paste (~4,500 rows)
+const CHUNK_CONCURRENCY = 8;
 
 function chunkCsv(rawText: string): string[] {
   const lines = rawText.split("\n").filter((l) => l.trim());

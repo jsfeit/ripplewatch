@@ -1192,10 +1192,11 @@ const EXTRACT_WIN_LOSS_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-// Caps input size so one call stays cheap and fast — the import route
-// chunks larger files into multiple calls rather than relying on this
-// alone, and reports how many source lines were actually considered.
-const WIN_LOSS_EXTRACT_LINE_LIMIT = 80;
+// Caps input size so one call stays reasonably bounded — the import route
+// chunks larger files into multiple calls sized comfortably under this
+// (see CHUNK_ROWS there) rather than relying on this alone, and reports
+// how many source lines were actually considered.
+const WIN_LOSS_EXTRACT_LINE_LIMIT = 170;
 
 export async function extractWinLossEntries(
   competitorNames: string[],
@@ -1214,7 +1215,7 @@ Classify the rows.`;
 
   const message = await getAnthropic().messages.create({
     model: "claude-sonnet-5",
-    max_tokens: 3000,
+    max_tokens: 4096, // up to 170 rows/call can mean well over 100 entries
     system: cachedSystemPrompt(EXTRACT_WIN_LOSS_SYSTEM_PROMPT),
     output_config: { format: { type: "json_schema", schema: EXTRACT_WIN_LOSS_SCHEMA } },
     messages: [{ role: "user", content: userPrompt }],
