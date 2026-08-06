@@ -5,7 +5,6 @@ import { CompetitorManager } from "@/components/app/competitor-manager";
 import { SuggestedCompetitorsPanel } from "@/components/app/suggested-competitors-panel";
 import { CompetitorMonitoringUrls } from "@/components/app/competitor-monitoring-urls";
 import { CompetitorFactSheet } from "@/components/app/competitor-fact-sheet";
-import { WinLossImport } from "@/components/app/win-loss-import";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -78,7 +77,6 @@ export default async function CompetitorDetailPage({
 
       <SuggestedCompetitorsPanel suggestions={suggestions ?? []} />
       <CompetitorManager competitors={competitors ?? []} tier={account.tier} activeId={id} />
-      <WinLossImport hubspotConnected={Boolean(hubspotIntegration)} />
 
       <div className="mt-6 flex items-center gap-3">
         <span
@@ -120,6 +118,7 @@ export default async function CompetitorDetailPage({
         competitorId={competitor.id}
         competitorName={competitor.name}
         accountName={account.name}
+        hubspotConnected={Boolean(hubspotIntegration)}
         initialWhyWeWin={competitor.fact_sheet_why_we_win}
         initialWhyWeLose={competitor.fact_sheet_why_we_lose}
         initialGeneratedAt={competitor.fact_sheet_generated_at}
