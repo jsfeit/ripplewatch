@@ -15,8 +15,17 @@ export const maxDuration = 300;
 // 1,000+ rows, so the route chunks the file itself (header repeated on each
 // chunk for column context) rather than silently only ever looking at the
 // first N rows.
-const CHUNK_ROWS = 150;
-const MAX_CHUNKS = 30; // bounds cost on a pathologically large paste (~4,500 rows)
+//
+// CHUNK_ROWS was 150 until real testing showed the model now extracts an
+// entry for nearly every row (per the anti-refusal prompt fix) — at 150
+// rows/call the response routinely blew past max_tokens and got cut off
+// mid-JSON, failing every single chunk. A failed real response measured
+// ~9,300 characters for just 18 entries before truncating at max_tokens
+// 4096 (~2.3 chars/token for this JSON shape) — at max_tokens 8192 (see
+// extractWinLossEntries), a near-1:1 row-to-entry chunk needs to stay
+// well under ~35-40 entries to have real margin.
+const CHUNK_ROWS = 30;
+const MAX_CHUNKS = 100; // bounds cost on a pathologically large paste (~3,000 rows)
 const CHUNK_CONCURRENCY = 8;
 
 function chunkCsv(rawText: string): string[] {
