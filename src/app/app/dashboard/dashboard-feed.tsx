@@ -89,49 +89,61 @@ export function DashboardFeed({
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-1.5">
-        <FilterChip active={filter === "all"} onClick={() => setFilter("all")} label="All competitors" />
-        {competitors.map((c) => (
-          <FilterChip
-            key={c.id}
-            active={filter === c.id}
-            onClick={() => setFilter(c.id)}
-            label={c.name}
-            dotColor={avatarDotColor(c.name)}
-          />
-        ))}
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70">Competitor</p>
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          <FilterChip active={filter === "all"} onClick={() => setFilter("all")} label="All competitors" />
+          {competitors.map((c) => (
+            <FilterChip
+              key={c.id}
+              active={filter === c.id}
+              onClick={() => setFilter(c.id)}
+              label={c.name}
+              dotColor={avatarDotColor(c.name)}
+            />
+          ))}
+        </div>
       </div>
 
-      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        <div className="flex flex-wrap gap-1.5">
-          {LEVEL_FILTERS.map((level) => (
-            <FilterChip
-              key={level}
-              active={levelFilter === level}
-              onClick={() => setLevelFilter(level)}
-              label={level === "all" ? "All relevance" : level === "unscored" ? "Unscored" : level}
-            />
-          ))}
+      <div className="mt-3 flex flex-wrap items-start gap-x-4 gap-y-2">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70">Relevance</p>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            {LEVEL_FILTERS.map((level) => (
+              <FilterChip
+                key={level}
+                active={levelFilter === level}
+                onClick={() => setLevelFilter(level)}
+                label={level === "all" ? "All relevance" : level === "unscored" ? "Unscored" : level}
+              />
+            ))}
+          </div>
         </div>
-        <div className="h-4 w-px bg-border" />
-        <div className="flex flex-wrap gap-1.5">
-          {TYPE_FILTERS.map((type) => (
-            <FilterChip
-              key={type}
-              active={typeFilter === type}
-              onClick={() => setTypeFilter(type)}
-              label={type === "all" ? "All types" : SIGNAL_TYPE_LABELS[type]}
-            />
-          ))}
+        <div className="h-8 w-px self-center bg-border" />
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70">Category</p>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            {TYPE_FILTERS.map((type) => (
+              <FilterChip
+                key={type}
+                active={typeFilter === type}
+                onClick={() => setTypeFilter(type)}
+                label={type === "all" ? "All types" : SIGNAL_TYPE_LABELS[type]}
+              />
+            ))}
+          </div>
         </div>
-        <div className="h-4 w-px bg-border" />
-        <div className="flex flex-wrap gap-1.5">
-          <FilterChip
-            active={dateFilter === "recent"}
-            onClick={() => setDateFilter("recent")}
-            label={`Last ${RECENCY_WINDOW_DAYS / 7} weeks`}
-          />
-          <FilterChip active={dateFilter === "all"} onClick={() => setDateFilter("all")} label="All time" />
+        <div className="h-8 w-px self-center bg-border" />
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70">Timing</p>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            <FilterChip
+              active={dateFilter === "recent"}
+              onClick={() => setDateFilter("recent")}
+              label={`Last ${RECENCY_WINDOW_DAYS / 7} weeks`}
+            />
+            <FilterChip active={dateFilter === "all"} onClick={() => setDateFilter("all")} label="All time" />
+          </div>
         </div>
       </div>
 
