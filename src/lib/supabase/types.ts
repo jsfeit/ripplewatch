@@ -62,6 +62,8 @@ export interface Database {
           payment_reminder_1_sent_at: string | null;
           payment_reminder_2_sent_at: string | null;
           cost_alert_sent_month: string | null;
+          company_research: string | null;
+          company_research_updated_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -82,6 +84,8 @@ export interface Database {
           payment_reminder_1_sent_at?: string | null;
           payment_reminder_2_sent_at?: string | null;
           cost_alert_sent_month?: string | null;
+          company_research?: string | null;
+          company_research_updated_at?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["accounts"]["Insert"]>;

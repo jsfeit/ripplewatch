@@ -33,6 +33,12 @@ export type ScoringContext = {
   lostDealNotes: string | null;
   churnNotes: string | null;
   callInsights?: string | null;
+  // Cached web-search research on the account's own company (see
+  // researchCompanyContext) — fills gaps when positioning/ICP alone is too
+  // thin to ground a real "why this matters" judgment. Optional: null for
+  // an account where research hasn't been computed yet, or genuinely
+  // turned up nothing.
+  companyResearch?: string | null;
 };
 
 export type SignalToScore = {
@@ -74,6 +80,8 @@ export function scoreToLevel(score: number): RelevanceLevel {
 }
 
 const SYSTEM_PROMPT = `You score competitive-intelligence signals for a B2B SaaS company. Your job is not to summarize the signal — the customer can already read it. Your job is to judge how much it actually matters to THIS company, given their positioning, ICP, and the real reasons they've lost deals or churned customers, and to say why in plain language a marketing lead would use in a Slack message.
+
+When public market research on the company is provided alongside their self-reported positioning, use both together — the self-reported text tells you how they see themselves, the research tells you their actual real-world market position, known differentiators, and competitive set. Ground your reasoning in the combination, not just whichever one is more detailed. Self-reported positioning is often thin or generic ("we help businesses grow"); real research on what the company actually does and who it actually competes with should carry real weight in judging whether a signal is a real threat, not just filler. If no research is provided, work from positioning/ICP alone as before.
 
 Before scoring, check whether this signal is even about the right company. Competitor names sometimes collide with a completely unrelated company (e.g. a company called "Sage" that sells accounting software vs. an unrelated healthcare/senior-care company also called "Sage"). If the signal is clearly about a different, unrelated company that just happens to share the name — not a different segment or product line of the SAME company, but a genuinely different business — set "wrongCompany": true, score it 0-5, and say in the reasoning which unrelated company it's actually about. This is different from a same-company signal that's just not very relevant (that still gets "wrongCompany": false and scored normally on the rubric below).
 
@@ -293,9 +301,9 @@ const SCORE_SIGNAL_SCHEMA = {
 // response parsing, just via a different Anthropic endpoint.
 export function buildScoringUserPrompt(context: ScoringContext, signal: SignalToScore): string {
   return `Company: ${context.companyName}
-Positioning: ${context.positioning ?? "(not provided)"}
+Positioning (self-reported): ${context.positioning ?? "(not provided)"}
 ICP: ${context.icp ?? "(not provided)"}
-Known lost-deal reasons: ${context.lostDealNotes ?? "(none provided)"}
+${context.companyResearch ? `Public market research on this company: ${context.companyResearch}\n` : ""}Known lost-deal reasons: ${context.lostDealNotes ?? "(none provided)"}
 Known churn reasons: ${context.churnNotes ?? "(none provided)"}
 ${context.callInsights ? `Recent sales call mentions of competitors: ${context.callInsights}\n` : ""}
 
@@ -342,7 +350,11 @@ export function parseScoringText(text: string): ScoringResult {
 // "Sage" slipped through and got Low-scored instead of removed). Scoring
 // now independently flags this so the caller can delete the signal outright
 // instead of leaving it sitting in the feed as low-relevance noise.
-export const SCORING_PROMPT_VERSION = "v4";
+// v5: adds cached public company research (researchCompanyContext) as
+// optional context alongside self-reported positioning/ICP, so "why it
+// matters" reasoning can draw on real market position instead of only
+// whatever thin/generic text an account typed in during onboarding.
+export const SCORING_PROMPT_VERSION = "v5";
 
 export function scoringRequestParams(context: ScoringContext, signal: SignalToScore) {
   return {
@@ -963,5 +975,57 @@ Search for competitors this company isn't already tracking.`;
       .filter((c: DiscoveredCompetitor) => c.name);
   } catch (err) {
     throw new Error(`Could not parse competitor discovery response: ${text}`, { cause: err });
+  }
+}
+
+const RESEARCH_COMPANY_SYSTEM_PROMPT = `You use web search to research a B2B SaaS company — the account itself, not a competitor — and write a short factual summary of its real market position: what it actually sells, who it competes with, what differentiates it, and any notable recent context (funding, positioning shifts, market perception). This exists to fill gaps when the company's own self-reported positioning/ICP text is thin, generic, or incomplete — ground it in what's actually publicly known, not marketing copy.
+
+Respond with strict JSON only, no markdown, matching this shape exactly:
+{"summary": "<3-5 sentences, factual, specific>"}
+
+If web search turns up nothing substantive for this company (too new, too obscure, or genuinely no public presence), respond with a short honest summary saying so — {"summary": "No significant public information found for this company."} — rather than inventing detail.`;
+
+const RESEARCH_COMPANY_SCHEMA = {
+  type: "object",
+  properties: {
+    summary: { type: "string" },
+  },
+  required: ["summary"],
+  additionalProperties: false,
+} as const;
+
+// Computed once per account (see ensureCompanyResearch in crawl.ts, and the
+// onboarding-complete route) and cached on accounts.company_research —
+// deliberately NOT run per signal scored, which would turn a one-time
+// lookup into a recurring per-scoring-call cost. Distinct from
+// discoverNewCompetitors (researches OTHER companies to suggest as
+// competitors) and from a competitor's own `category` field (a short tag,
+// not real market-position research) — this is real public context about
+// the account's own company, used to ground scoreSignal's "why it matters"
+// reasoning when positioning/ICP text alone is too thin to work with.
+export async function researchCompanyContext(
+  companyName: string,
+  positioning: string | null,
+  accountId: string | null
+): Promise<string> {
+  const userPrompt = `Company: ${companyName}${positioning ? `\nSelf-reported positioning: ${positioning}` : ""}\n\nResearch this company's real market position.`;
+
+  const message = await getAnthropic().messages.create({
+    model: "claude-sonnet-5",
+    // Same web_search overhead as searchCompetitorNews/discoverNewCompetitors.
+    max_tokens: 8192,
+    system: cachedSystemPrompt(RESEARCH_COMPANY_SYSTEM_PROMPT),
+    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
+    output_config: { format: { type: "json_schema", schema: RESEARCH_COMPANY_SCHEMA } },
+    messages: [{ role: "user", content: userPrompt }],
+  });
+  recordLlmUsage(accountId, "researchCompanyContext", message.model, message.usage);
+
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  try {
+    const parsed = JSON.parse(text);
+    return String(parsed.summary ?? "").trim();
+  } catch (err) {
+    throw new Error(`Could not parse company research response: ${text}`, { cause: err });
   }
 }

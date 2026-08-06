@@ -9,7 +9,13 @@ import {
   isFirstNewsCheck,
   ensureMonitoringUrls,
 } from "@/lib/scraping";
-import { scoreSignal, extractCompetitorMentions, SCORING_PROMPT_VERSION, type CompetitorMention } from "@/lib/anthropic";
+import {
+  scoreSignal,
+  extractCompetitorMentions,
+  researchCompanyContext,
+  SCORING_PROMPT_VERSION,
+  type CompetitorMention,
+} from "@/lib/anthropic";
 import { sendSlackAlert } from "@/lib/slack";
 import { fetchRecentGongTranscripts } from "@/lib/gong";
 import { fetchRecentZoomTranscripts } from "@/lib/zoom";
@@ -117,6 +123,29 @@ async function buildIntercomNotes(supabase: AdminSupabase, accountId: string): P
 
   const notes = await fetchRecentIntercomChurnNotes(credentials.access_token);
   return notes.length > 0 ? notes.join(" ") : null;
+}
+
+// Self-heals accounts.company_research for accounts that predate this
+// feature (onboarding computes it up front for new accounts — see
+// /api/onboarding/complete) — computed once, cached, and reused on every
+// subsequent crawl rather than re-researched every run. A stored non-null
+// value (even the "nothing found" fallback string) is treated as "already
+// computed" so this never repeats a paid web-search call for the same
+// account twice.
+async function ensureCompanyResearch(supabase: AdminSupabase, account: Account): Promise<string | null> {
+  if (account.company_research) return account.company_research;
+
+  try {
+    const summary = await researchCompanyContext(account.name, account.positioning, account.id);
+    await supabase
+      .from("accounts")
+      .update({ company_research: summary, company_research_updated_at: new Date().toISOString() })
+      .eq("id", account.id);
+    return summary;
+  } catch (err) {
+    console.error(`company research failed for ${account.name}:`, err);
+    return null;
+  }
 }
 
 function startOfWeek(): string {
@@ -285,6 +314,8 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
   const intercomNotes = INTERCOM_ALLOWED[account.tier] ? await buildIntercomNotes(supabase, account.id) : null;
   const churnNotes = [account.churn_notes, intercomNotes].filter(Boolean).join(" ") || null;
 
+  const companyResearch = await ensureCompanyResearch(supabase, account);
+
   async function scoreOneSignal(signal: Signal): Promise<(Signal & { competitorName: string }) | null> {
     const competitor = competitors.find((c) => c.id === signal.competitor_id);
     if (!competitor) return null;
@@ -306,6 +337,7 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
           lostDealNotes,
           churnNotes,
           callInsights,
+          companyResearch,
         },
         { competitorName: competitor.name, type: signal.type, title: signal.title, summary: signal.summary },
         account.id
