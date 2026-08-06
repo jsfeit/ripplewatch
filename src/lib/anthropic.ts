@@ -1158,12 +1158,21 @@ export type ExtractedWinLossEntry =
 // their CRM happens to format it, vs. HubSpot's own "Lost '<deal>' —
 // <reason>" strings), so rather than writing a rigid column-mapping parser
 // per source, one model call reads whatever raw text it's given.
-const EXTRACT_WIN_LOSS_SYSTEM_PROMPT = `You read raw win/loss deal data — CSV rows (any column names/order), a CRM export, or a plain list — and classify each row that has real signal into exactly one category. Real CRM exports usually have columns beyond just competitor/reason (rep name, deal size, industry, sales cycle length, etc.) — ignore those, only look at outcome, competitor, and reason.
+const EXTRACT_WIN_LOSS_SYSTEM_PROMPT = `You read raw win/loss deal data — CSV rows (any column names/order), a CRM export, or a plain list — and classify EVERY row that has real signal into exactly one category. Do this mechanically, one row at a time. Never judge the file as a whole and decide it's "the wrong kind of deal" or "not really about competing companies" — extract based only on what's literally in each row (a named competitor and/or a stated reason), regardless of what product, deal size, or industry the row is about. A real CRM export always has columns beyond competitor/reason (rep name, deal size, industry, sales cycle length, CSAT, etc.) — ignore those, only look at outcome, competitor, and reason.
 
 Categories:
 - "tracked": the row names one of the given TRACKED competitors. Copy the competitor name exactly as given in the tracked list, not the row's own spelling. reason can be null if the row genuinely has no reason recorded — the outcome alone is still worth keeping.
-- "untracked": the row names a real, specific competing company that is NOT in the tracked list (e.g. a rival CRM, a different vendor entirely). Copy the name as it appears in the row, cleaned up to normal capitalization. reason can be null.
+- "untracked": the row names a real, specific competing company that is NOT in the tracked list — this includes companies in a completely different product category from the tracked competitors (e.g. tracked competitors sell accounting software, but the row names a CRM vendor; extract it anyway, it's still a real named competitor). Copy the name as it appears in the row, cleaned up to normal capitalization. reason can be null.
 - "general": the row has no identifiable competing company — blank, "No Decision," "Status Quo," "Built In-House," a deal that went dark/unresponsive, procurement or budget delays, internal reasons — but DOES have a real reason worth recording. reason is required here (never null); if there's neither a competitor nor a real reason, don't emit the row at all.
+
+The tracked-competitor list ONLY decides which of "tracked" vs "untracked" a named competitor falls into — it never decides whether to extract a row in the first place. Worked example (tracked competitors: Xero, FreshBooks — accounting software), from a CSV that's ostensibly about unrelated CRM/sales-tool deals:
+Row: "Lost, Marcus Johnson, Event, Software, 5000+, Analytics Add-on, 15000, 202, No Decision, Deal went dark/unresponsive prospect, 3"
+-> {"matchType": "general", "competitor": null, "outcome": "lost", "reason": "Deal went dark/unresponsive prospect"}
+Row: "Won, David Kim, Outbound, Financial Services, 501-1000, Enterprise Suite, 150000, 81, SugarCRM, Trusted brand/reputation, 3"
+-> {"matchType": "untracked", "competitor": "SugarCRM", "outcome": "won", "reason": "Trusted brand/reputation"}
+Row: "Lost, Alex Chen, Event, Manufacturing, 501-1000, Analytics Add-on, 60000, 101, Zoho CRM, Competitor had better brand recognition, 5"
+-> {"matchType": "untracked", "competitor": "Zoho CRM", "outcome": "lost", "reason": "Competitor had better brand recognition"}
+Every one of those got extracted even though none of them are about accounting software — that's correct, do the same regardless of how unrelated a row's product/industry looks.
 
 Never force a fuzzy match — if a name only sounds similar to a tracked competitor but isn't really it, treat it as "untracked" with its own name, not "tracked."
 
