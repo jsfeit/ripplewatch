@@ -1036,7 +1036,7 @@ export async function researchCompanyContext(
   }
 }
 
-export type FactSheetWinLossEntry = { outcome: "won" | "lost"; reason: string };
+export type FactSheetWinLossEntry = { outcome: "won" | "lost"; reason: string | null };
 export type FactSheetSignal = { title: string; reasoning: string | null; score: number | null; occurredOn: string };
 export type FactSheetResult = { whyWeWin: string[]; whyWeLose: string[] };
 
@@ -1054,7 +1054,7 @@ Produce two short bullet lists:
 - "whyWeWin": concrete, evidence-backed reasons this company has an edge over the competitor.
 - "whyWeLose": concrete, evidence-backed reasons the competitor is a real threat or wins deals against this company.
 
-Ground every single bullet in something explicitly provided below — a logged win/loss reason, a real recent signal (with its date), researched market positioning, or a structural pricing fact (e.g. one is self-serve/transparent, the other is custom/sales-led). Never invent a feature, capability, or customer-preference claim that isn't backed by one of these. If there is little or no evidence for one side, say so plainly in a single bullet ("Not enough logged win data yet to state a confirmed reason") rather than padding it out with a generic, unverifiable claim — a short honest list is more useful than a longer speculative one.
+Ground every single bullet in something explicitly provided below — a logged win/loss reason, a real recent signal (with its date), researched market positioning, or a structural pricing fact (e.g. one is self-serve/transparent, the other is custom/sales-led). Never invent a feature, capability, or customer-preference claim that isn't backed by one of these. If there is little or no evidence for one side, say so plainly in a single bullet ("Not enough logged win data yet to state a confirmed reason") rather than padding it out with a generic, unverifiable claim — a short honest list is more useful than a longer speculative one. Some logged entries are outcome-only ("lost, no reason recorded") — these can support a frequency observation ("you've lost to X three times, though no reason was recorded each time") but never invent a reason to fill the gap.
 
 Write each bullet as one plain sentence a busy person can scan in a few seconds. Prefer specific numbers, dates, and names over vague language ("cheaper" is weak; "$30/mo cheaper on the entry tier, per the March pricing check" is strong).
 
@@ -1092,10 +1092,10 @@ export async function generateFactSheet(
 Competitor: ${competitorName}${competitorCategory ? ` (${competitorCategory})` : ""}${pricingSummary ? `\nPricing structure: ${pricingSummary}` : ""}
 
 Logged wins against this competitor:
-${wins.length > 0 ? wins.map((w) => `- ${w.reason}`).join("\n") : "(none logged yet)"}
+${wins.length > 0 ? wins.map((w) => `- ${w.reason ?? "(won, no reason recorded)"}`).join("\n") : "(none logged yet)"}
 
 Logged losses to this competitor:
-${losses.length > 0 ? losses.map((l) => `- ${l.reason}`).join("\n") : "(none logged yet)"}
+${losses.length > 0 ? losses.map((l) => `- ${l.reason ?? "(lost, no reason recorded)"}`).join("\n") : "(none logged yet)"}
 
 Recent signals about this competitor:
 ${
@@ -1129,25 +1129,46 @@ Write the fact sheet.`;
   }
 }
 
-export type ExtractedWinLossEntry = { competitor: string; outcome: "won" | "lost"; reason: string };
+// Real win/loss data is rarely a clean "tracked competitor + reason" row
+// every time: sometimes the competitor is known but isn't tracked yet,
+// sometimes there's a reason with no identifiable competitor at all ("No
+// Decision," "Built In-House," a deal that just went quiet), and sometimes
+// a tracked competitor is known but no reason was ever recorded. Each row
+// is classified into exactly one of these instead of being kept only when
+// it's a perfect match:
+// - "tracked": names one of the given tracked competitors. reason may be
+//   null if the row simply doesn't have one — the outcome alone (you lose
+//   to X often) is still worth logging.
+// - "untracked": names a real, specific competing company that ISN'T on
+//   the tracked list — surfaced separately as a possible competitor to add,
+//   not silently dropped.
+// - "general": no specific competing company at all (blank, "No Decision,"
+//   "Built In-House," "went unresponsive," procurement delays, etc.) but
+//   there IS a real reason — feeds general lost-deal context instead of
+//   being thrown away just because it can't be tied to one competitor.
+// A row with neither an identifiable competitor nor a real reason isn't
+// emitted at all — there's nothing to say about it.
+export type ExtractedWinLossEntry =
+  | { matchType: "tracked"; competitor: string; outcome: "won" | "lost"; reason: string | null }
+  | { matchType: "untracked"; competitor: string; outcome: "won" | "lost"; reason: string | null }
+  | { matchType: "general"; competitor: null; outcome: "won" | "lost"; reason: string };
 
 // Feeds both the CSV-import route and the HubSpot-sync route — the two
 // sources look nothing alike (an arbitrary CSV a customer exported however
 // their CRM happens to format it, vs. HubSpot's own "Lost '<deal>' —
 // <reason>" strings), so rather than writing a rigid column-mapping parser
-// per source, one model call reads whatever raw text it's given and pulls
-// out only the entries that clearly name a tracked competitor with a clear
-// outcome. Anything ambiguous is dropped rather than guessed at — a missed
-// row is a minor inconvenience, a wrongly-attributed one pollutes the fact
-// sheet with bad evidence.
-const EXTRACT_WIN_LOSS_SYSTEM_PROMPT = `You read raw win/loss deal data, which could be CSV rows (any column names/order), a CRM export, or a plain list, and extract structured entries about deals won or lost against one specific named competitor.
+// per source, one model call reads whatever raw text it's given.
+const EXTRACT_WIN_LOSS_SYSTEM_PROMPT = `You read raw win/loss deal data — CSV rows (any column names/order), a CRM export, or a plain list — and classify each row that has real signal into exactly one category. Real CRM exports usually have columns beyond just competitor/reason (rep name, deal size, industry, sales cycle length, etc.) — ignore those, only look at outcome, competitor, and reason.
 
-Only extract an entry when the text clearly names one of the given tracked competitors and states or clearly implies an outcome (won or lost) with some reason. Skip rows/lines that don't mention any tracked competitor by name, that are ambiguous about outcome, or that are clearly about something else (e.g. internal notes, unrelated deals). Do not force a match to the closest-sounding name if it isn't really that competitor. If a row's reason is missing or empty, skip it rather than inventing one.
+Categories:
+- "tracked": the row names one of the given TRACKED competitors. Copy the competitor name exactly as given in the tracked list, not the row's own spelling. reason can be null if the row genuinely has no reason recorded — the outcome alone is still worth keeping.
+- "untracked": the row names a real, specific competing company that is NOT in the tracked list (e.g. a rival CRM, a different vendor entirely). Copy the name as it appears in the row, cleaned up to normal capitalization. reason can be null.
+- "general": the row has no identifiable competing company — blank, "No Decision," "Status Quo," "Built In-House," a deal that went dark/unresponsive, procurement or budget delays, internal reasons — but DOES have a real reason worth recording. reason is required here (never null); if there's neither a competitor nor a real reason, don't emit the row at all.
+
+Never force a fuzzy match — if a name only sounds similar to a tracked competitor but isn't really it, treat it as "untracked" with its own name, not "tracked."
 
 Respond with strict JSON only, no markdown, matching this shape exactly:
-{"entries": [{"competitor": "<name from the tracked list, exact match>", "outcome": "won" | "lost", "reason": "<short factual reason>"}, ...]}
-
-The "competitor" field must be copied exactly from the tracked competitor list given, not the raw text's own spelling/casing.`;
+{"entries": [{"matchType": "tracked" | "untracked" | "general", "competitor": "<name or null for general>", "outcome": "won" | "lost", "reason": "<short factual reason, or null for tracked/untracked with none given>"}, ...]}`;
 
 const EXTRACT_WIN_LOSS_SCHEMA = {
   type: "object",
@@ -1157,11 +1178,12 @@ const EXTRACT_WIN_LOSS_SCHEMA = {
       items: {
         type: "object",
         properties: {
-          competitor: { type: "string" },
+          matchType: { type: "string", enum: ["tracked", "untracked", "general"] },
+          competitor: { anyOf: [{ type: "string" }, { type: "null" }] },
           outcome: { type: "string", enum: ["won", "lost"] },
-          reason: { type: "string" },
+          reason: { anyOf: [{ type: "string" }, { type: "null" }] },
         },
-        required: ["competitor", "outcome", "reason"],
+        required: ["matchType", "competitor", "outcome", "reason"],
         additionalProperties: false,
       },
     },
@@ -1170,9 +1192,9 @@ const EXTRACT_WIN_LOSS_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-// Caps input size so one call stays cheap and fast — CSV imports larger
-// than this are processed in order up to the cap; the route reports how
-// many source lines were actually considered.
+// Caps input size so one call stays cheap and fast — the import route
+// chunks larger files into multiple calls rather than relying on this
+// alone, and reports how many source lines were actually considered.
 const WIN_LOSS_EXTRACT_LINE_LIMIT = 80;
 
 export async function extractWinLossEntries(
@@ -1188,11 +1210,11 @@ export async function extractWinLossEntries(
 Raw data:
 ${truncated}
 
-Extract the win/loss entries.`;
+Classify the rows.`;
 
   const message = await getAnthropic().messages.create({
     model: "claude-sonnet-5",
-    max_tokens: 2000,
+    max_tokens: 3000,
     system: cachedSystemPrompt(EXTRACT_WIN_LOSS_SYSTEM_PROMPT),
     output_config: { format: { type: "json_schema", schema: EXTRACT_WIN_LOSS_SCHEMA } },
     messages: [{ role: "user", content: userPrompt }],
@@ -1204,16 +1226,26 @@ Extract the win/loss entries.`;
     const parsed = JSON.parse(text);
     const entries = Array.isArray(parsed.entries) ? parsed.entries : [];
     const competitorSet = new Set(competitorNames);
-    return entries
-      .filter(
-        (e: unknown): e is { competitor: unknown; outcome: unknown; reason: unknown } => Boolean(e)
-      )
-      .map((e: { competitor: unknown; outcome: unknown; reason: unknown }) => ({
-        competitor: String(e.competitor ?? ""),
-        outcome: e.outcome === "won" ? ("won" as const) : ("lost" as const),
-        reason: String(e.reason ?? "").trim(),
-      }))
-      .filter((e: ExtractedWinLossEntry) => competitorSet.has(e.competitor) && e.reason);
+    const result: ExtractedWinLossEntry[] = [];
+    for (const e of entries) {
+      if (!e) continue;
+      const outcome = e.outcome === "won" ? ("won" as const) : ("lost" as const);
+      const reason = typeof e.reason === "string" && e.reason.trim() ? e.reason.trim() : null;
+      const competitor = typeof e.competitor === "string" ? e.competitor.trim() : "";
+
+      if (e.matchType === "tracked" && competitorSet.has(competitor)) {
+        result.push({ matchType: "tracked", competitor, outcome, reason });
+      } else if (e.matchType === "untracked" && competitor && !competitorSet.has(competitor)) {
+        result.push({ matchType: "untracked", competitor, outcome, reason });
+      } else if (e.matchType === "general" && reason) {
+        result.push({ matchType: "general", competitor: null, outcome, reason });
+      }
+      // A "tracked" row whose competitor isn't actually in the tracked set
+      // (or vice versa) is silently dropped rather than reclassified —
+      // that mismatch means the model didn't follow instructions cleanly,
+      // and guessing which bucket it "should" be in risks misattribution.
+    }
+    return result;
   } catch (err) {
     throw new Error(`Could not parse win/loss extraction response: ${text}`, { cause: err });
   }
