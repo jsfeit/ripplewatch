@@ -1061,7 +1061,7 @@ Write each bullet as one plain sentence a busy person can scan in a few seconds.
 Respond with strict JSON only, no markdown, matching this shape exactly:
 {"whyWeWin": ["<bullet>", "..."], "whyWeLose": ["<bullet>", "..."]}
 
-Each list should have 2-5 bullets. Do not pad either list to hit a minimum — a single honest bullet beats three restatements of the same point.`;
+Each list should have 2-5 bullets. Do not pad either list to hit a minimum — a single honest bullet beats three restatements of the same point. Write each bullet as a plain sentence without em dashes; use a comma or period instead.`;
 
 const FACT_SHEET_SCHEMA = {
   type: "object",

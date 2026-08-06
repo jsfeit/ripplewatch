@@ -31,7 +31,7 @@ export default async function CompetitorDetailPage({
 
   const { data: account } = await supabase
     .from("accounts")
-    .select("tier")
+    .select("name, tier")
     .eq("id", profile.account_id)
     .single();
   if (!account) redirect("/onboarding");
@@ -60,6 +60,13 @@ export default async function CompetitorDetailPage({
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-10 sm:py-10">
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold tracking-tight">Competitors &amp; Comparison</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Track who you&apos;re up against, then compare yourself to one of them at a time below.
+        </p>
+      </div>
+
       <SuggestedCompetitorsPanel suggestions={suggestions ?? []} />
       <CompetitorManager competitors={competitors ?? []} tier={account.tier} activeId={id} />
 
@@ -101,6 +108,8 @@ export default async function CompetitorDetailPage({
 
       <CompetitorFactSheet
         competitorId={competitor.id}
+        competitorName={competitor.name}
+        accountName={account.name}
         initialWhyWeWin={competitor.fact_sheet_why_we_win}
         initialWhyWeLose={competitor.fact_sheet_why_we_lose}
         initialGeneratedAt={competitor.fact_sheet_generated_at}

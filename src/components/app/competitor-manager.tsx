@@ -145,6 +145,15 @@ export function CompetitorManager({
       </div>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
+      {competitors.length > 0 ? (
+        <div>
+          <h3 className="text-sm font-medium">Comparing to</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Pick one competitor below to view its one-to-one comparison and fact sheet.
+          </p>
+        </div>
+      ) : null}
+
       <div className="space-y-2">
         {competitors.map((c) => (
           <div
@@ -152,7 +161,7 @@ export function CompetitorManager({
             className={cn(
               "flex flex-col items-start gap-3 rounded-lg border p-3 transition-colors sm:flex-row sm:items-center sm:justify-between",
               c.id === activeId
-                ? "border-primary/40 bg-primary/[0.03]"
+                ? "border-primary bg-primary/10 ring-1 ring-primary/30"
                 : "border-border hover:border-border/80 hover:bg-secondary/30"
             )}
           >
@@ -197,7 +206,10 @@ export function CompetitorManager({
                   </span>
                   {c.id === activeId ? (
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{c.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-sm font-medium">{c.name}</p>
+                        <Badge className="shrink-0 border-primary/30 bg-primary/15 text-primary">Comparing</Badge>
+                      </div>
                       <p className="truncate text-xs text-muted-foreground">
                         {c.domain ?? "No domain set"}
                         {c.category ? ` · ${c.category}` : ""}
