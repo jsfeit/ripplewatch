@@ -4,6 +4,8 @@ import { fetchClosedLostDealNotes } from "@/lib/hubspot";
 import { extractWinLossEntries } from "@/lib/anthropic";
 import { applyExtractedWinLossEntries } from "@/lib/win-loss-import";
 
+export const maxDuration = 60; // fetchClosedLostDealNotes caps at 10 deals, one extraction call
+
 // HubSpot only tracks a "closed lost reason" property in practice (closed-
 // won deals rarely have an equivalent field unless an account has
 // customized their CRM), so this only ever produces "lost" entries — same
