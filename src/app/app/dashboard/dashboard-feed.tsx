@@ -6,14 +6,13 @@ import { AlertCard } from "@/components/app/alert-card";
 import { EmptyState } from "@/components/app/empty-state";
 import { generatePreviewAlert, type PreviewInputs } from "@/lib/onboarding-preview";
 import { SIGNAL_TYPE_LABELS } from "@/lib/mock-data";
-import { cn, avatarColor, avatarDotColor } from "@/lib/utils";
+import { cn, avatarDotColor } from "@/lib/utils";
 import { RECENCY_WINDOW_DAYS, isOldSignal } from "@/lib/signal-freshness";
 import type { Database, SignalType } from "@/lib/supabase/types";
 
 type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
 type Signal = Database["public"]["Tables"]["signals"]["Row"];
 
-const LEVEL_RANK: Record<string, number> = { High: 0, Medium: 1, Low: 2 };
 type LevelFilter = "all" | "High" | "Medium" | "Low" | "unscored";
 const LEVEL_FILTERS: LevelFilter[] = ["all", "High", "Medium", "Low", "unscored"];
 const TYPE_FILTERS: Array<SignalType | "all"> = ["all", "pricing", "job_posting", "news", "funding"];
@@ -28,11 +27,6 @@ type DateFilter = "recent" | "all";
 function matchesDateFilter(signal: Signal, filter: DateFilter): boolean {
   if (filter === "all") return true;
   return !isOldSignal(signal.occurred_on);
-}
-
-function levelRank(signal: Signal): number {
-  if (!signal.scored || !signal.relevance_level) return 3;
-  return LEVEL_RANK[signal.relevance_level] ?? 3;
 }
 
 function matchesLevelFilter(signal: Signal, filter: LevelFilter): boolean {
@@ -69,37 +63,28 @@ export function DashboardFeed({
   const [typeFilter, setTypeFilter] = useState<SignalType | "all">("all");
   const [dateFilter, setDateFilter] = useState<DateFilter>("recent");
 
-  const groups = useMemo(() => {
-    const visibleCompetitors = competitors.filter((c) => filter === "all" || c.id === filter);
-    const filteredSignals = signals.filter(
-      (s) =>
-        matchesLevelFilter(s, levelFilter) &&
-        (typeFilter === "all" || s.type === typeFilter) &&
-        matchesDateFilter(s, dateFilter)
-    );
-
-    return visibleCompetitors
-      .map((competitor) => {
-        const competitorSignals = filteredSignals
-          .filter((s) => s.competitor_id === competitor.id)
-          .sort((a, b) => {
-            const rankDiff = levelRank(a) - levelRank(b);
-            if (rankDiff !== 0) return rankDiff;
-            // occurred_on (the article's real date), not created_at (when we
-            // happened to discover it) — otherwise a backfilled months-old
-            // article, just inserted, would outrank a genuinely fresh one.
-            return b.occurred_on.localeCompare(a.occurred_on);
-          });
-
-        const topRank = competitorSignals.length > 0 ? levelRank(competitorSignals[0]) : 4;
-
-        return { competitor, signals: competitorSignals, topRank };
-      })
-      .filter((g) => g.signals.length > 0)
-      // Highest-relevance competitor first (a group's signals are already
-      // sorted High-to-Low, so its first signal's rank represents its best);
-      // volume only breaks ties within the same top relevance.
-      .sort((a, b) => a.topRank - b.topRank || b.signals.length - a.signals.length);
+  // One flat feed sorted by score, not grouped by competitor — the highest-
+  // relevance signal across every tracked competitor leads regardless of
+  // which company it's about. Unscored signals sort to the bottom (no score
+  // to rank by); occurred_on is the tiebreaker for equal/missing scores so
+  // freshest still wins ties, same as before.
+  const rows = useMemo(() => {
+    const competitorById = new Map(competitors.map((c) => [c.id, c]));
+    return signals
+      .filter(
+        (s) =>
+          (filter === "all" || s.competitor_id === filter) &&
+          matchesLevelFilter(s, levelFilter) &&
+          (typeFilter === "all" || s.type === typeFilter) &&
+          matchesDateFilter(s, dateFilter)
+      )
+      .map((signal) => ({ signal, competitor: competitorById.get(signal.competitor_id) }))
+      .filter((r): r is { signal: Signal; competitor: Competitor } => Boolean(r.competitor))
+      .sort((a, b) => {
+        const scoreDiff = (b.signal.relevance_score ?? -1) - (a.signal.relevance_score ?? -1);
+        if (scoreDiff !== 0) return scoreDiff;
+        return b.signal.occurred_on.localeCompare(a.signal.occurred_on);
+      });
   }, [competitors, signals, filter, levelFilter, typeFilter, dateFilter]);
 
   return (
@@ -150,55 +135,34 @@ export function DashboardFeed({
         </div>
       </div>
 
-      <div className="mt-4 space-y-6">
-        {groups.map(({ competitor, signals: competitorSignals }) => (
-          <div key={competitor.id}>
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <div className="flex min-w-0 items-center gap-2">
-                <span
-                  className={cn(
-                    "flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold",
-                    avatarColor(competitor.name)
-                  )}
-                >
-                  {competitor.name.charAt(0).toUpperCase()}
-                </span>
-                <h3 className="truncate text-sm font-semibold">{competitor.name}</h3>
-              </div>
-              {/* Matches whatever the filters above (including the date
-                  toggle) currently show — no separate calendar-week logic
-                  that could disagree with what's on screen. */}
-              <p className="shrink-0 text-xs text-muted-foreground">
-                {competitorSignals.length} signal{competitorSignals.length === 1 ? "" : "s"}
-              </p>
-            </div>
-            <div className="space-y-3">
-              {competitorSignals.map((signal) => (
-                <AlertCard
-                  key={signal.id}
-                  signal={{
-                    id: signal.id,
-                    type: signal.type,
-                    title: signal.title,
-                    summary: signal.summary,
-                    scored: signal.scored,
-                    relevanceLevel: signal.relevance_level,
-                    relevanceScore: signal.relevance_score,
-                    relevanceReasoning: signal.relevance_reasoning,
-                    url: resolveUrl(signal, competitor),
-                    isBackground: isOldSignal(signal.occurred_on),
-                    evalLabel: evalLabelBySignalId[signal.id] ?? null,
-                  }}
-                  competitorName={competitor.name}
-                  competitorInitial={competitor.name.charAt(0).toUpperCase()}
-                  unscoredReason={tier === "starter" ? "tier" : "pending"}
-                />
-              ))}
-            </div>
-          </div>
+      <p className="mt-3 text-xs text-muted-foreground">
+        {rows.length} signal{rows.length === 1 ? "" : "s"}, highest relevance first
+      </p>
+
+      <div className="mt-2 space-y-3">
+        {rows.map(({ signal, competitor }) => (
+          <AlertCard
+            key={signal.id}
+            signal={{
+              id: signal.id,
+              type: signal.type,
+              title: signal.title,
+              summary: signal.summary,
+              scored: signal.scored,
+              relevanceLevel: signal.relevance_level,
+              relevanceScore: signal.relevance_score,
+              relevanceReasoning: signal.relevance_reasoning,
+              url: resolveUrl(signal, competitor),
+              isBackground: isOldSignal(signal.occurred_on),
+              evalLabel: evalLabelBySignalId[signal.id] ?? null,
+            }}
+            competitorName={competitor.name}
+            competitorInitial={competitor.name.charAt(0).toUpperCase()}
+            unscoredReason={tier === "starter" ? "tier" : "pending"}
+          />
         ))}
 
-        {groups.length === 0 &&
+        {rows.length === 0 &&
           (competitors.length === 0 ? (
             <EmptyState
               icon={Radar}
