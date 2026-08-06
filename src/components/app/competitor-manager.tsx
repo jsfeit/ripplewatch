@@ -158,11 +158,28 @@ export function CompetitorManager({
         {competitors.map((c) => (
           <div
             key={c.id}
+            role={c.id !== activeId && editingId !== c.id ? "button" : undefined}
+            tabIndex={c.id !== activeId && editingId !== c.id ? 0 : undefined}
+            onClick={
+              c.id !== activeId && editingId !== c.id ? () => router.push(`/app/competitors/${c.id}`) : undefined
+            }
+            onKeyDown={
+              c.id !== activeId && editingId !== c.id
+                ? (e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      router.push(`/app/competitors/${c.id}`);
+                    }
+                  }
+                : undefined
+            }
             className={cn(
               "flex flex-col items-start gap-3 rounded-lg border p-3 transition-colors sm:flex-row sm:items-center sm:justify-between",
               c.id === activeId
                 ? "border-primary bg-primary/10 ring-1 ring-primary/30"
-                : "border-border hover:border-border/80 hover:bg-secondary/30"
+                : editingId === c.id
+                  ? "border-border"
+                  : "cursor-pointer border-border hover:border-border/80 hover:bg-secondary/30"
             )}
           >
             {editingId === c.id ? (
@@ -216,13 +233,13 @@ export function CompetitorManager({
                       </p>
                     </div>
                   ) : (
-                    <Link href={`/app/competitors/${c.id}`} className="group min-w-0">
-                      <p className="truncate text-sm font-medium group-hover:underline">{c.name}</p>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{c.name}</p>
                       <p className="truncate text-xs text-muted-foreground">
                         {c.domain ?? "No domain set"}
                         {c.category ? ` · ${c.category}` : ""}
                       </p>
-                    </Link>
+                    </div>
                   )}
                   {!monitoredIds.has(c.id) ? (
                     <Badge variant="outline" className="shrink-0 text-muted-foreground">
@@ -234,7 +251,10 @@ export function CompetitorManager({
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => startEditing(c)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startEditing(c);
+                    }}
                     aria-label={`Edit ${c.name}`}
                   >
                     <Pencil className="size-4" />
@@ -242,7 +262,10 @@ export function CompetitorManager({
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleRemove(c.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemove(c.id);
+                    }}
                     aria-label={`Remove ${c.name}`}
                   >
                     <X className="size-4" />
