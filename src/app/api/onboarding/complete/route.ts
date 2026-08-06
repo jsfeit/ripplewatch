@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { sendWelcomeEmail } from "@/lib/resend";
 import { discoverCompetitorUrls } from "@/lib/scraping";
-import { suggestCompetitorCategories } from "@/lib/anthropic";
+import { suggestCompetitorCategories, researchCompanyContext } from "@/lib/anthropic";
 import { COMPETITOR_LIMIT } from "@/lib/tier-limits";
 
 type CompetitorInput = { name: string; domain: string };
@@ -140,6 +140,19 @@ export async function POST(request: Request) {
   sendWelcomeEmail(user.email!, companyName.trim(), appUrl).catch((err) =>
     console.error("welcome email failed:", err)
   );
+
+  // Also best-effort and fire-and-forget: computed once here so the first
+  // crawl's scoring calls already have it, instead of every account's first
+  // crawl paying to self-heal it (see ensureCompanyResearch in crawl.ts,
+  // which still covers accounts that predate this or where this call fails).
+  researchCompanyContext(companyName.trim(), positioning?.trim() || null, accountId)
+    .then((summary) =>
+      supabase
+        .from("accounts")
+        .update({ company_research: summary, company_research_updated_at: new Date().toISOString() })
+        .eq("id", accountId)
+    )
+    .catch((err) => console.error("company research failed:", err));
 
   return NextResponse.json({ ok: true, accountId });
 }
