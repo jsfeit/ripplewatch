@@ -1128,3 +1128,93 @@ Write the fact sheet.`;
     throw new Error(`Could not parse fact sheet response: ${text}`, { cause: err });
   }
 }
+
+export type ExtractedWinLossEntry = { competitor: string; outcome: "won" | "lost"; reason: string };
+
+// Feeds both the CSV-import route and the HubSpot-sync route — the two
+// sources look nothing alike (an arbitrary CSV a customer exported however
+// their CRM happens to format it, vs. HubSpot's own "Lost '<deal>' —
+// <reason>" strings), so rather than writing a rigid column-mapping parser
+// per source, one model call reads whatever raw text it's given and pulls
+// out only the entries that clearly name a tracked competitor with a clear
+// outcome. Anything ambiguous is dropped rather than guessed at — a missed
+// row is a minor inconvenience, a wrongly-attributed one pollutes the fact
+// sheet with bad evidence.
+const EXTRACT_WIN_LOSS_SYSTEM_PROMPT = `You read raw win/loss deal data, which could be CSV rows (any column names/order), a CRM export, or a plain list, and extract structured entries about deals won or lost against one specific named competitor.
+
+Only extract an entry when the text clearly names one of the given tracked competitors and states or clearly implies an outcome (won or lost) with some reason. Skip rows/lines that don't mention any tracked competitor by name, that are ambiguous about outcome, or that are clearly about something else (e.g. internal notes, unrelated deals). Do not force a match to the closest-sounding name if it isn't really that competitor. If a row's reason is missing or empty, skip it rather than inventing one.
+
+Respond with strict JSON only, no markdown, matching this shape exactly:
+{"entries": [{"competitor": "<name from the tracked list, exact match>", "outcome": "won" | "lost", "reason": "<short factual reason>"}, ...]}
+
+The "competitor" field must be copied exactly from the tracked competitor list given, not the raw text's own spelling/casing.`;
+
+const EXTRACT_WIN_LOSS_SCHEMA = {
+  type: "object",
+  properties: {
+    entries: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          competitor: { type: "string" },
+          outcome: { type: "string", enum: ["won", "lost"] },
+          reason: { type: "string" },
+        },
+        required: ["competitor", "outcome", "reason"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["entries"],
+  additionalProperties: false,
+} as const;
+
+// Caps input size so one call stays cheap and fast — CSV imports larger
+// than this are processed in order up to the cap; the route reports how
+// many source lines were actually considered.
+const WIN_LOSS_EXTRACT_LINE_LIMIT = 80;
+
+export async function extractWinLossEntries(
+  competitorNames: string[],
+  rawText: string,
+  accountId: string | null
+): Promise<ExtractedWinLossEntry[]> {
+  if (competitorNames.length === 0 || !rawText.trim()) return [];
+
+  const truncated = rawText.split("\n").slice(0, WIN_LOSS_EXTRACT_LINE_LIMIT).join("\n");
+  const userPrompt = `Tracked competitors: ${competitorNames.join(", ")}
+
+Raw data:
+${truncated}
+
+Extract the win/loss entries.`;
+
+  const message = await getAnthropic().messages.create({
+    model: "claude-sonnet-5",
+    max_tokens: 2000,
+    system: cachedSystemPrompt(EXTRACT_WIN_LOSS_SYSTEM_PROMPT),
+    output_config: { format: { type: "json_schema", schema: EXTRACT_WIN_LOSS_SCHEMA } },
+    messages: [{ role: "user", content: userPrompt }],
+  });
+  recordLlmUsage(accountId, "extractWinLossEntries", message.model, message.usage);
+
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  try {
+    const parsed = JSON.parse(text);
+    const entries = Array.isArray(parsed.entries) ? parsed.entries : [];
+    const competitorSet = new Set(competitorNames);
+    return entries
+      .filter(
+        (e: unknown): e is { competitor: unknown; outcome: unknown; reason: unknown } => Boolean(e)
+      )
+      .map((e: { competitor: unknown; outcome: unknown; reason: unknown }) => ({
+        competitor: String(e.competitor ?? ""),
+        outcome: e.outcome === "won" ? ("won" as const) : ("lost" as const),
+        reason: String(e.reason ?? "").trim(),
+      }))
+      .filter((e: ExtractedWinLossEntry) => competitorSet.has(e.competitor) && e.reason);
+  } catch (err) {
+    throw new Error(`Could not parse win/loss extraction response: ${text}`, { cause: err });
+  }
+}
