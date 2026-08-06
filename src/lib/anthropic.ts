@@ -81,7 +81,9 @@ export function scoreToLevel(score: number): RelevanceLevel {
 
 const SYSTEM_PROMPT = `You score competitive-intelligence signals for a B2B SaaS company. Your job is not to summarize the signal — the customer can already read it. Your job is to judge how much it actually matters to THIS company, given their positioning, ICP, and the real reasons they've lost deals or churned customers, and to say why in plain language a marketing lead would use in a Slack message.
 
-When public market research on the company is provided alongside their self-reported positioning, use both together — the self-reported text tells you how they see themselves, the research tells you their actual real-world market position, known differentiators, and competitive set. Ground your reasoning in the combination, not just whichever one is more detailed. Self-reported positioning is often thin or generic ("we help businesses grow"); real research on what the company actually does and who it actually competes with should carry real weight in judging whether a signal is a real threat, not just filler. If no research is provided, work from positioning/ICP alone as before.
+Lead the reasoning with the new information, not the background. The reader already knows who their own competitors are and roughly why they track them — opening with "X is a competitor in your ICP" or restating the competitive relationship tells them nothing new and wastes the one or two sentences you have. Start directly with what happened and its concrete, specific consequence for this company (the price gap, the feature parity gap, the segment it threatens) — the same thing a sharp analyst would lead with in a Slack DM. Only mention the competitive-positioning context (why this competitor is relevant to their ICP at all) if it's genuinely load-bearing for the reasoning AND not already obvious — and if you do, put it at the end, briefly, not as the opening frame.
+
+When public market research on the company is provided alongside their self-reported positioning, use both together — the self-reported text tells you how they see themselves, the research tells you their actual real-world market position, known differentiators, and competitive set. Ground your reasoning in the combination, not just whichever one is more detailed. Self-reported positioning is often thin or generic ("we help businesses grow"); real research on what the company actually does and who it actually competes with should carry real weight in judging whether a signal is a real threat, not just filler — but that research is context for YOUR judgment, not something to narrate back to the reader as the headline of the reasoning. If no research is provided, work from positioning/ICP alone as before.
 
 Before scoring, check whether this signal is even about the right company. Competitor names sometimes collide with a completely unrelated company (e.g. a company called "Sage" that sells accounting software vs. an unrelated healthcare/senior-care company also called "Sage"). If the signal is clearly about a different, unrelated company that just happens to share the name — not a different segment or product line of the SAME company, but a genuinely different business — set "wrongCompany": true, score it 0-5, and say in the reasoning which unrelated company it's actually about. This is different from a same-company signal that's just not very relevant (that still gets "wrongCompany": false and scored normally on the rubric below).
 
@@ -354,7 +356,14 @@ export function parseScoringText(text: string): ScoringResult {
 // optional context alongside self-reported positioning/ICP, so "why it
 // matters" reasoning can draw on real market position instead of only
 // whatever thin/generic text an account typed in during onboarding.
-export const SCORING_PROMPT_VERSION = "v5";
+// v6: per direction, reasoning was opening with competitive-positioning
+// background the reader already knows (e.g. "Square is a real bundled-
+// finance competitor for Intuit's SMB ICP") before ever getting to what
+// happened — likely pulled in by v5's company-research context. Now
+// explicitly instructed to lead with the concrete new development and its
+// consequence, and only mention positioning/ICP framing briefly at the end
+// if it's genuinely load-bearing, not as the opening frame.
+export const SCORING_PROMPT_VERSION = "v6";
 
 export function scoringRequestParams(context: ScoringContext, signal: SignalToScore) {
   return {
