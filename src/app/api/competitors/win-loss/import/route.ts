@@ -2,6 +2,38 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { extractWinLossEntries } from "@/lib/anthropic";
 
+// extractWinLossEntries caps itself at 80 lines per call to keep a single
+// call cheap — a real CRM export can easily be 1,000+ rows, so the route
+// chunks the file itself (header repeated on each chunk for column
+// context) rather than silently only ever looking at the first 80 rows.
+const CHUNK_ROWS = 70;
+const MAX_CHUNKS = 40; // bounds cost on a pathologically large paste (~2,800 rows)
+const CHUNK_CONCURRENCY = 4;
+
+function chunkCsv(rawText: string): string[] {
+  const lines = rawText.split("\n").filter((l) => l.trim());
+  if (lines.length <= 1) return [rawText];
+  const [header, ...rows] = lines;
+  const chunks: string[] = [];
+  for (let i = 0; i < rows.length && chunks.length < MAX_CHUNKS; i += CHUNK_ROWS) {
+    chunks.push([header, ...rows.slice(i, i + CHUNK_ROWS)].join("\n"));
+  }
+  return chunks;
+}
+
+async function mapWithConcurrency<T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
+  return results;
+}
+
 // Accepts whatever raw text a customer pastes/uploads (CSV, any column
 // layout, plain list) — see extractWinLossEntries for why this doesn't try
 // to parse columns itself. Account-wide rather than per-competitor since a
@@ -21,7 +53,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => null);
-  const rawText = typeof body?.text === "string" ? body.text : "";
+  const rawText: string = typeof body?.text === "string" ? body.text : "";
   if (!rawText.trim()) {
     return NextResponse.json({ error: "No data to import." }, { status: 400 });
   }
@@ -34,14 +66,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Add a competitor before importing win/loss data." }, { status: 400 });
   }
 
-  const extracted = await extractWinLossEntries(
-    competitors.map((c) => c.name),
-    rawText,
-    profile.account_id
+  const chunks = chunkCsv(rawText);
+  const competitorNames = competitors.map((c) => c.name);
+  const chunkResults = await mapWithConcurrency(chunks, CHUNK_CONCURRENCY, (chunk) =>
+    extractWinLossEntries(competitorNames, chunk, profile.account_id).catch(() => [])
   );
+  const extracted = chunkResults.flat();
+
+  const totalRows = rawText.split("\n").filter((l) => l.trim()).length - 1;
+  const rowsConsidered = Math.min(totalRows, chunks.length * CHUNK_ROWS);
+  const truncated = rowsConsidered < totalRows;
 
   if (extracted.length === 0) {
-    return NextResponse.json({ imported: 0, skipped: 0 });
+    return NextResponse.json({ imported: 0, skipped: 0, rowsConsidered, totalRows, truncated });
   }
 
   const competitorByName = new Map(competitors.map((c) => [c.name, c.id]));
@@ -73,5 +110,8 @@ export async function POST(request: Request) {
   return NextResponse.json({
     imported: toInsert.length,
     skipped: extracted.length - toInsert.length,
+    rowsConsidered,
+    totalRows,
+    truncated,
   });
 }

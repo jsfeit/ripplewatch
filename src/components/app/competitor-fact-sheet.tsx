@@ -32,6 +32,32 @@ function toBullets(text: string | null): string[] {
   return (text ?? "").split("\n").map((s) => s.trim()).filter(Boolean);
 }
 
+type ImportResponse = {
+  imported: number;
+  skipped: number;
+  rowsConsidered?: number;
+  totalRows?: number;
+  truncated?: boolean;
+};
+
+// Zero imported and zero skipped most often means every row was read but
+// none named a tracked competitor (extractWinLossEntries filters those out
+// before they're ever counted as "skipped") — worth saying plainly, since
+// silence there reads as "nothing happened" rather than "this file isn't
+// about the competitors you're tracking here."
+function formatImportMessage(source: string, data: ImportResponse): string {
+  const parts = [`${source}: imported ${data.imported}, skipped ${data.skipped}`];
+  if (data.imported === 0 && data.skipped === 0) {
+    parts.push("(none of the rows named a competitor you're tracking here)");
+  } else if (data.skipped > 0) {
+    parts.push("(no clear competitor match)");
+  }
+  if (data.truncated && data.rowsConsidered !== undefined && data.totalRows !== undefined) {
+    parts.push(`Only processed the first ${data.rowsConsidered} of ${data.totalRows} rows.`);
+  }
+  return `${parts[0]} ${parts.slice(1).join(" ")}`.trim();
+}
+
 export function CompetitorFactSheet({
   competitorId,
   competitorName,
@@ -95,9 +121,7 @@ export function CompetitorFactSheet({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Import failed.");
-      setImportMessage(
-        `CSV: imported ${data.imported}, skipped ${data.skipped}${data.skipped > 0 ? " (no clear competitor match)" : ""}.`
-      );
+      setImportMessage(formatImportMessage("CSV", data));
       await refetchEntries();
     } catch (err) {
       setImportMessage(err instanceof Error ? err.message : "Import failed.");
@@ -114,9 +138,7 @@ export function CompetitorFactSheet({
       const res = await fetch("/api/competitors/win-loss/sync-hubspot", { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Sync failed.");
-      setImportMessage(
-        `HubSpot: imported ${data.imported}, skipped ${data.skipped}${data.skipped > 0 ? " (no clear competitor match)" : ""}.`
-      );
+      setImportMessage(formatImportMessage("HubSpot", data));
       await refetchEntries();
     } catch (err) {
       setImportMessage(err instanceof Error ? err.message : "Sync failed.");
