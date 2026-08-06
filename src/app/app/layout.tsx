@@ -32,9 +32,15 @@ export default async function AppShellLayout({ children }: { children: React.Rea
 
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
-      <AppSidebar tier={tier} />
+      <div className="print:hidden">
+        <AppSidebar tier={tier} />
+      </div>
       <div className="flex-1 overflow-x-hidden">{children}</div>
-      {user ? <AskBubble competitorNames={competitorNames} /> : null}
+      {user ? (
+        <div className="print:hidden">
+          <AskBubble competitorNames={competitorNames} />
+        </div>
+      ) : null}
     </div>
   );
 }

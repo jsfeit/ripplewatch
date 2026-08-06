@@ -4,6 +4,7 @@ import { cn, avatarColor } from "@/lib/utils";
 import { CompetitorManager } from "@/components/app/competitor-manager";
 import { SuggestedCompetitorsPanel } from "@/components/app/suggested-competitors-panel";
 import { CompetitorMonitoringUrls } from "@/components/app/competitor-monitoring-urls";
+import { CompetitorFactSheet } from "@/components/app/competitor-fact-sheet";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -51,6 +52,12 @@ export default async function CompetitorDetailPage({
     .eq("status", "pending")
     .order("discovered_at", { ascending: false });
 
+  const { data: winLoss } = await supabase
+    .from("competitor_win_loss")
+    .select("id, outcome, reason, created_at")
+    .eq("competitor_id", id)
+    .order("created_at", { ascending: false });
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-10 sm:py-10">
       <SuggestedCompetitorsPanel suggestions={suggestions ?? []} />
@@ -91,6 +98,14 @@ export default async function CompetitorDetailPage({
           />
         </div>
       </div>
+
+      <CompetitorFactSheet
+        competitorId={competitor.id}
+        initialWhyWeWin={competitor.fact_sheet_why_we_win}
+        initialWhyWeLose={competitor.fact_sheet_why_we_lose}
+        initialGeneratedAt={competitor.fact_sheet_generated_at}
+        initialWinLoss={winLoss ?? []}
+      />
     </div>
   );
 }
