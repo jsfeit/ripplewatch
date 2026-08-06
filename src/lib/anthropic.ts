@@ -1246,8 +1246,20 @@ Classify the rows.`;
       // that mismatch means the model didn't follow instructions cleanly,
       // and guessing which bucket it "should" be in risks misattribution.
     }
+    // The import route swallows per-chunk errors (a bad chunk shouldn't
+    // fail the whole import), which also means silent failures here would
+    // otherwise be invisible — log when the model returned real entries
+    // that still all got dropped, so that's diagnosable from Vercel logs
+    // instead of just looking like "nothing to import."
+    if (entries.length > 0 && result.length === 0) {
+      console.error(
+        "extractWinLossEntries: model returned entries but none matched a valid bucket",
+        JSON.stringify(entries.slice(0, 5))
+      );
+    }
     return result;
   } catch (err) {
+    console.error("extractWinLossEntries: failed to parse response", text.slice(0, 500), err);
     throw new Error(`Could not parse win/loss extraction response: ${text}`, { cause: err });
   }
 }

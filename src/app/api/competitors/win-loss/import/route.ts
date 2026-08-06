@@ -78,9 +78,13 @@ export async function POST(request: Request) {
   const chunks = chunkCsv(rawText);
   const competitorNames = competitors.map((c) => c.name);
   const chunkResults = await mapWithConcurrency(chunks, CHUNK_CONCURRENCY, (chunk) =>
-    extractWinLossEntries(competitorNames, chunk, profile.account_id).catch(() => [])
+    extractWinLossEntries(competitorNames, chunk, profile.account_id).catch((err) => {
+      console.error("win-loss import: chunk extraction failed", err);
+      return [];
+    })
   );
   const extracted = chunkResults.flat();
+  console.log(`win-loss import: ${chunks.length} chunks, ${extracted.length} entries extracted`);
 
   const totalRows = rawText.split("\n").filter((l) => l.trim()).length - 1;
   const rowsConsidered = Math.min(totalRows, chunks.length * CHUNK_ROWS);
