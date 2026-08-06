@@ -21,7 +21,7 @@ import type { WinLossOutcome } from "@/lib/supabase/types";
 type WinLossEntry = {
   id: string;
   outcome: WinLossOutcome;
-  reason: string;
+  reason: string | null;
   created_at: string;
 };
 
@@ -35,27 +35,35 @@ function toBullets(text: string | null): string[] {
 type ImportResponse = {
   imported: number;
   skipped: number;
+  generalReasonsAdded: number;
+  suggestedCompetitors: string[];
   rowsConsidered?: number;
   totalRows?: number;
   truncated?: boolean;
 };
 
-// Zero imported and zero skipped most often means every row was read but
-// none named a tracked competitor (extractWinLossEntries filters those out
-// before they're ever counted as "skipped") — worth saying plainly, since
-// silence there reads as "nothing happened" rather than "this file isn't
-// about the competitors you're tracking here."
+// Zero across every count usually means every row was read but nothing had
+// enough signal to keep — a tracked-competitor match, a real reason with no
+// competitor, or a specific untracked competitor name (extractWinLossEntries
+// filters everything else out before it's ever counted). Worth saying
+// plainly rather than reading as "nothing happened."
 function formatImportMessage(source: string, data: ImportResponse): string {
   const parts = [`${source}: imported ${data.imported}, skipped ${data.skipped}`];
-  if (data.imported === 0 && data.skipped === 0) {
-    parts.push("(none of the rows named a competitor you're tracking here)");
+  if (data.generalReasonsAdded > 0) {
+    parts.push(`added ${data.generalReasonsAdded} general lost-deal reason${data.generalReasonsAdded === 1 ? "" : "s"} to account context.`);
+  }
+  if (data.suggestedCompetitors.length > 0) {
+    parts.push(`suggested ${data.suggestedCompetitors.length} untracked competitor${data.suggestedCompetitors.length === 1 ? "" : "s"} (${data.suggestedCompetitors.join(", ")}) — see the Competitors page.`);
+  }
+  if (data.imported === 0 && data.skipped === 0 && data.generalReasonsAdded === 0 && data.suggestedCompetitors.length === 0) {
+    parts.push("(nothing in this file had enough signal to keep)");
   } else if (data.skipped > 0) {
-    parts.push("(no clear competitor match)");
+    parts.push("(skipped: already logged)");
   }
   if (data.truncated && data.rowsConsidered !== undefined && data.totalRows !== undefined) {
     parts.push(`Only processed the first ${data.rowsConsidered} of ${data.totalRows} rows.`);
   }
-  return `${parts[0]} ${parts.slice(1).join(" ")}`.trim();
+  return `${parts[0]}. ${parts.slice(1).join(" ")}`.trim();
 }
 
 export function CompetitorFactSheet({
@@ -330,7 +338,9 @@ export function CompetitorFactSheet({
                 >
                   {e.outcome === "won" ? "Won" : "Lost"}
                 </span>
-                <span className="flex-1 text-foreground">{e.reason}</span>
+                <span className={cn("flex-1", e.reason ? "text-foreground" : "italic text-muted-foreground")}>
+                  {e.reason ?? "No reason given"}
+                </span>
                 <button
                   type="button"
                   onClick={() => deleteEntry(e.id)}

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { fetchClosedLostDealNotes } from "@/lib/hubspot";
 import { extractWinLossEntries } from "@/lib/anthropic";
+import { applyExtractedWinLossEntries } from "@/lib/win-loss-import";
 
 // HubSpot only tracks a "closed lost reason" property in practice (closed-
 // won deals rarely have an equivalent field unless an account has
@@ -45,7 +46,7 @@ export async function POST() {
 
   const dealNotes = await fetchClosedLostDealNotes(credentials.access_token);
   if (dealNotes.length === 0) {
-    return NextResponse.json({ imported: 0, skipped: 0 });
+    return NextResponse.json({ imported: 0, skipped: 0, generalReasonsAdded: 0, suggestedCompetitors: [] });
   }
 
   const extracted = await extractWinLossEntries(
@@ -54,29 +55,7 @@ export async function POST() {
     profile.account_id
   );
 
-  const competitorByName = new Map(competitors.map((c) => [c.name, c.id]));
-  const matched = extracted
-    .map((e) => ({ competitor_id: competitorByName.get(e.competitor), outcome: e.outcome, reason: e.reason }))
-    .filter((e): e is { competitor_id: string; outcome: "won" | "lost"; reason: string } => Boolean(e.competitor_id));
+  const result = await applyExtractedWinLossEntries(supabase, profile.account_id, user.id, competitors, extracted);
 
-  const { data: existing } = await supabase
-    .from("competitor_win_loss")
-    .select("competitor_id, reason")
-    .in("competitor_id", [...new Set(matched.map((m) => m.competitor_id))]);
-  const existingSet = new Set((existing ?? []).map((e) => `${e.competitor_id}::${e.reason}`));
-  const toInsert = matched.filter((m) => !existingSet.has(`${m.competitor_id}::${m.reason}`));
-
-  if (toInsert.length > 0) {
-    const { error } = await supabase
-      .from("competitor_win_loss")
-      .insert(toInsert.map((m) => ({ ...m, created_by: user.id })));
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-  }
-
-  return NextResponse.json({
-    imported: toInsert.length,
-    skipped: extracted.length - toInsert.length,
-  });
+  return NextResponse.json(result);
 }
