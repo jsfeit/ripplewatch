@@ -437,6 +437,68 @@ function isFresh(publishedAt: string | null): boolean {
 const BUSINESS_CONTEXT_TERMS =
   "(company OR software OR startup OR business OR app OR platform OR product OR pricing OR CEO OR customers)";
 
+// Generic enough to appear in almost any headline regardless of story —
+// excluded so token overlap only fires on words that actually distinguish
+// one story from another (a partner's name, an acquired company, a
+// specific term), not incidental shared phrasing.
+const DEDUPE_STOPWORDS = new Set([
+  "the", "a", "an", "to", "for", "of", "and", "or", "with", "in", "on", "at", "is", "are", "was", "were",
+  "its", "their", "they", "new", "now", "this", "that", "from", "by", "as", "has", "have", "had", "will",
+  "would", "can", "could", "into", "over", "after", "than", "more", "most", "some", "all", "just", "about",
+  "announces", "announced", "reports", "report", "says", "said", "company", "business", "businesses",
+  "customers", "customer", "small",
+]);
+
+function significantTokens(title: string, competitorName: string): Set<string> {
+  const competitorTokens = new Set(competitorName.toLowerCase().split(/\s+/));
+  return new Set(
+    title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 3 && !DEDUPE_STOPWORDS.has(w) && !competitorTokens.has(w))
+  );
+}
+
+// Two headlines sharing 2+ specific, non-generic words (beyond the
+// competitor's own name) are almost certainly the same underlying story —
+// most reliably, a third-party name that shows up in both (a partner, an
+// acquired company, an investor). Deterministic, so it doesn't depend on an
+// LLM reliably generalizing dedup judgment to every possible headline
+// pattern — added after dedupeSameStoryHeadlines (an LLM call, still used
+// below for subtler paraphrases with no shared distinctive words) missed
+// three real near-duplicates in a row despite worked examples in its
+// prompt: "Gusto Acquires Guideline..." vs "Gusto agrees to buy...
+// Guideline" (shared: Guideline), "Xero price hike..." vs "Xero raises its
+// prices..." (shared: price/prices), "FreshBooks and Grasshopper Partner
+// to Streamline..." vs "FreshBooks and Grasshopper Partner to Provide..."
+// (shared: Grasshopper, partner, and more).
+function sharesSignificantTokens(titleA: string, titleB: string, competitorName: string, minShared = 2): boolean {
+  const tokensA = significantTokens(titleA, competitorName);
+  const tokensB = significantTokens(titleB, competitorName);
+  let shared = 0;
+  for (const t of tokensA) {
+    if (tokensB.has(t)) shared++;
+    if (shared >= minShared) return true;
+  }
+  return false;
+}
+
+function dedupeByTokenOverlap<T extends { title: string }>(
+  headlines: T[],
+  existingTitles: string[],
+  competitorName: string
+): T[] {
+  const kept: T[] = [];
+  for (const headline of headlines) {
+    const isDuplicate =
+      kept.some((k) => sharesSignificantTokens(headline.title, k.title, competitorName)) ||
+      existingTitles.some((t) => sharesSignificantTokens(headline.title, t, competitorName));
+    if (!isDuplicate) kept.push(headline);
+  }
+  return kept;
+}
+
 // Last line of defense against name collisions the query-level AND above
 // can't catch — two genuinely business-shaped entities that share a name
 // (a company called "Square" vs. "Union Square Ventures"). One batched LLM
@@ -473,9 +535,18 @@ async function filterHeadlinesForCompetitor<T extends { title: string; descripti
   // checkNews/checkFunding now run sequentially per competitor precisely so
   // this sees what the other just inserted) gets caught as well.
   const existingTitles = await fetchRecentSignalTitles(supabase, competitor.id);
-  const keepIndices = await dedupeSameStoryHeadlines(relevantHeadlines, existingTitles, competitor.account_id);
+
+  // Deterministic pass first — catches the obvious cases (a shared partner/
+  // acquired-company name) without depending on the LLM call below getting
+  // it right, and shrinks what that call has to consider. The LLM pass
+  // still runs on survivors for subtler paraphrases with no shared
+  // distinctive words.
+  const tokenDeduped = dedupeByTokenOverlap(relevantHeadlines, existingTitles, competitor.name);
+  if (tokenDeduped.length === 0) return tokenDeduped;
+
+  const keepIndices = await dedupeSameStoryHeadlines(tokenDeduped, existingTitles, competitor.account_id);
   const keepSet = new Set(keepIndices);
-  return relevantHeadlines.filter((_, i) => keepSet.has(i));
+  return tokenDeduped.filter((_, i) => keepSet.has(i));
 }
 
 // News — free Google News RSS query, no API key required. De-duped against
