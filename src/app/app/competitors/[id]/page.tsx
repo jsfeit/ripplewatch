@@ -75,7 +75,6 @@ export default async function CompetitorDetailPage({
         </p>
       </div>
 
-      <SuggestedCompetitorsPanel suggestions={suggestions ?? []} />
       <CompetitorManager competitors={competitors ?? []} tier={account.tier} activeId={id} />
 
       <div className="mt-6 flex items-center gap-3">
@@ -124,6 +123,10 @@ export default async function CompetitorDetailPage({
         initialGeneratedAt={competitor.fact_sheet_generated_at}
         initialWinLoss={winLoss ?? []}
       />
+
+      <div className="mt-8">
+        <SuggestedCompetitorsPanel suggestions={suggestions ?? []} />
+      </div>
     </div>
   );
 }
