@@ -12,6 +12,7 @@ import {
 } from "@/lib/anthropic";
 import { normalizeDomain, guessPricingUrl, guessCareersUrl } from "@/lib/domain";
 import { fetchDomainTrafficMetrics } from "@/lib/seo-data";
+import { fetchProductHuntLaunches } from "@/lib/producthunt-data";
 
 type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
 type Signal = Database["public"]["Tables"]["signals"]["Row"];
@@ -146,7 +147,9 @@ function hashText(text: string): string {
   return createHash("sha256").update(text).digest("hex");
 }
 
-async function readSnapshot(supabase: AdminClient, competitorId: string, kind: "pricing" | "jobs") {
+type SnapshotKind = "pricing" | "jobs" | "producthunt" | "websearch";
+
+async function readSnapshot(supabase: AdminClient, competitorId: string, kind: SnapshotKind) {
   const { data } = await supabase
     .from("page_snapshots")
     .select("*")
@@ -159,7 +162,7 @@ async function readSnapshot(supabase: AdminClient, competitorId: string, kind: "
 async function writeSnapshot(
   supabase: AdminClient,
   competitorId: string,
-  kind: "pricing" | "jobs",
+  kind: SnapshotKind,
   text: string
 ) {
   await supabase.from("page_snapshots").upsert(
@@ -172,6 +175,46 @@ async function writeSnapshot(
     },
     { onConflict: "competitor_id,kind" }
   );
+}
+
+// Wayback Machine's "available" API — free, no key required. Used only on a
+// competitor's very first pricing check below, when there's no snapshot of
+// our own yet to diff against (checkPricingDiff would otherwise just
+// silently no-op on that first run). Gives a genuinely new competitor one
+// real "here's how this changed" signal by comparing today's page against
+// whatever Wayback happened to archive ~6 months back, instead of leaving
+// pricing history blank until our second crawl ever produces a diff.
+const WAYBACK_LOOKBACK_DAYS = 180;
+
+async function fetchWaybackSnapshotText(url: string): Promise<{ text: string; capturedAt: string } | null> {
+  const target = new Date();
+  target.setUTCDate(target.getUTCDate() - WAYBACK_LOOKBACK_DAYS);
+  const timestamp = target.toISOString().slice(0, 10).replace(/-/g, "");
+
+  let availability: { archived_snapshots?: { closest?: { available: boolean; url: string; timestamp: string } } };
+  try {
+    const res = await fetch(
+      `https://archive.org/wayback/available?url=${encodeURIComponent(url)}&timestamp=${timestamp}`,
+      { signal: AbortSignal.timeout(10_000) }
+    );
+    if (!res.ok) return null;
+    availability = await res.json();
+  } catch {
+    return null;
+  }
+
+  const snapshot = availability.archived_snapshots?.closest;
+  if (!snapshot?.available || !snapshot.url) return null;
+
+  try {
+    const text = await fetchPageText(snapshot.url);
+    return { text, capturedAt: snapshot.timestamp };
+  } catch {
+    // Archived pages are often stale/broken (dead relative links, JS-era
+    // markup) — fail quietly here, same stance as the rest of this file's
+    // network calls, rather than let a bad archive snapshot break the crawl.
+    return null;
+  }
 }
 
 // Pricing/site diff — compares today's page text against the last crawl,
@@ -189,7 +232,31 @@ export async function checkPricingDiff(
   const newHash = hashText(newText);
   await writeSnapshot(supabase, competitor.id, "pricing", newText);
 
-  if (!existing || existing.content_hash === newHash) return null;
+  if (!existing) {
+    const past = await fetchWaybackSnapshotText(competitor.pricing_url);
+    if (!past) return null;
+
+    const diff = await summarizePricingChange(past.text, newText, competitor.account_id);
+    if (!diff.meaningful || !diff.summary) return null;
+
+    const capturedDate = `${past.capturedAt.slice(0, 4)}-${past.capturedAt.slice(4, 6)}-${past.capturedAt.slice(6, 8)}`;
+    const { data } = await supabase
+      .from("signals")
+      .insert({
+        competitor_id: competitor.id,
+        type: "pricing",
+        title: diff.summary,
+        summary: `Detected on ${competitor.name}'s pricing page, compared against a Wayback Machine snapshot from ${capturedDate}.`,
+        scored: false,
+        source: "backfill",
+      })
+      .select("*")
+      .single();
+
+    return data;
+  }
+
+  if (existing.content_hash === newHash) return null;
 
   const diff = await summarizePricingChange(existing.raw_text ?? "", newText, competitor.account_id);
   if (!diff.meaningful || !diff.summary) return null;
@@ -300,6 +367,55 @@ export async function checkJobPostingsDiff(
     .single();
 
   return data;
+}
+
+// Product Hunt launches — free API (once a real token replaces the stub, see
+// producthunt-data.ts), checked weekly via the same captured_at-age gate as
+// checkSearchNews below, and diffed the same hash-then-compare way as job
+// postings: no dedicated last-checked column, page_snapshots' captured_at
+// already carries "when did we last check this."
+const PRODUCTHUNT_CHECK_INTERVAL_DAYS = 7;
+
+export async function checkProductHuntLaunches(supabase: AdminClient, competitor: Competitor): Promise<Signal[]> {
+  const existing = await readSnapshot(supabase, competitor.id, "producthunt");
+  if (existing) {
+    const daysSinceCheck = (Date.now() - new Date(existing.captured_at).getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceCheck < PRODUCTHUNT_CHECK_INTERVAL_DAYS) return [];
+  }
+
+  const launches = await fetchProductHuntLaunches(competitor.name);
+  const joined = launches.map((l) => `${l.title} — ${l.tagline}`).join("\n");
+  const newHash = hashText(joined);
+  await writeSnapshot(supabase, competitor.id, "producthunt", joined);
+
+  // First-ever check just seeds the snapshot — nothing to diff against yet,
+  // and (unlike the Wayback pricing backfill) there's no historical Product
+  // Hunt archive worth reaching for here, so this stays a plain seed.
+  if (!existing) return [];
+  if (existing.content_hash === newHash) return [];
+
+  const previousEntries = new Set((existing.raw_text ?? "").split("\n").filter(Boolean));
+  const newLaunches = launches.filter((l) => !previousEntries.has(`${l.title} — ${l.tagline}`));
+  if (newLaunches.length === 0) return [];
+
+  const inserted: Signal[] = [];
+  for (const launch of newLaunches) {
+    const { data } = await supabase
+      .from("signals")
+      .insert({
+        competitor_id: competitor.id,
+        type: "news",
+        title: `${competitor.name} launched "${launch.title}" on Product Hunt`,
+        summary: launch.tagline,
+        url: launch.url,
+        scored: false,
+        source: "pipeline",
+      })
+      .select("*")
+      .single();
+    if (data) inserted.push(data);
+  }
+  return inserted;
 }
 
 // SEO/traffic — checked weekly, not every crawl (see SEO_CHECK_INTERVAL_DAYS):
@@ -722,11 +838,27 @@ export async function checkFunding(supabase: AdminClient, competitor: Competitor
 // replacement: still de-dupes against the same signal titles checkNews and
 // checkFunding already wrote for this run, so the two sources never insert
 // the same real story twice.
+//
+// Weekly-gated even once enabled — same captured_at-age pattern as
+// checkProductHuntLaunches above, using a page_snapshots row purely as a
+// cadence marker (no diff content, since headlines already dedupe via
+// existingSignalTitle). Real per-search + token cost scales with how often
+// this runs, not just whether it's on — every crawl would multiply spend
+// for no benefit, since competitor news doesn't change hour to hour.
+const WEB_SEARCH_NEWS_CHECK_INTERVAL_DAYS = 7;
+
 export async function checkSearchNews(
   supabase: AdminClient,
   competitor: Competitor,
   accountId: string | null
 ): Promise<Signal[]> {
+  const existing = await readSnapshot(supabase, competitor.id, "websearch");
+  if (existing) {
+    const daysSinceCheck = (Date.now() - new Date(existing.captured_at).getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceCheck < WEB_SEARCH_NEWS_CHECK_INTERVAL_DAYS) return [];
+  }
+  await writeSnapshot(supabase, competitor.id, "websearch", "checked");
+
   const headlines = await searchCompetitorNews(competitor.name, accountId);
   const inserted: Signal[] = [];
 

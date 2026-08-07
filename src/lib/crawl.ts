@@ -4,6 +4,7 @@ import {
   checkPricingStructure,
   checkJobPostingsDiff,
   checkSeoTrafficDiff,
+  checkProductHuntLaunches,
   checkNews,
   checkFunding,
   checkSearchNews,
@@ -238,6 +239,11 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
       // SEO_CHECK_INTERVAL_DAYS in scraping.ts) rather than here, so it's a
       // no-op most crawl runs regardless of how often crawls themselves run.
       allowedSources.includes("seo") ? checkSeoTrafficDiff(supabase, competitor).then((s) => (s ? [s] : [])) : null,
+      // Free API (stubbed pending a real token — see producthunt-data.ts);
+      // own weekly gate lives inside checkProductHuntLaunches, same pattern
+      // as SEO above. Piggybacks on the "news" tier gate rather than a new
+      // TIER_SIGNAL_SOURCES entry since it inserts plain "news"-type signals.
+      allowedSources.includes("news") ? checkProductHuntLaunches(supabase, competitor) : null,
       // Supplements the free RSS news check above with Claude web search —
       // off by default (real per-search cost, not modeled against tier
       // pricing yet). Enable per the web-search-news-decision checklist item.
