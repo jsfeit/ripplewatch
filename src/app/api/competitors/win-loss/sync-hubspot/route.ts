@@ -48,7 +48,15 @@ export async function POST() {
 
   const dealNotes = await fetchClosedLostDealNotes(credentials.access_token);
   if (dealNotes.length === 0) {
-    return NextResponse.json({ imported: 0, skipped: 0, generalReasonsAdded: 0, suggestedCompetitors: [] });
+    return NextResponse.json({
+      totalExtracted: 0,
+      imported: 0,
+      skipped: 0,
+      generalReasonsAdded: 0,
+      generalReasonsSkipped: 0,
+      suggestedCompetitors: [],
+      untrackedAlreadySuggested: 0,
+    });
   }
 
   const extracted = await extractWinLossEntries(

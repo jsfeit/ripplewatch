@@ -33,32 +33,44 @@ function toBullets(text: string | null): string[] {
 }
 
 type ImportResponse = {
+  totalExtracted: number;
   imported: number;
   skipped: number;
   generalReasonsAdded: number;
+  generalReasonsSkipped: number;
   suggestedCompetitors: string[];
+  untrackedAlreadySuggested: number;
   rowsConsidered?: number;
   totalRows?: number;
   truncated?: boolean;
 };
 
-// Zero across every count usually means every row was read but nothing had
-// enough signal to keep — a tracked-competitor match, a real reason with no
-// competitor, or a specific untracked competitor name (extractWinLossEntries
-// filters everything else out before it's ever counted). Worth saying
-// plainly rather than reading as "nothing happened."
+// Always leads with what was actually read/found (rowsConsidered,
+// totalExtracted) rather than only the net-new counts — re-running the same
+// file, or one that overlaps a prior import, should read as "found N, all
+// already known" instead of looking identical to a genuinely empty or
+// irrelevant file (both would otherwise show all-zero net-new counts).
 function formatImportMessage(source: string, data: ImportResponse): string {
-  const parts = [`${source}: imported ${data.imported}, skipped ${data.skipped}`];
-  if (data.generalReasonsAdded > 0) {
-    parts.push(`added ${data.generalReasonsAdded} general lost-deal reason${data.generalReasonsAdded === 1 ? "" : "s"} to account context.`);
+  const rowsPart =
+    data.rowsConsidered !== undefined ? `read ${data.rowsConsidered} row${data.rowsConsidered === 1 ? "" : "s"}, ` : "";
+  const parts = [`${source}: ${rowsPart}found ${data.totalExtracted} relevant ${data.totalExtracted === 1 ? "entry" : "entries"}`];
+
+  const generalSkippedNote = data.generalReasonsSkipped > 0 ? `, ${data.generalReasonsSkipped} already known` : "";
+  const untrackedSkippedNote = data.untrackedAlreadySuggested > 0 ? `, ${data.untrackedAlreadySuggested} already suggested` : "";
+
+  parts.push(`imported ${data.imported} win/loss ${data.imported === 1 ? "entry" : "entries"}${data.skipped > 0 ? ` (${data.skipped} already logged)` : ""}.`);
+  if (data.generalReasonsAdded > 0 || data.generalReasonsSkipped > 0) {
+    parts.push(`Added ${data.generalReasonsAdded} general lost-deal reason${data.generalReasonsAdded === 1 ? "" : "s"} to account context${generalSkippedNote}.`);
   }
-  if (data.suggestedCompetitors.length > 0) {
-    parts.push(`suggested ${data.suggestedCompetitors.length} untracked competitor${data.suggestedCompetitors.length === 1 ? "" : "s"} (${data.suggestedCompetitors.join(", ")}) — see the Competitors page.`);
+  if (data.suggestedCompetitors.length > 0 || data.untrackedAlreadySuggested > 0) {
+    const suggestedPart =
+      data.suggestedCompetitors.length > 0
+        ? `suggested ${data.suggestedCompetitors.length} untracked competitor${data.suggestedCompetitors.length === 1 ? "" : "s"} (${data.suggestedCompetitors.join(", ")})`
+        : "no new competitors to suggest";
+    parts.push(`${suggestedPart}${untrackedSkippedNote} — see the Competitors page.`);
   }
-  if (data.imported === 0 && data.skipped === 0 && data.generalReasonsAdded === 0 && data.suggestedCompetitors.length === 0) {
+  if (data.totalExtracted === 0) {
     parts.push("(nothing in this file had enough signal to keep)");
-  } else if (data.skipped > 0) {
-    parts.push("(skipped: already logged)");
   }
   if (data.truncated && data.rowsConsidered !== undefined && data.totalRows !== undefined) {
     parts.push(`Only processed the first ${data.rowsConsidered} of ${data.totalRows} rows.`);
