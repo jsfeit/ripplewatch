@@ -253,7 +253,7 @@ export interface Database {
         Row: {
           id: string;
           competitor_id: string;
-          kind: "pricing" | "jobs";
+          kind: "pricing" | "jobs" | "producthunt" | "websearch";
           content_hash: string;
           raw_text: string | null;
           captured_at: string;
@@ -261,7 +261,7 @@ export interface Database {
         Insert: {
           id?: string;
           competitor_id: string;
-          kind: "pricing" | "jobs";
+          kind: "pricing" | "jobs" | "producthunt" | "websearch";
           content_hash: string;
           raw_text?: string | null;
           captured_at?: string;
