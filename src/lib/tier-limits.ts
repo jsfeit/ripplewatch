@@ -11,15 +11,16 @@ export const COMPETITOR_LIMIT: Record<AccountTier, number> = {
   advanced: 20,
 };
 
-// Signal sources are now uniform across tiers — differentiation moved to
-// competitor count, scoring depth (Starter's teaser cadence), and onboarding
-// type instead of gating which sources are scraped at all. Reviews aren't
-// scraped yet (admin-manual only, no ToS-safe free source). SEO/traffic
-// checks against a stubbed data source (see src/lib/seo-data.ts) pending a
-// real provider account — safe to leave enabled across tiers now since the
-// stub never fires real signals or costs anything.
+// Signal sources are otherwise uniform across tiers — differentiation moved
+// to competitor count, scoring depth (Starter's teaser cadence), and
+// onboarding type instead of gating which sources are scraped at all.
+// Reviews aren't scraped yet (admin-manual only, no ToS-safe free source).
+// SEO/traffic is the one gated source: it's a Plus/Advanced upsell (see
+// pricing page copy in tiers.ts), not available on Starter — checks against
+// a stubbed data source for now (see src/lib/seo-data.ts) pending a real
+// provider account, but the tier gate is real regardless of the stub.
 export const TIER_SIGNAL_SOURCES: Record<AccountTier, SignalType[]> = {
-  starter: ["pricing", "job_posting", "news", "funding", "seo"],
+  starter: ["pricing", "job_posting", "news", "funding"],
   plus: ["pricing", "job_posting", "news", "funding", "seo"],
   advanced: ["pricing", "job_posting", "news", "funding", "seo"],
 };
