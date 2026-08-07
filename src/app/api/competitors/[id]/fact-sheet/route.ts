@@ -25,7 +25,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
   const { data: account } = await supabase
     .from("accounts")
-    .select("name, positioning, company_research")
+    .select("name, positioning, company_research, won_deal_notes")
     .eq("id", profile.account_id)
     .single();
   if (!account) {
@@ -84,7 +84,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     pricingSummary,
     winLossEntries,
     recentSignals,
-    profile.account_id
+    profile.account_id,
+    account.won_deal_notes
   );
 
   const generatedAt = new Date().toISOString();

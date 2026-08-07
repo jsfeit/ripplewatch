@@ -3,6 +3,7 @@ import {
   checkPricingDiff,
   checkPricingStructure,
   checkJobPostingsDiff,
+  checkSeoTrafficDiff,
   checkNews,
   checkFunding,
   checkSearchNews,
@@ -233,6 +234,10 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
       allowedSources.includes("job_posting")
         ? checkJobPostingsDiff(supabase, competitor).then((s) => (s ? [s] : []))
         : null,
+      // Its own weekly gate lives inside checkSeoTrafficDiff (see
+      // SEO_CHECK_INTERVAL_DAYS in scraping.ts) rather than here, so it's a
+      // no-op most crawl runs regardless of how often crawls themselves run.
+      allowedSources.includes("seo") ? checkSeoTrafficDiff(supabase, competitor).then((s) => (s ? [s] : [])) : null,
       // Supplements the free RSS news check above with Claude web search —
       // off by default (real per-search cost, not modeled against tier
       // pricing yet). Enable per the web-search-news-decision checklist item.

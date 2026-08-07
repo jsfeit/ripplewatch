@@ -1054,7 +1054,7 @@ Produce two short bullet lists:
 - "whyWeWin": concrete, evidence-backed reasons this company has an edge over the competitor.
 - "whyWeLose": concrete, evidence-backed reasons the competitor is a real threat or wins deals against this company.
 
-Ground every single bullet in something explicitly provided below — a logged win/loss reason, a real recent signal (with its date), researched market positioning, or a structural pricing fact (e.g. one is self-serve/transparent, the other is custom/sales-led). Never invent a feature, capability, or customer-preference claim that isn't backed by one of these. If there is little or no evidence for one side, say so plainly in a single bullet ("Not enough logged win data yet to state a confirmed reason") rather than padding it out with a generic, unverifiable claim — a short honest list is more useful than a longer speculative one. Some logged entries are outcome-only ("lost, no reason recorded") — these can support a frequency observation ("you've lost to X three times, though no reason was recorded each time") but never invent a reason to fill the gap.
+Ground every single bullet in something explicitly provided below — a logged win/loss reason, a real recent signal (with its date), researched market positioning, or a structural pricing fact (e.g. one is self-serve/transparent, the other is custom/sales-led). Never invent a feature, capability, or customer-preference claim that isn't backed by one of these. If there is little or no evidence for one side, say so plainly in a single bullet ("Not enough logged win data yet to state a confirmed reason") rather than padding it out with a generic, unverifiable claim — a short honest list is more useful than a longer speculative one. Some logged entries are outcome-only ("lost, no reason recorded") — these can support a frequency observation ("you've lost to X three times, though no reason was recorded each time") but never invent a reason to fill the gap. General win reasons (logged company-wide, not tied to any specific competitor) are weaker evidence than a reason logged against this exact competitor — use one only if it plausibly applies here, and don't claim or imply it was about this competitor specifically.
 
 Write each bullet as one plain sentence a busy person can scan in a few seconds. Prefer specific numbers, dates, and names over vague language ("cheaper" is weak; "$30/mo cheaper on the entry tier, per the March pricing check" is strong).
 
@@ -1082,7 +1082,8 @@ export async function generateFactSheet(
   pricingSummary: string | null,
   winLossEntries: FactSheetWinLossEntry[],
   recentSignals: FactSheetSignal[],
-  accountId: string | null
+  accountId: string | null,
+  generalWonNotes: string | null
 ): Promise<FactSheetResult> {
   const wins = winLossEntries.filter((e) => e.outcome === "won");
   const losses = winLossEntries.filter((e) => e.outcome === "lost");
@@ -1093,6 +1094,7 @@ Competitor: ${competitorName}${competitorCategory ? ` (${competitorCategory})` :
 
 Logged wins against this competitor:
 ${wins.length > 0 ? wins.map((w) => `- ${w.reason ?? "(won, no reason recorded)"}`).join("\n") : "(none logged yet)"}
+${generalWonNotes ? `\nGeneral win reasons logged company-wide, not tied to any specific competitor (use only if genuinely relevant to why this company might beat ${competitorName}, don't force it): ${generalWonNotes}\n` : ""}
 
 Logged losses to this competitor:
 ${losses.length > 0 ? losses.map((l) => `- ${l.reason ?? "(lost, no reason recorded)"}`).join("\n") : "(none logged yet)"}

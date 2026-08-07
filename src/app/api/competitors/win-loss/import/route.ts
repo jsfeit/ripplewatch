@@ -106,6 +106,8 @@ export async function POST(request: Request) {
       skipped: 0,
       generalReasonsAdded: 0,
       generalReasonsSkipped: 0,
+      generalWonReasonsAdded: 0,
+      generalWonReasonsSkipped: 0,
       suggestedCompetitors: [],
       untrackedAlreadySuggested: 0,
       rowsConsidered,

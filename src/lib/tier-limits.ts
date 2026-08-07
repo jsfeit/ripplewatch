@@ -14,11 +14,14 @@ export const COMPETITOR_LIMIT: Record<AccountTier, number> = {
 // Signal sources are now uniform across tiers — differentiation moved to
 // competitor count, scoring depth (Starter's teaser cadence), and onboarding
 // type instead of gating which sources are scraped at all. Reviews aren't
-// scraped yet (admin-manual only, no ToS-safe free source).
+// scraped yet (admin-manual only, no ToS-safe free source). SEO/traffic
+// checks against a stubbed data source (see src/lib/seo-data.ts) pending a
+// real provider account — safe to leave enabled across tiers now since the
+// stub never fires real signals or costs anything.
 export const TIER_SIGNAL_SOURCES: Record<AccountTier, SignalType[]> = {
-  starter: ["pricing", "job_posting", "news", "funding"],
-  plus: ["pricing", "job_posting", "news", "funding"],
-  advanced: ["pricing", "job_posting", "news", "funding"],
+  starter: ["pricing", "job_posting", "news", "funding", "seo"],
+  plus: ["pricing", "job_posting", "news", "funding", "seo"],
+  advanced: ["pricing", "job_posting", "news", "funding", "seo"],
 };
 
 // CRM (HubSpot) read-only pull is a Plus-and-above feature — same gate
