@@ -101,10 +101,13 @@ export async function POST(request: Request) {
 
   if (extracted.length === 0) {
     return NextResponse.json({
+      totalExtracted: 0,
       imported: 0,
       skipped: 0,
       generalReasonsAdded: 0,
+      generalReasonsSkipped: 0,
       suggestedCompetitors: [],
+      untrackedAlreadySuggested: 0,
       rowsConsidered,
       totalRows,
       truncated,

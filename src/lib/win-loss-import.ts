@@ -10,10 +10,13 @@ const LOST_DEAL_NOTES_MAX_CHARS = 6000;
 const MAX_NEW_SUGGESTIONS_PER_IMPORT = 10;
 
 export type ApplyResult = {
+  totalExtracted: number;
   imported: number;
   skipped: number;
   generalReasonsAdded: number;
+  generalReasonsSkipped: number;
   suggestedCompetitors: string[];
+  untrackedAlreadySuggested: number;
 };
 
 // Shared by both the CSV-import and HubSpot-sync routes: takes whatever
@@ -28,6 +31,11 @@ export type ApplyResult = {
 //   roll into the account's lost_deal_notes free text, the same field
 //   scoring already reads — general "won" entries have no equivalent field
 //   to land in today, so they're not persisted beyond the response counts.
+//
+// Every bucket tracks its own "already had this" count, not just tracked —
+// re-running the same file (or one that overlaps a prior import) should
+// read as "found N, all already known" rather than "found nothing," which
+// looks identical to a genuinely empty/irrelevant file otherwise.
 export async function applyExtractedWinLossEntries(
   supabase: SupabaseClient<Database>,
   accountId: string,
@@ -76,6 +84,7 @@ export async function applyExtractedWinLossEntries(
 
   // --- Untracked: surface as suggested competitors, most-mentioned first ---
   const suggestedCompetitors: string[] = [];
+  let untrackedAlreadySuggested = 0;
   if (untracked.length > 0) {
     const counts = new Map<string, { name: string; won: number; lost: number }>();
     for (const e of untracked) {
@@ -92,7 +101,10 @@ export async function applyExtractedWinLossEntries(
       .eq("account_id", accountId);
     const existingNames = new Set((existingSuggestions ?? []).map((s) => s.name.toLowerCase()));
 
-    const candidates = [...counts.values()]
+    const allDistinct = [...counts.values()];
+    untrackedAlreadySuggested = allDistinct.filter((c) => existingNames.has(c.name.toLowerCase())).length;
+
+    const candidates = allDistinct
       .filter((c) => !existingNames.has(c.name.toLowerCase()))
       .sort((a, b) => b.won + b.lost - (a.won + a.lost))
       .slice(0, MAX_NEW_SUGGESTIONS_PER_IMPORT);
@@ -115,12 +127,13 @@ export async function applyExtractedWinLossEntries(
 
   // --- General lost reasons: roll into the account's lost_deal_notes ---
   let generalReasonsAdded = 0;
+  let generalReasonsSkipped = 0;
   if (general.length > 0) {
     const { data: account } = await supabase.from("accounts").select("lost_deal_notes").eq("id", accountId).single();
     const existingNotes = account?.lost_deal_notes ?? "";
-    const newReasons = [...new Set(general.map((e) => e.reason.trim()))].filter(
-      (r) => !existingNotes.includes(r)
-    );
+    const distinctReasons = [...new Set(general.map((e) => e.reason.trim()))];
+    const newReasons = distinctReasons.filter((r) => !existingNotes.includes(r));
+    generalReasonsSkipped = distinctReasons.length - newReasons.length;
 
     if (newReasons.length > 0) {
       let combined = existingNotes ? `${existingNotes} ${newReasons.join(". ")}.` : `${newReasons.join(". ")}.`;
@@ -132,5 +145,13 @@ export async function applyExtractedWinLossEntries(
     }
   }
 
-  return { imported, skipped, generalReasonsAdded, suggestedCompetitors };
+  return {
+    totalExtracted: entries.length,
+    imported,
+    skipped,
+    generalReasonsAdded,
+    generalReasonsSkipped,
+    suggestedCompetitors,
+    untrackedAlreadySuggested,
+  };
 }
