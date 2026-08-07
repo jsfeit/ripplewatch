@@ -6,7 +6,7 @@ import type { ExtractedWinLossEntry } from "@/lib/anthropic";
 // free-text field onboarding fills in once and scoring already reads, not
 // a new structured store, so it needs a ceiling rather than growing
 // forever across every re-import.
-const LOST_DEAL_NOTES_MAX_CHARS = 6000;
+const DEAL_NOTES_MAX_CHARS = 6000;
 const MAX_NEW_SUGGESTIONS_PER_IMPORT = 10;
 
 export type ApplyResult = {
@@ -15,6 +15,8 @@ export type ApplyResult = {
   skipped: number;
   generalReasonsAdded: number;
   generalReasonsSkipped: number;
+  generalWonReasonsAdded: number;
+  generalWonReasonsSkipped: number;
   suggestedCompetitors: string[];
   untrackedAlreadySuggested: number;
 };
@@ -27,10 +29,10 @@ export type ApplyResult = {
 //   by how often they came up) so a competitor the account is actually
 //   losing/winning against, but isn't tracking yet, surfaces as a
 //   suggestion instead of vanishing.
-// - "general" lost entries (no identifiable competitor, but a real reason)
-//   roll into the account's lost_deal_notes free text, the same field
-//   scoring already reads — general "won" entries have no equivalent field
-//   to land in today, so they're not persisted beyond the response counts.
+// - "general" entries (no identifiable competitor, but a real reason) roll
+//   into the account's lost_deal_notes (scoring already reads this) or
+//   won_deal_notes (every fact sheet reads this as general, not-tied-to-
+//   one-competitor supporting evidence — see generateFactSheet).
 //
 // Every bucket tracks its own "already had this" count, not just tracked —
 // re-running the same file (or one that overlaps a prior import) should
@@ -51,9 +53,13 @@ export async function applyExtractedWinLossEntries(
   const untracked = entries.filter(
     (e): e is Extract<ExtractedWinLossEntry, { matchType: "untracked" }> => e.matchType === "untracked"
   );
-  const general = entries.filter(
+  const generalLost = entries.filter(
     (e): e is Extract<ExtractedWinLossEntry, { matchType: "general" }> =>
       e.matchType === "general" && e.outcome === "lost"
+  );
+  const generalWon = entries.filter(
+    (e): e is Extract<ExtractedWinLossEntry, { matchType: "general" }> =>
+      e.matchType === "general" && e.outcome === "won"
   );
 
   // --- Tracked: insert into competitor_win_loss, deduped ---
@@ -128,20 +134,44 @@ export async function applyExtractedWinLossEntries(
   // --- General lost reasons: roll into the account's lost_deal_notes ---
   let generalReasonsAdded = 0;
   let generalReasonsSkipped = 0;
-  if (general.length > 0) {
+  if (generalLost.length > 0) {
     const { data: account } = await supabase.from("accounts").select("lost_deal_notes").eq("id", accountId).single();
     const existingNotes = account?.lost_deal_notes ?? "";
-    const distinctReasons = [...new Set(general.map((e) => e.reason.trim()))];
+    const distinctReasons = [...new Set(generalLost.map((e) => e.reason.trim()))];
     const newReasons = distinctReasons.filter((r) => !existingNotes.includes(r));
     generalReasonsSkipped = distinctReasons.length - newReasons.length;
 
     if (newReasons.length > 0) {
       let combined = existingNotes ? `${existingNotes} ${newReasons.join(". ")}.` : `${newReasons.join(". ")}.`;
-      if (combined.length > LOST_DEAL_NOTES_MAX_CHARS) {
-        combined = combined.slice(combined.length - LOST_DEAL_NOTES_MAX_CHARS);
+      if (combined.length > DEAL_NOTES_MAX_CHARS) {
+        combined = combined.slice(combined.length - DEAL_NOTES_MAX_CHARS);
       }
       const { error } = await supabase.from("accounts").update({ lost_deal_notes: combined }).eq("id", accountId);
       if (!error) generalReasonsAdded = newReasons.length;
+    }
+  }
+
+  // --- General won reasons: roll into the account's won_deal_notes ---
+  // Mirrors the lost-reason handling above exactly, just the other outcome
+  // and field — these have no per-competitor home (no competitor named), so
+  // every fact sheet reads them as general, not-tied-to-this-competitor
+  // supporting evidence for whyWeWin (see generateFactSheet).
+  let generalWonReasonsAdded = 0;
+  let generalWonReasonsSkipped = 0;
+  if (generalWon.length > 0) {
+    const { data: account } = await supabase.from("accounts").select("won_deal_notes").eq("id", accountId).single();
+    const existingNotes = account?.won_deal_notes ?? "";
+    const distinctReasons = [...new Set(generalWon.map((e) => e.reason.trim()))];
+    const newReasons = distinctReasons.filter((r) => !existingNotes.includes(r));
+    generalWonReasonsSkipped = distinctReasons.length - newReasons.length;
+
+    if (newReasons.length > 0) {
+      let combined = existingNotes ? `${existingNotes} ${newReasons.join(". ")}.` : `${newReasons.join(". ")}.`;
+      if (combined.length > DEAL_NOTES_MAX_CHARS) {
+        combined = combined.slice(combined.length - DEAL_NOTES_MAX_CHARS);
+      }
+      const { error } = await supabase.from("accounts").update({ won_deal_notes: combined }).eq("id", accountId);
+      if (!error) generalWonReasonsAdded = newReasons.length;
     }
   }
 
@@ -151,6 +181,8 @@ export async function applyExtractedWinLossEntries(
     skipped,
     generalReasonsAdded,
     generalReasonsSkipped,
+    generalWonReasonsAdded,
+    generalWonReasonsSkipped,
     suggestedCompetitors,
     untrackedAlreadySuggested,
   };

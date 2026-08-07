@@ -7,7 +7,8 @@ export type SignalType =
   | "job_posting"
   | "review"
   | "news"
-  | "funding";
+  | "funding"
+  | "seo";
 
 export type Competitor = {
   id: string;
@@ -37,6 +38,7 @@ export const SIGNAL_TYPE_LABELS: Record<SignalType, string> = {
   review: "Review signal",
   news: "News",
   funding: "Funding",
+  seo: "SEO / traffic",
 };
 
 export const MOCK_COMPETITORS: Competitor[] = [

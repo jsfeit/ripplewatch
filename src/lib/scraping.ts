@@ -11,6 +11,7 @@ import {
   canonicalizeHeadlines,
 } from "@/lib/anthropic";
 import { normalizeDomain, guessPricingUrl, guessCareersUrl } from "@/lib/domain";
+import { fetchDomainTrafficMetrics } from "@/lib/seo-data";
 
 type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
 type Signal = Database["public"]["Tables"]["signals"]["Row"];
@@ -292,6 +293,67 @@ export async function checkJobPostingsDiff(
       type: "job_posting",
       title: `${competitor.name} posted ${newTitles.length} new job listing${newTitles.length === 1 ? "" : "s"}`,
       summary,
+      scored: false,
+      source: "pipeline",
+    })
+    .select("*")
+    .single();
+
+  return data;
+}
+
+// SEO/traffic — checked weekly, not every crawl (see SEO_CHECK_INTERVAL_DAYS):
+// once fetchDomainTrafficMetrics is backed by a real provider (DataForSEO,
+// per src/lib/seo-data.ts) each call carries a real per-query cost, and
+// traffic/ranking data doesn't meaningfully move faster than this anyway.
+// Structured metrics in, not raw page text — diffed as plain numbers
+// against the last competitor_seo row rather than a page_snapshots hash.
+const SEO_CHECK_INTERVAL_DAYS = 7;
+const SEO_MEANINGFUL_CHANGE_PCT = 20;
+
+async function readSeoSnapshot(supabase: AdminClient, competitorId: string) {
+  const { data } = await supabase.from("competitor_seo").select("*").eq("competitor_id", competitorId).maybeSingle();
+  return data;
+}
+
+export async function checkSeoTrafficDiff(supabase: AdminClient, competitor: Competitor): Promise<Signal | null> {
+  if (!competitor.domain) return null;
+
+  const existing = await readSeoSnapshot(supabase, competitor.id);
+  if (existing) {
+    const daysSinceCheck = (Date.now() - new Date(existing.last_checked_at).getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceCheck < SEO_CHECK_INTERVAL_DAYS) return null;
+  }
+
+  const metrics = await fetchDomainTrafficMetrics(competitor.domain);
+  if (!metrics) return null;
+
+  await supabase.from("competitor_seo").upsert(
+    {
+      competitor_id: competitor.id,
+      organic_traffic_estimate: metrics.organicTrafficEstimate,
+      traffic_trend: metrics.trafficTrend,
+      top_keywords: metrics.topKeywords,
+      last_checked_at: new Date().toISOString(),
+    },
+    { onConflict: "competitor_id" }
+  );
+
+  if (!existing || existing.organic_traffic_estimate === null || existing.organic_traffic_estimate === 0) return null;
+
+  const previous = existing.organic_traffic_estimate;
+  const current = metrics.organicTrafficEstimate;
+  const pctChange = ((current - previous) / previous) * 100;
+  if (Math.abs(pctChange) < SEO_MEANINGFUL_CHANGE_PCT) return null;
+
+  const direction = pctChange > 0 ? "up" : "down";
+  const { data } = await supabase
+    .from("signals")
+    .insert({
+      competitor_id: competitor.id,
+      type: "seo",
+      title: `${competitor.name}'s estimated organic traffic is ${direction} ${Math.abs(Math.round(pctChange))}% since the last check`,
+      summary: `Estimated organic traffic moved from ~${previous.toLocaleString()} to ~${current.toLocaleString()} monthly visits.`,
       scored: false,
       source: "pipeline",
     })

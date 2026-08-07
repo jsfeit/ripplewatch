@@ -38,6 +38,8 @@ type ImportResponse = {
   skipped: number;
   generalReasonsAdded: number;
   generalReasonsSkipped: number;
+  generalWonReasonsAdded: number;
+  generalWonReasonsSkipped: number;
   suggestedCompetitors: string[];
   untrackedAlreadySuggested: number;
   rowsConsidered?: number;
@@ -56,11 +58,15 @@ function formatImportMessage(source: string, data: ImportResponse): string {
   const parts = [`${source}: ${rowsPart}found ${data.totalExtracted} relevant ${data.totalExtracted === 1 ? "entry" : "entries"}`];
 
   const generalSkippedNote = data.generalReasonsSkipped > 0 ? `, ${data.generalReasonsSkipped} already known` : "";
+  const generalWonSkippedNote = data.generalWonReasonsSkipped > 0 ? `, ${data.generalWonReasonsSkipped} already known` : "";
   const untrackedSkippedNote = data.untrackedAlreadySuggested > 0 ? `, ${data.untrackedAlreadySuggested} already suggested` : "";
 
   parts.push(`imported ${data.imported} win/loss ${data.imported === 1 ? "entry" : "entries"}${data.skipped > 0 ? ` (${data.skipped} already logged)` : ""}.`);
   if (data.generalReasonsAdded > 0 || data.generalReasonsSkipped > 0) {
     parts.push(`Added ${data.generalReasonsAdded} general lost-deal reason${data.generalReasonsAdded === 1 ? "" : "s"} to account context${generalSkippedNote}.`);
+  }
+  if (data.generalWonReasonsAdded > 0 || data.generalWonReasonsSkipped > 0) {
+    parts.push(`Added ${data.generalWonReasonsAdded} general win reason${data.generalWonReasonsAdded === 1 ? "" : "s"} to account context${generalWonSkippedNote}.`);
   }
   if (data.suggestedCompetitors.length > 0 || data.untrackedAlreadySuggested > 0) {
     const suggestedPart =

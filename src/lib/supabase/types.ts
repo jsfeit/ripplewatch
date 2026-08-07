@@ -3,7 +3,8 @@
 // generate it from yet (`supabase gen types typescript` once one exists).
 
 export type Tier = "starter" | "plus" | "advanced";
-export type SignalType = "pricing" | "job_posting" | "review" | "news" | "funding";
+export type SignalType = "pricing" | "job_posting" | "review" | "news" | "funding" | "seo";
+export type SeoTrafficTrend = "up" | "down" | "flat" | "unknown";
 export type RelevanceLevel = "High" | "Medium" | "Low";
 export type SignalSource = "manual" | "pipeline" | "backfill";
 export type IntegrationProvider = "slack" | "email" | "hubspot" | "salesforce" | "intercom" | "gong" | "zoom";
@@ -53,6 +54,7 @@ export interface Database {
           has_sales_crm: boolean;
           has_plg: boolean;
           lost_deal_notes: string | null;
+          won_deal_notes: string | null;
           churn_notes: string | null;
           tier: Tier;
           stripe_customer_id: string | null;
@@ -75,6 +77,7 @@ export interface Database {
           has_sales_crm?: boolean;
           has_plg?: boolean;
           lost_deal_notes?: string | null;
+          won_deal_notes?: string | null;
           churn_notes?: string | null;
           tier?: Tier;
           stripe_customer_id?: string | null;
@@ -264,6 +267,30 @@ export interface Database {
           captured_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["page_snapshots"]["Insert"]>;
+        Relationships: [];
+      };
+      competitor_seo: {
+        Row: {
+          id: string;
+          competitor_id: string;
+          organic_traffic_estimate: number | null;
+          traffic_trend: SeoTrafficTrend | null;
+          top_keywords: string[];
+          note: string | null;
+          last_checked_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          competitor_id: string;
+          organic_traffic_estimate?: number | null;
+          traffic_trend?: SeoTrafficTrend | null;
+          top_keywords?: string[];
+          note?: string | null;
+          last_checked_at?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["competitor_seo"]["Insert"]>;
         Relationships: [];
       };
       competitor_pricing: {
