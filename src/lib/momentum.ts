@@ -127,3 +127,12 @@ export function computeMomentum(signals: Signal[]): MomentumResult {
 function avg(nums: number[]): number {
   return nums.reduce((a, b) => a + b, 0) / nums.length;
 }
+
+// Shared between the Key metrics cards and the Competitors list badge so
+// the two never drift into different colors/wording for the same label.
+export const MOMENTUM_STYLES: Record<MomentumLabel, string> = {
+  "Heating up": "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  Steady: "bg-secondary text-muted-foreground",
+  Cooling: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+  "Not enough history yet": "bg-secondary text-muted-foreground",
+};
