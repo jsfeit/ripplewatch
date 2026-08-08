@@ -15,7 +15,10 @@ type Signal = Database["public"]["Tables"]["signals"]["Row"];
 
 type LevelFilter = "all" | "High" | "Medium" | "Low" | "unscored";
 const LEVEL_FILTERS: LevelFilter[] = ["all", "High", "Medium", "Low", "unscored"];
-const TYPE_FILTERS: Array<SignalType | "all"> = ["all", "pricing", "job_posting", "news", "funding", "seo"];
+// "seo" is deliberately excluded — SEO/traffic signals are queried out of
+// the News feed entirely (see dashboard/page.tsx) and shown on their own
+// Key metrics page instead.
+const TYPE_FILTERS: Array<SignalType | "all"> = ["all", "pricing", "job_posting", "news", "funding"];
 
 // Defaults to hiding older signals (including "Background"-badged ones) so
 // the feed reads as "what's happening now" rather than being dominated by
