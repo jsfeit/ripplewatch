@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn, avatarColor } from "@/lib/utils";
 import { COMPETITOR_LIMIT, competitorLimitLabel } from "@/lib/tier-limits";
+import { MOMENTUM_STYLES, type MomentumResult } from "@/lib/momentum";
 import type { Database } from "@/lib/supabase/types";
 
 type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
@@ -18,10 +19,15 @@ export function CompetitorManager({
   competitors: initialCompetitors,
   tier,
   activeId,
+  momentum,
 }: {
   competitors: Competitor[];
   tier: Tier;
   activeId?: string;
+  // Keyed by competitor id — same computeMomentum result the Key metrics
+  // page renders, just surfaced here too so it's visible on the page
+  // people actually click into a competitor from, not only its own tab.
+  momentum?: Record<string, MomentumResult>;
 }) {
   const router = useRouter();
   const [competitors, setCompetitors] = useState(initialCompetitors);
@@ -245,6 +251,17 @@ export function CompetitorManager({
                     <Badge variant="outline" className="shrink-0 text-muted-foreground">
                       Not monitored
                     </Badge>
+                  ) : null}
+                  {momentum?.[c.id] && momentum[c.id].score !== null ? (
+                    <span
+                      className={cn(
+                        "flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        MOMENTUM_STYLES[momentum[c.id].label]
+                      )}
+                    >
+                      {momentum[c.id].score! > 0 ? "+" : ""}
+                      {momentum[c.id].score} · {momentum[c.id].label}
+                    </span>
                   ) : null}
                 </div>
                 <div className="flex shrink-0 gap-1">

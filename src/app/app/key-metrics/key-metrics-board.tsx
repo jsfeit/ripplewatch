@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { TrendingUp, TrendingDown, Minus, HelpCircle, ChevronDown } from "lucide-react";
 import { EmptyState } from "@/components/app/empty-state";
 import { cn, avatarColor } from "@/lib/utils";
-import { computeMomentum, type MomentumResult } from "@/lib/momentum";
+import { computeMomentum, MOMENTUM_STYLES, type MomentumResult } from "@/lib/momentum";
 import type { Database, SeoTrafficTrend } from "@/lib/supabase/types";
 
 type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
@@ -31,13 +31,6 @@ const TREND_STYLES: Record<SeoTrafficTrend, string> = {
   down: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
   flat: "bg-secondary text-muted-foreground",
   unknown: "bg-secondary text-muted-foreground",
-};
-
-const MOMENTUM_STYLES: Record<MomentumResult["label"], string> = {
-  "Heating up": "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-  Steady: "bg-secondary text-muted-foreground",
-  Cooling: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
-  "Not enough history yet": "bg-secondary text-muted-foreground",
 };
 
 function timeAgo(iso: string): string {

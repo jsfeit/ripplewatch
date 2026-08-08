@@ -6,6 +6,7 @@ import { SuggestedCompetitorsPanel } from "@/components/app/suggested-competitor
 import { CompetitorMonitoringUrls } from "@/components/app/competitor-monitoring-urls";
 import { CompetitorFactSheet } from "@/components/app/competitor-fact-sheet";
 import { createClient } from "@/lib/supabase/server";
+import { computeMomentum, type MomentumResult } from "@/lib/momentum";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,25 @@ export default async function CompetitorDetailPage({
     .eq("connected", true)
     .maybeSingle();
 
+  // Same computeMomentum used on Key metrics, surfaced here too so it's
+  // visible on the page people actually click into a competitor from.
+  const competitorIds = (competitors ?? []).map((c) => c.id);
+  const sixtyDaysAgo = new Date();
+  sixtyDaysAgo.setUTCDate(sixtyDaysAgo.getUTCDate() - 60);
+  const { data: momentumSignals } = competitorIds.length
+    ? await supabase
+        .from("signals")
+        .select("competitor_id, type, occurred_on, scored, relevance_score")
+        .in("competitor_id", competitorIds)
+        .gte("occurred_on", sixtyDaysAgo.toISOString().slice(0, 10))
+    : { data: [] };
+  const momentumByCompetitorId: Record<string, MomentumResult> = {};
+  for (const c of competitors ?? []) {
+    momentumByCompetitorId[c.id] = computeMomentum(
+      (momentumSignals ?? []).filter((s) => s.competitor_id === c.id)
+    );
+  }
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-10 sm:py-10">
       <div className="mb-6">
@@ -75,7 +95,12 @@ export default async function CompetitorDetailPage({
         </p>
       </div>
 
-      <CompetitorManager competitors={competitors ?? []} tier={account.tier} activeId={id} />
+      <CompetitorManager
+        competitors={competitors ?? []}
+        tier={account.tier}
+        activeId={id}
+        momentum={momentumByCompetitorId}
+      />
 
       <div className="mt-6 flex items-center gap-3">
         <span
