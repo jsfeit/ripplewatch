@@ -7,6 +7,7 @@ import { CompetitorMonitoringUrls } from "@/components/app/competitor-monitoring
 import { CompetitorFactSheet } from "@/components/app/competitor-fact-sheet";
 import { createClient } from "@/lib/supabase/server";
 import { computeMomentum, type MomentumResult } from "@/lib/momentum";
+import { TIER_SIGNAL_SOURCES } from "@/lib/tier-limits";
 
 export const dynamic = "force-dynamic";
 
@@ -86,6 +87,17 @@ export default async function CompetitorDetailPage({
     );
   }
 
+  // Traffic estimate for the sort control — same tier gate as Key metrics,
+  // just the number, not the full competitor_seo record.
+  const seoAllowed = TIER_SIGNAL_SOURCES[account.tier].includes("seo");
+  const { data: seo } =
+    seoAllowed && competitorIds.length
+      ? await supabase.from("competitor_seo").select("competitor_id, organic_traffic_estimate").in("competitor_id", competitorIds)
+      : { data: [] };
+  const trafficByCompetitorId = Object.fromEntries(
+    (seo ?? []).map((s) => [s.competitor_id, s.organic_traffic_estimate])
+  );
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-10 sm:py-10">
       <div className="mb-6">
@@ -100,6 +112,8 @@ export default async function CompetitorDetailPage({
         tier={account.tier}
         activeId={id}
         momentum={momentumByCompetitorId}
+        traffic={trafficByCompetitorId}
+        seoAllowed={seoAllowed}
       />
 
       <div className="mt-6 flex items-center gap-3">
