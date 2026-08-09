@@ -20,6 +20,11 @@ export type PricingTier = {
   features: string[];
 };
 
+export type WinLossTrendRelatedSignal = {
+  signalId: string;
+  relationNote: string;
+};
+
 export interface Database {
   public: {
     Tables: {
@@ -159,6 +164,34 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["competitor_win_loss"]["Insert"]>;
+        Relationships: [];
+      };
+      win_loss_trends: {
+        Row: {
+          id: string;
+          account_id: string;
+          theme: string;
+          summary: string;
+          won_count: number;
+          lost_count: number;
+          example_reasons: string[];
+          related_signals: WinLossTrendRelatedSignal[];
+          generated_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_id: string;
+          theme: string;
+          summary: string;
+          won_count?: number;
+          lost_count?: number;
+          example_reasons?: string[];
+          related_signals?: WinLossTrendRelatedSignal[];
+          generated_at?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["win_loss_trends"]["Insert"]>;
         Relationships: [];
       };
       suggested_competitors: {

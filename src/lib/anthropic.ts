@@ -1274,3 +1274,159 @@ Classify the rows.`;
     throw new Error(`Could not parse win/loss extraction response: ${text}`, { cause: err });
   }
 }
+
+export type WinLossTrendEntry = {
+  reason: string;
+  outcome: "won" | "lost";
+  competitorName: string | null;
+};
+
+export type WinLossTrendCandidateSignal = {
+  id: string;
+  title: string;
+  type: string;
+  occurredOn: string;
+  reasoning: string | null;
+};
+
+export type WinLossTrend = {
+  theme: string;
+  summary: string;
+  wonCount: number;
+  lostCount: number;
+  exampleReasons: string[];
+  relatedSignals: { signalId: string; relationNote: string }[];
+};
+
+// Bounds context/cost on a large account — see identifyWinLossTrends below.
+const TRENDS_ENTRY_LIMIT = 300;
+const TRENDS_SIGNAL_POOL_LIMIT = 60;
+
+// Deliberately cuts across competitors — unlike extractWinLossEntries
+// (which buckets by tracked/untracked/general per row), this reads the
+// FULL set of already-logged reasons for an account at once and looks for
+// recurring qualitative themes regardless of which competitor a deal named,
+// per direction: raw win/loss data siloed per-competitor hides the
+// cross-cutting patterns (e.g. "losing on price" shows up against three
+// different competitors, invisible if you only ever look at one fact sheet
+// at a time).
+const IDENTIFY_TRENDS_SYSTEM_PROMPT = `You read a company's full set of logged win/loss reasons (won and lost deals, spanning every competitor they track, not just one) and identify recurring THEMES — qualitative patterns that show up across multiple deals, regardless of which specific competitor was involved. Examples of themes: "price sensitivity," "missing AI features," "slow onboarding," "stronger integrations," "better customer support responsiveness."
+
+A theme must be grounded in at least 2 actual logged reasons — never invent a theme from a single data point, and never invent a theme not actually reflected in the reasons given. wonCount and lostCount must be the real count of reasons backing that theme, tallied from what's given. exampleReasons must be reasons copied verbatim (or lightly trimmed) from the input, not paraphrased or invented.
+
+You are also given a pool of recent competitive-intelligence signals (news, funding, pricing changes, hiring, etc.) already tracked for this account. For each theme, check whether any of these signals plausibly EXPLAINS or connects to it — e.g. a "losing on price" theme connecting to a competitor's recent price-cut signal, or a "missing AI features" theme connecting to a competitor's recent AI product launch. Only include a signal in relatedSignals if the connection is real and specific, not a vague thematic overlap. Copy signal IDs EXACTLY from the provided list — never invent one. Most themes will have zero related signals, and that's the expected, honest outcome, not a failure.
+
+Return 3-8 themes, ordered by how many total reasons (won + lost) support them, most-supported first. If there's too little data to identify any real recurring theme, return an empty list rather than forcing one.
+
+Respond with strict JSON only, no markdown, matching this shape exactly:
+{"themes": [{"theme": "<short label>", "summary": "<one sentence>", "wonCount": <int>, "lostCount": <int>, "exampleReasons": ["<reason>", "..."], "relatedSignalIds": [{"signalId": "<exact id from the pool>", "relationNote": "<one sentence on why this connects>"}]}]}`;
+
+const IDENTIFY_TRENDS_SCHEMA = {
+  type: "object",
+  properties: {
+    themes: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          theme: { type: "string" },
+          summary: { type: "string" },
+          wonCount: { type: "integer" },
+          lostCount: { type: "integer" },
+          exampleReasons: { type: "array", items: { type: "string" } },
+          relatedSignalIds: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                signalId: { type: "string" },
+                relationNote: { type: "string" },
+              },
+              required: ["signalId", "relationNote"],
+              additionalProperties: false,
+            },
+          },
+        },
+        required: ["theme", "summary", "wonCount", "lostCount", "exampleReasons", "relatedSignalIds"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["themes"],
+  additionalProperties: false,
+} as const;
+
+export async function identifyWinLossTrends(
+  entries: WinLossTrendEntry[],
+  candidateSignals: WinLossTrendCandidateSignal[],
+  accountId: string | null
+): Promise<WinLossTrend[]> {
+  if (entries.length === 0) return [];
+
+  const boundedEntries = entries.slice(0, TRENDS_ENTRY_LIMIT);
+  const boundedSignals = candidateSignals.slice(0, TRENDS_SIGNAL_POOL_LIMIT);
+
+  const entriesText = boundedEntries
+    .map((e) => `- [${e.outcome}] (${e.competitorName ?? "general, no competitor named"}) ${e.reason}`)
+    .join("\n");
+  const signalsText =
+    boundedSignals.length > 0
+      ? boundedSignals
+          .map((s) => `- [${s.id}] (${s.type}, ${s.occurredOn}) ${s.title}${s.reasoning ? ` — ${s.reasoning}` : ""}`)
+          .join("\n")
+      : "(none available)";
+
+  const userPrompt = `Logged win/loss reasons (${boundedEntries.length}):
+${entriesText}
+
+Recent tracked signals available to connect themes to:
+${signalsText}
+
+Identify the recurring themes.`;
+
+  const message = await getAnthropic().messages.create({
+    model: "claude-sonnet-5",
+    max_tokens: 4096,
+    system: cachedSystemPrompt(IDENTIFY_TRENDS_SYSTEM_PROMPT),
+    output_config: { format: { type: "json_schema", schema: IDENTIFY_TRENDS_SCHEMA } },
+    messages: [{ role: "user", content: userPrompt }],
+  });
+  recordLlmUsage(accountId, "identifyWinLossTrends", message.model, message.usage);
+
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  try {
+    const parsed = JSON.parse(text);
+    const themes = Array.isArray(parsed.themes) ? parsed.themes : [];
+    const validSignalIds = new Set(boundedSignals.map((s) => s.id));
+    return themes.map(
+      (t: {
+        theme?: unknown;
+        summary?: unknown;
+        wonCount?: unknown;
+        lostCount?: unknown;
+        exampleReasons?: unknown;
+        relatedSignalIds?: unknown;
+      }) => ({
+        theme: String(t.theme ?? ""),
+        summary: String(t.summary ?? ""),
+        wonCount: typeof t.wonCount === "number" ? t.wonCount : 0,
+        lostCount: typeof t.lostCount === "number" ? t.lostCount : 0,
+        exampleReasons: Array.isArray(t.exampleReasons) ? t.exampleReasons.map(String) : [],
+        // Drop any signal id the model didn't actually copy from the pool —
+        // belt-and-suspenders against the one thing this prompt explicitly
+        // forbids (inventing an id).
+        relatedSignals: (Array.isArray(t.relatedSignalIds) ? t.relatedSignalIds : [])
+          .filter(
+            (r: { signalId?: unknown }) => typeof r?.signalId === "string" && validSignalIds.has(r.signalId)
+          )
+          .map((r: { signalId: string; relationNote?: unknown }) => ({
+            signalId: r.signalId,
+            relationNote: String(r.relationNote ?? ""),
+          })),
+      })
+    );
+  } catch (err) {
+    console.error("identifyWinLossTrends: failed to parse response", text.slice(0, 500), err);
+    throw new Error(`Could not parse win/loss trends response: ${text}`, { cause: err });
+  }
+}
