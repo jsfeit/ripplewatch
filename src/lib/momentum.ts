@@ -128,7 +128,7 @@ function avg(nums: number[]): number {
   return nums.reduce((a, b) => a + b, 0) / nums.length;
 }
 
-// Shared between the Key metrics cards and the Competitors list badge so
+// Shared between the Trends cards and the Competitors list badge so
 // the two never drift into different colors/wording for the same label.
 export const MOMENTUM_STYLES: Record<MomentumLabel, string> = {
   "Heating up": "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",

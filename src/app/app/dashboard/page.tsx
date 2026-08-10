@@ -34,7 +34,7 @@ export default async function DashboardPage() {
     .order("created_at", { ascending: true });
 
   const competitorIds = (competitors ?? []).map((c) => c.id);
-  // SEO/traffic signals have their own dashboard (Key metrics) rather than
+  // SEO/traffic signals have their own dashboard (Trends) rather than
   // surfacing in the News feed — excluded at the query level, not just from
   // the type filter chips, so they never render here at all.
   const { data: signals } = competitorIds.length
