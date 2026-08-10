@@ -35,15 +35,15 @@ export function CompetitorManager({
   competitors: Competitor[];
   tier: Tier;
   activeId?: string;
-  // Keyed by competitor id — same computeMomentum result the Key metrics
+  // Keyed by competitor id — same computeMomentum result the Trends
   // page renders, just surfaced here too so it's visible on the page
   // people actually click into a competitor from, not only its own tab.
   momentum?: Record<string, MomentumResult>;
   // Keyed by competitor id — just the traffic estimate, enough to sort by;
-  // the full competitor_seo record lives on the Key metrics page.
+  // the full competitor_seo record lives on the Trends page.
   traffic?: Record<string, number | null>;
   // Hides the "Traffic" sort option entirely for Starter, same gate the
-  // Key metrics page uses — sorting by a metric that's always empty for
+  // Trends page uses — sorting by a metric that's always empty for
   // this tier would be confusing, not just unhelpful.
   seoAllowed?: boolean;
 }) {

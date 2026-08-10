@@ -68,7 +68,7 @@ export default async function CompetitorDetailPage({
     .eq("connected", true)
     .maybeSingle();
 
-  // Same computeMomentum used on Key metrics, surfaced here too so it's
+  // Same computeMomentum used on Trends, surfaced here too so it's
   // visible on the page people actually click into a competitor from.
   const competitorIds = (competitors ?? []).map((c) => c.id);
   const sixtyDaysAgo = new Date();
@@ -87,7 +87,7 @@ export default async function CompetitorDetailPage({
     );
   }
 
-  // Traffic estimate for the sort control — same tier gate as Key metrics,
+  // Traffic estimate for the sort control — same tier gate as Trends,
   // just the number, not the full competitor_seo record.
   const seoAllowed = TIER_SIGNAL_SOURCES[account.tier].includes("seo");
   const { data: seo } =

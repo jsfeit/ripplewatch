@@ -43,7 +43,7 @@ function timeAgo(iso: string): string {
   return months === 1 ? "1 month ago" : `${months} months ago`;
 }
 
-export function KeyMetricsBoard({
+export function MomentumBoard({
   competitors,
   momentumSignals,
   seoAllowed,

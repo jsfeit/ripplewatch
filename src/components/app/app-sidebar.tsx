@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { DollarSign, LayoutDashboard, Lightbulb, LogOut, Menu, Radar, Settings, Sparkles, TrendingUp, Waves, X } from "lucide-react";
+import { DollarSign, LayoutDashboard, LogOut, Menu, Radar, Settings, Sparkles, TrendingUp, Waves, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
@@ -13,8 +13,7 @@ const NAV = [
   { href: "/app/dashboard", label: "News", icon: LayoutDashboard },
   { href: "/app/ask", label: "Ask", icon: Sparkles },
   { href: "/app/pricing", label: "Pricing", icon: DollarSign },
-  { href: "/app/key-metrics", label: "Key metrics", icon: TrendingUp },
-  { href: "/app/trends", label: "Trends", icon: Lightbulb },
+  { href: "/app/trends", label: "Trends", icon: TrendingUp },
   { href: "/app/competitors", label: "Competitors", icon: Radar },
   { href: "/app/settings", label: "Settings", icon: Settings },
 ];
