@@ -174,7 +174,7 @@ export function AlertCard({
           <div className="mt-3 rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground">
             {unscoredReason === "tier"
               ? "No relevance score on this tier; upgrade to see why this would (or wouldn't) matter to you."
-              : "Scoring in progress — check back after the next crawl."}
+              : "Scoring in progress, check back after the next crawl."}
           </div>
         </>
       )}
