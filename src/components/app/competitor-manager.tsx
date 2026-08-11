@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertTriangle, Check, Loader2, Pencil, Plus, X } from "lucide-react";
+import { AlertTriangle, Check, FileText, Loader2, Pencil, Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn, avatarColor } from "@/lib/utils";
 import { COMPETITOR_LIMIT, competitorLimitLabel } from "@/lib/tier-limits";
@@ -346,6 +346,15 @@ export function CompetitorManager({
                   ) : null}
                 </div>
                 <div className="flex shrink-0 gap-1">
+                  <Link
+                    href={`/app/competitors/${c.id}#fact-sheet`}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={`View ${c.name} battlecard`}
+                    title="View battlecard"
+                    className={buttonVariants({ variant: "ghost", size: "icon" })}
+                  >
+                    <FileText className="size-4" />
+                  </Link>
                   <Button
                     variant="ghost"
                     size="icon"

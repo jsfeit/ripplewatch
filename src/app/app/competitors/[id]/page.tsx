@@ -100,23 +100,25 @@ export default async function CompetitorDetailPage({
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-10 sm:py-10">
-      <div className="mb-6">
+      <div className="mb-6 print:hidden">
         <h1 className="text-2xl font-semibold tracking-tight">Competitors &amp; Comparison</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Track who you&apos;re up against, then compare yourself to one of them at a time below.
         </p>
       </div>
 
-      <CompetitorManager
-        competitors={competitors ?? []}
-        tier={account.tier}
-        activeId={id}
-        momentum={momentumByCompetitorId}
-        traffic={trafficByCompetitorId}
-        seoAllowed={seoAllowed}
-      />
+      <div className="print:hidden">
+        <CompetitorManager
+          competitors={competitors ?? []}
+          tier={account.tier}
+          activeId={id}
+          momentum={momentumByCompetitorId}
+          traffic={trafficByCompetitorId}
+          seoAllowed={seoAllowed}
+        />
+      </div>
 
-      <div className="mt-6 flex items-center gap-3">
+      <div className="mt-6 flex items-center gap-3 print:hidden">
         <span
           className={cn(
             "flex size-10 items-center justify-center rounded-full text-sm font-semibold",
@@ -136,7 +138,7 @@ export default async function CompetitorDetailPage({
         </div>
       </div>
 
-      <div className="mt-8 rounded-lg border border-border p-4">
+      <div className="mt-8 rounded-lg border border-border p-4 print:hidden">
         <h2 className="text-sm font-semibold text-muted-foreground">Monitoring sources</h2>
         <p className="mt-1 text-xs text-muted-foreground">
           Where we check for pricing and hiring changes. Pre-filled with a best guess from the domain: correct
@@ -152,18 +154,22 @@ export default async function CompetitorDetailPage({
         </div>
       </div>
 
-      <CompetitorFactSheet
-        competitorId={competitor.id}
-        competitorName={competitor.name}
-        accountName={account.name}
-        hubspotConnected={Boolean(hubspotIntegration)}
-        initialWhyWeWin={competitor.fact_sheet_why_we_win}
-        initialWhyWeLose={competitor.fact_sheet_why_we_lose}
-        initialGeneratedAt={competitor.fact_sheet_generated_at}
-        initialWinLoss={winLoss ?? []}
-      />
+      {/* Scroll target for the "View battlecard" deep link on the Competitors
+          list, and the only section left visible when printing this page. */}
+      <div id="fact-sheet">
+        <CompetitorFactSheet
+          competitorId={competitor.id}
+          competitorName={competitor.name}
+          accountName={account.name}
+          hubspotConnected={Boolean(hubspotIntegration)}
+          initialWhyWeWin={competitor.fact_sheet_why_we_win}
+          initialWhyWeLose={competitor.fact_sheet_why_we_lose}
+          initialGeneratedAt={competitor.fact_sheet_generated_at}
+          initialWinLoss={winLoss ?? []}
+        />
+      </div>
 
-      <div className="mt-8">
+      <div className="mt-8 print:hidden">
         <SuggestedCompetitorsPanel suggestions={suggestions ?? []} />
       </div>
     </div>

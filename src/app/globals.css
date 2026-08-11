@@ -128,3 +128,16 @@
     @apply font-sans;
   }
 }
+
+/* Printed pages (fact sheet, Trends export) always render light, regardless
+   of the viewer's dark-mode preference — a dark background wastes ink and
+   most print/PDF pipelines render dark-theme text illegibly on white paper. */
+@media print {
+  html {
+    color-scheme: light;
+  }
+  body {
+    background: white;
+    color: black;
+  }
+}
