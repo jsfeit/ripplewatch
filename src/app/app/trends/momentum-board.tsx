@@ -211,15 +211,6 @@ function KeyMetricCard({
               <TrendIcon className="size-3" />
               {TREND_LABELS[seoRecord.traffic_trend ?? "unknown"]}
             </span>
-            {seoRecord.top_keywords.length > 0 ? (
-              <ul className="mt-2.5 space-y-0.5 text-xs text-muted-foreground">
-                {seoRecord.top_keywords.slice(0, 3).map((kw, i) => (
-                  <li key={i} className="before:mr-1 before:text-primary before:content-['‣']">
-                    {kw}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
             <p className="mt-2.5 border-t border-dashed border-border pt-2.5 text-[10.5px] text-muted-foreground">
               Last checked {timeAgo(seoRecord.last_checked_at)}
             </p>
