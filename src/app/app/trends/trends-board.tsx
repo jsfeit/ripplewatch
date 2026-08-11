@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, RefreshCw, TrendingUp } from "lucide-react";
+import { Loader2, Printer, RefreshCw, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/app/empty-state";
 import { cn } from "@/lib/utils";
@@ -15,10 +15,12 @@ type SignalSummary = Pick<
 >;
 
 export function TrendsBoard({
+  accountName,
   initialTrends,
   initialGeneratedAt,
   signalsById,
 }: {
+  accountName: string;
   initialTrends: Trend[];
   initialGeneratedAt: string | null;
   signalsById: Record<string, SignalSummary>;
@@ -66,7 +68,19 @@ export function TrendsBoard({
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4">
+      {/* Print-only header — the interactive controls below (Generate,
+          status text) are hidden on print, so the exported page needs its
+          own plain-text context instead of the app chrome. */}
+      <div className="hidden print:block">
+        <h2 className="text-lg font-semibold">{accountName} — Win/loss trends</h2>
+        {generatedAt ? (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Generated {new Date(generatedAt).toLocaleDateString()}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 print:hidden">
         <div>
           <p className="text-sm font-medium">
             {generatedAt ? `Generated ${new Date(generatedAt).toLocaleDateString()}` : "Not generated yet"}
@@ -76,26 +90,34 @@ export function TrendsBoard({
             than automatically, so it always reflects your latest data.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={handleGenerate} disabled={generating}>
-          {generating ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
-          {generatedAt ? "Refresh" : "Generate"}
-        </Button>
+        <div className="flex shrink-0 gap-2">
+          {trends.length > 0 ? (
+            <Button variant="outline" size="sm" onClick={() => window.print()}>
+              <Printer className="size-3.5" />
+              Print
+            </Button>
+          ) : null}
+          <Button variant="outline" size="sm" onClick={handleGenerate} disabled={generating}>
+            {generating ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+            {generatedAt ? "Refresh" : "Generate"}
+          </Button>
+        </div>
       </div>
 
-      {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
+      {error ? <p className="mt-3 text-sm text-destructive print:hidden">{error}</p> : null}
       {insufficientData ? (
-        <p className="mt-3 text-sm text-muted-foreground">
+        <p className="mt-3 text-sm text-muted-foreground print:hidden">
           Not enough logged win/loss data yet to identify real trends. Log or import more deals on the Competitors
           page, then try again.
         </p>
       ) : null}
 
       {trends.length === 0 && !insufficientData ? (
-        <div className="mt-6">
+        <div className="mt-6 print:hidden">
           <EmptyState
             icon={TrendingUp}
             title="No trends yet"
-            description="Click Generate to see the patterns behind why you&apos;re winning and losing deals."
+            description="Click Generate to see the patterns behind why you're winning and losing deals."
           />
         </div>
       ) : (

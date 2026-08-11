@@ -23,7 +23,7 @@ export default async function TrendsPage() {
   if (!profile?.account_id) redirect("/onboarding");
   const accountId = profile.account_id;
 
-  const { data: account } = await supabase.from("accounts").select("tier").eq("id", accountId).single();
+  const { data: account } = await supabase.from("accounts").select("name, tier").eq("id", accountId).single();
   const tier = account?.tier ?? "starter";
   const seoAllowed = TIER_SIGNAL_SOURCES[tier].includes("seo");
 
@@ -88,14 +88,14 @@ export default async function TrendsPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-10 sm:py-10">
-      <div className="mb-8">
+      <div className="mb-8 print:hidden">
         <h1 className="text-2xl font-semibold tracking-tight">Trends</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Momentum per competitor, plus recurring themes across every logged win/loss reason.
         </p>
       </div>
 
-      <div>
+      <div className="print:hidden">
         <h2 className="text-sm font-semibold">Momentum</h2>
         <p className="mt-1 text-xs text-muted-foreground">
           Hiring, pricing activity, press/funding, and relevance trend, plus estimated organic traffic where
@@ -112,14 +112,15 @@ export default async function TrendsPage() {
         </div>
       </div>
 
-      <div className="mt-10">
-        <h2 className="text-sm font-semibold">Win/loss trends</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
+      <div className="mt-10 print:mt-0">
+        <h2 className="text-sm font-semibold print:hidden">Win/loss trends</h2>
+        <p className="mt-1 text-xs text-muted-foreground print:hidden">
           The recurring reasons you&apos;re winning and losing deals, grouped into patterns across all your
           competitors, with links to the news that explains them when we find a real connection.
         </p>
-        <div className="mt-4">
+        <div className="mt-4 print:mt-0">
           <TrendsBoard
+            accountName={account?.name ?? ""}
             initialTrends={winLossTrends ?? []}
             initialGeneratedAt={trendsGeneratedAt}
             signalsById={Object.fromEntries((relatedSignals ?? []).map((s) => [s.id, s]))}
