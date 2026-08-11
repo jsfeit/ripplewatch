@@ -157,7 +157,7 @@ function TrendCard({ trend, signalsById }: { trend: Trend; signalsById: Record<s
             </p>
             {linked.length === 0 ? (
               <p className="text-xs italic text-muted-foreground">
-                No specific news or activity from a competitor explains this yet — just a pattern in what you&apos;ve
+                No specific news or activity from a competitor explains this yet, just a pattern in what you&apos;ve
                 logged.
               </p>
             ) : (

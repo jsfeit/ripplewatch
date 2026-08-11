@@ -241,7 +241,7 @@ function StuckBacklogAlert({ accounts }: { accounts: StuckAccount[] }) {
       <AlertTriangle className="mt-0.5 size-4 shrink-0" />
       <p>
         {total} signal{total === 1 ? "" : "s"} across {accounts.length} account{accounts.length === 1 ? "" : "s"}{" "}
-        {accounts.length === 1 ? "has" : "have"} sat unscored for over 24h — the crawl&apos;s own backlog rescue
+        {accounts.length === 1 ? "has" : "have"} sat unscored for over 24h. The crawl&apos;s own backlog rescue
         should normally clear this, so a nonzero count here suggests scoring is failing faster than it recovers:{" "}
         {accounts.map((a, i) => (
           <span key={a.accountId}>

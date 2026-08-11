@@ -73,7 +73,7 @@ function formatImportMessage(source: string, data: ImportResponse): string {
       data.suggestedCompetitors.length > 0
         ? `suggested ${data.suggestedCompetitors.length} untracked competitor${data.suggestedCompetitors.length === 1 ? "" : "s"} (${data.suggestedCompetitors.join(", ")})`
         : "no new competitors to suggest";
-    parts.push(`${suggestedPart}${untrackedSkippedNote} — see the Competitors page.`);
+    parts.push(`${suggestedPart}${untrackedSkippedNote}. See the Competitors page.`);
   }
   if (data.totalExtracted === 0) {
     parts.push("(nothing in this file had enough signal to keep)");

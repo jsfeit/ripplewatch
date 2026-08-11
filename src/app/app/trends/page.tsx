@@ -98,7 +98,7 @@ export default async function TrendsPage() {
       <div>
         <h2 className="text-sm font-semibold">Momentum</h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          Hiring, pricing activity, press/funding, and relevance trend — plus estimated organic traffic where
+          Hiring, pricing activity, press/funding, and relevance trend, plus estimated organic traffic where
           available.
         </p>
         <div className="mt-4">
@@ -116,7 +116,7 @@ export default async function TrendsPage() {
         <h2 className="text-sm font-semibold">Win/loss trends</h2>
         <p className="mt-1 text-xs text-muted-foreground">
           The recurring reasons you&apos;re winning and losing deals, grouped into patterns across all your
-          competitors — with links to the news that explains them, when we find a real connection.
+          competitors, with links to the news that explains them when we find a real connection.
         </p>
         <div className="mt-4">
           <TrendsBoard
