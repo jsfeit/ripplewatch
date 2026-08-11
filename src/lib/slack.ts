@@ -40,15 +40,22 @@ export async function exchangeSlackCode(code: string): Promise<SlackCredentials>
 
 export async function sendSlackAlert(
   credentials: SlackCredentials,
-  message: { competitorName: string; title: string; reasoning: string; relevanceLevel: string }
+  message: { competitorName: string; title: string; url: string | null; reasoning: string; relevanceLevel: string }
 ): Promise<void> {
   if (!credentials.incoming_webhook_url) return;
+
+  // Mirrors the News feed's AlertCard: the headline itself is the link to
+  // the source article (Slack mrkdwn <url|text>), not a bare domain name
+  // that Slack happens to auto-linkify to the site's homepage. Falls back
+  // to plain text on the rare signal with no url rather than dropping the
+  // headline.
+  const headline = message.url ? `<${message.url}|${message.title}>` : message.title;
 
   await fetch(credentials.incoming_webhook_url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      text: `*${message.relevanceLevel} relevance alert on ${message.competitorName}*\n${message.title}\n${message.reasoning}`,
+      text: `*${message.relevanceLevel} relevance alert on ${message.competitorName}*\n${headline}\n${message.reasoning}`,
     }),
   });
 }

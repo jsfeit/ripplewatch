@@ -431,6 +431,7 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
         await sendSlackAlert(slackIntegration.credentials as Parameters<typeof sendSlackAlert>[0], {
           competitorName: signal.competitorName,
           title: signal.title,
+          url: signal.url,
           reasoning: signal.relevance_reasoning ?? "",
           relevanceLevel: signal.relevance_level ?? "",
         });
