@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendDigestEmail, type DigestSignal } from "@/lib/resend";
+import { generateDigestVerdict, type VerdictSignal } from "@/lib/anthropic";
 import type { Database } from "@/lib/supabase/types";
 
 type Signal = Database["public"]["Tables"]["signals"]["Row"];
@@ -58,8 +59,39 @@ export async function GET(request: Request) {
       relevanceReasoning: s.relevance_reasoning,
     }));
 
+    // One synthesis call per account per day, only when there's actually a
+    // batch to synthesize (the pending.length === 0 branch above already
+    // returns before this point) — bounded the same way the per-signal
+    // scoring call already is.
+    let verdict: string | null = null;
     try {
-      await sendDigestEmail(account.contact_email, account.name, digestSignals, "daily");
+      const verdictSignals: VerdictSignal[] = pending.map((s) => ({
+        competitorName: competitors?.find((c) => c.id === s.competitor_id)?.name ?? "Unknown",
+        title: s.title,
+        relevanceLevel: s.relevance_level ?? "Medium",
+        relevanceReasoning: s.relevance_reasoning,
+      }));
+      verdict = await generateDigestVerdict(
+        {
+          companyName: account.name,
+          positioning: account.positioning,
+          icp: account.icp,
+          lostDealNotes: account.lost_deal_notes,
+          churnNotes: account.churn_notes,
+          companyResearch: account.company_research,
+        },
+        verdictSignals,
+        account.id
+      );
+    } catch (err) {
+      // A missing verdict just means the email reads as a plain list
+      // today, same as before this feature existed — not worth failing
+      // the whole digest send over.
+      console.error(`daily verdict generation failed for ${account.name}:`, err);
+    }
+
+    try {
+      await sendDigestEmail(account.contact_email, account.name, digestSignals, "daily", verdict);
     } catch (err) {
       // Don't mark these as sent — leave them pending so the next run
       // retries, and don't let one account's failure stop the rest.

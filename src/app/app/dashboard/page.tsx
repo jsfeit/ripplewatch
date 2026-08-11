@@ -1,6 +1,13 @@
 import { redirect } from "next/navigation";
+import { Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { DashboardFeed } from "./dashboard-feed";
+
+// Banner goes stale rather than lying: if the weekly cron ever fails to
+// run, an 8-day-old "this week's takeaway" reading as current would be
+// actively misleading, so it just disappears instead once it's too old to
+// trust — regenerating next successful cron run brings it back.
+const VERDICT_STALE_MS = 8 * 24 * 60 * 60 * 1000;
 
 export const metadata = { title: "News" };
 export const dynamic = "force-dynamic";
@@ -23,9 +30,15 @@ export default async function DashboardPage() {
 
   const { data: account } = await supabase
     .from("accounts")
-    .select("name, positioning, icp, lost_deal_notes, churn_notes, tier")
+    .select("name, positioning, icp, lost_deal_notes, churn_notes, tier, weekly_verdict, weekly_verdict_generated_at")
     .eq("id", profile.account_id)
     .single();
+
+  const now = new Date();
+  const verdictIsFresh =
+    account?.weekly_verdict &&
+    account.weekly_verdict_generated_at &&
+    now.getTime() - new Date(account.weekly_verdict_generated_at).getTime() < VERDICT_STALE_MS;
 
   const { data: competitors } = await supabase
     .from("competitors")
@@ -60,6 +73,16 @@ export default async function DashboardPage() {
           Signals across every tracked competitor. Scored alerts include the reasoning behind the verdict.
         </p>
       </div>
+
+      {verdictIsFresh ? (
+        <div className="mb-5 flex items-start gap-2.5 rounded-lg border border-primary/25 bg-primary/[0.04] p-3.5">
+          <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary">This week&apos;s takeaway</p>
+            <p className="mt-1 text-sm text-foreground">{account!.weekly_verdict}</p>
+          </div>
+        </div>
+      ) : null}
 
       <DashboardFeed
         competitors={competitors ?? []}
