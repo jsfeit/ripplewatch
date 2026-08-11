@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Loader2, Printer, RefreshCw, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/app/empty-state";
@@ -107,8 +108,11 @@ export function TrendsBoard({
       {error ? <p className="mt-3 text-sm text-destructive print:hidden">{error}</p> : null}
       {insufficientData ? (
         <p className="mt-3 text-sm text-muted-foreground print:hidden">
-          Not enough logged win/loss data yet to identify real trends. Log or import more deals on the Competitors
-          page, then try again.
+          Not enough logged win/loss or churn data yet to identify real trends.{" "}
+          <Link href="/app/competitors" className="text-primary underline underline-offset-2">
+            Log or import more on the Competitors page
+          </Link>
+          , then try again.
         </p>
       ) : null}
 

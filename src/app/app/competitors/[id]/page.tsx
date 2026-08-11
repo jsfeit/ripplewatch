@@ -33,7 +33,7 @@ export default async function CompetitorDetailPage({
 
   const { data: account } = await supabase
     .from("accounts")
-    .select("name, tier")
+    .select("name, tier, has_sales_crm, has_plg")
     .eq("id", profile.account_id)
     .single();
   if (!account) redirect("/onboarding");
@@ -162,6 +162,11 @@ export default async function CompetitorDetailPage({
           competitorName={competitor.name}
           accountName={account.name}
           hubspotConnected={Boolean(hubspotIntegration)}
+          // Legacy accounts that predate this question on both false: keep
+          // showing win/loss (the original, only option) rather than
+          // hiding data-collection entirely.
+          showWinLoss={account.has_sales_crm || !account.has_plg}
+          showChurn={account.has_plg}
           initialWhyWeWin={competitor.fact_sheet_why_we_win}
           initialWhyWeLose={competitor.fact_sheet_why_we_lose}
           initialGeneratedAt={competitor.fact_sheet_generated_at}
