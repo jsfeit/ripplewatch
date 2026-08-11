@@ -42,7 +42,7 @@ export async function POST() {
 
   const { data: account } = await supabase
     .from("accounts")
-    .select("lost_deal_notes, won_deal_notes")
+    .select("lost_deal_notes, won_deal_notes, churn_notes")
     .eq("id", accountId)
     .single();
 
@@ -68,6 +68,13 @@ export async function POST() {
   }
   for (const reason of splitNotes(account?.won_deal_notes ?? null)) {
     entries.push({ reason, outcome: "won", competitorName: null });
+  }
+  // Churn has no per-competitor home (see /api/accounts/churn) the way a
+  // lost sales deal does, but it's the same signal shape for a PLG/B2C
+  // account — a real reason a customer left — so it counts toward themes
+  // the same way a general lost-deal reason does.
+  for (const reason of splitNotes(account?.churn_notes ?? null)) {
+    entries.push({ reason, outcome: "lost", competitorName: null });
   }
 
   if (entries.length < MIN_ENTRIES_FOR_TRENDS) {

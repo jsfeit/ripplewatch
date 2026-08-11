@@ -93,6 +93,8 @@ export function CompetitorFactSheet({
   initialWhyWeLose,
   initialGeneratedAt,
   initialWinLoss,
+  showWinLoss = true,
+  showChurn = false,
 }: {
   competitorId: string;
   competitorName: string;
@@ -102,6 +104,12 @@ export function CompetitorFactSheet({
   initialWhyWeLose: string | null;
   initialGeneratedAt: string | null;
   initialWinLoss: WinLossEntry[];
+  // Onboarding's has_sales_crm/has_plg decide which of these an account
+  // sees — win/loss is inherently sales-deal shaped (won/lost against a
+  // named competitor) and doesn't fit a self-serve/PLG product where
+  // customers churn rather than lose a deal. Both can be true (hybrid).
+  showWinLoss?: boolean;
+  showChurn?: boolean;
 }) {
   const [whyWeWin, setWhyWeWin] = useState(toBullets(initialWhyWeWin));
   const [whyWeLose, setWhyWeLose] = useState(toBullets(initialWhyWeLose));
@@ -115,6 +123,10 @@ export function CompetitorFactSheet({
   const [outcome, setOutcome] = useState<WinLossOutcome>("lost");
   const [reason, setReason] = useState("");
   const [savingEntry, setSavingEntry] = useState(false);
+
+  const [churnReason, setChurnReason] = useState("");
+  const [savingChurn, setSavingChurn] = useState(false);
+  const [churnMessage, setChurnMessage] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -192,9 +204,13 @@ export function CompetitorFactSheet({
 
   // Nudge every time there's nothing logged yet, on both the first
   // generation and any refresh, since the "why we win" side stays thin
-  // until there's real evidence behind it.
+  // until there's real evidence behind it. Only applies when win/loss is
+  // the account's shown log — a churn-only (PLG) account has no
+  // client-visible "entries" list to check (churn_notes is a server-side
+  // blob, not fetched here), so nudging it toward a UI it doesn't have
+  // would be actively wrong.
   function handleGenerateClick() {
-    if (entries.length === 0) {
+    if (showWinLoss && entries.length === 0) {
       setNudgeOpen(true);
       return;
     }
@@ -225,6 +241,31 @@ export function CompetitorFactSheet({
   async function deleteEntry(id: string) {
     setEntries((prev) => prev.filter((e) => e.id !== id));
     await fetch(`/api/competitors/${competitorId}/win-loss/${id}`, { method: "DELETE" }).catch(() => {});
+  }
+
+  // Account-wide, not competitor-scoped (see /api/accounts/churn) — this
+  // page is just the nearest natural place a PLG account is already
+  // looking at evidence-gathering UI, same reasoning as the general lost/
+  // won notes already surfaced here.
+  async function addChurnReason() {
+    if (!churnReason.trim()) return;
+    setSavingChurn(true);
+    setChurnMessage(null);
+    try {
+      const res = await fetch("/api/accounts/churn", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: churnReason.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not save.");
+      setChurnReason("");
+      setChurnMessage("Logged. This account-wide context feeds every fact sheet and alert scoring.");
+    } catch (err) {
+      setChurnMessage(err instanceof Error ? err.message : "Could not save.");
+    } finally {
+      setSavingChurn(false);
+    }
   }
 
   return (
@@ -300,6 +341,7 @@ export function CompetitorFactSheet({
         </p>
       )}
 
+      {showWinLoss ? (
       <div className="mt-6 border-t border-border pt-4 print:hidden">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-semibold text-muted-foreground">Win/loss log</p>
@@ -344,10 +386,18 @@ export function CompetitorFactSheet({
         ) : null}
 
         {entries.length === 0 ? (
-          <p className="mt-2 text-xs text-muted-foreground">
-            No wins or losses logged yet against {competitorName}. The more you log, the sharper and more specific
-            this fact sheet gets, especially the &quot;why we win&quot; side, which is thin without real evidence.
-          </p>
+          <div className="mt-2 flex items-start gap-2.5 rounded-lg border border-primary/25 bg-primary/[0.04] p-3">
+            <Plus className="mt-0.5 size-4 shrink-0 text-primary" />
+            <div>
+              <p className="text-xs font-medium text-foreground">
+                No wins or losses logged yet against {competitorName}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                The more you log, the sharper this fact sheet gets, especially &quot;why we win,&quot; which is
+                thin without real evidence. Use Upload CSV, Sync HubSpot, or Log a win/loss above.
+              </p>
+            </div>
+          </div>
         ) : (
           <ul className="mt-2 space-y-2">
             {entries.map((e) => (
@@ -420,6 +470,37 @@ export function CompetitorFactSheet({
           </div>
         ) : null}
       </div>
+      ) : null}
+
+      {showChurn ? (
+        <div className="mt-6 border-t border-border pt-4 print:hidden">
+          <p className="text-xs font-semibold text-muted-foreground">Customer churn</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Account-wide, not specific to {competitorName} — churn reasons rarely name one competitor the way a
+            lost sales deal does. Feeds every fact sheet and alert scoring the same way lost-deal reasons do for
+            sales-led accounts.
+          </p>
+          <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-primary/25 bg-primary/[0.04] p-3">
+            <Plus className="mt-0.5 size-4 shrink-0 text-primary" />
+            <div className="w-full space-y-2">
+              <p className="text-xs font-medium text-foreground">Log a churn reason</p>
+              <Textarea
+                placeholder="e.g. Churned after 2 months, said RivalSense's onboarding was easier to get started with"
+                value={churnReason}
+                onChange={(e) => setChurnReason(e.target.value)}
+                rows={2}
+              />
+              <div className="flex items-center justify-between gap-2">
+                {churnMessage ? <p className="text-xs text-muted-foreground">{churnMessage}</p> : <span />}
+                <Button size="sm" onClick={addChurnReason} disabled={savingChurn || !churnReason.trim()}>
+                  {savingChurn ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                  Save
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <Dialog open={nudgeOpen} onOpenChange={setNudgeOpen}>
         <DialogContent>
