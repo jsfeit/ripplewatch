@@ -72,8 +72,8 @@ export function TrendsBoard({
             {generatedAt ? `Generated ${new Date(generatedAt).toLocaleDateString()}` : "Not generated yet"}
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Reads every logged win/loss reason across all competitors — costs one LLM call per generation, so this
-            runs on demand rather than automatically.
+            Looks across every logged win/loss reason for recurring themes. Runs when you click Generate rather
+            than automatically, so it always reflects your latest data.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={handleGenerate} disabled={generating}>
@@ -95,7 +95,7 @@ export function TrendsBoard({
           <EmptyState
             icon={TrendingUp}
             title="No trends yet"
-            description="Click Generate above to look for recurring themes across your logged win/loss data."
+            description="Click Generate to see the patterns behind why you&apos;re winning and losing deals."
           />
         </div>
       ) : (
@@ -146,43 +146,51 @@ function TrendCard({ trend, signalsById }: { trend: Trend; signalsById: Record<s
         </ul>
       ) : null}
 
-      {trend.related_signals.length > 0 ? (
-        <div className="mt-3 space-y-1.5 border-t border-dashed border-border pt-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Connected signals
-          </p>
-          {trend.related_signals.map((related, i) => {
-            const signal = signalsById[related.signalId];
-            if (!signal) return null;
-            return (
-              <div key={i} className="text-xs">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span
-                    className={cn(
-                      "rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
-                    )}
-                  >
-                    {SIGNAL_TYPE_LABELS[signal.type] ?? signal.type}
-                  </span>
-                  {signal.url ? (
-                    <a
-                      href={signal.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-medium text-primary hover:underline"
+      {(() => {
+        const linked = trend.related_signals
+          .map((related) => ({ related, signal: signalsById[related.signalId] }))
+          .filter((r) => r.signal);
+        return (
+          <div className="mt-3 space-y-1.5 border-t border-dashed border-border pt-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Why it&apos;s happening
+            </p>
+            {linked.length === 0 ? (
+              <p className="text-xs italic text-muted-foreground">
+                No specific news or activity from a competitor explains this yet — just a pattern in what you&apos;ve
+                logged.
+              </p>
+            ) : (
+              linked.map(({ related, signal }, i) => (
+                <div key={i} className="text-xs">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span
+                      className={cn(
+                        "rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                      )}
                     >
-                      {signal.title}
-                    </a>
-                  ) : (
-                    <span className="font-medium">{signal.title}</span>
-                  )}
+                      {SIGNAL_TYPE_LABELS[signal!.type] ?? signal!.type}
+                    </span>
+                    {signal!.url ? (
+                      <a
+                        href={signal!.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {signal!.title}
+                      </a>
+                    ) : (
+                      <span className="font-medium">{signal!.title}</span>
+                    )}
+                  </div>
+                  <p className="mt-0.5 text-muted-foreground">{related.relationNote}</p>
                 </div>
-                <p className="mt-0.5 text-muted-foreground">{related.relationNote}</p>
-              </div>
-            );
-          })}
-        </div>
-      ) : null}
+              ))
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

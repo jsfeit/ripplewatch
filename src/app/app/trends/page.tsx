@@ -115,8 +115,8 @@ export default async function TrendsPage() {
       <div className="mt-10">
         <h2 className="text-sm font-semibold">Win/loss trends</h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          Recurring themes across every logged win/loss reason, spanning all your tracked competitors — connected
-          to real signals where the link is genuine.
+          The recurring reasons you&apos;re winning and losing deals, grouped into patterns across all your
+          competitors — with links to the news that explains them, when we find a real connection.
         </p>
         <div className="mt-4">
           <TrendsBoard
