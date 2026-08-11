@@ -72,6 +72,8 @@ export interface Database {
           cost_alert_sent_month: string | null;
           company_research: string | null;
           company_research_updated_at: string | null;
+          weekly_verdict: string | null;
+          weekly_verdict_generated_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -95,6 +97,8 @@ export interface Database {
           cost_alert_sent_month?: string | null;
           company_research?: string | null;
           company_research_updated_at?: string | null;
+          weekly_verdict?: string | null;
+          weekly_verdict_generated_at?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["accounts"]["Insert"]>;

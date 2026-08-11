@@ -1430,3 +1430,77 @@ Identify the recurring themes.`;
     throw new Error(`Could not parse win/loss trends response: ${text}`, { cause: err });
   }
 }
+
+export type VerdictSignal = {
+  competitorName: string;
+  title: string;
+  relevanceLevel: string;
+  relevanceReasoning: string | null;
+};
+
+// Every signal here already has its own per-signal "why it matters"
+// reasoning (see scoreSignal) — this reads across the whole batch and
+// writes the one thing none of them do individually: what they add up to.
+// Explicitly told not to just restate each item, and not to manufacture
+// urgency out of a genuinely quiet batch — an honest "nothing here changes
+// the picture" is a real verdict, not a failure to produce one.
+const DIGEST_VERDICT_SYSTEM_PROMPT = `You write a short verdict summarizing a batch of already-scored competitive intelligence signals for one company, using their own business context.
+
+You will be given the company's positioning, ICP, known lost-deal/churn reasons, cached public research on the company, and a list of signals — each already scored High or Medium relevance with its own one-line reasoning.
+
+Write ONE short paragraph (2-4 sentences) synthesizing what this batch means TOGETHER, not a recap of each item. Roll multiple related signals into a single takeaway when they point the same direction (e.g. two competitors both shipping AI features this week is a trend, not two separate facts). Ground the verdict in the company's own positioning/ICP/lost-deal context the same way each individual signal was scored, not generic competitive commentary. If the batch is genuinely mixed or minor, say that plainly rather than inventing urgency — a quiet or ambiguous week is a legitimate, honest verdict.
+
+Never invent a fact not present in the given signals or context. Do not open with throat-clearing like "This week's signals show..." — lead directly with the takeaway.
+
+Respond with strict JSON only, no markdown, matching this shape exactly:
+{"verdict": "<2-4 sentence paragraph>"}`;
+
+const DIGEST_VERDICT_SCHEMA = {
+  type: "object",
+  properties: {
+    verdict: { type: "string" },
+  },
+  required: ["verdict"],
+  additionalProperties: false,
+} as const;
+
+export async function generateDigestVerdict(
+  context: ScoringContext,
+  signals: VerdictSignal[],
+  accountId: string | null
+): Promise<string | null> {
+  if (signals.length === 0) return null;
+
+  const signalsText = signals
+    .map((s, i) => `${i + 1}. [${s.relevanceLevel}] ${s.competitorName}: ${s.title} — ${s.relevanceReasoning ?? ""}`)
+    .join("\n");
+
+  const userPrompt = `Company: ${context.companyName}
+Positioning (self-reported): ${context.positioning ?? "(not provided)"}
+ICP: ${context.icp ?? "(not provided)"}
+${context.companyResearch ? `Public market research on this company: ${context.companyResearch}\n` : ""}Known lost-deal reasons: ${context.lostDealNotes ?? "(none provided)"}
+Known churn reasons: ${context.churnNotes ?? "(none provided)"}
+
+Signals in this batch:
+${signalsText}
+
+Write the verdict.`;
+
+  const message = await getAnthropic().messages.create({
+    model: "claude-sonnet-5",
+    max_tokens: 500,
+    system: cachedSystemPrompt(DIGEST_VERDICT_SYSTEM_PROMPT),
+    output_config: { format: { type: "json_schema", schema: DIGEST_VERDICT_SCHEMA } },
+    messages: [{ role: "user", content: userPrompt }],
+  });
+  recordLlmUsage(accountId, "generateDigestVerdict", message.model, message.usage);
+
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  try {
+    const parsed = JSON.parse(text);
+    return typeof parsed.verdict === "string" && parsed.verdict.trim() ? parsed.verdict.trim() : null;
+  } catch (err) {
+    console.error("generateDigestVerdict: failed to parse response", text.slice(0, 500), err);
+    return null;
+  }
+}

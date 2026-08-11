@@ -54,7 +54,12 @@ function digestSignalRank(s: DigestSignal): number {
   return RELEVANCE_RANK[s.relevanceLevel] ?? 3;
 }
 
-function renderDigestHtml(companyName: string, signals: DigestSignal[], cadence: DigestCadence): string {
+function renderDigestHtml(
+  companyName: string,
+  signals: DigestSignal[],
+  cadence: DigestCadence,
+  verdict?: string | null
+): string {
   const rows = [...signals]
     .sort((a, b) => digestSignalRank(a) - digestSignalRank(b))
     .map((s) => {
@@ -73,9 +78,20 @@ function renderDigestHtml(companyName: string, signals: DigestSignal[], cadence:
   const scoredCount = signals.filter((s) => s.scored).length;
   const { eyebrow } = CADENCE_COPY[cadence];
 
+  // The verdict is a synthesis across the whole batch (see
+  // generateDigestVerdict) — rendered above the itemized list, visually
+  // distinct, so it reads as the takeaway rather than one more item.
+  const verdictHtml = verdict
+    ? `<div style="border:1px solid #b9dfd9;background:#effaf8;border-radius:8px;padding:14px;margin-bottom:16px;">
+        <p style="margin:0;color:#0f5c52;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">The takeaway</p>
+        <p style="margin:6px 0 0;color:#1a1a1a;font-size:14px;line-height:1.5;">${verdict}</p>
+      </div>`
+    : "";
+
   return `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;">
     <p style="color:#888;font-size:13px;">${eyebrow}</p>
     <h2 style="margin:4px 0 16px;">${signals.length} signals, ${scoredCount} worth acting on</h2>
+    ${verdictHtml}
     ${rows}
     <p style="color:#888;font-size:12px;margin-top:24px;">Ripplewatch, for ${companyName}</p>
   </div>`;
@@ -83,11 +99,15 @@ function renderDigestHtml(companyName: string, signals: DigestSignal[], cadence:
 
 // cadence only changes copy/subject — the caller decides which signals
 // belong in a daily vs. weekly send (see the two digest cron routes).
+// verdict is optional: the daily cron generates one fresh each send, the
+// weekly cron passes the same stored value it also puts on the dashboard
+// banner (see accounts.weekly_verdict) rather than generating it twice.
 export async function sendDigestEmail(
   to: string,
   companyName: string,
   signals: DigestSignal[],
-  cadence: DigestCadence = "daily"
+  cadence: DigestCadence = "daily",
+  verdict?: string | null
 ) {
   if (!isResendConfigured() || signals.length === 0) return;
 
@@ -97,7 +117,7 @@ export async function sendDigestEmail(
     from: getAlertsFromEmail(),
     to,
     subject: `${signals.filter((s) => s.scored).length} scored alert${signals.length === 1 ? "" : "s"} ${noun}`,
-    html: renderDigestHtml(companyName, signals, cadence),
+    html: renderDigestHtml(companyName, signals, cadence, verdict),
   });
   if (result.error) throw new Error(result.error.message);
 }
