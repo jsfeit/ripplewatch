@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Loader2, Plus, Printer, RefreshCw, Trash2, ThumbsDown, ThumbsUp, Upload } from "lucide-react";
+import { ChevronDown, Loader2, Plus, Printer, RefreshCw, Trash2, ThumbsDown, ThumbsUp, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -119,6 +119,7 @@ export function CompetitorFactSheet({
   const [nudgeOpen, setNudgeOpen] = useState(false);
 
   const [entries, setEntries] = useState(initialWinLoss);
+  const [showAllEntries, setShowAllEntries] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [outcome, setOutcome] = useState<WinLossOutcome>("lost");
   const [reason, setReason] = useState("");
@@ -268,6 +269,35 @@ export function CompetitorFactSheet({
     }
   }
 
+  // A large CSV import (hundreds of rows) otherwise renders as one entry
+  // per row — unreadable, and most reasons repeat verbatim (a CRM's own
+  // dropdown of canned reasons, in practice). Grouped by exact reason text
+  // (case/whitespace-insensitive) rather than an LLM call: deterministic,
+  // free, and this data is already close-ended enough that exact matching
+  // does the job — fuzzy synthesis across freeform text is what Trends is
+  // for, not this list.
+  const reasonGroups = useMemo(() => {
+    const groups = new Map<string, { reason: string; wonCount: number; lostCount: number }>();
+    for (const e of entries) {
+      const key = e.reason ? e.reason.trim().toLowerCase() : "__no_reason__";
+      const existing = groups.get(key);
+      if (existing) {
+        if (e.outcome === "won") existing.wonCount++;
+        else existing.lostCount++;
+      } else {
+        groups.set(key, {
+          reason: e.reason?.trim() || "No reason given",
+          wonCount: e.outcome === "won" ? 1 : 0,
+          lostCount: e.outcome === "lost" ? 1 : 0,
+        });
+      }
+    }
+    return Array.from(groups.values()).sort((a, b) => b.wonCount + b.lostCount - (a.wonCount + a.lostCount));
+  }, [entries]);
+
+  const wonTotal = entries.filter((e) => e.outcome === "won").length;
+  const lostTotal = entries.length - wonTotal;
+
   return (
     <div className="mt-8 rounded-lg border-2 border-primary/30 bg-primary/[0.02] p-4 print:border-none print:bg-transparent print:p-0">
       <div className="flex items-start justify-between gap-3">
@@ -344,7 +374,16 @@ export function CompetitorFactSheet({
       {showWinLoss ? (
       <div className="mt-6 border-t border-border pt-4 print:hidden">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs font-semibold text-muted-foreground">Win/loss log</p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs font-semibold text-muted-foreground">Win/loss log</p>
+            {entries.length > 0 ? (
+              <span className="text-[11px] text-muted-foreground">
+                <span className="font-semibold text-primary">{wonTotal} won</span> ·{" "}
+                <span className="font-semibold text-amber-600 dark:text-amber-400">{lostTotal} lost</span> against{" "}
+                {competitorName}
+              </span>
+            ) : null}
+          </div>
           <div className="flex flex-wrap items-center gap-1.5">
             <input
               ref={fileInputRef}
@@ -399,33 +438,75 @@ export function CompetitorFactSheet({
             </div>
           </div>
         ) : (
-          <ul className="mt-2 space-y-2">
-            {entries.map((e) => (
-              <li key={e.id} className="flex items-start gap-2 rounded-md border border-border p-2 text-xs">
-                <span
-                  className={cn(
-                    "mt-0.5 shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold",
-                    e.outcome === "won"
-                      ? "border-primary/30 bg-primary/10 text-primary"
-                      : "border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-400"
-                  )}
-                >
-                  {e.outcome === "won" ? "Won" : "Lost"}
-                </span>
-                <span className={cn("flex-1", e.reason ? "text-foreground" : "italic text-muted-foreground")}>
-                  {e.reason ?? "No reason given"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => deleteEntry(e.id)}
-                  className="shrink-0 text-muted-foreground hover:text-destructive"
-                  aria-label="Delete entry"
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="mt-2 space-y-1.5">
+              {reasonGroups.map((g) => {
+                const total = g.wonCount + g.lostCount;
+                return (
+                  <li
+                    key={g.reason}
+                    className="flex items-center gap-2 rounded-md border border-border p-2 text-xs"
+                  >
+                    <span className="flex shrink-0 items-center gap-1">
+                      {g.wonCount > 0 ? (
+                        <span className="rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                          {g.wonCount} won
+                        </span>
+                      ) : null}
+                      {g.lostCount > 0 ? (
+                        <span className="rounded-full border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+                          {g.lostCount} lost
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className={cn("flex-1", g.reason !== "No reason given" ? "text-foreground" : "italic text-muted-foreground")}>
+                      {g.reason}
+                    </span>
+                    <span className="shrink-0 text-[10px] text-muted-foreground">×{total}</span>
+                  </li>
+                );
+              })}
+            </ul>
+
+            <button
+              type="button"
+              onClick={() => setShowAllEntries((v) => !v)}
+              className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+            >
+              <ChevronDown className={cn("size-3 transition-transform", showAllEntries && "rotate-180")} />
+              {showAllEntries ? "Hide" : "Show"} all {entries.length} individual entries
+            </button>
+
+            {showAllEntries ? (
+              <ul className="mt-2 space-y-2">
+                {entries.map((e) => (
+                  <li key={e.id} className="flex items-start gap-2 rounded-md border border-border p-2 text-xs">
+                    <span
+                      className={cn(
+                        "mt-0.5 shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold",
+                        e.outcome === "won"
+                          ? "border-primary/30 bg-primary/10 text-primary"
+                          : "border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                      )}
+                    >
+                      {e.outcome === "won" ? "Won" : "Lost"}
+                    </span>
+                    <span className={cn("flex-1", e.reason ? "text-foreground" : "italic text-muted-foreground")}>
+                      {e.reason ?? "No reason given"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => deleteEntry(e.id)}
+                      className="shrink-0 text-muted-foreground hover:text-destructive"
+                      aria-label="Delete entry"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </>
         )}
 
         {formOpen ? (
