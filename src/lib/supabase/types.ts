@@ -532,6 +532,18 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["llm_usage"]["Insert"]>;
         Relationships: [];
       };
+      system_alerts: {
+        Row: {
+          key: string;
+          last_sent_at: string;
+        };
+        Insert: {
+          key: string;
+          last_sent_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["system_alerts"]["Insert"]>;
+        Relationships: [];
+      };
       signal_eval_labels: {
         Row: {
           signal_id: string;
