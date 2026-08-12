@@ -62,6 +62,15 @@ export const INTERCOM_ALLOWED: Record<AccountTier, boolean> = {
   advanced: true,
 };
 
+// Read-only REST API (see /api/v1/*) for customers wiring Ripplewatch's
+// intel into their own agents/tools — a Plus/Advanced feature, same shape
+// as the SEO/traffic gate above, not a Starter-tier expectation.
+export const API_ACCESS_ALLOWED: Record<AccountTier, boolean> = {
+  starter: false,
+  plus: true,
+  advanced: true,
+};
+
 export function competitorLimitLabel(tier: AccountTier): string {
   const limit = COMPETITOR_LIMIT[tier];
   return limit === Infinity ? "unlimited" : String(limit);

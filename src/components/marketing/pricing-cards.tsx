@@ -67,6 +67,7 @@ export function PricingCards() {
                     {tier.callIntel ? <FeatureRow label={tier.callIntel} /> : null}
                     {tier.gong ? <FeatureRow label={tier.gong} /> : null}
                     {tier.intercom ? <FeatureRow label={tier.intercom} /> : null}
+                    {tier.apiAccess ? <FeatureRow label={tier.apiAccess} /> : null}
                     <FeatureRow label={tier.seats === "Unlimited" ? "Unlimited logins" : tier.seats} />
                   </ul>
                   <Link

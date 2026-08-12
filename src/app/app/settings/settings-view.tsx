@@ -7,11 +7,12 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { IntegrationConnector } from "@/components/app/integration-connector";
 import { TeamManager } from "@/components/app/team-manager";
+import { ApiKeysManager } from "@/components/app/api-keys-manager";
 import { BillingPeriodToggle, type BillingPeriod } from "@/components/marketing/billing-period-toggle";
 import { TIERS } from "@/lib/tiers";
 import { ANNUAL_DISCOUNT_PERCENT, annualPriceUsd } from "@/lib/pricing";
 import { trackEvent } from "@/lib/analytics";
-import { CRM_ALLOWED, CALL_INTEL_ALLOWED, INTERCOM_ALLOWED } from "@/lib/tier-limits";
+import { CRM_ALLOWED, CALL_INTEL_ALLOWED, INTERCOM_ALLOWED, API_ACCESS_ALLOWED } from "@/lib/tier-limits";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { TIER_BADGE } from "@/lib/tier-style";
@@ -23,18 +24,24 @@ type Account = Database["public"]["Tables"]["accounts"]["Row"];
 type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
 type Integration = Database["public"]["Tables"]["integrations"]["Row"];
 type Signal = Database["public"]["Tables"]["signals"]["Row"];
+type ApiKey = Pick<
+  Database["public"]["Tables"]["api_keys"]["Row"],
+  "id" | "name" | "key_prefix" | "last_used_at" | "created_at"
+>;
 
 export function SettingsView({
   account,
   competitors,
   integrations,
   recentSignals,
+  apiKeys,
   currentUserId,
 }: {
   account: Account;
   competitors: Competitor[];
   integrations: Integration[];
   recentSignals: Signal[];
+  apiKeys: ApiKey[];
   currentUserId: string;
 }) {
   const [error, setError] = useState("");
@@ -59,6 +66,9 @@ export function SettingsView({
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("tab") === "plan") {
+      // Syncing one-time from an external system (the URL) on mount —
+      // the case the rule's own guidance calls out as fine.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab("plan");
     }
   }, []);
@@ -112,8 +122,14 @@ export function SettingsView({
     });
     const data = await res.json();
     setBillingLoading(null);
-    if (res.ok) window.location.href = data.url;
-    else setError(data.error ?? "Could not start checkout.");
+    if (res.ok) {
+      // Full navigation to Stripe Portal, not a client-side route change —
+      // a plain click-handler side effect, not render/effect state.
+      // eslint-disable-next-line react-hooks/immutability
+      window.location.href = data.url;
+    } else {
+      setError(data.error ?? "Could not start checkout.");
+    }
   }
 
   return (
@@ -132,6 +148,7 @@ export function SettingsView({
         <TabsTrigger value="team">Team</TabsTrigger>
         <TabsTrigger value="plan">Plan</TabsTrigger>
         <TabsTrigger value="digest">Digest preview</TabsTrigger>
+        <TabsTrigger value="developer">Developer</TabsTrigger>
       </TabsList>
 
       <TabsContent value="team" className="mt-6">
@@ -413,6 +430,34 @@ export function SettingsView({
             </Card>
           </>
         )}
+      </TabsContent>
+
+      <TabsContent value="developer" className="mt-6">
+        <Card>
+          <CardHeader>
+            <h2 className="font-medium">API access</h2>
+          </CardHeader>
+          <CardContent>
+            {API_ACCESS_ALLOWED[account.tier] ? (
+              <ApiKeysManager initialKeys={apiKeys} />
+            ) : (
+              <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-400">
+                <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                <p>
+                  API access is a Plus/Advanced feature.{" "}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("plan")}
+                    className="underline underline-offset-2"
+                  >
+                    Upgrade
+                  </button>{" "}
+                  to generate keys.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </TabsContent>
       </Tabs>
     </>

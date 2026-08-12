@@ -20,6 +20,7 @@ export type Tier = {
   callIntel?: string;
   gong?: string;
   intercom?: string;
+  apiAccess?: string;
   seats: string;
   cta: string;
   highlight?: boolean;
@@ -64,6 +65,7 @@ export const TIERS: Tier[] = [
     relevanceScoring: "Full scoring on every signal",
     delivery: "Slack + email",
     crm: "HubSpot (read-only pull)",
+    apiAccess: "Read-only API access",
     seats: "Up to 10 seats",
     cta: "Start with Plus",
     highlight: true,
@@ -86,6 +88,7 @@ export const TIERS: Tier[] = [
     callIntel: "Zoom call insights",
     gong: "Gong (coming soon)",
     intercom: "Intercom (coming soon)",
+    apiAccess: "Read-only API access",
     seats: "Unlimited",
     cta: "Start with Advanced",
   },
