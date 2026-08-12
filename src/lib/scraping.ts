@@ -312,7 +312,20 @@ export async function checkPricingStructure(supabase: AdminClient, competitor: C
     return;
   }
 
-  const extraction = await extractPricingStructure(pageText, competitor.account_id);
+  let extraction;
+  try {
+    extraction = await extractPricingStructure(pageText, competitor.account_id);
+  } catch (err) {
+    // The page loaded fine — this is an Anthropic-side failure (an outage,
+    // exhausted credits), not a scraping problem. Distinct from the fetch
+    // failure above: leaves the existing competitor_pricing row alone
+    // rather than overwriting good data with an "unknown" placeholder just
+    // because this one run's LLM call failed. crawl.ts's own catch around
+    // this function keeps this from taking the rest of the account's
+    // recrawl down with it.
+    console.error(`pricing structure extraction failed for ${competitor.name}:`, err);
+    return;
+  }
 
   await supabase.from("competitor_pricing").upsert(
     {
