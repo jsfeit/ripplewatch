@@ -2,6 +2,8 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import type { BillingModel, PricingTier } from "@/lib/supabase/types";
 import { recordLlmUsage } from "@/lib/usage";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { sendAnthropicCreditAlertEmail } from "@/lib/resend";
 
 let cachedClient: Anthropic | null = null;
 
@@ -15,6 +17,59 @@ function getAnthropic(): Anthropic {
     cachedClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   }
   return cachedClient;
+}
+
+const CREDIT_ALERT_KEY = "anthropic_credit_exhausted";
+// A real outage produces a burst of failures — every scoring/scraping call
+// in flight hits it within minutes (50+ in practice) — so this only re-
+// sends after a cooldown rather than once per failed call.
+const CREDIT_ALERT_COOLDOWN_MS = 60 * 60 * 1000;
+
+// Every messages.create call site below goes through this, not the SDK
+// method directly, so a low-credit-balance failure is caught in exactly one
+// place instead of needing its own handling wherever a call happens to be
+// made. Rethrows unchanged either way — this only adds a side-channel
+// alert, it never changes what the caller sees or how existing per-call
+// try/catch (crawl.ts, digest routes, etc.) already handles the failure.
+async function maybeAlertCreditExhaustion(err: unknown): Promise<void> {
+  const message = err instanceof Error ? err.message : String(err);
+  if (!/credit balance is too low/i.test(message)) return;
+
+  try {
+    const supabase = createAdminClient();
+    const { data: existing } = await supabase
+      .from("system_alerts")
+      .select("last_sent_at")
+      .eq("key", CREDIT_ALERT_KEY)
+      .maybeSingle();
+
+    if (existing && Date.now() - new Date(existing.last_sent_at).getTime() < CREDIT_ALERT_COOLDOWN_MS) return;
+
+    await supabase
+      .from("system_alerts")
+      .upsert({ key: CREDIT_ALERT_KEY, last_sent_at: new Date().toISOString() }, { onConflict: "key" });
+
+    const adminEmails = (process.env.ADMIN_EMAILS ?? "")
+      .split(",")
+      .map((email) => email.trim())
+      .filter(Boolean);
+    await sendAnthropicCreditAlertEmail(adminEmails);
+  } catch (alertErr) {
+    // Never let the alerting path itself break the original call's error
+    // handling — log and move on, the caller's own catch still runs.
+    console.error("maybeAlertCreditExhaustion failed:", alertErr);
+  }
+}
+
+async function createMessage(
+  params: Anthropic.Messages.MessageCreateParamsNonStreaming
+): Promise<Anthropic.Messages.Message> {
+  try {
+    return await getAnthropic().messages.create(params);
+  } catch (err) {
+    await maybeAlertCreditExhaustion(err);
+    throw err;
+  }
 }
 
 // Every system prompt here is a fixed string reused across many calls (every
@@ -162,7 +217,7 @@ export async function summarizePricingChange(
   const truncate = (s: string) => s.slice(0, 6000);
   const userPrompt = `BEFORE:\n${truncate(oldText)}\n\nAFTER:\n${truncate(newText)}\n\nWhat changed?`;
 
-  const message = await getAnthropic().messages.create({
+  const message = await createMessage({
     model: "claude-sonnet-5",
     max_tokens: 200,
     system: cachedSystemPrompt(DIFF_SYSTEM_PROMPT),
@@ -240,7 +295,7 @@ export async function extractPricingStructure(
 ): Promise<PricingExtraction> {
   const userPrompt = `Pricing page text:\n${pageText.slice(0, 8000)}\n\nExtract the current pricing structure.`;
 
-  const message = await getAnthropic().messages.create({
+  const message = await createMessage({
     model: "claude-sonnet-5",
     // Verified live against a real pricing page (Square's) that 800 wasn't
     // enough — a page with several tiers × up to 5 features each plus JSON
@@ -384,7 +439,7 @@ export async function scoreSignal(
   signal: SignalToScore,
   accountId: string | null
 ): Promise<ScoringResult> {
-  const message = await getAnthropic().messages.create(scoringRequestParams(context, signal));
+  const message = await createMessage(scoringRequestParams(context, signal));
   recordLlmUsage(accountId, "scoreSignal", message.model, message.usage);
 
   const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
@@ -446,7 +501,7 @@ Transcript: ${call.transcriptText.slice(0, 8000)}
 
 Extract competitor mentions.`;
 
-      const message = await getAnthropic().messages.create({
+      const message = await createMessage({
         model: "claude-sonnet-5",
         max_tokens: 400,
         system: cachedSystemPrompt(MENTIONS_SYSTEM_PROMPT),
@@ -531,7 +586,7 @@ ${headlines.map((h, i) => `${i}. ${h.title}`).join("\n")}
 
 For each headline, is it genuinely about this company, and is it actually a funding/investment story or just news?`;
 
-  const message = await getAnthropic().messages.create({
+  const message = await createMessage({
     model: "claude-sonnet-5",
     max_tokens: 600,
     system: cachedSystemPrompt(HEADLINE_RELEVANCE_SYSTEM_PROMPT),
@@ -608,7 +663,7 @@ export async function canonicalizeHeadlines(
 
   const userPrompt = `Headlines:\n${headlines.map((h, i) => `${i}. ${h.title}${h.description ? ` — ${h.description}` : ""}`).join("\n")}\n\nRewrite each as a short canonical factual sentence.`;
 
-  const message = await getAnthropic().messages.create({
+  const message = await createMessage({
     model: "claude-sonnet-5",
     max_tokens: 600,
     system: cachedSystemPrompt(CANONICALIZE_HEADLINES_SYSTEM_PROMPT),
@@ -671,7 +726,7 @@ ICP: ${icp ?? "(not provided)"}
 
 Suggest likely competitors.`;
 
-  const message = await getAnthropic().messages.create({
+  const message = await createMessage({
     model: "claude-sonnet-5",
     max_tokens: 500,
     system: cachedSystemPrompt(SUGGEST_COMPETITORS_SYSTEM_PROMPT),
@@ -730,7 +785,7 @@ export async function suggestCompetitorCategories(
 
   const userPrompt = `Companies:\n${companies.map((c, i) => `${i}. ${c.name}${c.domain ? ` (${c.domain})` : ""}`).join("\n")}\n\nWrite a short category/description for each.`;
 
-  const message = await getAnthropic().messages.create({
+  const message = await createMessage({
     model: "claude-sonnet-5",
     max_tokens: 400,
     system: cachedSystemPrompt(CATEGORIZE_COMPETITORS_SYSTEM_PROMPT),
@@ -816,7 +871,7 @@ ${suggestionLines || "(none pending)"}
 
 Question: ${question}`;
 
-  const message = await getAnthropic().messages.create({
+  const message = await createMessage({
     model: "claude-sonnet-5",
     max_tokens: 600,
     system: cachedSystemPrompt(ASK_SYSTEM_PROMPT),
@@ -871,7 +926,7 @@ export async function searchCompetitorNews(
   // live that 1024 wasn't nearly enough and cut the response off mid-process
   // (stop_reason: "max_tokens", zero headlines written yet). This is real
   // overhead the free RSS scrape in scraping.ts doesn't have.
-  const message = await getAnthropic().messages.create({
+  const message = await createMessage({
     model: "claude-sonnet-5",
     max_tokens: 8192,
     system: cachedSystemPrompt(NEWS_SEARCH_SYSTEM_PROMPT),
@@ -950,7 +1005,7 @@ Already tracked (do not suggest these): ${existingCompetitorNames.length > 0 ? e
 
 Search for competitors this company isn't already tracking.`;
 
-  const message = await getAnthropic().messages.create({
+  const message = await createMessage({
     model: "claude-sonnet-5",
     // Same overhead as searchCompetitorNews's web_search tool — see that
     // function's comment on why this needs real headroom, not the ~1000
@@ -1016,7 +1071,7 @@ export async function researchCompanyContext(
 ): Promise<string> {
   const userPrompt = `Company: ${companyName}${positioning ? `\nSelf-reported positioning: ${positioning}` : ""}\n\nResearch this company's real market position.`;
 
-  const message = await getAnthropic().messages.create({
+  const message = await createMessage({
     model: "claude-sonnet-5",
     // Same web_search overhead as searchCompetitorNews/discoverNewCompetitors.
     max_tokens: 8192,
@@ -1110,7 +1165,7 @@ ${
 
 Write the fact sheet.`;
 
-  const message = await getAnthropic().messages.create({
+  const message = await createMessage({
     model: "claude-sonnet-5",
     max_tokens: 1200,
     system: cachedSystemPrompt(FACT_SHEET_SYSTEM_PROMPT),
@@ -1224,7 +1279,7 @@ ${truncated}
 
 Classify the rows.`;
 
-  const message = await getAnthropic().messages.create({
+  const message = await createMessage({
     model: "claude-sonnet-5",
     max_tokens: 8192, // near-1:1 row-to-entry yield now, needs real headroom even at 40 rows/call
     system: cachedSystemPrompt(EXTRACT_WIN_LOSS_SYSTEM_PROMPT),
@@ -1384,7 +1439,7 @@ ${signalsText}
 
 Identify the recurring themes.`;
 
-  const message = await getAnthropic().messages.create({
+  const message = await createMessage({
     model: "claude-sonnet-5",
     max_tokens: 4096,
     system: cachedSystemPrompt(IDENTIFY_TRENDS_SYSTEM_PROMPT),
@@ -1486,7 +1541,7 @@ ${signalsText}
 
 Write the verdict.`;
 
-  const message = await getAnthropic().messages.create({
+  const message = await createMessage({
     model: "claude-sonnet-5",
     max_tokens: 500,
     system: cachedSystemPrompt(DIGEST_VERDICT_SYSTEM_PROMPT),
