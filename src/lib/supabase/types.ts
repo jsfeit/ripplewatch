@@ -198,6 +198,36 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["win_loss_trends"]["Insert"]>;
         Relationships: [];
       };
+      api_keys: {
+        Row: {
+          id: string;
+          account_id: string;
+          name: string;
+          key_hash: string;
+          key_prefix: string;
+          created_by: string | null;
+          last_used_at: string | null;
+          revoked_at: string | null;
+          rate_limit_window_started_at: string | null;
+          rate_limit_count: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_id: string;
+          name?: string;
+          key_hash: string;
+          key_prefix: string;
+          created_by?: string | null;
+          last_used_at?: string | null;
+          revoked_at?: string | null;
+          rate_limit_window_started_at?: string | null;
+          rate_limit_count?: number;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["api_keys"]["Insert"]>;
+        Relationships: [];
+      };
       suggested_competitors: {
         Row: {
           id: string;
