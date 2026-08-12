@@ -220,11 +220,27 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
     // competitor's recent signals, and running them in parallel would mean
     // checkFunding can't see what checkNews just inserted (and vice versa),
     // letting the same event slip through as two separate signals.
+    //
+    // Both call into Anthropic (headline relevance filtering, dedup) with no
+    // guard of their own — previously an outage there (e.g. exhausted API
+    // credits) threw uncaught straight out of this function, killing the
+    // entire account's recrawl on whichever competitor happened to run
+    // first instead of just skipping that one check for that one
+    // competitor. Caught here the same way the checks[] array below already
+    // is via Promise.allSettled.
     if (allowedSources.includes("news")) {
-      found.push(...(await checkNews(supabase, competitor, isFirstCheck)));
+      try {
+        found.push(...(await checkNews(supabase, competitor, isFirstCheck)));
+      } catch (err) {
+        console.error(`checkNews failed for ${competitor.name}:`, err);
+      }
     }
     if (allowedSources.includes("funding")) {
-      found.push(...(await checkFunding(supabase, competitor, isFirstCheck)));
+      try {
+        found.push(...(await checkFunding(supabase, competitor, isFirstCheck)));
+      } catch (err) {
+        console.error(`checkFunding failed for ${competitor.name}:`, err);
+      }
     }
 
     // Pricing/jobs surface at most one signal per run (a diff against the
