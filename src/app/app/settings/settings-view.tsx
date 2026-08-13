@@ -338,7 +338,7 @@ export function SettingsView({
                   Manage billing
                 </Button>
               ) : null}
-              <Link href="/pricing" className={buttonVariants({ variant: "ghost" })}>
+              <Link href="/app/settings?tab=plan" className={buttonVariants({ variant: "ghost" })}>
                 Compare plans
               </Link>
             </div>

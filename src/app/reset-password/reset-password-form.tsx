@@ -29,6 +29,10 @@ export function ResetPasswordForm() {
     const hashParams = new URLSearchParams(window.location.hash.slice(1));
     const errorDescription = hashParams.get("error_description");
     if (errorDescription) {
+      // Reading an error out of the URL hash Supabase redirected here with,
+      // not deriving state from props/other state — one-time sync from an
+      // external source on mount.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLinkError(errorDescription.replace(/\+/g, " "));
       return;
     }

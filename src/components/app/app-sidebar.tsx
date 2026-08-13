@@ -12,7 +12,7 @@ import { TIER_DOT } from "@/lib/tier-style";
 const NAV = [
   { href: "/app/dashboard", label: "News", icon: LayoutDashboard },
   { href: "/app/ask", label: "Ask", icon: Sparkles },
-  { href: "/app/pricing", label: "Pricing", icon: DollarSign },
+  { href: "/app/pricing", label: "Competitor Pricing", icon: DollarSign },
   { href: "/app/trends", label: "Trends", icon: TrendingUp },
   { href: "/app/competitors", label: "Competitors", icon: Radar },
   { href: "/app/win-loss", label: "Win/Loss", icon: Scale },

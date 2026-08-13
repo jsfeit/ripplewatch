@@ -62,7 +62,7 @@ export function SuggestedCompetitorsPanel({
       {upgradeNeeded ? (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-400">
           Your plan&apos;s competitor limit is full.{" "}
-          <Link href="/pricing" className="underline">
+          <Link href="/app/settings?tab=plan" className="underline">
             Upgrade
           </Link>{" "}
           to add another.

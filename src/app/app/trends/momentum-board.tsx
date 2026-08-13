@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { TrendingUp, TrendingDown, Minus, HelpCircle, ChevronDown } from "lucide-react";
 import { EmptyState } from "@/components/app/empty-state";
 import { cn, avatarColor } from "@/lib/utils";
+import { timeAgo } from "@/lib/date";
 import { computeMomentum, MOMENTUM_STYLES, type MomentumResult } from "@/lib/momentum";
 import type { Database, SeoTrafficTrend } from "@/lib/supabase/types";
 
@@ -33,15 +34,6 @@ const TREND_STYLES: Record<SeoTrafficTrend, string> = {
   unknown: "bg-secondary text-muted-foreground",
 };
 
-function timeAgo(iso: string): string {
-  const ms = Date.now() - new Date(iso).getTime();
-  const days = Math.floor(ms / 86_400_000);
-  if (days <= 0) return "today";
-  if (days === 1) return "1 day ago";
-  if (days < 30) return `${days} days ago`;
-  const months = Math.floor(days / 30);
-  return months === 1 ? "1 month ago" : `${months} months ago`;
-}
 
 export function MomentumBoard({
   competitors,

@@ -213,7 +213,7 @@ export function WinLossPageClient({
       {showWinLoss ? (
         <div className="rounded-xl border border-border bg-card p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold">Win/loss data</h2>
+            <h2 className="text-sm font-semibold">Win/Loss data</h2>
             <div className="flex flex-wrap items-center gap-1.5">
               <input
                 ref={fileInputRef}

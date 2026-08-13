@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { sortedPosts } from "@/lib/posts";
+import { formatDate } from "@/lib/date";
 
 const description = "Notes on competitive intelligence, win/loss analysis, and building a relevance-first alerting system.";
 
@@ -10,15 +11,6 @@ export const metadata = {
   openGraph: { title: "Blog | Ripplewatch", description, images: ["/opengraph-image"] },
   twitter: { card: "summary_large_image", title: "Blog | Ripplewatch", description, images: ["/opengraph-image"] },
 };
-
-function formatDate(iso: string): string {
-  return new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-}
 
 export default function BlogIndexPage() {
   const posts = sortedPosts();

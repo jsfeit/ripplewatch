@@ -12,6 +12,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { timeAgo } from "@/lib/date";
 
 type ApiKey = {
   id: string;
@@ -20,15 +21,6 @@ type ApiKey = {
   last_used_at: string | null;
   created_at: string;
 };
-
-function timeAgo(iso: string | null): string {
-  if (!iso) return "never used";
-  const ms = Date.now() - new Date(iso).getTime();
-  const days = Math.floor(ms / 86_400_000);
-  if (days <= 0) return "used today";
-  if (days === 1) return "used 1 day ago";
-  return `used ${days} days ago`;
-}
 
 export function ApiKeysManager({ initialKeys }: { initialKeys: ApiKey[] }) {
   const [keys, setKeys] = useState(initialKeys);
@@ -117,7 +109,7 @@ export function ApiKeysManager({ initialKeys }: { initialKeys: ApiKey[] }) {
               <div>
                 <p className="text-sm font-medium">{k.name}</p>
                 <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-                  {k.key_prefix} · {timeAgo(k.last_used_at)}
+                  {k.key_prefix} · {timeAgo(k.last_used_at, { nullLabel: "never used", prefix: "used" })}
                 </p>
               </div>
               <Button

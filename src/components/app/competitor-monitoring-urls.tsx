@@ -8,6 +8,13 @@ import { guessPricingUrl, guessCareersUrl } from "@/lib/domain";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
+function StatusIcon({ state }: { state: SaveState }) {
+  if (state === "saving") return <Loader2 className="size-3.5 animate-spin text-muted-foreground" />;
+  if (state === "saved") return <Check className="size-3.5 text-primary" />;
+  if (state === "error") return <span className="text-xs text-destructive">Couldn&apos;t save</span>;
+  return null;
+}
+
 export function CompetitorMonitoringUrls({
   competitorId,
   domain,
@@ -42,13 +49,6 @@ export function CompetitorMonitoringUrls({
     } catch {
       setState("error");
     }
-  }
-
-  function StatusIcon({ state }: { state: SaveState }) {
-    if (state === "saving") return <Loader2 className="size-3.5 animate-spin text-muted-foreground" />;
-    if (state === "saved") return <Check className="size-3.5 text-primary" />;
-    if (state === "error") return <span className="text-xs text-destructive">Couldn&apos;t save</span>;
-    return null;
   }
 
   return (

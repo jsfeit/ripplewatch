@@ -182,7 +182,7 @@ export function CompetitorManager({
             You have {competitors.length} competitors but your plan only monitors{" "}
             {competitorLimitLabel(tier)}. The {competitors.length - competitorLimit} most recently
             added are no longer being crawled; remove some or{" "}
-            <Link href="/pricing" className="underline">
+            <Link href="/app/settings?tab=plan" className="underline">
               upgrade
             </Link>{" "}
             to keep tracking all of them.
