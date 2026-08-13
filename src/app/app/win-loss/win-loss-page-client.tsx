@@ -390,7 +390,7 @@ export function WinLossPageClient({
                       )}
                     </p>
                   </div>
-                  <span className="shrink-0 text-xs text-muted-foreground">View battlecard →</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">View fact sheet →</span>
                 </Link>
               );
             })}
