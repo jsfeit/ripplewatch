@@ -109,8 +109,8 @@ export function TrendsBoard({
       {insufficientData ? (
         <p className="mt-3 text-sm text-muted-foreground print:hidden">
           Not enough logged win/loss or churn data yet to identify real trends.{" "}
-          <Link href="/app/competitors" className="text-primary underline underline-offset-2">
-            Log or import more on the Competitors page
+          <Link href="/app/win-loss" className="text-primary underline underline-offset-2">
+            Log or import more on the Win/Loss page
           </Link>
           , then try again.
         </p>
