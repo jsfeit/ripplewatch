@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { COMPARISONS } from "@/lib/comparisons";
+import { POSTS } from "@/lib/posts";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
@@ -12,10 +13,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/faq", priority: 0.6, changeFrequency: "monthly" },
     { path: "/careers", priority: 0.4, changeFrequency: "monthly" },
     { path: "/state-of-competitive-intelligence", priority: 0.8, changeFrequency: "monthly" },
+    { path: "/blog", priority: 0.7, changeFrequency: "weekly" },
     { path: "/privacy", priority: 0.3, changeFrequency: "yearly" },
     { path: "/terms", priority: 0.3, changeFrequency: "yearly" },
     ...COMPARISONS.map((c) => ({
       path: `/compare/${c.slug}`,
+      priority: 0.6,
+      changeFrequency: "monthly" as const,
+    })),
+    ...POSTS.map((p) => ({
+      path: `/blog/${p.slug}`,
       priority: 0.6,
       changeFrequency: "monthly" as const,
     })),
