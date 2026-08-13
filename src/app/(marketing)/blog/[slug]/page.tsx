@@ -51,6 +51,8 @@ function Block({ block, index }: { block: PostBlock; index: number }) {
   );
 }
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
 export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const post = getPost(slug);
@@ -58,6 +60,22 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
 
   return (
     <article className="mx-auto max-w-3xl px-6 py-20">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Article",
+            headline: post.title,
+            description: post.description,
+            datePublished: post.publishedAt,
+            dateModified: post.publishedAt,
+            author: { "@type": "Organization", name: "Ripplewatch" },
+            publisher: { "@type": "Organization", name: "Ripplewatch" },
+            mainEntityOfPage: `${APP_URL}/blog/${post.slug}`,
+          }),
+        }}
+      />
       <Link href="/blog" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-3.5" />
         Blog

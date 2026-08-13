@@ -52,6 +52,22 @@ export default function RootLayout({
         <Analytics />
         <SpeedInsights />
         <CookieConsent />
+        <script
+          type="application/ld+json"
+          // Sitewide Organization markup — one static block, safe to inline
+          // since it contains no user data, just fixed brand facts.
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: "Ripplewatch",
+              url: APP_URL,
+              description: DESCRIPTION,
+              logo: `${APP_URL}/opengraph-image`,
+              sameAs: ["https://www.linkedin.com/company/ripplewatch/"],
+            }),
+          }}
+        />
       </body>
     </html>
   );

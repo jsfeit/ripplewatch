@@ -14,6 +14,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/careers", priority: 0.4, changeFrequency: "monthly" },
     { path: "/state-of-competitive-intelligence", priority: 0.8, changeFrequency: "monthly" },
     { path: "/blog", priority: 0.7, changeFrequency: "weekly" },
+    { path: "/compare", priority: 0.7, changeFrequency: "monthly" },
     { path: "/privacy", priority: 0.3, changeFrequency: "yearly" },
     { path: "/terms", priority: 0.3, changeFrequency: "yearly" },
     ...COMPARISONS.map((c) => ({

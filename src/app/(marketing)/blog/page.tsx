@@ -7,7 +7,10 @@ const description = "Notes on competitive intelligence, win/loss analysis, and b
 export const metadata = {
   title: "Blog",
   description,
-  alternates: { canonical: "/blog" },
+  alternates: {
+    canonical: "/blog",
+    types: { "application/rss+xml": "/blog/rss.xml" },
+  },
   openGraph: { title: "Blog | Ripplewatch", description, images: ["/opengraph-image"] },
   twitter: { card: "summary_large_image", title: "Blog | Ripplewatch", description, images: ["/opengraph-image"] },
 };
