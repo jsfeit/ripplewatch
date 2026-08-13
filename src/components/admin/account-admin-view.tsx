@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Pencil, Plus, Trash2, Loader2, RefreshCw, Sparkles, Eye } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,7 +55,6 @@ export function AccountAdminView({
   llmUsageTotalUsd?: number;
   llmUsageWindowDays?: number;
 }) {
-  const router = useRouter();
   const [tier, setTier] = useState(account.tier);
   const [savingTier, setSavingTier] = useState(false);
   const [startingViewAs, setStartingViewAs] = useState(false);
@@ -69,10 +67,9 @@ export function AccountAdminView({
       body: JSON.stringify({ accountId: account.id }),
     });
     if (res.ok) {
-      router.push("/app/dashboard");
-    } else {
-      setStartingViewAs(false);
+      window.open("/app/dashboard", "_blank", "noopener,noreferrer");
     }
+    setStartingViewAs(false);
   }
   const [recrawling, setRecrawling] = useState(false);
   const [recrawlResult, setRecrawlResult] = useState<string | null>(null);
