@@ -6,6 +6,7 @@ import { SuggestedCompetitorsPanel } from "@/components/app/suggested-competitor
 import { CompetitorMonitoringUrls } from "@/components/app/competitor-monitoring-urls";
 import { CompetitorFactSheet } from "@/components/app/competitor-fact-sheet";
 import { createClient } from "@/lib/supabase/server";
+import { resolveAccountContext } from "@/lib/impersonation";
 import { computeMomentum, type MomentumResult } from "@/lib/momentum";
 import { TIER_SIGNAL_SOURCES } from "@/lib/tier-limits";
 
@@ -24,46 +25,42 @@ export default async function CompetitorDetailPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("account_id")
-    .eq("id", user.id)
-    .single();
-  if (!profile?.account_id) redirect("/onboarding");
+  const { accountId, db } = await resolveAccountContext(supabase, user.id);
+  if (!accountId) redirect("/onboarding");
 
-  const { data: account } = await supabase
+  const { data: account } = await db
     .from("accounts")
     .select("name, tier, has_sales_crm, has_plg")
-    .eq("id", profile.account_id)
+    .eq("id", accountId)
     .single();
   if (!account) redirect("/onboarding");
 
-  const { data: competitors } = await supabase
+  const { data: competitors } = await db
     .from("competitors")
     .select("*")
-    .eq("account_id", profile.account_id)
+    .eq("account_id", accountId)
     .order("created_at", { ascending: true });
 
   const competitor = (competitors ?? []).find((c) => c.id === id);
   if (!competitor) notFound();
 
-  const { data: suggestions } = await supabase
+  const { data: suggestions } = await db
     .from("suggested_competitors")
     .select("*")
-    .eq("account_id", profile.account_id)
+    .eq("account_id", accountId)
     .eq("status", "pending")
     .order("discovered_at", { ascending: false });
 
-  const { data: winLoss } = await supabase
+  const { data: winLoss } = await db
     .from("competitor_win_loss")
     .select("id, outcome, reason, created_at")
     .eq("competitor_id", id)
     .order("created_at", { ascending: false });
 
-  const { data: hubspotIntegration } = await supabase
+  const { data: hubspotIntegration } = await db
     .from("integrations")
     .select("connected")
-    .eq("account_id", profile.account_id)
+    .eq("account_id", accountId)
     .eq("provider", "hubspot")
     .eq("connected", true)
     .maybeSingle();
@@ -74,7 +71,7 @@ export default async function CompetitorDetailPage({
   const sixtyDaysAgo = new Date();
   sixtyDaysAgo.setUTCDate(sixtyDaysAgo.getUTCDate() - 60);
   const { data: momentumSignals } = competitorIds.length
-    ? await supabase
+    ? await db
         .from("signals")
         .select("competitor_id, type, occurred_on, scored, relevance_score")
         .in("competitor_id", competitorIds)
@@ -92,7 +89,7 @@ export default async function CompetitorDetailPage({
   const seoAllowed = TIER_SIGNAL_SOURCES[account.tier].includes("seo");
   const { data: seo } =
     seoAllowed && competitorIds.length
-      ? await supabase.from("competitor_seo").select("competitor_id, organic_traffic_estimate").in("competitor_id", competitorIds)
+      ? await db.from("competitor_seo").select("competitor_id, organic_traffic_estimate").in("competitor_id", competitorIds)
       : { data: [] };
   const trafficByCompetitorId = Object.fromEntries(
     (seo ?? []).map((s) => [s.competitor_id, s.organic_traffic_estimate])

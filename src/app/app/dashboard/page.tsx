@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { resolveAccountContext } from "@/lib/impersonation";
 import { DashboardFeed } from "./dashboard-feed";
 
 // Banner goes stale rather than lying: if the weekly cron ever fails to
@@ -20,18 +21,13 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("account_id")
-    .eq("id", user.id)
-    .single();
+  const { accountId, db } = await resolveAccountContext(supabase, user.id);
+  if (!accountId) redirect("/onboarding");
 
-  if (!profile?.account_id) redirect("/onboarding");
-
-  const { data: account } = await supabase
+  const { data: account } = await db
     .from("accounts")
     .select("name, positioning, icp, lost_deal_notes, churn_notes, tier, weekly_verdict, weekly_verdict_generated_at")
-    .eq("id", profile.account_id)
+    .eq("id", accountId)
     .single();
 
   const now = new Date();
@@ -40,10 +36,10 @@ export default async function DashboardPage() {
     account.weekly_verdict_generated_at &&
     now.getTime() - new Date(account.weekly_verdict_generated_at).getTime() < VERDICT_STALE_MS;
 
-  const { data: competitors } = await supabase
+  const { data: competitors } = await db
     .from("competitors")
     .select("*")
-    .eq("account_id", profile.account_id)
+    .eq("account_id", accountId)
     .order("created_at", { ascending: true });
 
   const competitorIds = (competitors ?? []).map((c) => c.id);
@@ -51,7 +47,7 @@ export default async function DashboardPage() {
   // surfacing in the News feed — excluded at the query level, not just from
   // the type filter chips, so they never render here at all.
   const { data: signals } = competitorIds.length
-    ? await supabase
+    ? await db
         .from("signals")
         .select("*")
         .in("competitor_id", competitorIds)
@@ -61,7 +57,7 @@ export default async function DashboardPage() {
 
   const signalIds = (signals ?? []).map((s) => s.id);
   const { data: evalLabels } = signalIds.length
-    ? await supabase.from("signal_eval_labels").select("signal_id, label").in("signal_id", signalIds)
+    ? await db.from("signal_eval_labels").select("signal_id, label").in("signal_id", signalIds)
     : { data: [] };
   const evalLabelBySignalId = Object.fromEntries((evalLabels ?? []).map((l) => [l.signal_id, l.label]));
 

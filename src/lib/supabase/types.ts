@@ -544,6 +544,28 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["system_alerts"]["Insert"]>;
         Relationships: [];
       };
+      admin_impersonation_log: {
+        Row: {
+          id: string;
+          admin_id: string;
+          admin_email: string;
+          target_account_id: string;
+          target_account_name: string | null;
+          started_at: string;
+          ended_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          admin_id: string;
+          admin_email: string;
+          target_account_id: string;
+          target_account_name?: string | null;
+          started_at?: string;
+          ended_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["admin_impersonation_log"]["Insert"]>;
+        Relationships: [];
+      };
       signal_eval_labels: {
         Row: {
           signal_id: string;

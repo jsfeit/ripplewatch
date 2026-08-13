@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { resolveAccountContext } from "@/lib/impersonation";
 import { WinLossPageClient } from "./win-loss-page-client";
 
 export const metadata = { title: "Win/Loss" };
@@ -13,21 +14,12 @@ export default async function WinLossPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("account_id")
-    .eq("id", user.id)
-    .single();
-  if (!profile?.account_id) redirect("/onboarding");
-  const accountId = profile.account_id;
+  const { accountId, db } = await resolveAccountContext(supabase, user.id);
+  if (!accountId) redirect("/onboarding");
 
-  const { data: account } = await supabase
-    .from("accounts")
-    .select("has_sales_crm, has_plg")
-    .eq("id", accountId)
-    .single();
+  const { data: account } = await db.from("accounts").select("has_sales_crm, has_plg").eq("id", accountId).single();
 
-  const { data: competitors } = await supabase
+  const { data: competitors } = await db
     .from("competitors")
     .select("id, name")
     .eq("account_id", accountId)
@@ -35,14 +27,14 @@ export default async function WinLossPage() {
   const competitorIds = (competitors ?? []).map((c) => c.id);
 
   const { data: entries } = competitorIds.length
-    ? await supabase
+    ? await db
         .from("competitor_win_loss")
         .select("id, competitor_id, outcome, reason, created_at")
         .in("competitor_id", competitorIds)
         .order("created_at", { ascending: false })
     : { data: [] };
 
-  const { data: hubspotIntegration } = await supabase
+  const { data: hubspotIntegration } = await db
     .from("integrations")
     .select("connected")
     .eq("account_id", accountId)

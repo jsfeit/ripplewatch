@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { resolveAccountContext } from "@/lib/impersonation";
 import { TIER_SIGNAL_SOURCES } from "@/lib/tier-limits";
 import { MomentumBoard } from "./momentum-board";
 import { TrendsBoard } from "./trends-board";
@@ -15,19 +16,14 @@ export default async function TrendsPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("account_id")
-    .eq("id", user.id)
-    .single();
-  if (!profile?.account_id) redirect("/onboarding");
-  const accountId = profile.account_id;
+  const { accountId, db } = await resolveAccountContext(supabase, user.id);
+  if (!accountId) redirect("/onboarding");
 
-  const { data: account } = await supabase.from("accounts").select("name, tier").eq("id", accountId).single();
+  const { data: account } = await db.from("accounts").select("name, tier").eq("id", accountId).single();
   const tier = account?.tier ?? "starter";
   const seoAllowed = TIER_SIGNAL_SOURCES[tier].includes("seo");
 
-  const { data: competitors } = await supabase
+  const { data: competitors } = await db
     .from("competitors")
     .select("*")
     .eq("account_id", accountId)
@@ -36,7 +32,7 @@ export default async function TrendsPage() {
 
   const { data: seo } =
     seoAllowed && competitorIds.length
-      ? await supabase.from("competitor_seo").select("*").in("competitor_id", competitorIds)
+      ? await db.from("competitor_seo").select("*").in("competitor_id", competitorIds)
       : { data: [] };
 
   // Most recent seo-type signal per competitor, so cards can show "last
@@ -44,7 +40,7 @@ export default async function TrendsPage() {
   // routine snapshot refresh.
   const { data: seoSignals } =
     seoAllowed && competitorIds.length
-      ? await supabase
+      ? await db
           .from("signals")
           .select("*")
           .in("competitor_id", competitorIds)
@@ -61,14 +57,14 @@ export default async function TrendsPage() {
   const sixtyDaysAgo = new Date();
   sixtyDaysAgo.setUTCDate(sixtyDaysAgo.getUTCDate() - 60);
   const { data: momentumSignals } = competitorIds.length
-    ? await supabase
+    ? await db
         .from("signals")
         .select("competitor_id, type, occurred_on, scored, relevance_score")
         .in("competitor_id", competitorIds)
         .gte("occurred_on", sixtyDaysAgo.toISOString().slice(0, 10))
     : { data: [] };
 
-  const { data: winLossTrends } = await supabase
+  const { data: winLossTrends } = await db
     .from("win_loss_trends")
     .select("*")
     .eq("account_id", accountId)
@@ -81,7 +77,7 @@ export default async function TrendsPage() {
     new Set((winLossTrends ?? []).flatMap((t) => t.related_signals.map((r) => r.signalId)))
   );
   const { data: relatedSignals } = signalIds.length
-    ? await supabase.from("signals").select("id, title, url, type, occurred_on").in("id", signalIds)
+    ? await db.from("signals").select("id, title, url, type, occurred_on").in("id", signalIds)
     : { data: [] };
 
   const trendsGeneratedAt = winLossTrends && winLossTrends.length > 0 ? winLossTrends[0].generated_at : null;

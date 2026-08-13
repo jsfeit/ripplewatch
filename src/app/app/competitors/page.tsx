@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { resolveAccountContext } from "@/lib/impersonation";
 import { CompetitorManager } from "@/components/app/competitor-manager";
 import { SuggestedCompetitorsPanel } from "@/components/app/suggested-competitors-panel";
 
@@ -13,34 +14,26 @@ export default async function CompetitorsIndexPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("account_id")
-    .eq("id", user.id)
-    .single();
-  if (!profile?.account_id) redirect("/onboarding");
+  const { accountId, db } = await resolveAccountContext(supabase, user.id);
+  if (!accountId) redirect("/onboarding");
 
-  const { data: account } = await supabase
-    .from("accounts")
-    .select("tier")
-    .eq("id", profile.account_id)
-    .single();
+  const { data: account } = await db.from("accounts").select("tier").eq("id", accountId).single();
   if (!account) redirect("/onboarding");
 
-  const { data: competitors } = await supabase
+  const { data: competitors } = await db
     .from("competitors")
     .select("*")
-    .eq("account_id", profile.account_id)
+    .eq("account_id", accountId)
     .order("created_at", { ascending: true });
 
   if (competitors && competitors.length > 0) {
     redirect(`/app/competitors/${competitors[0].id}`);
   }
 
-  const { data: suggestions } = await supabase
+  const { data: suggestions } = await db
     .from("suggested_competitors")
     .select("*")
-    .eq("account_id", profile.account_id)
+    .eq("account_id", accountId)
     .eq("status", "pending")
     .order("discovered_at", { ascending: false });
 

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Plus, Trash2, Loader2, RefreshCw, Sparkles } from "lucide-react";
+import { Pencil, Plus, Trash2, Loader2, RefreshCw, Sparkles, Eye } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,8 +56,24 @@ export function AccountAdminView({
   llmUsageTotalUsd?: number;
   llmUsageWindowDays?: number;
 }) {
+  const router = useRouter();
   const [tier, setTier] = useState(account.tier);
   const [savingTier, setSavingTier] = useState(false);
+  const [startingViewAs, setStartingViewAs] = useState(false);
+
+  async function handleViewAs() {
+    setStartingViewAs(true);
+    const res = await fetch("/api/admin/impersonate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accountId: account.id }),
+    });
+    if (res.ok) {
+      router.push("/app/dashboard");
+    } else {
+      setStartingViewAs(false);
+    }
+  }
   const [recrawling, setRecrawling] = useState(false);
   const [recrawlResult, setRecrawlResult] = useState<string | null>(null);
   const [discovering, setDiscovering] = useState(false);
@@ -209,6 +226,10 @@ export function AccountAdminView({
             Find new competitors
           </Button>
           {discoverResult ? <span className="text-xs text-muted-foreground">{discoverResult}</span> : null}
+          <Button variant="outline" size="sm" onClick={handleViewAs} disabled={startingViewAs}>
+            {startingViewAs ? <Loader2 className="size-4 animate-spin" /> : <Eye className="size-4" />}
+            View as (read-only)
+          </Button>
         </div>
         <div className="mt-2 space-y-1 text-sm text-muted-foreground">
           {account.positioning ? <p>{account.positioning}</p> : null}
