@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { POSTS, getPost, type PostBlock } from "@/lib/posts";
+import { formatDate } from "@/lib/date";
 
 export function generateStaticParams() {
   return POSTS.map((p) => ({ slug: p.slug }));
@@ -31,14 +32,6 @@ export async function generateMetadata({
   };
 }
 
-function formatDate(iso: string): string {
-  return new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-}
 
 function Block({ block, index }: { block: PostBlock; index: number }) {
   if (block.type === "h2") {

@@ -46,7 +46,7 @@ export default async function PricingPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-10 sm:py-10">
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Pricing</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Competitor Pricing</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Each competitor&apos;s current tiers, features, and how they actually charge.
         </p>

@@ -337,7 +337,7 @@ export function CompetitorFactSheet({
       {showWinLoss ? (
       <div className="mt-6 border-t border-border pt-4 print:hidden">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs font-semibold text-muted-foreground">Win/loss log</p>
+          <p className="text-xs font-semibold text-muted-foreground">Win/Loss log</p>
           <div className="flex flex-wrap items-center gap-1.5">
             <input
               ref={fileInputRef}

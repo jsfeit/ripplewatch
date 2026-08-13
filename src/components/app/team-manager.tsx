@@ -77,7 +77,7 @@ export function TeamManager({ tier, currentUserId }: { tier: Tier; currentUserId
       {atLimit ? (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-400">
           You&apos;re at your plan&apos;s seat limit.{" "}
-          <Link href="/pricing" className="underline">
+          <Link href="/app/settings?tab=plan" className="underline">
             Upgrade
           </Link>{" "}
           for unlimited seats.
@@ -150,7 +150,7 @@ export function TeamManager({ tier, currentUserId }: { tier: Tier; currentUserId
       ) : null}
 
       {atLimit ? null : (
-        <Link href="/pricing" className={cn(buttonVariants({ variant: "link", size: "sm" }), "px-0")}>
+        <Link href="/app/settings?tab=plan" className={cn(buttonVariants({ variant: "link", size: "sm" }), "px-0")}>
           Compare seat limits by plan
         </Link>
       )}

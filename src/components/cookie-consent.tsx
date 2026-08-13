@@ -15,7 +15,11 @@ export function CookieConsent() {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    // Syncing one-time from localStorage on mount, not deriving state from
+    // props/other state — SSR has no localStorage, so this can't run any
+    // earlier than the client-side effect.
     const stored = localStorage.getItem(STORAGE_KEY);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (stored === "granted" || stored === "denied") setConsent(stored);
     setHydrated(true);
   }, []);
