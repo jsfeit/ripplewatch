@@ -349,8 +349,8 @@ export function CompetitorManager({
                   <Link
                     href={`/app/competitors/${c.id}#fact-sheet`}
                     onClick={(e) => e.stopPropagation()}
-                    aria-label={`View ${c.name} battlecard`}
-                    title="View battlecard"
+                    aria-label={`View ${c.name} fact sheet`}
+                    title="View fact sheet"
                     className={buttonVariants({ variant: "ghost", size: "icon" })}
                   >
                     <FileText className="size-4" />

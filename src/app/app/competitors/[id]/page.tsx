@@ -154,7 +154,7 @@ export default async function CompetitorDetailPage({
         </div>
       </div>
 
-      {/* Scroll target for the "View battlecard" deep link on the Competitors
+      {/* Scroll target for the "View fact sheet" deep link on the Competitors
           list, and the only section left visible when printing this page. */}
       <div id="fact-sheet">
         <CompetitorFactSheet
