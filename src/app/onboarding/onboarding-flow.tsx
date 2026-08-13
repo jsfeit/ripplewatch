@@ -39,6 +39,22 @@ import { COMPETITOR_LIMIT } from "@/lib/tier-limits";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SELF_SERVE_TIERS = TIERS.filter((t) => t.selfServe);
 
+// Everything completeOnboarding() needs, saved right before signUp() and
+// restored after email confirmation — otherwise a confirmed signup lands
+// back on a blank form with no memory of what was just filled in.
+const DRAFT_STORAGE_KEY = "ripplewatch-onboarding-draft";
+type OnboardingDraft = {
+  companyName: string;
+  positioning: string;
+  icp: string;
+  competitors: CompetitorInput[];
+  hasSalesCrm: boolean;
+  hasPlg: boolean;
+  lostDealReasons: string;
+  churnReasons: string;
+  tier: string | null;
+};
+
 export function OnboardingFlow({
   initiallySignedIn,
   hasAccount,
@@ -86,6 +102,7 @@ export function OnboardingFlow({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  const [resuming, setResuming] = useState(false);
 
   const [companyName, setCompanyName] = useState("");
   const [positioning, setPositioning] = useState("");
@@ -200,6 +217,100 @@ export function OnboardingFlow({
     [competitors]
   );
 
+  async function completeOnboarding(overrides?: OnboardingDraft) {
+    const payload = overrides ?? {
+      companyName,
+      positioning,
+      icp,
+      competitors,
+      hasSalesCrm,
+      hasPlg,
+      lostDealReasons,
+      churnReasons,
+      tier: finalPlan,
+    };
+    try {
+      const res = await fetch("/api/onboarding/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSubmitError(data.error ?? "Something went wrong. Try again.");
+        setSubmitting(false);
+        return;
+      }
+
+      trackEvent("sign_up", { method: "email" });
+
+      // payload.tier (not finalPlan) — on the resume-from-confirmation-
+      // email path, finalPlan is still the stale pre-restore value from
+      // this render, since the setChosenPlanId() a few lines up hasn't
+      // taken effect yet.
+      const tier = payload.tier;
+      if (tier === "starter" || tier === "plus") {
+        // Opens the embedded Checkout modal right over this step — the
+        // account already exists at this point regardless of payment
+        // outcome, so closing the modal (see the modal's onOpenChange
+        // below) always lands on the dashboard rather than stranding the
+        // user here.
+        const value = selectedPeriod === "annual" ? annualPriceUsd(MONTHLY_PRICE_USD[tier]) : MONTHLY_PRICE_USD[tier];
+        trackEvent("begin_checkout", { currency: "USD", value, item_name: tier, item_variant: selectedPeriod });
+        setCheckoutModal({ tier, period: selectedPeriod });
+        setSubmitting(false);
+        return;
+      }
+
+      router.push("/app/dashboard");
+      router.refresh();
+    } catch {
+      setSubmitError("Something went wrong. Try again.");
+      setSubmitting(false);
+    }
+  }
+
+  // Landing here signed in with no account yet, and a saved draft, means
+  // this is a return trip from an email-confirmation link: the earlier
+  // signUp() call already succeeded and saved the in-progress answers,
+  // then the page fully reloaded (losing all React state) when the
+  // confirmation link redirected here. Finish account creation with the
+  // saved answers instead of making them redo the whole form.
+  useEffect(() => {
+    if (!initiallySignedIn || hasAccount) return;
+    const raw = sessionStorage.getItem(DRAFT_STORAGE_KEY);
+    if (!raw) return;
+    sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+
+    let draft: OnboardingDraft;
+    try {
+      draft = JSON.parse(raw);
+    } catch {
+      return;
+    }
+
+    // Restoring a completed form from sessionStorage after an external
+    // redirect (the email-confirmation link), not deriving state from
+    // props/other state — the one case this rule doesn't cover.
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setCompanyName(draft.companyName);
+    setPositioning(draft.positioning);
+    setIcp(draft.icp);
+    setCompetitors(draft.competitors);
+    setHasSalesCrm(draft.hasSalesCrm);
+    setHasPlg(draft.hasPlg);
+    setLostDealReasons(draft.lostDealReasons);
+    setChurnReasons(draft.churnReasons);
+    if (draft.tier) setChosenPlanId(draft.tier);
+    setResuming(true);
+    setSubmitting(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
+    completeOnboarding(draft);
+    // Runs once, on mount — completeOnboarding is stable enough for this
+    // one-shot resume and re-running it on every render would re-submit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initiallySignedIn, hasAccount]);
+
   async function handleFinish() {
     setSubmitting(true);
     setSubmitError("");
@@ -227,6 +338,24 @@ export function OnboardingFlow({
       return;
     }
 
+    // Saved before signUp() so it survives the full page reload an email
+    // confirmation link causes — restored by the resume effect above if
+    // that link is actually followed. Cleared as soon as either branch
+    // below no longer needs it (email off: right away; email on: by the
+    // resume effect once it's read back).
+    const draft: OnboardingDraft = {
+      companyName,
+      positioning,
+      icp,
+      competitors,
+      hasSalesCrm,
+      hasPlg,
+      lostDealReasons,
+      churnReasons,
+      tier: finalPlan,
+    };
+    sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+
     const supabase = createClient();
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
@@ -235,67 +364,23 @@ export function OnboardingFlow({
     });
 
     if (error) {
+      sessionStorage.removeItem(DRAFT_STORAGE_KEY);
       setSubmitError(error.message);
       setSubmitting(false);
       return;
     }
 
-    // Email confirmation is off in dev, but if it's ever re-enabled there's
-    // no session yet — nothing to persist the onboarding data against.
+    // No session yet means email confirmation is on — leave the draft in
+    // sessionStorage for the resume effect to pick up once they follow the
+    // confirmation link back here.
     if (!data.session) {
       setNeedsConfirmation(true);
       setSubmitting(false);
       return;
     }
 
-    await completeOnboarding();
-  }
-
-  async function completeOnboarding() {
-    try {
-      const res = await fetch("/api/onboarding/complete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          companyName,
-          positioning,
-          icp,
-          competitors,
-          hasSalesCrm,
-          hasPlg,
-          lostDealReasons,
-          churnReasons,
-          tier: finalPlan,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setSubmitError(data.error ?? "Something went wrong. Try again.");
-        setSubmitting(false);
-        return;
-      }
-
-      trackEvent("sign_up", { method: "email" });
-
-      if (finalPlan === "starter" || finalPlan === "plus") {
-        // Opens the embedded Checkout modal right over this step — the
-        // account already exists at this point regardless of payment
-        // outcome, so closing the modal (see the modal's onOpenChange
-        // below) always lands on the dashboard rather than stranding the
-        // user here.
-        const value = selectedPeriod === "annual" ? annualPriceUsd(MONTHLY_PRICE_USD[finalPlan]) : MONTHLY_PRICE_USD[finalPlan];
-        trackEvent("begin_checkout", { currency: "USD", value, item_name: finalPlan, item_variant: selectedPeriod });
-        setCheckoutModal({ tier: finalPlan, period: selectedPeriod });
-        setSubmitting(false);
-        return;
-      }
-
-      router.push("/app/dashboard");
-      router.refresh();
-    } catch {
-      setSubmitError("Something went wrong. Try again.");
-      setSubmitting(false);
-    }
+    sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+    await completeOnboarding(draft);
   }
 
   if (needsConfirmation) {
@@ -308,6 +393,21 @@ export function OnboardingFlow({
             We sent a confirmation link to {email}. Follow it to finish setting up your account and see
             your dashboard.
           </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Once completeOnboarding() opens the checkout modal (paid self-serve
+  // tiers), fall through to the normal return below instead of staying on
+  // this spinner forever — the modal only renders as part of that JSX.
+  if (resuming && !checkoutModal) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center gap-3 py-8 text-center">
+          <Loader2 className="size-8 animate-spin text-primary" />
+          <p className="font-medium">Finishing your account setup…</p>
+          <p className="text-sm text-muted-foreground">Picking up right where you left off.</p>
         </CardContent>
       </Card>
     );
