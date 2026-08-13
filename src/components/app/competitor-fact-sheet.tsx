@@ -292,8 +292,26 @@ export function CompetitorFactSheet({
         });
       }
     }
-    return Array.from(groups.values()).sort((a, b) => b.wonCount + b.lostCount - (a.wonCount + a.lostCount));
+    return Array.from(groups.values());
   }, [entries]);
+
+  // Top 5 each, ranked within their own column — a reason that's mostly a
+  // win reason but shows up a couple times on the loss side (or vice versa)
+  // can legitimately appear in both, same as the fact sheet's own Why we
+  // win/Why we lose columns above already allow.
+  const TOP_N = 5;
+  const winReasons = useMemo(
+    () => reasonGroups.filter((g) => g.wonCount > 0).sort((a, b) => b.wonCount - a.wonCount).slice(0, TOP_N),
+    [reasonGroups]
+  );
+  const lossReasons = useMemo(
+    () => reasonGroups.filter((g) => g.lostCount > 0).sort((a, b) => b.lostCount - a.lostCount).slice(0, TOP_N),
+    [reasonGroups]
+  );
+  const winReasonsTotal = reasonGroups.filter((g) => g.wonCount > 0).length;
+  const lossReasonsTotal = reasonGroups.filter((g) => g.lostCount > 0).length;
+  const maxWinCount = Math.max(1, ...winReasons.map((g) => g.wonCount));
+  const maxLossCount = Math.max(1, ...lossReasons.map((g) => g.lostCount));
 
   const wonTotal = entries.filter((e) => e.outcome === "won").length;
   const lostTotal = entries.length - wonTotal;
@@ -439,34 +457,60 @@ export function CompetitorFactSheet({
           </div>
         ) : (
           <>
-            <ul className="mt-2 space-y-1.5">
-              {reasonGroups.map((g) => {
-                const total = g.wonCount + g.lostCount;
-                return (
-                  <li
-                    key={g.reason}
-                    className="flex items-center gap-2 rounded-md border border-border p-2 text-xs"
-                  >
-                    <span className="flex shrink-0 items-center gap-1">
-                      {g.wonCount > 0 ? (
-                        <span className="rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
-                          {g.wonCount} won
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <div>
+                <p className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                  <ThumbsUp className="size-3.5" />
+                  Top reasons we win
+                </p>
+                <ul className="mt-2 space-y-2">
+                  {winReasons.map((g) => (
+                    <li key={g.reason}>
+                      <div className="flex items-baseline justify-between gap-2 text-xs">
+                        <span className="text-foreground">{g.reason}</span>
+                        <span className="shrink-0 font-semibold text-primary">{g.wonCount}</span>
+                      </div>
+                      <div className="mt-1 h-1 overflow-hidden rounded-full bg-primary/10">
+                        <div
+                          className="h-full rounded-full bg-primary"
+                          style={{ width: `${(g.wonCount / maxWinCount) * 100}%` }}
+                        />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                {winReasonsTotal > TOP_N ? (
+                  <p className="mt-2 text-[11px] text-muted-foreground">+{winReasonsTotal - TOP_N} more</p>
+                ) : null}
+              </div>
+              <div>
+                <p className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                  <ThumbsDown className="size-3.5" />
+                  Top reasons we lose
+                </p>
+                <ul className="mt-2 space-y-2">
+                  {lossReasons.map((g) => (
+                    <li key={g.reason}>
+                      <div className="flex items-baseline justify-between gap-2 text-xs">
+                        <span className="text-foreground">{g.reason}</span>
+                        <span className="shrink-0 font-semibold text-amber-600 dark:text-amber-400">
+                          {g.lostCount}
                         </span>
-                      ) : null}
-                      {g.lostCount > 0 ? (
-                        <span className="rounded-full border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
-                          {g.lostCount} lost
-                        </span>
-                      ) : null}
-                    </span>
-                    <span className={cn("flex-1", g.reason !== "No reason given" ? "text-foreground" : "italic text-muted-foreground")}>
-                      {g.reason}
-                    </span>
-                    <span className="shrink-0 text-[10px] text-muted-foreground">×{total}</span>
-                  </li>
-                );
-              })}
-            </ul>
+                      </div>
+                      <div className="mt-1 h-1 overflow-hidden rounded-full bg-amber-500/10">
+                        <div
+                          className="h-full rounded-full bg-amber-500"
+                          style={{ width: `${(g.lostCount / maxLossCount) * 100}%` }}
+                        />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                {lossReasonsTotal > TOP_N ? (
+                  <p className="mt-2 text-[11px] text-muted-foreground">+{lossReasonsTotal - TOP_N} more</p>
+                ) : null}
+              </div>
+            </div>
 
             <button
               type="button"
