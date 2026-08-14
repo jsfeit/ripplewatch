@@ -3,6 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { CookieConsent } from "@/components/cookie-consent";
+import { PromoBanner } from "@/components/marketing/promo-banner";
+import { getBannerCampaign } from "@/lib/promo-campaign";
+import { isSupabaseConfigured } from "@/lib/supabase/is-configured";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -37,17 +40,20 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const campaign = isSupabaseConfigured() ? await getBannerCampaign() : null;
+
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <PromoBanner bannerText={campaign?.bannerText ?? null} />
         {children}
         <Analytics />
         <SpeedInsights />

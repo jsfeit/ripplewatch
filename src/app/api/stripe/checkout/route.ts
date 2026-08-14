@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getStripe, getPriceId, type BillingPeriod } from "@/lib/stripe";
+import { getCheckoutCampaign } from "@/lib/promo-campaign";
+import { TIERS } from "@/lib/tiers";
 
 // Self-serve checkout for all three tiers.
 export async function POST(request: Request) {
@@ -53,6 +55,17 @@ export async function POST(request: Request) {
 
   const origin = new URL(request.url).origin;
 
+  // Auto-applied, not a code the customer types in — allow_promotion_codes
+  // and discounts are mutually exclusive on a Checkout Session, so an
+  // active campaign takes over the promo-code field entirely for this
+  // session rather than sitting alongside it. This route is only ever hit
+  // for a customer's first paid checkout (an existing subscriber changing
+  // tiers goes through /api/stripe/change-plan and the Billing Portal
+  // instead), so "active campaign + eligible tier" already means "initial
+  // signup" without any extra new-customer check here.
+  const tierIsSelfServe = TIERS.find((t) => t.id === tier)?.selfServe ?? false;
+  const campaign = tierIsSelfServe ? await getCheckoutCampaign() : null;
+
   try {
     // Embedded (renders inline via @stripe/react-stripe-js) instead of the
     // classic hosted redirect — same Stripe-managed form/PCI scope, just no
@@ -71,7 +84,9 @@ export async function POST(request: Request) {
       customer_email: account?.stripe_customer_id ? undefined : user.email,
       client_reference_id: profile.account_id,
       line_items: [{ price: priceId, quantity: 1 }],
-      allow_promotion_codes: true,
+      ...(campaign
+        ? { discounts: [{ coupon: campaign.stripeCouponId }] }
+        : { allow_promotion_codes: true }),
       // Collects zero tax until you have an active Tax Registration for the
       // customer's jurisdiction (dashboard.stripe.com/tax/registrations) —
       // Stripe doesn't error in that case, it just silently taxes nothing.

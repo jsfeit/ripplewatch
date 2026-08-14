@@ -590,6 +590,32 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["blog_posts"]["Insert"]>;
         Relationships: [];
       };
+      promo_campaigns: {
+        Row: {
+          id: string;
+          active: boolean;
+          percent_off: number;
+          duration_months: number;
+          code: string;
+          banner_text: string;
+          stripe_coupon_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          active?: boolean;
+          percent_off: number;
+          duration_months: number;
+          code: string;
+          banner_text: string;
+          stripe_coupon_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["promo_campaigns"]["Insert"]>;
+        Relationships: [];
+      };
       signal_eval_labels: {
         Row: {
           signal_id: string;
