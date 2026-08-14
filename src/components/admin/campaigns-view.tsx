@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Panel } from "@/components/ui/panel";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import type { Database } from "@/lib/supabase/types";
 
@@ -61,11 +62,11 @@ export function CampaignsView({
   return (
     <div className="space-y-6">
       {!resendConfigured ? (
-        <div className="rounded-lg border border-dashed border-border bg-secondary/30 p-4 text-sm text-muted-foreground">
+        <Panel radius="lg" dashed className="bg-secondary/30 p-4 text-sm text-muted-foreground">
           <code>RESEND_API_KEY</code>/<code>RESEND_FROM_EMAIL</code>{" "}
           aren&apos;t set yet; you can draft campaigns now, but sending (test or real) will fail until
           those are configured.
-        </div>
+        </Panel>
       ) : null}
 
       {showForm ? (

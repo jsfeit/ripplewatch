@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EmptyState } from "@/components/app/empty-state";
+import { Panel } from "@/components/ui/panel";
 import { WinLossReasonSummary, type WinLossEntry } from "@/components/app/win-loss-reason-summary";
 import { createClient } from "@/lib/supabase/client";
 import { avatarColor, cn } from "@/lib/utils";
@@ -211,7 +212,7 @@ export function WinLossPageClient({
   return (
     <div className="space-y-8">
       {showWinLoss ? (
-        <div className="rounded-xl border border-border bg-card p-5">
+        <Panel className="p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold">Win/Loss data</h2>
             <div className="flex flex-wrap items-center gap-1.5">
@@ -322,11 +323,11 @@ export function WinLossPageClient({
               <WinLossReasonSummary entries={entries} subjectLabel="across all competitors" />
             </div>
           )}
-        </div>
+        </Panel>
       ) : null}
 
       {showChurn ? (
-        <div className="rounded-xl border border-border bg-card p-5">
+        <Panel className="p-5">
           <h2 className="text-sm font-semibold">Customer churn</h2>
           <p className="mt-1 text-xs text-muted-foreground">
             Account-wide, not tied to one competitor: churn reasons rarely name who a customer switched to the
@@ -352,7 +353,7 @@ export function WinLossPageClient({
               </div>
             </div>
           </div>
-        </div>
+        </Panel>
       ) : null}
 
       {entries.length > 0 ? (
