@@ -8,10 +8,10 @@ type Subprocessor = {
 export const CORE_SUBPROCESSORS: Subprocessor[] = [
   { name: "Vercel", purpose: "Application hosting", data: "All data in transit to and from the app", location: "United States" },
   { name: "Supabase", purpose: "Database, authentication, file storage", data: "Account data, business context, uploaded documents", location: "United States" },
-  { name: "Stripe", purpose: "Payment processing", data: "Billing details — we never see your full card number", location: "United States" },
+  { name: "Stripe", purpose: "Payment processing", data: "Billing details; we never see your full card number", location: "United States" },
   { name: "Anthropic", purpose: "AI processing (relevance scoring, suggestions, Ask)", data: "Business context and competitor signal text, sent per-request", location: "United States" },
   { name: "Resend", purpose: "Transactional email delivery", data: "Email address, alert and digest content", location: "United States" },
-  { name: "Sentry", purpose: "Error tracking", data: "Technical error and request metadata — no card numbers or passwords", location: "United States" },
+  { name: "Sentry", purpose: "Error tracking", data: "Technical error and request metadata, no card numbers or passwords", location: "United States" },
 ];
 
 export const OPTIONAL_SUBPROCESSORS: Subprocessor[] = [

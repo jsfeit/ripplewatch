@@ -31,12 +31,11 @@ export async function generateMetadata({
     title,
     description,
     alternates: { canonical: `/compare/${entry.slug}` },
-    openGraph: { title: `${title} — Ripplewatch`, description, images: ["/opengraph-image"] },
+    openGraph: { title: `${title} | Ripplewatch`, description },
     twitter: {
       card: "summary_large_image",
-      title: `${title} — Ripplewatch`,
+      title: `${title} | Ripplewatch`,
       description,
-      images: ["/opengraph-image"],
     },
   };
 }
@@ -72,7 +71,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
             competitorInitial={competitorFor(rawExample.competitorId).initial}
           />
           <p className="mt-3 text-xs text-muted-foreground">
-            A fact, dropped in front of you — no read on whether it&apos;s worth acting on.
+            A fact, dropped in front of you, with no read on whether it&apos;s worth acting on.
           </p>
         </div>
         <div>
@@ -86,7 +85,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
             competitorInitial={competitorFor(scoredExample.competitorId).initial}
           />
           <p className="mt-3 text-xs text-muted-foreground">
-            Scored against your own positioning, ICP, and known lost-deal reasons — with the reasoning
+            Scored against your own positioning, ICP, and known lost-deal reasons, with the reasoning
             attached.
           </p>
         </div>

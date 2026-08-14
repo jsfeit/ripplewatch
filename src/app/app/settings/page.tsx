@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SettingsView } from "./settings-view";
 
-export const metadata = { title: "Settings — Ripplewatch" };
+export const metadata = { title: "Settings" };
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
@@ -47,8 +47,17 @@ export default async function SettingsPage() {
         .limit(10)
     : { data: [] };
 
+  // Never selects key_hash — the plaintext key is shown once at creation
+  // and this list only ever needs the prefix/metadata to render.
+  const { data: apiKeys } = await supabase
+    .from("api_keys")
+    .select("id, name, key_prefix, last_used_at, revoked_at, created_at")
+    .eq("account_id", profile.account_id)
+    .is("revoked_at", null)
+    .order("created_at", { ascending: false });
+
   return (
-    <div className="mx-auto max-w-5xl px-10 py-10">
+    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-10 sm:py-10">
       <div className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -60,6 +69,7 @@ export default async function SettingsPage() {
         competitors={competitors ?? []}
         integrations={integrations ?? []}
         recentSignals={recentSignals ?? []}
+        apiKeys={apiKeys ?? []}
         currentUserId={user.id}
       />
     </div>

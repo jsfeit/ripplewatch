@@ -1,46 +1,91 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sparkles, Loader2, CheckCircle2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { IntegrationConnector } from "@/components/app/integration-connector";
 import { TeamManager } from "@/components/app/team-manager";
+import { ApiKeysManager } from "@/components/app/api-keys-manager";
 import { BillingPeriodToggle, type BillingPeriod } from "@/components/marketing/billing-period-toggle";
 import { TIERS } from "@/lib/tiers";
-import { ANNUAL_DISCOUNT_PERCENT } from "@/lib/pricing";
-import { CRM_ALLOWED, CALL_INTEL_ALLOWED } from "@/lib/tier-limits";
+import { ANNUAL_DISCOUNT_PERCENT, annualPriceUsd } from "@/lib/pricing";
+import { trackEvent } from "@/lib/analytics";
+import { CRM_ALLOWED, CALL_INTEL_ALLOWED, INTERCOM_ALLOWED, API_ACCESS_ALLOWED } from "@/lib/tier-limits";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { TIER_BADGE } from "@/lib/tier-style";
 import { disconnectIntegrationAction } from "./actions";
+import { EmbeddedCheckoutModal } from "@/components/app/embedded-checkout-modal";
 import type { Database } from "@/lib/supabase/types";
 
 type Account = Database["public"]["Tables"]["accounts"]["Row"];
 type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
 type Integration = Database["public"]["Tables"]["integrations"]["Row"];
 type Signal = Database["public"]["Tables"]["signals"]["Row"];
+type ApiKey = Pick<
+  Database["public"]["Tables"]["api_keys"]["Row"],
+  "id" | "name" | "key_prefix" | "last_used_at" | "created_at"
+>;
 
 export function SettingsView({
   account,
   competitors,
   integrations,
   recentSignals,
+  apiKeys,
   currentUserId,
 }: {
   account: Account;
   competitors: Competitor[];
   integrations: Integration[];
   recentSignals: Signal[];
+  apiKeys: ApiKey[];
   currentUserId: string;
 }) {
   const [error, setError] = useState("");
   const [billingLoading, setBillingLoading] = useState<string | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
+  const [checkoutModal, setCheckoutModal] = useState<{
+    tier: "starter" | "plus" | "advanced";
+    period: "monthly" | "annual";
+  } | null>(null);
 
   const currentTier = TIERS.find((t) => t.id === account.tier) ?? TIERS[0];
   const isConnected = (provider: string) => integrations.some((i) => i.provider === provider && i.connected);
+
+  // Lets a direct/bookmarked link to /app/settings?tab=plan land on the Plan
+  // tab instead of always opening on Integrations. Read in an effect (not a
+  // lazy useState initializer) so the server-rendered and first-client-render
+  // markup always agree on "integrations", avoiding a hydration mismatch;
+  // the effect then flips to "plan" post-mount. This only fires once on
+  // mount, so it doesn't cover in-app "Upgrade to connect" clicks below
+  // (those call setActiveTab directly via onUpgradeClick instead).
+  const [activeTab, setActiveTab] = useState("integrations");
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("tab") === "plan") {
+      // Syncing one-time from an external system (the URL) on mount —
+      // the case the rule's own guidance calls out as fine.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setActiveTab("plan");
+    }
+  }, []);
+
+  // Fires once on landing back from Stripe's embedded Checkout via
+  // return_url. Reads window.location directly (not useSearchParams) so
+  // this doesn't need a Suspense boundary. transaction_id from session_id
+  // is a data-quality nicety, not real dedup — GA doesn't dedupe purchase
+  // events by transaction_id on its own, so a manual refresh of this exact
+  // URL would still fire it again. No price value included here since it's
+  // not reliably available client-side at this point.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("checkout") === "success") {
+      trackEvent("purchase", { currency: "USD", transaction_id: params.get("session_id") ?? undefined });
+    }
+  }, []);
 
   async function handleManageBilling() {
     setBillingLoading("portal");
@@ -56,28 +101,54 @@ export function SettingsView({
   // pre-filled with their card and email. Routing them through /checkout
   // instead would create a second, simultaneous subscription rather than
   // changing the one they have. Brand-new customers (no subscription yet)
-  // still use Checkout — there's nothing to "change" for them.
+  // open the embedded Checkout modal instead — there's nothing to "change"
+  // for them, and this is their first payment, not a plan switch.
   async function handleUpgrade(tier: "starter" | "plus" | "advanced") {
-    setBillingLoading(tier);
     const hasActiveSubscription = Boolean(account.stripe_customer_id && account.stripe_subscription_id);
-    const res = await fetch(hasActiveSubscription ? "/api/stripe/change-plan" : "/api/stripe/checkout", {
+
+    if (!hasActiveSubscription) {
+      const monthlyUsd = TIERS.find((t) => t.id === tier)?.monthlyUsd ?? 0;
+      const value = billingPeriod === "annual" ? annualPriceUsd(monthlyUsd) : monthlyUsd;
+      trackEvent("begin_checkout", { currency: "USD", value, item_name: tier, item_variant: billingPeriod });
+      setCheckoutModal({ tier, period: billingPeriod });
+      return;
+    }
+
+    setBillingLoading(tier);
+    const res = await fetch("/api/stripe/change-plan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(hasActiveSubscription ? { tier } : { tier, period: billingPeriod }),
+      body: JSON.stringify({ tier }),
     });
     const data = await res.json();
     setBillingLoading(null);
-    if (res.ok) window.location.href = data.url;
-    else setError(data.error ?? "Could not start checkout.");
+    if (res.ok) {
+      // Full navigation to Stripe Portal, not a client-side route change —
+      // a plain click-handler side effect, not render/effect state.
+      // eslint-disable-next-line react-hooks/immutability
+      window.location.href = data.url;
+    } else {
+      setError(data.error ?? "Could not start checkout.");
+    }
   }
 
   return (
-    <Tabs defaultValue="integrations">
+    <>
+      <EmbeddedCheckoutModal
+        open={checkoutModal !== null}
+        onOpenChange={(open) => {
+          if (!open) setCheckoutModal(null);
+        }}
+        tier={checkoutModal?.tier ?? "starter"}
+        period={checkoutModal?.period ?? "monthly"}
+      />
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
       <TabsList>
         <TabsTrigger value="integrations">Integrations</TabsTrigger>
         <TabsTrigger value="team">Team</TabsTrigger>
         <TabsTrigger value="plan">Plan</TabsTrigger>
         <TabsTrigger value="digest">Digest preview</TabsTrigger>
+        <TabsTrigger value="developer">Developer</TabsTrigger>
       </TabsList>
 
       <TabsContent value="team" className="mt-6">
@@ -85,7 +156,7 @@ export function SettingsView({
           <CardHeader>
             <h2 className="font-medium">Team</h2>
             <p className="text-sm text-muted-foreground">
-              Invite co-workers to your workspace — everyone shares the same competitors and alerts.
+              Invite co-workers to your workspace; everyone shares the same competitors and alerts.
             </p>
           </CardHeader>
           <CardContent>
@@ -132,21 +203,28 @@ export function SettingsView({
               description={
                 CRM_ALLOWED[account.tier]
                   ? "Read-only pull of closed-lost deal reasons"
-                  : "Read-only pull of closed-lost deal reasons — Plus and above"
+                  : "Read-only pull of closed-lost deal reasons, Plus and above"
               }
               connected={isConnected("hubspot")}
               connectHref="/api/integrations/hubspot/connect"
               provider="hubspot"
               disconnectAction={disconnectIntegrationAction}
               requiresUpgrade={!CRM_ALLOWED[account.tier]}
+              onUpgradeClick={() => setActiveTab("plan")}
             />
             <IntegrationConnector
               name="Intercom"
-              description="Read-only pull of churn and cancellation reasons"
-              connected={false}
-              connectHref="#"
+              description={
+                INTERCOM_ALLOWED[account.tier]
+                  ? "Read-only pull of churn and cancellation reasons"
+                  : "Read-only pull of churn and cancellation reasons, Advanced only"
+              }
+              connected={isConnected("intercom")}
+              connectHref="/api/integrations/intercom/connect"
               provider="intercom"
-              comingSoon
+              disconnectAction={disconnectIntegrationAction}
+              requiresUpgrade={!INTERCOM_ALLOWED[account.tier]}
+              onUpgradeClick={() => setActiveTab("plan")}
             />
           </CardContent>
         </Card>
@@ -172,13 +250,14 @@ export function SettingsView({
               description={
                 CALL_INTEL_ALLOWED[account.tier]
                   ? "Pull competitor mentions from recorded meeting transcripts"
-                  : "Pull competitor mentions from recorded meeting transcripts — Plus and above"
+                  : "Pull competitor mentions from recorded meeting transcripts, Advanced only"
               }
               connected={isConnected("zoom")}
               connectHref="/api/integrations/zoom/connect"
               provider="zoom"
               disconnectAction={disconnectIntegrationAction}
               requiresUpgrade={!CALL_INTEL_ALLOWED[account.tier]}
+              onUpgradeClick={() => setActiveTab("plan")}
             />
           </CardContent>
         </Card>
@@ -259,7 +338,7 @@ export function SettingsView({
                   Manage billing
                 </Button>
               ) : null}
-              <Link href="/pricing" className={buttonVariants({ variant: "ghost" })}>
+              <Link href="/app/settings?tab=plan" className={buttonVariants({ variant: "ghost" })}>
                 Compare plans
               </Link>
             </div>
@@ -271,7 +350,7 @@ export function SettingsView({
         {recentSignals.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-sm text-muted-foreground">
-              No signals yet — once crawling picks something up, this tab will preview exactly what
+              No signals yet; once crawling picks something up, this tab will preview exactly what
               gets sent to Slack and email.
             </CardContent>
           </Card>
@@ -336,7 +415,7 @@ export function SettingsView({
                             {competitorName} · {signal.title}
                           </p>
                           <p className="text-muted-foreground">
-                            {signal.relevance_level} relevance — {signal.relevance_reasoning}
+                            {signal.relevance_level} relevance: {signal.relevance_reasoning}
                           </p>
                         </div>
                       ) : (
@@ -352,6 +431,35 @@ export function SettingsView({
           </>
         )}
       </TabsContent>
-    </Tabs>
+
+      <TabsContent value="developer" className="mt-6">
+        <Card>
+          <CardHeader>
+            <h2 className="font-medium">API access</h2>
+          </CardHeader>
+          <CardContent>
+            {API_ACCESS_ALLOWED[account.tier] ? (
+              <ApiKeysManager initialKeys={apiKeys} />
+            ) : (
+              <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-400">
+                <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                <p>
+                  API access is a Plus/Advanced feature.{" "}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("plan")}
+                    className="underline underline-offset-2"
+                  >
+                    Upgrade
+                  </button>{" "}
+                  to generate keys.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+      </Tabs>
+    </>
   );
 }

@@ -3,18 +3,26 @@
 // generate it from yet (`supabase gen types typescript` once one exists).
 
 export type Tier = "starter" | "plus" | "advanced";
-export type SignalType = "pricing" | "job_posting" | "review" | "news" | "funding";
+export type SignalType = "pricing" | "job_posting" | "review" | "news" | "funding" | "seo";
+export type SeoTrafficTrend = "up" | "down" | "flat" | "unknown";
 export type RelevanceLevel = "High" | "Medium" | "Low";
-export type SignalSource = "manual" | "pipeline";
+export type SignalSource = "manual" | "pipeline" | "backfill";
 export type IntegrationProvider = "slack" | "email" | "hubspot" | "salesforce" | "intercom" | "gong" | "zoom";
 export type ProfileRole = "member" | "admin";
 export type BillingModel = "subscription" | "per_seat" | "usage_based" | "custom" | "unknown";
+export type SuggestedCompetitorStatus = "pending" | "dismissed" | "added";
+export type WinLossOutcome = "won" | "lost";
 
 export type PricingTier = {
   name: string;
   price: number | null;
   price_period: string | null; // e.g. "mo", "seat/mo", "yr"
   features: string[];
+};
+
+export type WinLossTrendRelatedSignal = {
+  signalId: string;
+  relationNote: string;
 };
 
 export interface Database {
@@ -51,6 +59,7 @@ export interface Database {
           has_sales_crm: boolean;
           has_plg: boolean;
           lost_deal_notes: string | null;
+          won_deal_notes: string | null;
           churn_notes: string | null;
           tier: Tier;
           stripe_customer_id: string | null;
@@ -61,6 +70,10 @@ export interface Database {
           payment_reminder_1_sent_at: string | null;
           payment_reminder_2_sent_at: string | null;
           cost_alert_sent_month: string | null;
+          company_research: string | null;
+          company_research_updated_at: string | null;
+          weekly_verdict: string | null;
+          weekly_verdict_generated_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -71,6 +84,7 @@ export interface Database {
           has_sales_crm?: boolean;
           has_plg?: boolean;
           lost_deal_notes?: string | null;
+          won_deal_notes?: string | null;
           churn_notes?: string | null;
           tier?: Tier;
           stripe_customer_id?: string | null;
@@ -81,6 +95,10 @@ export interface Database {
           payment_reminder_1_sent_at?: string | null;
           payment_reminder_2_sent_at?: string | null;
           cost_alert_sent_month?: string | null;
+          company_research?: string | null;
+          company_research_updated_at?: string | null;
+          weekly_verdict?: string | null;
+          weekly_verdict_generated_at?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["accounts"]["Insert"]>;
@@ -108,8 +126,12 @@ export interface Database {
           account_id: string;
           name: string;
           domain: string | null;
+          category: string | null;
           pricing_url: string | null;
           careers_url: string | null;
+          fact_sheet_why_we_win: string | null;
+          fact_sheet_why_we_lose: string | null;
+          fact_sheet_generated_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -117,11 +139,119 @@ export interface Database {
           account_id: string;
           name: string;
           domain?: string | null;
+          category?: string | null;
           pricing_url?: string | null;
           careers_url?: string | null;
+          fact_sheet_why_we_win?: string | null;
+          fact_sheet_why_we_lose?: string | null;
+          fact_sheet_generated_at?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["competitors"]["Insert"]>;
+        Relationships: [];
+      };
+      competitor_win_loss: {
+        Row: {
+          id: string;
+          competitor_id: string;
+          outcome: WinLossOutcome;
+          reason: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          competitor_id: string;
+          outcome: WinLossOutcome;
+          reason?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["competitor_win_loss"]["Insert"]>;
+        Relationships: [];
+      };
+      win_loss_trends: {
+        Row: {
+          id: string;
+          account_id: string;
+          theme: string;
+          summary: string;
+          won_count: number;
+          lost_count: number;
+          example_reasons: string[];
+          related_signals: WinLossTrendRelatedSignal[];
+          generated_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_id: string;
+          theme: string;
+          summary: string;
+          won_count?: number;
+          lost_count?: number;
+          example_reasons?: string[];
+          related_signals?: WinLossTrendRelatedSignal[];
+          generated_at?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["win_loss_trends"]["Insert"]>;
+        Relationships: [];
+      };
+      api_keys: {
+        Row: {
+          id: string;
+          account_id: string;
+          name: string;
+          key_hash: string;
+          key_prefix: string;
+          created_by: string | null;
+          last_used_at: string | null;
+          revoked_at: string | null;
+          rate_limit_window_started_at: string | null;
+          rate_limit_count: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_id: string;
+          name?: string;
+          key_hash: string;
+          key_prefix: string;
+          created_by?: string | null;
+          last_used_at?: string | null;
+          revoked_at?: string | null;
+          rate_limit_window_started_at?: string | null;
+          rate_limit_count?: number;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["api_keys"]["Insert"]>;
+        Relationships: [];
+      };
+      suggested_competitors: {
+        Row: {
+          id: string;
+          account_id: string;
+          name: string;
+          domain: string | null;
+          category: string | null;
+          reasoning: string | null;
+          status: SuggestedCompetitorStatus;
+          discovered_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_id: string;
+          name: string;
+          domain?: string | null;
+          category?: string | null;
+          reasoning?: string | null;
+          status?: SuggestedCompetitorStatus;
+          discovered_at?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["suggested_competitors"]["Insert"]>;
         Relationships: [];
       };
       signals: {
@@ -135,6 +265,7 @@ export interface Database {
           occurred_on: string;
           scored: boolean;
           relevance_level: RelevanceLevel | null;
+          relevance_score: number | null;
           relevance_reasoning: string | null;
           scoring_version: string | null;
           source: SignalSource;
@@ -152,6 +283,7 @@ export interface Database {
           occurred_on?: string;
           scored?: boolean;
           relevance_level?: RelevanceLevel | null;
+          relevance_score?: number | null;
           relevance_reasoning?: string | null;
           scoring_version?: string | null;
           source?: SignalSource;
@@ -188,7 +320,7 @@ export interface Database {
         Row: {
           id: string;
           competitor_id: string;
-          kind: "pricing" | "jobs";
+          kind: "pricing" | "jobs" | "producthunt" | "websearch";
           content_hash: string;
           raw_text: string | null;
           captured_at: string;
@@ -196,12 +328,36 @@ export interface Database {
         Insert: {
           id?: string;
           competitor_id: string;
-          kind: "pricing" | "jobs";
+          kind: "pricing" | "jobs" | "producthunt" | "websearch";
           content_hash: string;
           raw_text?: string | null;
           captured_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["page_snapshots"]["Insert"]>;
+        Relationships: [];
+      };
+      competitor_seo: {
+        Row: {
+          id: string;
+          competitor_id: string;
+          organic_traffic_estimate: number | null;
+          traffic_trend: SeoTrafficTrend | null;
+          top_keywords: string[];
+          note: string | null;
+          last_checked_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          competitor_id: string;
+          organic_traffic_estimate?: number | null;
+          traffic_trend?: SeoTrafficTrend | null;
+          top_keywords?: string[];
+          note?: string | null;
+          last_checked_at?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["competitor_seo"]["Insert"]>;
         Relationships: [];
       };
       competitor_pricing: {
@@ -374,6 +530,90 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["llm_usage"]["Insert"]>;
+        Relationships: [];
+      };
+      system_alerts: {
+        Row: {
+          key: string;
+          last_sent_at: string;
+        };
+        Insert: {
+          key: string;
+          last_sent_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["system_alerts"]["Insert"]>;
+        Relationships: [];
+      };
+      admin_impersonation_log: {
+        Row: {
+          id: string;
+          admin_id: string;
+          admin_email: string;
+          target_account_id: string;
+          target_account_name: string | null;
+          started_at: string;
+          ended_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          admin_id: string;
+          admin_email: string;
+          target_account_id: string;
+          target_account_name?: string | null;
+          started_at?: string;
+          ended_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["admin_impersonation_log"]["Insert"]>;
+        Relationships: [];
+      };
+      blog_posts: {
+        Row: {
+          id: string;
+          slug: string;
+          title: string;
+          description: string;
+          published_at: string;
+          body: unknown;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          slug: string;
+          title: string;
+          description: string;
+          published_at?: string;
+          body: unknown;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["blog_posts"]["Insert"]>;
+        Relationships: [];
+      };
+      promo_campaigns: {
+        Row: {
+          id: string;
+          active: boolean;
+          percent_off: number;
+          duration_months: number;
+          code: string;
+          banner_text: string;
+          stripe_coupon_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          active?: boolean;
+          percent_off: number;
+          duration_months: number;
+          code: string;
+          banner_text: string;
+          stripe_coupon_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["promo_campaigns"]["Insert"]>;
         Relationships: [];
       };
       signal_eval_labels: {

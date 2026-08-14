@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AlertTriangle } from "lucide-react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/is-configured";
 import { SupabaseNotConfigured } from "@/components/admin/not-configured";
@@ -7,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { SIGNAL_TYPE_LABELS } from "@/lib/mock-data";
 import { EvalLabelControl } from "@/components/admin/eval-label-control";
 
-export const metadata = { title: "Signals — Admin" };
+export const metadata = { title: "Signals | Admin" };
 export const dynamic = "force-dynamic";
 
 const LEVEL_BADGE: Record<string, string> = {
@@ -23,6 +24,7 @@ type Row = {
   occurredOn: string;
   scored: boolean;
   relevanceLevel: string | null;
+  relevanceScore: number | null;
   delivered: boolean;
   competitorName: string;
   accountId: string | null;
@@ -49,25 +51,44 @@ function computeAccuracy(rows: Row[]): { totalLabeled: number; totalCorrect: num
   };
 }
 
+type StuckAccount = { accountId: string; accountName: string; count: number };
+
 export default async function AdminSignalsPage() {
   const configured = isSupabaseConfigured();
   let rows: Row[] = [];
   let error: string | null = null;
+  let stuckAccounts: StuckAccount[] = [];
 
   if (configured) {
     const supabase = createAdminClient();
+    const oneDayAgoDate = new Date();
+    oneDayAgoDate.setUTCDate(oneDayAgoDate.getUTCDate() - 1);
+    const oneDayAgo = oneDayAgoDate.toISOString();
 
-    const [{ data: signals, error: signalsError }, { data: competitors }, { data: accounts }, { data: evalLabels }] =
-      await Promise.all([
-        supabase
-          .from("signals")
-          .select("*")
-          .order("occurred_on", { ascending: false })
-          .limit(300),
-        supabase.from("competitors").select("id, name, account_id"),
-        supabase.from("accounts").select("id, name"),
-        supabase.from("signal_eval_labels").select("signal_id, label"),
-      ]);
+    const [
+      { data: signals, error: signalsError },
+      { data: competitors },
+      { data: accounts },
+      { data: evalLabels },
+      { data: staleUnscored },
+    ] = await Promise.all([
+      supabase
+        .from("signals")
+        .select("*")
+        .order("occurred_on", { ascending: false })
+        .limit(300),
+      supabase.from("competitors").select("id, name, account_id"),
+      supabase.from("accounts").select("id, name, tier"),
+      supabase.from("signal_eval_labels").select("signal_id, label"),
+      // Every crawl now rescues its own account's backlog (see
+      // runCrawlForAccount in crawl.ts), so this should normally read
+      // empty — a nonzero count here means something is scoring-failing
+      // faster than the crawl's rescue can keep up, worth a look rather
+      // than relying on someone noticing bad-looking dashboard data.
+      // Starter is excluded: its unscored backlog is the teaser design,
+      // not a failure.
+      supabase.from("signals").select("id, competitor_id").eq("scored", false).lt("created_at", oneDayAgo),
+    ]);
 
     if (signalsError) {
       error = signalsError.message;
@@ -86,6 +107,7 @@ export default async function AdminSignalsPage() {
           occurredOn: s.occurred_on,
           scored: s.scored,
           relevanceLevel: s.relevance_level,
+          relevanceScore: s.relevance_score,
           delivered: Boolean(s.slack_sent_at || s.email_digest_sent_at),
           competitorName: competitor?.name ?? "Unknown competitor",
           accountId: account?.id ?? null,
@@ -93,6 +115,17 @@ export default async function AdminSignalsPage() {
           evalLabel: evalLabelBySignalId.get(s.id) ?? null,
         };
       });
+
+      const stuckByAccount = new Map<string, StuckAccount>();
+      for (const s of staleUnscored ?? []) {
+        const competitor = competitorById.get(s.competitor_id);
+        const account = competitor?.account_id ? accountById.get(competitor.account_id) : undefined;
+        if (!account || account.tier === "starter") continue;
+        const entry = stuckByAccount.get(account.id) ?? { accountId: account.id, accountName: account.name, count: 0 };
+        entry.count += 1;
+        stuckByAccount.set(account.id, entry);
+      }
+      stuckAccounts = Array.from(stuckByAccount.values()).sort((a, b) => b.count - a.count);
     }
   }
 
@@ -113,6 +146,7 @@ export default async function AdminSignalsPage() {
         </p>
       ) : (
         <>
+          <StuckBacklogAlert accounts={stuckAccounts} />
           <AccuracyStats accuracy={computeAccuracy(rows)} />
           <div className="overflow-hidden rounded-lg border border-border">
           <Table>
@@ -136,7 +170,7 @@ export default async function AdminSignalsPage() {
                         {row.accountName ?? "Unnamed account"}
                       </Link>
                     ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
+                      <span className="text-xs text-muted-foreground">–</span>
                     )}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{row.competitorName}</TableCell>
@@ -148,9 +182,14 @@ export default async function AdminSignalsPage() {
                   </TableCell>
                   <TableCell>
                     {row.scored && row.relevanceLevel ? (
-                      <Badge variant="outline" className={LEVEL_BADGE[row.relevanceLevel]}>
-                        {row.relevanceLevel}
-                      </Badge>
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="outline" className={LEVEL_BADGE[row.relevanceLevel]}>
+                          {row.relevanceLevel}
+                        </Badge>
+                        {row.relevanceScore !== null ? (
+                          <span className="text-xs text-muted-foreground">{row.relevanceScore}</span>
+                        ) : null}
+                      </div>
                     ) : (
                       <span className="text-xs text-muted-foreground">Raw</span>
                     )}
@@ -159,7 +198,7 @@ export default async function AdminSignalsPage() {
                     {row.scored ? (
                       <EvalLabelControl signalId={row.id} initialLabel={row.evalLabel} />
                     ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
+                      <span className="text-xs text-muted-foreground">–</span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -192,6 +231,32 @@ export default async function AdminSignalsPage() {
   );
 }
 
+function StuckBacklogAlert({ accounts }: { accounts: StuckAccount[] }) {
+  if (accounts.length === 0) return null;
+
+  const total = accounts.reduce((sum, a) => sum + a.count, 0);
+
+  return (
+    <div className="mb-6 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-400">
+      <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+      <p>
+        {total} signal{total === 1 ? "" : "s"} across {accounts.length} account{accounts.length === 1 ? "" : "s"}{" "}
+        {accounts.length === 1 ? "has" : "have"} sat unscored for over 24h. The crawl&apos;s own backlog rescue
+        should normally clear this, so a nonzero count here suggests scoring is failing faster than it recovers:{" "}
+        {accounts.map((a, i) => (
+          <span key={a.accountId}>
+            {i > 0 ? ", " : ""}
+            <Link href={`/admin/accounts/${a.accountId}`} className="underline">
+              {a.accountName}
+            </Link>{" "}
+            ({a.count})
+          </span>
+        ))}
+      </p>
+    </div>
+  );
+}
+
 function AccuracyStats({
   accuracy,
 }: {
@@ -200,7 +265,7 @@ function AccuracyStats({
   if (accuracy.totalLabeled === 0) {
     return (
       <p className="mb-6 rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-        No signals labeled yet — use the thumbs up/down in the Eval column below to start building an accuracy
+        No signals labeled yet; use the thumbs up/down in the Eval column below to start building an accuracy
         baseline for the scoring prompt.
       </p>
     );

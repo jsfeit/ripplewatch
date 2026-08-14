@@ -12,6 +12,21 @@ export default async function OnboardingPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Distinct from `initiallySignedIn`: a user can have a session (e.g. their
+  // signUp() succeeded moments ago) without an account yet, if the page
+  // reloaded before onboarding completion finished. Those users still need
+  // the full flow (account + competitors + plan/checkout), just without the
+  // email/password fields — see onboarding-flow.tsx's `hasAccount` handling.
+  let hasAccount = false;
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("account_id")
+      .eq("id", user.id)
+      .single();
+    hasAccount = Boolean(profile?.account_id);
+  }
+
   return (
     <div className="min-h-screen bg-secondary/30">
       <header className="border-b border-border bg-background">
@@ -26,7 +41,7 @@ export default async function OnboardingPage() {
       </header>
       <main className="mx-auto max-w-3xl px-6 py-12">
         <Suspense>
-          <OnboardingFlow initiallySignedIn={Boolean(user)} />
+          <OnboardingFlow initiallySignedIn={Boolean(user)} hasAccount={hasAccount} />
         </Suspense>
       </main>
     </div>

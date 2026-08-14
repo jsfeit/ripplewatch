@@ -6,8 +6,8 @@ export const metadata = {
   title: "Privacy Policy",
   description,
   alternates: { canonical: "/privacy" },
-  openGraph: { title: "Privacy Policy — Ripplewatch", description, images: ["/opengraph-image"] },
-  twitter: { card: "summary_large_image", title: "Privacy Policy — Ripplewatch", description, images: ["/opengraph-image"] },
+  openGraph: { title: "Privacy Policy | Ripplewatch", description, images: ["/opengraph-image"] },
+  twitter: { card: "summary_large_image", title: "Privacy Policy | Ripplewatch", description, images: ["/opengraph-image"] },
 };
 
 export default function PrivacyPage() {
@@ -16,7 +16,7 @@ export default function PrivacyPage() {
       <p className="text-muted-foreground">
         This policy explains what information Ripplewatch (&ldquo;Ripplewatch,&rdquo; &ldquo;we,&rdquo; &ldquo;us&rdquo;) collects through
         ripplewatch.ai and the Ripplewatch application, how we use it, and who we share it with. It&apos;s
-        written for a US audience — if that changes as we grow internationally, we will update this policy
+        written for a US audience; if that changes as we grow internationally, we will update this policy
         accordingly.
       </p>
 
@@ -25,7 +25,7 @@ export default function PrivacyPage() {
         <p>We collect information in a few different ways:</p>
         <ul>
           <li><strong>Account information</strong> you provide when you sign up: name, email, password (handled by our authentication provider), and company name.</li>
-          <li><strong>Business context</strong> you give us during onboarding and in Settings: your positioning, ideal customer profile, and the reasons deals were lost or customers churned. This context is what powers relevance scoring — see Section 3.</li>
+          <li><strong>Business context</strong> you give us during onboarding and in Settings: your positioning, ideal customer profile, and the reasons deals were lost or customers churned. This context is what powers relevance scoring (see Section 3).</li>
           <li><strong>The competitors you choose to track</strong>, and any documents you upload to help us understand your business.</li>
           <li><strong>Billing information</strong>, handled entirely by our payment processor, Stripe. We never see or store your full card number.</li>
           <li><strong>Integration data, only if you connect it</strong>: your Slack workspace (to deliver alerts), HubSpot CRM notes on closed-lost deals, and Gong/Zoom call transcripts (scanned only for competitor mentions). You can disconnect any of these at any time in Settings, which stops further access.</li>
@@ -56,7 +56,7 @@ export default function PrivacyPage() {
         </p>
         <p>
           We do not use your data to train Anthropic&apos;s models or our own beyond what&apos;s needed to generate
-          your results. AI-generated output can be wrong or incomplete — see the disclaimer in our{" "}
+          your results. AI-generated output can be wrong or incomplete; see the disclaimer in our{" "}
           <a href="/terms">Terms of Service</a>.
         </p>
       </section>
@@ -65,7 +65,7 @@ export default function PrivacyPage() {
         <h2>4. Publicly available competitor information</h2>
         <p>
           Separately from your own data, we collect publicly available information about the competitors
-          you choose to track — things like pricing pages, job postings, news coverage, and funding
+          you choose to track: things like pricing pages, job postings, news coverage, and funding
           announcements. This is not personal data about you or your team.
         </p>
       </section>
@@ -74,12 +74,12 @@ export default function PrivacyPage() {
         <h2>5. Who we share information with</h2>
         <p>We use a small number of service providers to run Ripplewatch, each only for its specific purpose:</p>
         <ul>
-          <li><strong>Supabase</strong> — database, authentication, and file storage.</li>
-          <li><strong>Stripe</strong> — payment processing.</li>
-          <li><strong>Anthropic</strong> — AI processing (relevance scoring, suggestions, Ask).</li>
-          <li><strong>Resend</strong> — transactional email delivery (alerts, invites).</li>
-          <li><strong>Sentry</strong> — error tracking, so we can catch and fix problems.</li>
-          <li><strong>Slack, HubSpot, Gong, Zoom</strong> — only if and when you connect them yourself.</li>
+          <li><strong>Supabase</strong>: database, authentication, and file storage.</li>
+          <li><strong>Stripe</strong>: payment processing.</li>
+          <li><strong>Anthropic</strong>: AI processing (relevance scoring, suggestions, Ask).</li>
+          <li><strong>Resend</strong>: transactional email delivery (alerts, invites).</li>
+          <li><strong>Sentry</strong>: error tracking, so we can catch and fix problems.</li>
+          <li><strong>Slack, HubSpot, Gong, Zoom</strong>: only if and when you connect them yourself.</li>
         </ul>
         <p>
           We do not sell your personal information to third parties, and we do not share it for advertising
@@ -103,7 +103,7 @@ export default function PrivacyPage() {
           contacting us at{" "}
           <a href="mailto:hello@ripplewatch.ai">hello@ripplewatch.ai</a>. If you are a California resident,
           you have rights under the CCPA to know what personal information we have collected about you and to
-          request its deletion — the same contact works for that.
+          request its deletion; the same contact works for that.
         </p>
       </section>
 

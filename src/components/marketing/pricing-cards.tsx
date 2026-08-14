@@ -61,9 +61,13 @@ export function PricingCards() {
                     <FeatureRow label={tier.competitors} />
                     <FeatureRow label={tier.signalSources} />
                     <FeatureRow label={tier.relevanceScoring} />
-                    <FeatureRow label={tier.onboarding} />
+                    {tier.onboarding ? <FeatureRow label={tier.onboarding} /> : null}
                     <FeatureRow label={tier.delivery} />
-                    <FeatureRow label={tier.crm} />
+                    {tier.crm ? <FeatureRow label={tier.crm} /> : null}
+                    {tier.callIntel ? <FeatureRow label={tier.callIntel} /> : null}
+                    {tier.gong ? <FeatureRow label={tier.gong} /> : null}
+                    {tier.intercom ? <FeatureRow label={tier.intercom} /> : null}
+                    {tier.apiAccess ? <FeatureRow label={tier.apiAccess} /> : null}
                     <FeatureRow label={tier.seats === "Unlimited" ? "Unlimited logins" : tier.seats} />
                   </ul>
                   <Link

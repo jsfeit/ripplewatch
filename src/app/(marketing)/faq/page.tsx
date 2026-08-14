@@ -10,12 +10,11 @@ export const metadata = {
   title: "FAQ",
   description,
   alternates: { canonical: "/faq" },
-  openGraph: { title: "FAQ — Ripplewatch", description, images: ["/opengraph-image"] },
+  openGraph: { title: "FAQ | Ripplewatch", description },
   twitter: {
     card: "summary_large_image",
-    title: "FAQ — Ripplewatch",
+    title: "FAQ | Ripplewatch",
     description,
-    images: ["/opengraph-image"],
   },
 };
 

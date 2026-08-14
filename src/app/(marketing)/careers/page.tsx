@@ -8,8 +8,8 @@ export const metadata = {
   title: "Careers",
   description,
   alternates: { canonical: "/careers" },
-  openGraph: { title: "Careers — Ripplewatch", description, images: ["/opengraph-image"] },
-  twitter: { card: "summary_large_image", title: "Careers — Ripplewatch", description, images: ["/opengraph-image"] },
+  openGraph: { title: "Careers | Ripplewatch", description, images: ["/opengraph-image"] },
+  twitter: { card: "summary_large_image", title: "Careers | Ripplewatch", description, images: ["/opengraph-image"] },
 };
 
 export default function CareersPage() {

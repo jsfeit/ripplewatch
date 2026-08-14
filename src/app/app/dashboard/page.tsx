@@ -1,10 +1,16 @@
 import { redirect } from "next/navigation";
+import { Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { resolveAccountContext } from "@/lib/impersonation";
 import { DashboardFeed } from "./dashboard-feed";
-import { ArticlesFeed } from "./articles-feed";
 
-export const metadata = { title: "Dashboard — Ripplewatch" };
+// Banner goes stale rather than lying: if the weekly cron ever fails to
+// run, an 8-day-old "this week's takeaway" reading as current would be
+// actively misleading, so it just disappears instead once it's too old to
+// trust — regenerating next successful cron run brings it back.
+const VERDICT_STALE_MS = 8 * 24 * 60 * 60 * 1000;
+
+export const metadata = { title: "News" };
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
@@ -15,67 +21,77 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("account_id")
-    .eq("id", user.id)
-    .single();
+  const { accountId, db } = await resolveAccountContext(supabase, user.id);
+  if (!accountId) redirect("/onboarding");
 
-  if (!profile?.account_id) redirect("/onboarding");
-
-  const { data: account } = await supabase
+  const { data: account } = await db
     .from("accounts")
-    .select("name, positioning, icp, lost_deal_notes, churn_notes")
-    .eq("id", profile.account_id)
+    .select("name, positioning, icp, lost_deal_notes, churn_notes, tier, weekly_verdict, weekly_verdict_generated_at")
+    .eq("id", accountId)
     .single();
 
-  const { data: competitors } = await supabase
+  const now = new Date();
+  const verdictIsFresh =
+    account?.weekly_verdict &&
+    account.weekly_verdict_generated_at &&
+    now.getTime() - new Date(account.weekly_verdict_generated_at).getTime() < VERDICT_STALE_MS;
+
+  const { data: competitors } = await db
     .from("competitors")
     .select("*")
-    .eq("account_id", profile.account_id)
+    .eq("account_id", accountId)
     .order("created_at", { ascending: true });
 
   const competitorIds = (competitors ?? []).map((c) => c.id);
+  // SEO/traffic signals have their own dashboard (Trends) rather than
+  // surfacing in the News feed — excluded at the query level, not just from
+  // the type filter chips, so they never render here at all.
   const { data: signals } = competitorIds.length
-    ? await supabase
+    ? await db
         .from("signals")
         .select("*")
         .in("competitor_id", competitorIds)
+        .neq("type", "seo")
         .order("occurred_on", { ascending: false })
     : { data: [] };
 
+  const signalIds = (signals ?? []).map((s) => s.id);
+  const { data: evalLabels } = signalIds.length
+    ? await db.from("signal_eval_labels").select("signal_id, label").in("signal_id", signalIds)
+    : { data: [] };
+  const evalLabelBySignalId = Object.fromEntries((evalLabels ?? []).map((l) => [l.signal_id, l.label]));
+
   return (
-    <div className="mx-auto max-w-5xl px-10 py-10">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-10 sm:py-10">
+      <div className="mb-4">
+        <h1 className="text-2xl font-semibold tracking-tight">News</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Signals across every tracked competitor. Scored alerts include the reasoning behind the verdict.
         </p>
       </div>
 
-      <Tabs defaultValue="feed">
-        <TabsList>
-          <TabsTrigger value="feed">Alert feed</TabsTrigger>
-          <TabsTrigger value="articles">Articles</TabsTrigger>
-        </TabsList>
+      {verdictIsFresh ? (
+        <div className="mb-5 flex items-start gap-2.5 rounded-lg border border-primary/25 bg-primary/[0.04] p-3.5">
+          <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary">This week&apos;s takeaway</p>
+            <p className="mt-1 text-sm text-foreground">{account!.weekly_verdict}</p>
+          </div>
+        </div>
+      ) : null}
 
-        <TabsContent value="feed" className="mt-6">
-          <DashboardFeed
-            competitors={competitors ?? []}
-            signals={signals ?? []}
-            previewContext={{
-              companyName: account?.name ?? "",
-              positioning: account?.positioning ?? "",
-              icp: account?.icp ?? "",
-              lossReason: account?.lost_deal_notes || account?.churn_notes || "",
-            }}
-          />
-        </TabsContent>
-
-        <TabsContent value="articles" className="mt-6">
-          <ArticlesFeed competitors={competitors ?? []} signals={signals ?? []} />
-        </TabsContent>
-      </Tabs>
+      <DashboardFeed
+        competitors={competitors ?? []}
+        signals={signals ?? []}
+        evalLabelBySignalId={evalLabelBySignalId}
+        tier={account?.tier ?? "starter"}
+        previewContext={{
+          companyName: account?.name ?? "",
+          positioning: account?.positioning ?? "",
+          icp: account?.icp ?? "",
+          lossReason: account?.lost_deal_notes || account?.churn_notes || "",
+        }}
+      />
     </div>
   );
 }

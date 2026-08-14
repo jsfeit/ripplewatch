@@ -11,12 +11,12 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "What is Ripplewatch?",
         answer:
-          "An AI-native competitive intelligence tool for startup marketing and product teams. Think of it as a continuous read on the health of market around you — it monitors the competitors you choose and scores every signal — a pricing change, a job posting, a news mention — against your own positioning, ICP, and the real reasons you've lost deals or churned customers.",
+          "An AI-native competitive intelligence tool for startup marketing and product teams. Think of it as a continuous read on the health of market around you: it monitors the competitors you choose and scores every signal (a pricing change, a job posting, a news mention) against your own positioning, ICP, and the real reasons you've lost deals or churned customers.",
       },
       {
         question: "How is this different from other competitive intelligence tools?",
         answer:
-          "Most tools tell you what changed and stop there, leaving you to figure out whether it matters. Ripplewatch scores every signal against your specific business context using a fixed, ordered rubric — the same signal can be High relevance for one company and Low for another, because it's judged against what actually affects that business, not a generic severity scale.",
+          "Most tools tell you what changed and stop there, leaving you to figure out whether it matters. Ripplewatch scores every signal against your specific business context using a fixed, ordered rubric: the same signal can be High relevance for one company and Low for another, because it's judged against what actually affects that business, not a generic severity scale.",
       },
       {
         question: "What data sources does it monitor?",
@@ -26,7 +26,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "Does it use my sales calls or CRM data?",
         answer:
-          "Only if you connect Gong, Zoom, or HubSpot yourself, and only to add context to scoring — for example, recognizing that a competitor's price cut matches a reason you've actually lost a deal. You can disconnect any integration at any time in Settings.",
+          "Only if you connect Gong, Zoom, or HubSpot yourself, and only to add context to scoring, for example recognizing that a competitor's price cut matches a reason you've actually lost a deal. You can disconnect any integration at any time in Settings.",
       },
       {
         question: "What is the Ask feature?",
@@ -41,16 +41,21 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "Can I cancel anytime?",
         answer:
-          "Yes. Cancel whenever you want from Settings — it takes effect at the end of your current billing period, and there's no penalty or lock-in. And if you're within 30 days of any charge, email us and we'll give you a full refund, no questions asked.",
+          "Yes. Cancel whenever you want from Settings; it takes effect at the end of your current billing period, and there's no penalty or lock-in. And if you're within 30 days of any charge, email us and we'll give you a full refund, no questions asked.",
       },
       {
         question: "Do you offer a free trial?",
         answer:
-          "Not a traditional free trial — instead, every plan comes with that 30-day money-back guarantee, so you can actually use Ripplewatch for real, against your real competitors, before deciding it's for you.",
+          "Not a traditional free trial. Instead, every plan comes with that 30-day money-back guarantee, so you can actually use Ripplewatch for real, against your real competitors, before deciding it's for you.",
+      },
+      {
+        question: "Why don't you offer a free tier?",
+        answer:
+          "Because the value you're getting isn't a static dashboard, it's a live AI model reading and scoring every signal against your specific business context. Every pricing change, job posting, and news mention we surface has actually been analyzed by Claude in real time, not pulled from a cache and shown to everyone the same way. That analysis has a real, per-signal cost to us on every account, whether or not that account is paying. A free tier would mean covering that cost indefinitely for accounts that never convert, which isn't something we can sustain at our size. Instead we put that money into the 30-day guarantee, so you can use the real product risk-free without us subsidizing free usage forever.",
       },
       {
         question: "Do you offer annual billing?",
-        answer: "Yes, on every plan — annual billing is 20% cheaper than paying monthly.",
+        answer: "Yes, on every plan: annual billing is 20% cheaper than paying monthly.",
       },
       {
         question: "What happens if I add more competitors than my plan allows?",
@@ -85,6 +90,11 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
         answer:
           "We keep it for a limited period in case you reactivate, and delete it sooner if you ask us to.",
       },
+      {
+        question: "How is my data encrypted?",
+        answer:
+          "Everything is encrypted in transit over HTTPS/TLS, and encrypted at rest in our database using our provider's standard AES-256 encryption. We never store your payment card details ourselves; Stripe handles all card processing directly on their own PCI-compliant infrastructure.",
+      },
     ],
   },
   {
@@ -101,12 +111,12 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       },
       {
         question: "How do I contact support, and how fast do you respond?",
-        answer: "Email hello@ripplewatch.ai — we respond within 3 days.",
+        answer: "Email hello@ripplewatch.ai; we respond within 3 days.",
       },
       {
         question: "Where can I read more about the competitive intelligence market?",
         answer:
-          'We put together a full survey of the CI landscape — how 14 different tools approach monitoring, what they cover, and where the gaps are — in our <a href="/state-of-competitive-intelligence">State of Competitive Intelligence</a> report.',
+          'We put together a full survey of the CI landscape, how 14 different tools approach monitoring, what they cover, and where the gaps are, in our <a href="/state-of-competitive-intelligence">State of Competitive Intelligence</a> report.',
       },
     ],
   },

@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export type CampaignSegment = "waitlist_not_signed_up";
 
 export const SEGMENT_LABELS: Record<CampaignSegment, string> = {
-  waitlist_not_signed_up: "Waitlist — not yet signed up",
+  waitlist_not_signed_up: "Waitlist: not yet signed up",
 };
 
 type Lead = { email: string; companyName: string | null };

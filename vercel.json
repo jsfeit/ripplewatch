@@ -23,6 +23,10 @@
     {
       "path": "/api/cron/cost-alert",
       "schedule": "0 17 * * *"
+    },
+    {
+      "path": "/api/cron/discover-competitors",
+      "schedule": "30 15 * * 1"
     }
   ]
 }

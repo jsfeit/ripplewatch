@@ -14,9 +14,13 @@ export type Tier = {
   competitors: string;
   signalSources: string;
   relevanceScoring: string;
-  onboarding: string;
+  onboarding?: string;
   delivery: string;
-  crm: string;
+  crm?: string;
+  callIntel?: string;
+  gong?: string;
+  intercom?: string;
+  apiAccess?: string;
   seats: string;
   cta: string;
   highlight?: boolean;
@@ -42,10 +46,8 @@ export const TIERS: Tier[] = [
     tagline: "Get the signal, see the difference relevance makes.",
     competitors: "3 competitors",
     signalSources: "Pricing, job postings, news, funding",
-    relevanceScoring: "1 fully-scored alert/week (teaser) — rest raw & unscored",
-    onboarding: "Self-serve form",
+    relevanceScoring: "Unscored alerts",
     delivery: "Slack + email",
-    crm: "Read-only pull",
     seats: "3 logins",
     cta: "Start with Starter",
   },
@@ -59,11 +61,11 @@ export const TIERS: Tier[] = [
     selfServe: true,
     tagline: "Everything in Starter, full scoring, on up to 7 competitors.",
     competitors: "Up to 7 competitors",
-    signalSources: "Pricing, job postings, news, funding",
+    signalSources: "Pricing, job postings, news, funding, SEO/traffic",
     relevanceScoring: "Full scoring on every signal",
-    onboarding: "Self-serve form",
     delivery: "Slack + email",
-    crm: "Read-only pull",
+    crm: "HubSpot (read-only pull)",
+    apiAccess: "Read-only API access",
     seats: "Up to 10 seats",
     cta: "Start with Plus",
     highlight: true,
@@ -78,11 +80,15 @@ export const TIERS: Tier[] = [
     selfServe: true,
     tagline: "Everything in Plus, with more room and a guided setup.",
     competitors: "Up to 20 competitors",
-    signalSources: "Pricing, job postings, news, funding",
+    signalSources: "Pricing, job postings, news, funding, SEO/traffic",
     relevanceScoring: "Full scoring on every signal",
-    onboarding: "Assisted onboarding call",
+    onboarding: "Onboarding support",
     delivery: "Slack + email",
-    crm: "Read-only pull",
+    crm: "HubSpot (read-only pull)",
+    callIntel: "Zoom call insights",
+    gong: "Gong (coming soon)",
+    intercom: "Intercom (coming soon)",
+    apiAccess: "Read-only API access",
     seats: "Unlimited",
     cta: "Start with Advanced",
   },

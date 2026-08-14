@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/client";
 export function ResetPasswordForm() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
+  const [linkError, setLinkError] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,10 +20,45 @@ export function ResetPasswordForm() {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
+    // Supabase redirects here with either a session in the URL hash
+    // (#access_token=...) or an error (#error=access_denied&error_code=
+    // otp_expired&...) if the link was already used or has expired — most
+    // commonly by requesting a second reset link, which invalidates the
+    // first. Surfacing this explicitly avoids leaving the page stuck on a
+    // "verifying" spinner forever when the link simply isn't valid anymore.
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    const errorDescription = hashParams.get("error_description");
+    if (errorDescription) {
+      // Reading an error out of the URL hash Supabase redirected here with,
+      // not deriving state from props/other state — one-time sync from an
+      // external source on mount.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLinkError(errorDescription.replace(/\+/g, " "));
+      return;
+    }
+
     const supabase = createClient();
-    // The recovery link redirects here with tokens in the URL — supabase-js
-    // exchanges them for a session automatically on load, surfaced via this
-    // event. Until it fires, there's no session to update a password on.
+    const accessToken = hashParams.get("access_token");
+    const refreshToken = hashParams.get("refresh_token");
+
+    if (accessToken && refreshToken) {
+      // The recovery link from /api/auth/forgot-password is generated
+      // server-side (supabase.auth.admin.generateLink), so it carries the
+      // session directly as implicit-flow hash tokens rather than a PKCE
+      // code — there's no browser-side code_verifier for a link created
+      // outside a browser session. createBrowserClient's automatic
+      // detectSessionInUrl is tuned for the PKCE flow this client
+      // otherwise uses and won't pick these up on its own, so the session
+      // is set explicitly instead.
+      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).then(({ error }) => {
+        if (error) setLinkError(error.message);
+        else setReady(true);
+      });
+      return;
+    }
+
+    // Fallback for any other Supabase-initiated recovery redirect that
+    // already resulted in a session (e.g. via detectSessionInUrl).
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") setReady(true);
     });
@@ -74,6 +110,28 @@ export function ResetPasswordForm() {
     );
   }
 
+  if (linkError) {
+    return (
+      <Card>
+        <CardHeader>
+          <h1 className="text-lg font-semibold">This link no longer works</h1>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            {linkError}. Requesting a second reset email invalidates the first, so only the most
+            recent link you received will work.
+          </p>
+          <a
+            href="/forgot-password"
+            className="mt-4 inline-block text-sm font-medium text-primary hover:underline"
+          >
+            Request a new link
+          </a>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (!ready) {
     return (
       <Card>
@@ -83,7 +141,7 @@ export function ResetPasswordForm() {
         <CardContent>
           <p className="text-sm text-muted-foreground">
             Verifying your reset link… if this doesn&apos;t update in a few seconds, the link may have
-            expired — request a new one from the{" "}
+            expired; request a new one from the{" "}
             <a href="/forgot-password" className="text-primary hover:underline">
               forgot password
             </a>{" "}

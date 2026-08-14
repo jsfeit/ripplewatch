@@ -100,7 +100,7 @@ export function CampaignDetailView({
       {!resendConfigured ? (
         <div className="rounded-lg border border-dashed border-border bg-secondary/30 p-4 text-sm text-muted-foreground">
           <code>RESEND_API_KEY</code>/<code>RESEND_FROM_EMAIL</code>{" "}
-          aren&apos;t set — sending is disabled until those are configured.
+          aren&apos;t set; sending is disabled until those are configured.
         </div>
       ) : null}
 
@@ -116,7 +116,7 @@ export function CampaignDetailView({
               {pendingLeads.map((l) => (
                 <li key={l.email}>
                   {l.email}
-                  {l.companyName ? ` — ${l.companyName}` : ""}
+                  {l.companyName ? ` – ${l.companyName}` : ""}
                 </li>
               ))}
               {pendingLeads.length === 0 ? <li>No one in this segment right now.</li> : null}
@@ -161,7 +161,7 @@ export function CampaignDetailView({
             <ul className="max-h-64 space-y-1 overflow-y-auto text-sm text-muted-foreground">
               {recipients.map((r) => (
                 <li key={r.id}>
-                  {r.email} — {new Date(r.sent_at).toLocaleString()}
+                  {r.email} – {new Date(r.sent_at).toLocaleString()}
                 </li>
               ))}
             </ul>

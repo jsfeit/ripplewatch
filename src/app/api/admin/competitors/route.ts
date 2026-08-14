@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { suggestCompetitorCategories } from "@/lib/anthropic";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
@@ -11,10 +12,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "account_id and name are required." }, { status: 400 });
   }
 
+  const [category] = await suggestCompetitorCategories([{ name, domain: domain || null }], accountId).catch(
+    () => [""]
+  );
+
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("competitors")
-    .insert({ account_id: accountId, name, domain: domain || null })
+    .insert({ account_id: accountId, name, domain: domain || null, category: category || null })
     .select("*")
     .single();
 

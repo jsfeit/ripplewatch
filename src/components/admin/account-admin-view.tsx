@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Plus, Trash2, Loader2 } from "lucide-react";
+import { Pencil, Plus, Trash2, Loader2, RefreshCw, Sparkles, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +57,24 @@ export function AccountAdminView({
 }) {
   const [tier, setTier] = useState(account.tier);
   const [savingTier, setSavingTier] = useState(false);
+  const [startingViewAs, setStartingViewAs] = useState(false);
+
+  async function handleViewAs() {
+    setStartingViewAs(true);
+    const res = await fetch("/api/admin/impersonate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accountId: account.id }),
+    });
+    if (res.ok) {
+      window.open("/app/dashboard", "_blank", "noopener,noreferrer");
+    }
+    setStartingViewAs(false);
+  }
+  const [recrawling, setRecrawling] = useState(false);
+  const [recrawlResult, setRecrawlResult] = useState<string | null>(null);
+  const [discovering, setDiscovering] = useState(false);
+  const [discoverResult, setDiscoverResult] = useState<string | null>(null);
   const [competitors, setCompetitors] = useState(initialCompetitors);
   const [signals, setSignals] = useState(initialSignals);
   const [newCompetitorName, setNewCompetitorName] = useState("");
@@ -150,6 +168,28 @@ export function AccountAdminView({
     if (!res.ok) setTier(previous);
   }
 
+  async function handleRecrawl() {
+    setRecrawling(true);
+    setRecrawlResult(null);
+    const res = await fetch(`/api/admin/accounts/${account.id}/recrawl`, { method: "POST" });
+    const data = await res.json().catch(() => null);
+    setRecrawling(false);
+    setRecrawlResult(
+      res.ok
+        ? `${data.summary.newSignals} new, ${data.summary.scored} scored`
+        : data?.error ?? "Recrawl failed."
+    );
+  }
+
+  async function handleDiscoverCompetitors() {
+    setDiscovering(true);
+    setDiscoverResult(null);
+    const res = await fetch(`/api/admin/accounts/${account.id}/discover-competitors`, { method: "POST" });
+    const data = await res.json().catch(() => null);
+    setDiscovering(false);
+    setDiscoverResult(res.ok ? `${data.summary.suggested} suggested` : data?.error ?? "Discovery failed.");
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -173,6 +213,20 @@ export function AccountAdminView({
               {account.subscription_status}
             </Badge>
           ) : null}
+          <Button variant="outline" size="sm" onClick={handleRecrawl} disabled={recrawling}>
+            {recrawling ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+            Recrawl now
+          </Button>
+          {recrawlResult ? <span className="text-xs text-muted-foreground">{recrawlResult}</span> : null}
+          <Button variant="outline" size="sm" onClick={handleDiscoverCompetitors} disabled={discovering}>
+            {discovering ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+            Find new competitors
+          </Button>
+          {discoverResult ? <span className="text-xs text-muted-foreground">{discoverResult}</span> : null}
+          <Button variant="outline" size="sm" onClick={handleViewAs} disabled={startingViewAs}>
+            {startingViewAs ? <Loader2 className="size-4 animate-spin" /> : <Eye className="size-4" />}
+            View as (read-only)
+          </Button>
         </div>
         <div className="mt-2 space-y-1 text-sm text-muted-foreground">
           {account.positioning ? <p>{account.positioning}</p> : null}
@@ -194,7 +248,7 @@ export function AccountAdminView({
         <Card>
           <CardHeader>
             <div className="flex items-baseline justify-between">
-              <h2 className="font-medium">LLM cost — last {llmUsageWindowDays} days</h2>
+              <h2 className="font-medium">LLM cost, last {llmUsageWindowDays} days</h2>
               <span className="text-xs text-muted-foreground">Admin-only, estimated from token counts</span>
             </div>
           </CardHeader>

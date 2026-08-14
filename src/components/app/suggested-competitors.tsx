@@ -56,7 +56,7 @@ export function SuggestedCompetitors({
       <div>
         <p className="text-sm font-medium">Suggested competitors</p>
         <p className="text-xs text-muted-foreground">
-          Based on your positioning and ICP — tap any to add them, no typing required.
+          Based on your positioning and ICP; tap any to add them, no typing required.
         </p>
       </div>
 

@@ -4,22 +4,13 @@ import { useMemo, useState } from "react";
 import { DollarSign } from "lucide-react";
 import { EmptyState } from "@/components/app/empty-state";
 import { cn, avatarColor } from "@/lib/utils";
+import { timeAgo } from "@/lib/date";
 import { BILLING_MODEL_LABELS, BILLING_MODEL_STYLES, BILLING_MODEL_DOT } from "@/lib/billing-model";
 import type { BillingModel, Database } from "@/lib/supabase/types";
 
 type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
 type CompetitorPricing = Database["public"]["Tables"]["competitor_pricing"]["Row"];
 type Signal = Database["public"]["Tables"]["signals"]["Row"];
-
-function timeAgo(iso: string): string {
-  const ms = Date.now() - new Date(iso).getTime();
-  const days = Math.floor(ms / 86_400_000);
-  if (days <= 0) return "today";
-  if (days === 1) return "1 day ago";
-  if (days < 30) return `${days} days ago`;
-  const months = Math.floor(days / 30);
-  return months === 1 ? "1 month ago" : `${months} months ago`;
-}
 
 export function PricingBoard({
   competitors,
@@ -214,7 +205,7 @@ function PricingCard({
         </p>
       ) : !record ? (
         <p className="mt-3 text-xs text-muted-foreground">
-          Not checked yet — runs on the next scheduled crawl.
+          Not checked yet; runs on the next scheduled crawl.
         </p>
       ) : (
         <>
@@ -231,6 +222,19 @@ function PricingCard({
           {!record.publicly_priced || record.tiers.length === 0 ? (
             <p className="mt-3 text-xs italic text-muted-foreground">
               {record.note ?? "No public pricing found."}
+              {competitor.pricing_url ? (
+                <>
+                  {" "}
+                  <a
+                    href={competitor.pricing_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="not-italic text-primary hover:underline"
+                  >
+                    View page
+                  </a>
+                </>
+              ) : null}
             </p>
           ) : (
             <div className="mt-1">

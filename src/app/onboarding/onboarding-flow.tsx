@@ -27,16 +27,41 @@ import { IntegrationPreviewCard } from "@/components/app/integration-preview-car
 import { CompetitorRow, type CompetitorInput } from "@/components/app/competitor-row";
 import { SuggestedCompetitors, type SuggestedCompetitor } from "@/components/app/suggested-competitors";
 import { DocumentUpload } from "@/components/app/document-upload";
+import { EmbeddedCheckoutModal } from "@/components/app/embedded-checkout-modal";
+import { trackEvent } from "@/lib/analytics";
+import { MONTHLY_PRICE_USD, annualPriceUsd } from "@/lib/pricing";
 import { generatePreviewAlert } from "@/lib/onboarding-preview";
 import { DOMAIN_PATTERN } from "@/lib/domain";
 import { createClient } from "@/lib/supabase/client";
 import { TIERS } from "@/lib/tiers";
+import { COMPETITOR_LIMIT } from "@/lib/tier-limits";
 
-const MAX_COMPETITORS = 20;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SELF_SERVE_TIERS = TIERS.filter((t) => t.selfServe);
 
-export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boolean }) {
+// Everything completeOnboarding() needs, saved right before signUp() and
+// restored after email confirmation — otherwise a confirmed signup lands
+// back on a blank form with no memory of what was just filled in.
+const DRAFT_STORAGE_KEY = "ripplewatch-onboarding-draft";
+type OnboardingDraft = {
+  companyName: string;
+  positioning: string;
+  icp: string;
+  competitors: CompetitorInput[];
+  hasSalesCrm: boolean;
+  hasPlg: boolean;
+  lostDealReasons: string;
+  churnReasons: string;
+  tier: string | null;
+};
+
+export function OnboardingFlow({
+  initiallySignedIn,
+  hasAccount,
+}: {
+  initiallySignedIn: boolean;
+  hasAccount: boolean;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedPlan = searchParams.get("plan");
@@ -44,7 +69,23 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
   const [step, setStep] = useState(0);
   const [chosenPlanId, setChosenPlanId] = useState<string | null>(null);
   const finalPlan = selectedPlan ?? chosenPlanId;
+  // Consistent with the pricing page's per-tier competitor caps (3/7/20).
+  // Defaults to Advanced's limit (the most permissive) until a plan is
+  // actually chosen — e.g. the no-query-param "Live demo" path, where plan
+  // selection happens at the last step, after competitors are entered.
+  const maxCompetitors =
+    finalPlan && finalPlan in COMPETITOR_LIMIT
+      ? COMPETITOR_LIMIT[finalPlan as keyof typeof COMPETITOR_LIMIT]
+      : COMPETITOR_LIMIT.advanced;
+  const [checkoutModal, setCheckoutModal] = useState<{ tier: "starter" | "plus"; period: "monthly" | "annual" } | null>(
+    null
+  );
 
+  // hasAccount (not initiallySignedIn) decides whether this last step
+  // exists at all: a signed-in user with no account yet (e.g. their
+  // signUp() succeeded but the page reloaded before onboarding completion
+  // ran) still needs to go through it, just without email/password fields
+  // since they're already authenticated.
   const STEPS = useMemo(() => {
     const base = [
       { title: "Company basics", icon: Building2 },
@@ -52,15 +93,16 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
       { title: "Growth Monitoring", icon: Users },
       { title: "Live preview", icon: Sparkles },
     ];
-    return initiallySignedIn ? base : [...base, { title: "Create account", icon: Mail }];
-  }, [initiallySignedIn]);
+    return hasAccount ? base : [...base, { title: initiallySignedIn ? "Finish setup" : "Create account", icon: Mail }];
+  }, [hasAccount, initiallySignedIn]);
   const STEP_TITLES = STEPS.map((s) => s.title);
   const isFinalStep = step === STEPS.length - 1;
-  const isAccountStep = !initiallySignedIn && isFinalStep;
+  const isAccountStep = !hasAccount && isFinalStep;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  const [resuming, setResuming] = useState(false);
 
   const [companyName, setCompanyName] = useState("");
   const [positioning, setPositioning] = useState("");
@@ -93,6 +135,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
     if (step === 1) return filledCompetitors.length >= 3 && domainsValid;
     if (step === 2) return hasSalesCrm || hasPlg;
     if (isAccountStep) {
+      if (initiallySignedIn) return Boolean(finalPlan);
       return EMAIL_PATTERN.test(email.trim()) && password.length >= 6 && Boolean(finalPlan);
     }
     return true;
@@ -105,6 +148,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
     domainsValid,
     hasSalesCrm,
     hasPlg,
+    initiallySignedIn,
     isAccountStep,
     finalPlan,
     email,
@@ -128,7 +172,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
   }
 
   function addCompetitor() {
-    if (competitors.length >= MAX_COMPETITORS) return;
+    if (competitors.length >= maxCompetitors) return;
     setCompetitors((prev) => [...prev, { name: "", domain: "" }]);
   }
 
@@ -163,7 +207,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
       if (emptyIndex !== -1) {
         return prev.map((c, i) => (i === emptyIndex ? { name: suggestion.name, domain: suggestion.domain } : c));
       }
-      if (prev.length >= MAX_COMPETITORS) return prev;
+      if (prev.length >= maxCompetitors) return prev;
       return [...prev, { name: suggestion.name, domain: suggestion.domain }];
     });
   }
@@ -173,51 +217,23 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
     [competitors]
   );
 
-  async function handleFinish() {
-    setSubmitting(true);
-    setSubmitError("");
-
-    if (!initiallySignedIn) {
-      const supabase = createClient();
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: { emailRedirectTo: `${window.location.origin}/app/dashboard` },
-      });
-
-      if (error) {
-        setSubmitError(error.message);
-        setSubmitting(false);
-        return;
-      }
-
-      // Email confirmation is off in dev, but if it's ever re-enabled there's
-      // no session yet — nothing to persist the onboarding data against.
-      if (!data.session) {
-        setNeedsConfirmation(true);
-        setSubmitting(false);
-        return;
-      }
-    }
-
-    await completeOnboarding();
-  }
-
-  async function completeOnboarding() {
+  async function completeOnboarding(overrides?: OnboardingDraft) {
+    const payload = overrides ?? {
+      companyName,
+      positioning,
+      icp,
+      competitors,
+      hasSalesCrm,
+      hasPlg,
+      lostDealReasons,
+      churnReasons,
+      tier: finalPlan,
+    };
     try {
       const res = await fetch("/api/onboarding/complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          companyName,
-          positioning,
-          icp,
-          competitors,
-          hasSalesCrm,
-          hasPlg,
-          lostDealReasons,
-          churnReasons,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -226,20 +242,24 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
         return;
       }
 
-      if (finalPlan === "starter" || finalPlan === "plus") {
-        const checkoutRes = await fetch("/api/stripe/checkout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tier: finalPlan, period: selectedPeriod }),
-        });
-        const checkoutData = await checkoutRes.json();
-        if (checkoutRes.ok && checkoutData.url) {
-          window.location.href = checkoutData.url;
-          return;
-        }
-        // Checkout couldn't start (e.g. Stripe not fully configured yet) —
-        // the account still exists, so fall through to the dashboard rather
-        // than stranding the user on an error.
+      trackEvent("sign_up", { method: "email" });
+
+      // payload.tier (not finalPlan) — on the resume-from-confirmation-
+      // email path, finalPlan is still the stale pre-restore value from
+      // this render, since the setChosenPlanId() a few lines up hasn't
+      // taken effect yet.
+      const tier = payload.tier;
+      if (tier === "starter" || tier === "plus") {
+        // Opens the embedded Checkout modal right over this step — the
+        // account already exists at this point regardless of payment
+        // outcome, so closing the modal (see the modal's onOpenChange
+        // below) always lands on the dashboard rather than stranding the
+        // user here.
+        const value = selectedPeriod === "annual" ? annualPriceUsd(MONTHLY_PRICE_USD[tier]) : MONTHLY_PRICE_USD[tier];
+        trackEvent("begin_checkout", { currency: "USD", value, item_name: tier, item_variant: selectedPeriod });
+        setCheckoutModal({ tier, period: selectedPeriod });
+        setSubmitting(false);
+        return;
       }
 
       router.push("/app/dashboard");
@@ -248,6 +268,119 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
       setSubmitError("Something went wrong. Try again.");
       setSubmitting(false);
     }
+  }
+
+  // Landing here signed in with no account yet, and a saved draft, means
+  // this is a return trip from an email-confirmation link: the earlier
+  // signUp() call already succeeded and saved the in-progress answers,
+  // then the page fully reloaded (losing all React state) when the
+  // confirmation link redirected here. Finish account creation with the
+  // saved answers instead of making them redo the whole form.
+  useEffect(() => {
+    if (!initiallySignedIn || hasAccount) return;
+    const raw = sessionStorage.getItem(DRAFT_STORAGE_KEY);
+    if (!raw) return;
+    sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+
+    let draft: OnboardingDraft;
+    try {
+      draft = JSON.parse(raw);
+    } catch {
+      return;
+    }
+
+    // Restoring a completed form from sessionStorage after an external
+    // redirect (the email-confirmation link), not deriving state from
+    // props/other state — the one case this rule doesn't cover.
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setCompanyName(draft.companyName);
+    setPositioning(draft.positioning);
+    setIcp(draft.icp);
+    setCompetitors(draft.competitors);
+    setHasSalesCrm(draft.hasSalesCrm);
+    setHasPlg(draft.hasPlg);
+    setLostDealReasons(draft.lostDealReasons);
+    setChurnReasons(draft.churnReasons);
+    if (draft.tier) setChosenPlanId(draft.tier);
+    setResuming(true);
+    setSubmitting(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
+    completeOnboarding(draft);
+    // Runs once, on mount — completeOnboarding is stable enough for this
+    // one-shot resume and re-running it on every render would re-submit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initiallySignedIn, hasAccount]);
+
+  async function handleFinish() {
+    setSubmitting(true);
+    setSubmitError("");
+
+    // Already has a real account means this is the demo/preview experience,
+    // not real onboarding — the UI already reflects that (no account step at
+    // all, button says "Go to dashboard"). Calling completeOnboarding() here
+    // would try to create a second account and re-link this profile to it,
+    // which the account_id-reassignment guard in migration 0014 correctly
+    // rejects (protects against account hijacking) — surfacing as a
+    // confusing "Could not link account to your profile" error at the very
+    // last step for someone who already has a real account.
+    if (hasAccount) {
+      router.push("/app/dashboard");
+      router.refresh();
+      return;
+    }
+
+    // Signed in but no account yet: signUp() already succeeded in an earlier
+    // attempt (e.g. the page reloaded before completeOnboarding() finished),
+    // so calling signUp() again would fail with "already registered" and
+    // strand this session for good. Skip straight to account creation.
+    if (initiallySignedIn) {
+      await completeOnboarding();
+      return;
+    }
+
+    // Saved before signUp() so it survives the full page reload an email
+    // confirmation link causes — restored by the resume effect above if
+    // that link is actually followed. Cleared as soon as either branch
+    // below no longer needs it (email off: right away; email on: by the
+    // resume effect once it's read back).
+    const draft: OnboardingDraft = {
+      companyName,
+      positioning,
+      icp,
+      competitors,
+      hasSalesCrm,
+      hasPlg,
+      lostDealReasons,
+      churnReasons,
+      tier: finalPlan,
+    };
+    sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+
+    const supabase = createClient();
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: { emailRedirectTo: `${window.location.origin}/app/dashboard` },
+    });
+
+    if (error) {
+      sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+      setSubmitError(error.message);
+      setSubmitting(false);
+      return;
+    }
+
+    // No session yet means email confirmation is on — leave the draft in
+    // sessionStorage for the resume effect to pick up once they follow the
+    // confirmation link back here.
+    if (!data.session) {
+      setNeedsConfirmation(true);
+      setSubmitting(false);
+      return;
+    }
+
+    sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+    await completeOnboarding(draft);
   }
 
   if (needsConfirmation) {
@@ -265,8 +398,35 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
     );
   }
 
+  // Once completeOnboarding() opens the checkout modal (paid self-serve
+  // tiers), fall through to the normal return below instead of staying on
+  // this spinner forever — the modal only renders as part of that JSX.
+  if (resuming && !checkoutModal) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center gap-3 py-8 text-center">
+          <Loader2 className="size-8 animate-spin text-primary" />
+          <p className="font-medium">Finishing your account setup…</p>
+          <p className="text-sm text-muted-foreground">Picking up right where you left off.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div>
+      <EmbeddedCheckoutModal
+        open={checkoutModal !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCheckoutModal(null);
+            router.push("/app/dashboard");
+            router.refresh();
+          }
+        }}
+        tier={checkoutModal?.tier ?? "starter"}
+        period={checkoutModal?.period ?? "monthly"}
+      />
       <div className="mb-10 flex items-center">
         {STEPS.map((s, i) => (
           <div key={s.title} className="flex flex-1 items-center last:flex-none">
@@ -345,7 +505,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
           {step === 1 && (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Add 3–{MAX_COMPETITORS} competitors by name and domain.
+                Add 3–{maxCompetitors} competitors by name and domain.
               </p>
               <div className="space-y-2">
                 {competitors.map((c, i) => (
@@ -363,13 +523,13 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
                 variant="outline"
                 size="sm"
                 onClick={addCompetitor}
-                disabled={competitors.length >= MAX_COMPETITORS}
+                disabled={competitors.length >= maxCompetitors}
               >
                 <Plus className="size-4" />
                 Add competitor
               </Button>
               <p className="text-xs text-muted-foreground">
-                {filledCompetitors.length}/{MAX_COMPETITORS} named — minimum 3 required
+                {filledCompetitors.length}/{maxCompetitors} named, minimum 3 required
               </p>
 
               <SuggestedCompetitors
@@ -420,7 +580,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
                 <div>
                   <p className="text-sm font-medium">Connect Slack</p>
                   <p className="text-xs text-muted-foreground">
-                    We push every relevant signal straight to the channel of your choice — no one
+                    We push every relevant signal straight to the channel of your choice; no one
                     has to log in to Ripplewatch to know what changed.
                   </p>
                 </div>
@@ -440,7 +600,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
                       id="lostDealReasons"
                       value={lostDealReasons}
                       onChange={(e) => setLostDealReasons(e.target.value)}
-                      placeholder="Lost to Parano.ai — they were $30/mo cheaper on the entry tier"
+                      placeholder="Lost to Parano.ai, they were $30/mo cheaper on the entry tier"
                       rows={3}
                     />
                   </div>
@@ -449,7 +609,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
                       <DocumentUpload />
                     ) : (
                       <p className="text-xs text-muted-foreground">
-                        Or attach a win/loss report — available once you create your account.
+                        Or attach a win/loss report; available once you create your account.
                       </p>
                     )}
                   </div>
@@ -469,7 +629,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
                       id="churnReasons"
                       value={churnReasons}
                       onChange={(e) => setChurnReasons(e.target.value)}
-                      placeholder="Churned after 2 months — said RivalSense's onboarding was easier to get started with"
+                      placeholder="Churned after 2 months, said RivalSense's onboarding was easier to get started with"
                       rows={3}
                     />
                   </div>
@@ -478,7 +638,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
                       <DocumentUpload />
                     ) : (
                       <p className="text-xs text-muted-foreground">
-                        Or attach a churn report — available once you create your account.
+                        Or attach a churn report; available once you create your account.
                       </p>
                     )}
                   </div>
@@ -490,7 +650,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
           {step === 3 && (
             <div className="space-y-5">
               <p className="text-sm text-muted-foreground">
-                Here&apos;s a live sample of the kind of alert you&apos;ll get — updating as you filled in
+                Here&apos;s a live sample of the kind of alert you&apos;ll get, updating as you filled in
                 your context. Real signals will replace this once monitoring is live.
               </p>
               <div
@@ -518,7 +678,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
               </div>
               {!initiallySignedIn ? (
                 <p className="text-sm font-medium text-primary">
-                  Like what you see? This is just a one-alert teaser — sign up to start real monitoring
+                  Like what you see? This is just a one-alert teaser; sign up to start real monitoring
                   and get this on every signal, not just a sample.
                 </p>
               ) : null}
@@ -528,65 +688,88 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
           {isAccountStep && (
             <div className="space-y-5">
               <p className="text-sm text-muted-foreground">
-                Create your account to start monitoring these competitors for real.
-                {selectedPlan ? null : " Pick a plan, then you're set — no trial, but every plan comes with a 30-day money-back guarantee."}
+                {initiallySignedIn
+                  ? "Finish setting up your account to start monitoring these competitors for real."
+                  : "Create your account to start monitoring these competitors for real."}
+                {selectedPlan ? null : " Pick a plan, then you're set: no trial, but every plan comes with a 30-day money-back guarantee."}
               </p>
 
               {!selectedPlan ? (
                 <div className="space-y-2">
                   <Label>Choose a plan</Label>
                   <div className="grid gap-3 sm:grid-cols-3">
-                    {SELF_SERVE_TIERS.map((tier) => (
-                      <button
-                        key={tier.id}
-                        type="button"
-                        onClick={() => setChosenPlanId(tier.id)}
-                        className={cn(
-                          "rounded-lg border p-4 text-left transition-colors",
-                          chosenPlanId === tier.id
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:border-primary/40"
-                        )}
-                      >
-                        <div className="flex items-baseline justify-between">
-                          <span className="font-medium">{tier.name}</span>
-                          <span className="text-sm text-muted-foreground">
-                            {tier.price}
-                            {tier.priceNote}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-xs text-muted-foreground">{tier.tagline}</p>
-                      </button>
-                    ))}
+                    {SELF_SERVE_TIERS.map((tier) => {
+                      // Competitors are entered before a plan's chosen on this
+                      // no-preselected-plan path — a tier too small for what's
+                      // already entered is disabled rather than silently
+                      // letting the account end up over its own limit.
+                      const tierLimit = COMPETITOR_LIMIT[tier.id];
+                      const tooFewSlots = filledCompetitors.length > tierLimit;
+                      return (
+                        <button
+                          key={tier.id}
+                          type="button"
+                          onClick={() => !tooFewSlots && setChosenPlanId(tier.id)}
+                          disabled={tooFewSlots}
+                          className={cn(
+                            "rounded-lg border p-4 text-left transition-colors",
+                            tooFewSlots
+                              ? "cursor-not-allowed border-border opacity-50"
+                              : chosenPlanId === tier.id
+                                ? "border-primary bg-primary/5"
+                                : "border-border hover:border-primary/40"
+                          )}
+                        >
+                          <div className="flex items-baseline justify-between">
+                            <span className="font-medium">{tier.name}</span>
+                            <span className="text-sm text-muted-foreground">
+                              {tier.price}
+                              {tier.priceNote}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {tooFewSlots
+                              ? `Only monitors up to ${tierLimit} competitors, remove some to pick this plan`
+                              : tier.tagline}
+                          </p>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               ) : null}
 
-              <div className="space-y-2">
-                <Label htmlFor="onboardingEmail">Work email</Label>
-                <Input
-                  id="onboardingEmail"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@company.com"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="onboardingPassword">Password</Label>
-                <Input
-                  id="onboardingPassword"
-                  type="password"
-                  minLength={6}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
+              {!initiallySignedIn ? (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="onboardingEmail">Work email</Label>
+                    <Input
+                      id="onboardingEmail"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@company.com"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="onboardingPassword">Password</Label>
+                    <Input
+                      id="onboardingPassword"
+                      type="password"
+                      minLength={6}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </div>
+                </>
+              ) : null}
               <p className="text-xs text-muted-foreground">
-                By creating an account, you agree to our{" "}
+                {initiallySignedIn ? "By continuing, you agree to our" : "By creating an account, you agree to our"}{" "}
                 <Link href="/terms" className="text-primary hover:underline">Terms of Service</Link> and{" "}
                 <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>.
-                You&apos;ll be sent to Stripe to complete payment on the next step.
+                {finalPlan === "starter" || finalPlan === "plus"
+                  ? " You'll complete payment on the next step."
+                  : null}
               </p>
             </div>
           )}
@@ -613,7 +796,7 @@ export function OnboardingFlow({ initiallySignedIn }: { initiallySignedIn: boole
         ) : (
           <Button type="button" onClick={handleFinish} disabled={submitting || !canProceed}>
             {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
-            {isAccountStep ? "Create account & go to dashboard" : "Go to dashboard"}
+            {isAccountStep ? (initiallySignedIn ? "Finish setup & go to dashboard" : "Create account & go to dashboard") : "Go to dashboard"}
             <ArrowRight className="size-4" />
           </Button>
         )}
