@@ -566,6 +566,30 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["admin_impersonation_log"]["Insert"]>;
         Relationships: [];
       };
+      blog_posts: {
+        Row: {
+          id: string;
+          slug: string;
+          title: string;
+          description: string;
+          published_at: string;
+          body: unknown;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          slug: string;
+          title: string;
+          description: string;
+          published_at?: string;
+          body: unknown;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["blog_posts"]["Insert"]>;
+        Relationships: [];
+      };
       signal_eval_labels: {
         Row: {
           signal_id: string;

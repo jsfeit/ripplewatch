@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { sortedPosts } from "@/lib/posts";
+import { getAllPosts } from "@/lib/posts";
 import { formatDate } from "@/lib/date";
+
+export const dynamic = "force-dynamic";
 
 const description = "Notes on competitive intelligence, win/loss analysis, and building a relevance-first alerting system.";
 
@@ -15,8 +17,8 @@ export const metadata = {
   twitter: { card: "summary_large_image", title: "Blog | Ripplewatch", description, images: ["/opengraph-image"] },
 };
 
-export default function BlogIndexPage() {
-  const posts = sortedPosts();
+export default async function BlogIndexPage() {
+  const posts = await getAllPosts();
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-20">

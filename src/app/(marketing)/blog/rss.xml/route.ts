@@ -1,4 +1,6 @@
-import { sortedPosts } from "@/lib/posts";
+import { getAllPosts } from "@/lib/posts";
+
+export const dynamic = "force-dynamic";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
@@ -11,8 +13,8 @@ function escapeXml(text: string): string {
     .replace(/'/g, "&apos;");
 }
 
-export function GET() {
-  const posts = sortedPosts();
+export async function GET() {
+  const posts = await getAllPosts();
   const items = posts
     .map(
       (post) => `    <item>
