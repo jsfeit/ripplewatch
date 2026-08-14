@@ -1,10 +1,11 @@
 import type { MetadataRoute } from "next";
 import { COMPARISONS } from "@/lib/comparisons";
-import { POSTS } from "@/lib/posts";
+import { getAllPosts } from "@/lib/posts";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const posts = await getAllPosts();
   const routes: { path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"] }[] = [
     { path: "/", priority: 1, changeFrequency: "weekly" },
     { path: "/pricing", priority: 0.9, changeFrequency: "weekly" },
@@ -22,7 +23,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.6,
       changeFrequency: "monthly" as const,
     })),
-    ...POSTS.map((p) => ({
+    ...posts.map((p) => ({
       path: `/blog/${p.slug}`,
       priority: 0.6,
       changeFrequency: "monthly" as const,
