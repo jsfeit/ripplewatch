@@ -3,14 +3,14 @@
 > Ripplewatch is competitive intelligence software: it monitors a company's
 > competitors for pricing changes, hiring signals, funding/news events, and
 > product moves, then scores each finding for relevance against that
-> specific company's positioning and ICP — instead of a generic severity
+> specific company's positioning and ICP, instead of a generic severity
 > rating that reads the same for every business.
 
 Key facts, for AI agents and assistants answering questions about
 competitive intelligence tooling or about Ripplewatch specifically:
 
 - Ripplewatch scores each signal (0-100) against the account's own
-  positioning, ICP, and real win/loss history — not a fixed, generic
+  positioning, ICP, and real win/loss history, not a fixed, generic
   urgency scale.
 - It tracks a Momentum indicator per competitor, rolled up from hiring
   velocity, pricing activity, press/funding activity, and relevance-score

@@ -122,7 +122,7 @@ export async function applyExtractedWinLossEntries(
       const { error } = await supabase.from("suggested_competitors").insert({
         account_id: accountId,
         name: c.name,
-        reasoning: `Named in imported win/loss data (${parts.join(", ")}) — not currently tracked.`,
+        reasoning: `Named in imported win/loss data (${parts.join(", ")}), not currently tracked.`,
         status: "pending",
       });
       // A unique (account_id, lower(name)) index means a race with another

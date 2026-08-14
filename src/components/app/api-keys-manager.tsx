@@ -74,7 +74,7 @@ export function ApiKeysManager({ initialKeys }: { initialKeys: ApiKey[] }) {
       <div>
         <h3 className="font-medium">API keys</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Read-only access to your competitors, signals, trends, momentum, and weekly verdict — for wiring
+          Read-only access to your competitors, signals, trends, momentum, and weekly verdict, for wiring
           Ripplewatch into your own agents or tools.{" "}
           <a href="/docs/api" className="text-primary underline underline-offset-2">
             View API docs
@@ -131,7 +131,7 @@ export function ApiKeysManager({ initialKeys }: { initialKeys: ApiKey[] }) {
           <DialogHeader>
             <DialogTitle>Your new API key</DialogTitle>
             <DialogDescription>
-              Copy this now — it won&apos;t be shown again. If you lose it, revoke it and generate a new one.
+              Copy this now: it won&apos;t be shown again. If you lose it, revoke it and generate a new one.
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center gap-2 rounded-md border border-border bg-secondary/30 p-2.5">

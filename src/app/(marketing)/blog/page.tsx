@@ -27,7 +27,7 @@ export default async function BlogIndexPage() {
 
       {posts.length === 0 ? (
         <p className="mt-12 text-sm text-muted-foreground">
-          Nothing published yet — check back soon, or see the{" "}
+          Nothing published yet, check back soon, or see the{" "}
           <Link href="/state-of-competitive-intelligence" className="text-primary underline underline-offset-2">
             competitive intelligence research
           </Link>{" "}

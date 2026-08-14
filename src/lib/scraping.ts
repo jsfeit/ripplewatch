@@ -303,7 +303,7 @@ export async function checkPricingStructure(supabase: AdminClient, competitor: C
         competitor_id: competitor.id,
         billing_model: "unknown",
         publicly_priced: false,
-        note: "Couldn't load this pricing page automatically (it blocks automated requests) — check it directly.",
+        note: "Couldn't load this pricing page automatically (it blocks automated requests): check it directly.",
         tiers: [],
         last_checked_at: new Date().toISOString(),
       },

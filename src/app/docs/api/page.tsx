@@ -27,7 +27,7 @@ export default function ApiDocsPage() {
     <LegalDoc title="API" updated="August 12, 2026">
       <p className="text-muted-foreground">
         A read-only REST API for pulling your competitive intel into your own agents or tools, instead of a
-        person reading the dashboard. Available on Plus and Advanced plans — generate a key from{" "}
+        person reading the dashboard. Available on Plus and Advanced plans: generate a key from{" "}
         <a href="/app/settings?tab=developer">Settings → Developer</a>.
       </p>
 
@@ -40,7 +40,7 @@ export default function ApiDocsPage() {
         </code>
       </p>
       <p>
-        Keys are shown once at creation and never stored in plaintext — if you lose one, revoke it and generate a
+        Keys are shown once at creation and never stored in plaintext: if you lose one, revoke it and generate a
         new one. Requests are rate-limited to 60/minute per key.
       </p>
 
@@ -72,7 +72,7 @@ export default function ApiDocsPage() {
 
       <h2>Response shape</h2>
       <p>
-        Every endpoint returns <code>{"{ data: ... }"}</code> — an array for list endpoints, an object for single
+        Every endpoint returns <code>{"{ data: ... }"}</code>: an array for list endpoints, an object for single
         resources. Errors return <code>{"{ error: string }"}</code> with a 4xx/5xx status.
       </p>
     </LegalDoc>

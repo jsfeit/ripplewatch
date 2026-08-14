@@ -314,7 +314,7 @@ export function WinLossPageClient({
 
           {entries.length === 0 ? (
             <p className="mt-3 text-sm text-muted-foreground">
-              No wins or losses logged yet. Upload a CSV, sync HubSpot, or log one manually above — the more you
+              No wins or losses logged yet. Upload a CSV, sync HubSpot, or log one manually above: the more you
               log, the sharper every fact sheet gets.
             </p>
           ) : (
@@ -329,7 +329,7 @@ export function WinLossPageClient({
         <div className="rounded-xl border border-border bg-card p-5">
           <h2 className="text-sm font-semibold">Customer churn</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Account-wide, not tied to one competitor — churn reasons rarely name who a customer switched to the
+            Account-wide, not tied to one competitor: churn reasons rarely name who a customer switched to the
             way a lost sales deal does. Feeds every fact sheet and alert scoring the same way lost-deal reasons
             do for sales-led accounts.
           </p>

@@ -73,7 +73,7 @@ export function TrendsBoard({
           status text) are hidden on print, so the exported page needs its
           own plain-text context instead of the app chrome. */}
       <div className="hidden print:block">
-        <h2 className="text-lg font-semibold">{accountName} — Win/Loss trends</h2>
+        <h2 className="text-lg font-semibold">{accountName}: Win/Loss trends</h2>
         {generatedAt ? (
           <p className="mt-1 text-xs text-muted-foreground">
             Generated {new Date(generatedAt).toLocaleDateString()}

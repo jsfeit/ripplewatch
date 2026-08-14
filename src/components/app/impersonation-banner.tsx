@@ -20,7 +20,7 @@ export function ImpersonationBanner({ accountName, adminEmail }: { accountName: 
     <div className="flex items-center justify-center gap-3 bg-amber-500 px-4 py-2 text-sm font-medium text-amber-950">
       <Eye className="size-4 shrink-0" />
       <span>
-        Viewing <span className="font-semibold">{accountName}</span> as {adminEmail} — read-only
+        Viewing <span className="font-semibold">{accountName}</span> as {adminEmail} (read-only)
       </span>
       <Button
         size="sm"
