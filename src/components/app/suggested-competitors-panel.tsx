@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Check, Loader2, Sparkles, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Panel } from "@/components/ui/panel";
 import { cn, avatarColor } from "@/lib/utils";
 import type { Database } from "@/lib/supabase/types";
 
@@ -71,9 +72,10 @@ export function SuggestedCompetitorsPanel({
 
       <div className="space-y-2">
         {suggestions.map((s) => (
-          <div
+          <Panel
             key={s.id}
-            className="flex flex-col items-start gap-3 rounded-lg border border-border bg-card p-3 sm:flex-row sm:items-center sm:justify-between"
+            radius="lg"
+            className="flex flex-col items-start gap-3 p-3 sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="flex min-w-0 items-start gap-3">
               <span
@@ -116,7 +118,7 @@ export function SuggestedCompetitorsPanel({
                 <X className="size-4" />
               </Button>
             </div>
-          </div>
+          </Panel>
         ))}
       </div>
     </div>

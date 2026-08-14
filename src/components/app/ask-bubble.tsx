@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { MessageCircleQuestion, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Panel } from "@/components/ui/panel";
 import { AskChat } from "@/app/app/ask/ask-chat";
 
 // Desktop-only (see the "hidden lg:block" wrapper) — always-available
@@ -15,7 +16,7 @@ export function AskBubble({ competitorNames }: { competitorNames: string[] }) {
   return (
     <div className="fixed bottom-5 right-5 z-50 hidden lg:block">
       {open ? (
-        <div className="mb-3 flex h-[32rem] w-96 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
+        <Panel className="mb-3 flex h-[32rem] w-96 flex-col overflow-hidden shadow-2xl">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <div className="flex items-center gap-2 text-sm font-medium">
               <MessageCircleQuestion className="size-4 text-primary" />
@@ -28,7 +29,7 @@ export function AskBubble({ competitorNames }: { competitorNames: string[] }) {
           <div className="flex-1 overflow-y-auto p-3">
             <AskChat competitorNames={competitorNames} />
           </div>
-        </div>
+        </Panel>
       ) : null}
 
       <Button

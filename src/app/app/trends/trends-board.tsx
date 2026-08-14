@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Loader2, Printer, RefreshCw, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Panel } from "@/components/ui/panel";
 import { EmptyState } from "@/components/app/empty-state";
 import { cn } from "@/lib/utils";
 import { SIGNAL_TYPE_LABELS } from "@/lib/mock-data";
@@ -81,7 +82,7 @@ export function TrendsBoard({
         ) : null}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 print:hidden">
+      <Panel className="flex flex-wrap items-center justify-between gap-3 p-4 print:hidden">
         <div>
           <p className="text-sm font-medium">
             {generatedAt ? `Generated ${new Date(generatedAt).toLocaleDateString()}` : "Not generated yet"}
@@ -103,7 +104,7 @@ export function TrendsBoard({
             {generatedAt ? "Refresh" : "Generate"}
           </Button>
         </div>
-      </div>
+      </Panel>
 
       {error ? <p className="mt-3 text-sm text-destructive print:hidden">{error}</p> : null}
       {insufficientData ? (
@@ -140,7 +141,7 @@ function TrendCard({ trend, signalsById }: { trend: Trend; signalsById: Record<s
   const wonPct = total > 0 ? Math.round((trend.won_count / total) * 100) : 0;
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <Panel className="p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold">{trend.theme}</h3>
@@ -217,6 +218,6 @@ function TrendCard({ trend, signalsById }: { trend: Trend; signalsById: Record<s
           </div>
         );
       })()}
-    </div>
+    </Panel>
   );
 }

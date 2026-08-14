@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, ArrowUp, Radar, Sparkles, Send, Waves, CircleDashed } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Panel } from "@/components/ui/panel";
 import { PricingCards } from "@/components/marketing/pricing-cards";
 import { cn, avatarColor } from "@/lib/utils";
 
@@ -99,7 +100,7 @@ export default function HomePage() {
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Generic monitoring tool
               </p>
-              <div className="relative mt-4 overflow-hidden rounded-lg border border-border bg-card p-4 pl-5">
+              <Panel radius="lg" className="relative mt-4 overflow-hidden p-4 pl-5">
                 <div className="absolute inset-y-0 left-0 w-1 bg-border" />
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2">
@@ -125,7 +126,7 @@ export default function HomePage() {
                 <p className="mt-1 text-sm text-muted-foreground">
                   Price change detected on their /pricing page. No further detail provided.
                 </p>
-              </div>
+              </Panel>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-primary">
@@ -176,14 +177,14 @@ export default function HomePage() {
         <h2 className="text-center text-3xl font-semibold tracking-tight">How it works</h2>
         <div className="mt-12 grid gap-8 sm:grid-cols-3">
           {STEPS.map((step, i) => (
-            <div key={step.title} className="relative rounded-xl border border-border bg-card p-6">
+            <Panel key={step.title} className="relative p-6">
               <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <step.icon className="size-5" />
               </div>
               <p className="mt-4 text-xs font-semibold text-muted-foreground">STEP {i + 1}</p>
               <h3 className="mt-1 text-lg font-medium">{step.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{step.body}</p>
-            </div>
+            </Panel>
           ))}
         </div>
         <div className="mt-8 text-center">
@@ -208,7 +209,7 @@ export default function HomePage() {
               your competitors, your positioning, and the last 90 days of signals.
             </p>
           </div>
-          <div className="mx-auto mt-10 max-w-2xl rounded-xl border border-border bg-card p-5 shadow-sm">
+          <Panel className="mx-auto mt-10 max-w-2xl p-5 shadow-sm">
             <div className="ml-auto max-w-[85%] rounded-lg bg-primary px-4 py-3 text-sm leading-relaxed text-primary-foreground">
               {ASK_EXCHANGE.question}
             </div>
@@ -219,7 +220,7 @@ export default function HomePage() {
               Ask about a competitor, a trend, or what&apos;s changed…
               <ArrowUp className="ml-auto size-3.5 shrink-0 rounded-full bg-primary p-0.5 text-primary-foreground" />
             </div>
-          </div>
+          </Panel>
         </div>
       </section>
 

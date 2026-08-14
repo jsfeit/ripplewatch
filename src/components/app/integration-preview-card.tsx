@@ -1,6 +1,7 @@
 import { Plug, Handshake, LifeBuoy, Hash } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn, avatarColor } from "@/lib/utils";
+import { Panel } from "@/components/ui/panel";
 
 const NAME_ICON: Record<string, LucideIcon> = {
   hubspot: Handshake,
@@ -16,7 +17,7 @@ export function IntegrationPreviewCard({ name, description }: { name: string; de
   const Icon = NAME_ICON[name.toLowerCase()] ?? Plug;
 
   return (
-    <div className="flex flex-col items-start gap-3 rounded-lg border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+    <Panel radius="lg" className="flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
       <div className="flex min-w-0 items-center gap-3">
         <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-md", avatarColor(name))}>
           <Icon className="size-4" />
@@ -29,6 +30,6 @@ export function IntegrationPreviewCard({ name, description }: { name: string; de
       <span className="whitespace-nowrap rounded-full border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground">
         After signup
       </span>
-    </div>
+    </Panel>
   );
 }
