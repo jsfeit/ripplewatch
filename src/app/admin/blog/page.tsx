@@ -33,7 +33,7 @@ export default async function AdminBlogPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight">Blog</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {posts.length} post{posts.length === 1 ? "" : "s"}. Changes go live on ripplewatch.ai/blog immediately —
+          {posts.length} post{posts.length === 1 ? "" : "s"}. Changes go live on ripplewatch.ai/blog immediately,
           no deploy needed.
         </p>
       </div>

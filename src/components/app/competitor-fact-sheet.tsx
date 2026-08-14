@@ -449,7 +449,7 @@ export function CompetitorFactSheet({
         <div className="mt-6 border-t border-border pt-4 print:hidden">
           <p className="text-xs font-semibold text-muted-foreground">Customer churn</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Account-wide, not specific to {competitorName} — churn reasons rarely name one competitor the way a
+            Account-wide, not specific to {competitorName}: churn reasons rarely name one competitor the way a
             lost sales deal does. Feeds every fact sheet and alert scoring the same way lost-deal reasons do for
             sales-led accounts.
           </p>

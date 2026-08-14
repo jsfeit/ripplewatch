@@ -47,7 +47,7 @@ export default async function WinLossPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">Win/Loss</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Import, log, and see the recurring reasons behind every deal — across every competitor in one place,
+          Import, log, and see the recurring reasons behind every deal, across every competitor in one place,
           instead of buried inside each one&apos;s own page.
         </p>
       </div>

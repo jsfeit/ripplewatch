@@ -335,7 +335,7 @@ export async function sendAnthropicCreditAlertEmail(to: string[]) {
     subject: "⚠️ Anthropic API credit balance is too low",
     html: `<p>Anthropic just rejected a request with:</p>
       <blockquote style="border-left:3px solid #ddd;margin:8px 0;padding-left:12px;color:#555;">Your credit balance is too low to access the Anthropic API. Please go to Plans &amp; Billing to upgrade or purchase credits.</blockquote>
-      <p>Every scoring, scraping-extraction, digest, and trends call is failing until this is resolved — add credits or check auto-reload at <a href="https://console.anthropic.com">console.anthropic.com</a> → Settings → Billing.</p>
+      <p>Every scoring, scraping-extraction, digest, and trends call is failing until this is resolved. Add credits or check auto-reload at <a href="https://console.anthropic.com">console.anthropic.com</a> → Settings → Billing.</p>
       <p style="color:#888;font-size:12px;">Further alerts are suppressed for a while after this one so a burst of failures doesn't flood this inbox.</p>`,
   });
   if (result.error) throw new Error(result.error.message);
