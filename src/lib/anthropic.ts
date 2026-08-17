@@ -630,6 +630,9 @@ Worked examples:
 - "Acme raises prices on its entry tier" → "Acme raised prices on its entry-tier plan."
 - "Acme raises $10M in Series A funding" → "Acme raised $10 million in Series A funding."
 (Clearly different canonical sentences — a price change and a funding round are different actions, even though both headlines use the word "raises.")
+- "Xero Payroll Launches as QuickBooks Desktop Leaves 3.4M Workers Unpaid" → "Xero launched a native payroll product."
+- "Xero announces native payroll solution" → "Xero launched a native payroll product."
+(Same canonical sentence. The first headline's real hook is a competitor's outage, not Xero's own action — but the company being tracked here is Xero, and Xero's action is "launched a payroll product" either way. When a headline frames the tracked company's action against a third party's simultaneous, unrelated event, canonicalize the tracked company's action alone; don't fold the third party's event into the sentence just because the headline foregrounds it.)
 
 Respond with strict JSON only, no markdown, matching this shape exactly:
 {"canonical": ["<sentence>", ...]}

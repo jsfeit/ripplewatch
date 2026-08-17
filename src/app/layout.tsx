@@ -53,7 +53,7 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <PromoBanner bannerText={campaign?.bannerText ?? null} />
+        <PromoBanner bannerText={campaign?.bannerText ?? null} linkUrl={campaign?.linkUrl ?? null} />
         {children}
         <Analytics />
         <SpeedInsights />

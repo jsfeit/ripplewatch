@@ -598,6 +598,7 @@ export interface Database {
           duration_months: number;
           code: string;
           banner_text: string;
+          link_url: string;
           stripe_coupon_id: string | null;
           created_at: string;
           updated_at: string;
@@ -609,6 +610,7 @@ export interface Database {
           duration_months: number;
           code: string;
           banner_text: string;
+          link_url?: string;
           stripe_coupon_id?: string | null;
           created_at?: string;
           updated_at?: string;

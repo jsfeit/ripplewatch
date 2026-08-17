@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, RotateCcw } from "lucide-react";
+import { Loader2, RotateCcw, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,7 @@ type Campaign = {
   durationMonths: number;
   code: string;
   bannerText: string;
+  linkUrl: string;
 };
 
 const DEFAULTS: Campaign = {
@@ -23,6 +24,7 @@ const DEFAULTS: Campaign = {
   durationMonths: 6,
   code: "NEW50",
   bannerText: "",
+  linkUrl: "/pricing",
 };
 
 function defaultBannerText(percentOff: number, durationMonths: number, code: string): string {
@@ -114,6 +116,20 @@ export function PromoBannerManager({ initial }: { initial: Campaign | null }) {
         </p>
 
         <div className="space-y-1.5">
+          <Label htmlFor="promo-link">Banner links to</Label>
+          <Input
+            id="promo-link"
+            value={form.linkUrl}
+            onChange={(e) => setForm((f) => ({ ...f, linkUrl: e.target.value }))}
+            placeholder="/pricing"
+          />
+          <p className="text-xs text-muted-foreground">
+            A path on ripplewatch.ai, e.g. <code>/pricing</code> or <code>/signup</code>. Clicking anywhere on
+            the banner text takes visitors here.
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <Label htmlFor="promo-banner-text">Banner text</Label>
             <Button type="button" variant="ghost" size="sm" onClick={resetBannerText} className="h-6 text-xs">
@@ -127,6 +143,23 @@ export function PromoBannerManager({ initial }: { initial: Campaign | null }) {
             value={form.bannerText}
             onChange={(e) => setForm((f) => ({ ...f, bannerText: e.target.value }))}
           />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Preview</Label>
+          <p className="text-xs text-muted-foreground">
+            Exactly what appears at the top of every public page (homepage, pricing, blog, compare pages,
+            etc.) when live — hidden inside your app dashboard and this admin panel.
+          </p>
+          <div className="overflow-hidden rounded-lg border border-border">
+            <div className="flex items-center justify-center gap-3 bg-primary px-4 py-2 text-center text-sm font-medium text-primary-foreground">
+              <Sparkles className="size-4 shrink-0" />
+              <span className="underline-offset-2">{form.bannerText || "Your banner text will appear here."}</span>
+              <span className="shrink-0 rounded-full p-0.5">
+                <X className="size-4" />
+              </span>
+            </div>
+          </div>
         </div>
 
         {error ? <p className="text-sm text-destructive">{error}</p> : null}

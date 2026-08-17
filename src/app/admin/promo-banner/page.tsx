@@ -55,7 +55,7 @@ export default async function AdminPromotionsPage() {
   const [{ data: campaign }, { codes, error: codesError }] = await Promise.all([
     supabase
       .from("promo_campaigns")
-      .select("active, percent_off, duration_months, code, banner_text")
+      .select("active, percent_off, duration_months, code, banner_text, link_url")
       .order("created_at", { ascending: true })
       .limit(1)
       .maybeSingle(),
@@ -90,6 +90,7 @@ export default async function AdminPromotionsPage() {
                   durationMonths: campaign.duration_months,
                   code: campaign.code,
                   bannerText: campaign.banner_text,
+                  linkUrl: campaign.link_url,
                 }
               : null
           }

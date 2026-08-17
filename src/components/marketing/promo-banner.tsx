@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { X, Sparkles } from "lucide-react";
 
 const STORAGE_KEY = "rw-promo-banner-dismissed";
 
-export function PromoBanner({ bannerText }: { bannerText: string | null }) {
+export function PromoBanner({ bannerText, linkUrl }: { bannerText: string | null; linkUrl: string | null }) {
   const pathname = usePathname();
   const [dismissed, setDismissed] = useState(true);
 
@@ -24,10 +25,22 @@ export function PromoBanner({ bannerText }: { bannerText: string | null }) {
   if (pathname?.startsWith("/app") || pathname?.startsWith("/admin")) return null;
   if (!bannerText || dismissed) return null;
 
+  const content = (
+    <>
+      <Sparkles className="size-4 shrink-0" />
+      <span className={linkUrl ? "underline-offset-2 group-hover:underline" : undefined}>{bannerText}</span>
+    </>
+  );
+
   return (
     <div className="flex items-center justify-center gap-3 bg-primary px-4 py-2 text-center text-sm font-medium text-primary-foreground">
-      <Sparkles className="size-4 shrink-0" />
-      <span>{bannerText}</span>
+      {linkUrl ? (
+        <Link href={linkUrl} className="group flex items-center gap-3">
+          {content}
+        </Link>
+      ) : (
+        <span className="flex items-center gap-3">{content}</span>
+      )}
       <button
         type="button"
         onClick={() => {
