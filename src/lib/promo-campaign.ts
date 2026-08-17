@@ -6,16 +6,16 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // function so each caller only ever sees the columns it needs: the banner
 // never touches stripe_coupon_id, checkout never touches banner_text.
 
-export async function getBannerCampaign(): Promise<{ bannerText: string } | null> {
+export async function getBannerCampaign(): Promise<{ bannerText: string; linkUrl: string } | null> {
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("promo_campaigns")
-    .select("active, banner_text")
+    .select("active, banner_text, link_url")
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
   if (!data || !data.active) return null;
-  return { bannerText: data.banner_text };
+  return { bannerText: data.banner_text, linkUrl: data.link_url };
 }
 
 export async function getCheckoutCampaign(): Promise<{ stripeCouponId: string } | null> {
