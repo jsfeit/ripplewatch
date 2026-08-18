@@ -112,7 +112,7 @@ export function PromoBannerManager({ initial }: { initial: Campaign | null }) {
         </div>
         <p className="text-xs text-muted-foreground">
           Changing percent off or duration creates a new Stripe coupon (coupons can&apos;t be edited once
-          created) — the code label is just for the banner text, nothing is typed in at checkout.
+          created): the code label is just for the banner text, nothing is typed in at checkout.
         </p>
 
         <div className="space-y-1.5">
@@ -149,7 +149,7 @@ export function PromoBannerManager({ initial }: { initial: Campaign | null }) {
           <Label>Preview</Label>
           <p className="text-xs text-muted-foreground">
             Exactly what appears at the top of every public page (homepage, pricing, blog, compare pages,
-            etc.) when live — hidden inside your app dashboard and this admin panel.
+            etc.) when live. Hidden inside your app dashboard and this admin panel.
           </p>
           <div className="overflow-hidden rounded-lg border border-border">
             <div className="flex items-center justify-center gap-3 bg-primary px-4 py-2 text-center text-sm font-medium text-primary-foreground">
