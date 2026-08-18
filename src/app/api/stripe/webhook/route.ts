@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getStripe, TIER_BY_PRICE } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendPlanChangeEmail } from "@/lib/resend";
+import { sendPlanChangeEmail, sendPaymentReceivedEmail } from "@/lib/resend";
 
 export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
@@ -108,6 +108,38 @@ export async function POST(request: Request) {
         }
         if (priceId && !tier) {
           throw new Error(`No tier mapped for Stripe price ${priceId} — check TIER_BY_PRICE / price env vars.`);
+        }
+        break;
+      }
+
+      // Every actual charge lands here — the first payment on a brand-new
+      // subscription and every recurring renewal alike, since renewals bill
+      // through an invoice with no new Checkout Session (checkout.session.
+      // completed only ever fires once). amount_paid === 0 is a fully-
+      // discounted or $0-proration invoice, not a real payment, so it's
+      // skipped rather than emailing "you got paid $0.00."
+      case "invoice.payment_succeeded": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const customerId = typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id;
+        if (customerId && invoice.amount_paid > 0) {
+          const { data: account } = await supabase
+            .from("accounts")
+            .select("name, tier")
+            .eq("stripe_customer_id", customerId)
+            .maybeSingle();
+
+          const adminEmails = (process.env.ADMIN_EMAILS ?? "")
+            .split(",")
+            .map((email) => email.trim())
+            .filter(Boolean);
+          if (adminEmails.length > 0) {
+            sendPaymentReceivedEmail(adminEmails, {
+              accountName: account?.name ?? "Unknown account",
+              tier: account?.tier ?? "unknown",
+              amountUsd: invoice.amount_paid / 100,
+              currency: invoice.currency,
+            }).catch((err) => console.error("payment-received email failed:", err));
+          }
         }
         break;
       }

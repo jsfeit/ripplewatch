@@ -341,6 +341,29 @@ export async function sendAnthropicCreditAlertEmail(to: string[]) {
   if (result.error) throw new Error(result.error.message);
 }
 
+// Fired by the webhook's invoice.payment_succeeded case — every actual
+// charge, first payment and every renewal alike (checkout.session.completed
+// only fires once, at the very first checkout; recurring renewals bill
+// through an invoice with no new checkout session). Internal alert to
+// ADMIN_EMAILS, not a customer receipt — Stripe already emails the customer
+// their own receipt separately.
+export async function sendPaymentReceivedEmail(
+  to: string[],
+  details: { accountName: string; tier: string; amountUsd: number; currency: string }
+) {
+  if (!isResendConfigured() || to.length === 0) return;
+
+  const amount = `${details.amountUsd.toFixed(2)} ${details.currency.toUpperCase()}`;
+  const result = await getResend().emails.send({
+    from: getAlertsFromEmail(),
+    to,
+    subject: `💳 Payment received: ${amount} from ${details.accountName}`,
+    html: `<p><strong>${details.accountName}</strong> (${details.tier}) just paid <strong>${amount}</strong>.</p>
+      <p style="color:#888;font-size:12px;">Sent by the Stripe webhook on invoice.payment_succeeded. See Admin → Accounts for details.</p>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
 // Replaces Supabase Auth's own default recovery email (generic "Supabase
 // Auth" sender, unbranded copy) — the route calling this generates the
 // reset link via the admin API's generateLink() instead of
