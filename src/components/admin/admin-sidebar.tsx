@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 
 const NAV = [
-  { href: "/admin/waitlist", label: "Waitlist", icon: Users },
+  { href: "/admin/waitlist", label: "Leads", icon: Users },
   { href: "/admin/campaigns", label: "Campaigns", icon: Mail },
   { href: "/admin/blog", label: "Blog", icon: Newspaper },
   { href: "/admin/promo-banner", label: "Promotions", icon: Megaphone },
