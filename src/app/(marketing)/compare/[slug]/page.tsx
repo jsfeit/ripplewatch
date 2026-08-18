@@ -105,8 +105,8 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
       </div>
 
       <div className="mt-20 text-center">
-        <Link href="/waitlist" className={buttonVariants({ size: "lg" })}>
-          Join the waitlist
+        <Link href="/pricing" className={buttonVariants({ size: "lg" })}>
+          Get started
           <ArrowRight className="size-4" />
         </Link>
       </div>
