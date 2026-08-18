@@ -75,16 +75,34 @@ export function SettingsView({
 
   // Fires once on landing back from Stripe's embedded Checkout via
   // return_url. Reads window.location directly (not useSearchParams) so
-  // this doesn't need a Suspense boundary. transaction_id from session_id
-  // is a data-quality nicety, not real dedup — GA doesn't dedupe purchase
-  // events by transaction_id on its own, so a manual refresh of this exact
-  // URL would still fire it again. No price value included here since it's
-  // not reliably available client-side at this point.
+  // this doesn't need a Suspense boundary. The bare ?checkout=success query
+  // param used to be trusted on its own — spoofable (anyone can type the
+  // URL) and re-fires on every refresh of that exact URL, which would have
+  // fed Google Ads/GA4 phantom, duplicate, zero-value conversions. Now
+  // verifies the session actually paid server-side, dedupes permanently by
+  // session_id in localStorage (not sessionStorage — a refresh in the same
+  // tab shouldn't re-fire it either), and passes the real charged amount so
+  // the event is usable for value-based ad bidding, not just a raw count.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("checkout") === "success") {
-      trackEvent("purchase", { currency: "USD", transaction_id: params.get("session_id") ?? undefined });
-    }
+    const sessionId = params.get("session_id");
+    if (params.get("checkout") !== "success" || !sessionId) return;
+
+    const dedupeKey = `rw-purchase-tracked-${sessionId}`;
+    if (localStorage.getItem(dedupeKey)) return;
+
+    fetch(`/api/stripe/checkout-session?session_id=${encodeURIComponent(sessionId)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.paid) return;
+        localStorage.setItem(dedupeKey, "1");
+        trackEvent("purchase", {
+          currency: (data.currency ?? "usd").toUpperCase(),
+          value: data.amountTotal ?? undefined,
+          transaction_id: sessionId,
+        });
+      })
+      .catch(() => {});
   }, []);
 
   async function handleManageBilling() {
