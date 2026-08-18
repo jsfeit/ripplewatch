@@ -3,7 +3,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/is-configured";
 import { SupabaseNotConfigured } from "@/components/admin/not-configured";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-export const metadata = { title: "Waitlist | Admin" };
+export const metadata = { title: "Leads | Admin" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminWaitlistPage() {
@@ -18,9 +18,10 @@ export default async function AdminWaitlistPage() {
   return (
     <div className="mx-auto max-w-4xl px-8 py-10">
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Waitlist</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Leads</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {signups?.length ?? 0} signup{signups?.length === 1 ? "" : "s"}
+          {signups?.length ?? 0} email{signups?.length === 1 ? "" : "s"} captured from onboarding&apos;s first step
+          (before payment or account creation). Use this list to retarget anyone who didn&apos;t finish signing up.
         </p>
       </div>
 
