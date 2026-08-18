@@ -21,7 +21,6 @@ export function SiteFooter() {
         <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
           <Link href="/how-it-works" className="hover:text-foreground">How it works</Link>
           <Link href="/pricing" className="hover:text-foreground">Pricing</Link>
-          <Link href="/waitlist" className="hover:text-foreground">Join waitlist</Link>
           <Link href="/onboarding" className="hover:text-foreground">Live demo</Link>
           <Link href="/state-of-competitive-intelligence" className="hover:text-foreground">Research</Link>
           <Link href="/blog" className="hover:text-foreground">Blog</Link>

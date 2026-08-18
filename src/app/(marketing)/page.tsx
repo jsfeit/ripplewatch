@@ -82,8 +82,8 @@ export default function HomePage() {
             on the few that actually move the needle.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link href="/waitlist" className={buttonVariants({ size: "lg" })}>
-              Join the waitlist
+            <Link href="/pricing" className={buttonVariants({ size: "lg" })}>
+              Get started
               <ArrowRight className="size-4" />
             </Link>
             <Link href="/onboarding" className={buttonVariants({ size: "lg", variant: "outline" })}>
@@ -247,11 +247,11 @@ export default function HomePage() {
       <section className="mx-auto max-w-3xl px-6 py-20 text-center">
         <h2 className="text-3xl font-semibold tracking-tight">Ready to stop guessing what matters?</h2>
         <p className="mt-3 text-muted-foreground">
-          Join the waitlist; we&apos;re onboarding teams in small batches to keep relevance scoring sharp.
+          Set up your account and start scoring competitive signals in minutes.
         </p>
         <div className="mt-8">
-          <Link href="/waitlist" className={buttonVariants({ size: "lg" })}>
-            Join the waitlist
+          <Link href="/pricing" className={buttonVariants({ size: "lg" })}>
+            Get started
             <ArrowRight className="size-4" />
           </Link>
         </div>

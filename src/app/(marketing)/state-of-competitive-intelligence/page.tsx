@@ -281,8 +281,8 @@ export default function MarketResearchPage() {
           before you ever have to ask.
         </p>
         <div className="mt-6">
-          <Link href="/waitlist" className={buttonVariants()}>
-            Join the waitlist
+          <Link href="/pricing" className={buttonVariants()}>
+            Get started
             <ArrowRight className="size-4" />
           </Link>
         </div>

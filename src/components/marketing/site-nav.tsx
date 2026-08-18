@@ -43,8 +43,8 @@ export function SiteNav() {
           >
             Sign in
           </Link>
-          <Link href="/waitlist" className={cn(buttonVariants(), "hidden sm:inline-flex")}>
-            Join waitlist
+          <Link href="/pricing" className={cn(buttonVariants(), "hidden sm:inline-flex")}>
+            Get started
           </Link>
           <button
             type="button"
@@ -85,11 +85,11 @@ export function SiteNav() {
             Sign in
           </Link>
           <Link
-            href="/waitlist"
+            href="/pricing"
             className={cn(buttonVariants(), "mt-2 w-full")}
             onClick={() => setOpen(false)}
           >
-            Join waitlist
+            Get started
           </Link>
         </nav>
       ) : null}

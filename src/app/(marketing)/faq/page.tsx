@@ -54,8 +54,8 @@ export default function FaqPage() {
           <a href="mailto:hello@ripplewatch.ai" className={buttonVariants({ variant: "outline" })}>
             Email hello@ripplewatch.ai
           </a>
-          <Link href="/waitlist" className={buttonVariants()}>
-            Join the waitlist
+          <Link href="/pricing" className={buttonVariants()}>
+            Get started
           </Link>
         </div>
       </div>

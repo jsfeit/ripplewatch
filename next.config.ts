@@ -18,6 +18,11 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];
   },
+  async redirects() {
+    // /waitlist was removed once signup went fully self-serve — this keeps
+    // old ad clicks, bookmarks, and backlinks from 404ing.
+    return [{ source: "/waitlist", destination: "/pricing", permanent: true }];
+  },
 };
 
 export default withSentryConfig(nextConfig, {
