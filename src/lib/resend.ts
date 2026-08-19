@@ -122,7 +122,7 @@ export async function sendDigestEmail(
   if (result.error) throw new Error(result.error.message);
 }
 
-// Marketing campaigns (waitlist notify, launch announcement) — distinct
+// Marketing campaigns (leads follow-up, launch announcement) — distinct
 // from the transactional sends above. Body is already-personalized HTML;
 // callers build that via lib/campaigns.ts's personalize() first.
 export async function sendCampaignEmail(to: string, subject: string, html: string) {

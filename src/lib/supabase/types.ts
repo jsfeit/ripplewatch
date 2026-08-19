@@ -28,7 +28,7 @@ export type WinLossTrendRelatedSignal = {
 export interface Database {
   public: {
     Tables: {
-      waitlist_signups: {
+      leads: {
         Row: {
           id: string;
           email: string;
@@ -36,6 +36,7 @@ export interface Database {
           utm_source: string | null;
           utm_medium: string | null;
           utm_campaign: string | null;
+          capture_point: string | null;
           created_at: string;
         };
         Insert: {
@@ -45,9 +46,10 @@ export interface Database {
           utm_source?: string | null;
           utm_medium?: string | null;
           utm_campaign?: string | null;
+          capture_point?: string | null;
           created_at?: string;
         };
-        Update: Partial<Database["public"]["Tables"]["waitlist_signups"]["Insert"]>;
+        Update: Partial<Database["public"]["Tables"]["leads"]["Insert"]>;
         Relationships: [];
       };
       accounts: {

@@ -1,25 +1,25 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export type CampaignSegment = "waitlist_not_signed_up";
+export type CampaignSegment = "leads_not_signed_up";
 
 export const SEGMENT_LABELS: Record<CampaignSegment, string> = {
-  waitlist_not_signed_up: "Waitlist: not yet signed up",
+  leads_not_signed_up: "Leads: not yet signed up",
 };
 
 type Lead = { email: string; companyName: string | null };
 
-// The only segment today: everyone who joined the waitlist but whose email
-// doesn't match an actual auth user yet. Recomputed fresh at both preview
-// and send time rather than cached, since it's small and changes constantly
-// pre-launch.
+// The only segment today: everyone captured as a lead (onboarding abandon,
+// quiz, or the old waitlist form) whose email doesn't match an actual auth
+// user yet. Recomputed fresh at both preview and send time rather than
+// cached, since it's small and changes constantly.
 export async function getSegmentLeads(segment: CampaignSegment): Promise<Lead[]> {
-  if (segment !== "waitlist_not_signed_up") return [];
+  if (segment !== "leads_not_signed_up") return [];
 
   const admin = createAdminClient();
 
   const { data: signups } = await admin
-    .from("waitlist_signups")
+    .from("leads")
     .select("email, company_name")
     .order("created_at", { ascending: true });
 

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSegmentLeads, type CampaignSegment } from "@/lib/campaigns";
 
-const VALID_SEGMENTS: CampaignSegment[] = ["waitlist_not_signed_up"];
+const VALID_SEGMENTS: CampaignSegment[] = ["leads_not_signed_up"];
 
 export async function GET() {
   const admin = createAdminClient();

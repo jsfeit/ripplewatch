@@ -250,10 +250,10 @@ export function OnboardingFlow({
       // ignore malformed/blocked storage
     }
 
-    fetch("/api/onboarding/lead", {
+    fetch("/api/leads", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email.trim(), company: companyName.trim(), ...utm }),
+      body: JSON.stringify({ email: email.trim(), company: companyName.trim(), capturePoint: "onboarding", ...utm }),
     })
       .then(() => trackEvent("generate_lead", { method: "onboarding" }))
       .catch(() => {});

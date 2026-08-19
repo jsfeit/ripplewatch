@@ -17,7 +17,7 @@ type Campaign = Database["public"]["Tables"]["email_campaigns"]["Row"];
 const DEFAULT_SUBJECT = "Ripplewatch is open: see it in action";
 const DEFAULT_BODY = `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;font-size:14px;line-height:1.6;color:#1a231f;">
   <p>Hi {{company}},</p>
-  <p>You signed up for the Ripplewatch waitlist a while back; it's live now and I wanted you to be one of the first to try it.</p>
+  <p>You shared your email with us a while back; Ripplewatch is live now and I wanted you to be one of the first to try it.</p>
   <p>Most competitive intel tools tell you <em>what</em> changed. Ripplewatch tells you whether it actually matters to your business, scored against your own positioning, ICP, and the real reasons you've won, lost, and churned deals. Not a feed to triage. A verdict you can act on.</p>
   <p>You can see it working on your own competitors before creating an account; no email required until you decide it's worth it:</p>
   <p><a href="https://ripplewatch.ai/onboarding" style="display:inline-block;padding:10px 20px;background:#0d7d6f;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">See it in action</a></p>
@@ -35,7 +35,7 @@ export function CampaignsView({
 }) {
   const [campaigns, setCampaigns] = useState(initialCampaigns);
   const [showForm, setShowForm] = useState(false);
-  const [name, setName] = useState("Beta launch: waitlist");
+  const [name, setName] = useState("Re-engage leads");
   const [subject, setSubject] = useState(DEFAULT_SUBJECT);
   const [body, setBody] = useState(DEFAULT_BODY);
   const [creating, setCreating] = useState(false);
@@ -47,7 +47,7 @@ export function CampaignsView({
     const res = await fetch("/api/admin/campaigns", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, subject, body, segment: "waitlist_not_signed_up" }),
+      body: JSON.stringify({ name, subject, body, segment: "leads_not_signed_up" }),
     });
     const data = await res.json();
     setCreating(false);
@@ -82,7 +82,7 @@ export function CampaignsView({
             <div className="space-y-2">
               <Label>Segment</Label>
               <p className="text-sm text-muted-foreground">
-                Waitlist: not yet signed up <span className="text-xs">(only segment available today)</span>
+                Leads: not yet signed up <span className="text-xs">(only segment available today)</span>
               </p>
             </div>
             <div className="space-y-2">
