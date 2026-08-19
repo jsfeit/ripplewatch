@@ -9,13 +9,15 @@ alter table waitlist_signups rename to leads;
 alter table leads add column if not exists capture_point text;
 
 -- The segment column has a CHECK constraint hardcoded to the old segment
--- id (migration 0016) — swap it to the new id before the UPDATE below, or
--- the UPDATE itself violates the constraint it's trying to fix rows for.
+-- id (migration 0016). Drop it, migrate the data, then re-add it against
+-- the new id — adding a CHECK constraint validates existing rows
+-- immediately, so it has to go back on after the UPDATE, not before.
 alter table email_campaigns drop constraint email_campaigns_segment_check;
-alter table email_campaigns add constraint email_campaigns_segment_check
-  check (segment in ('leads_not_signed_up'));
 
 -- Existing draft/sent campaigns reference the old segment id by string —
 -- keep them pointed at the (renamed) same audience instead of silently
 -- going empty.
 update email_campaigns set segment = 'leads_not_signed_up' where segment = 'waitlist_not_signed_up';
+
+alter table email_campaigns add constraint email_campaigns_segment_check
+  check (segment in ('leads_not_signed_up'));
