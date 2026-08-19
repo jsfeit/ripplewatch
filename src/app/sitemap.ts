@@ -15,10 +15,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/state-of-competitive-intelligence", priority: 0.8, changeFrequency: "monthly" },
     { path: "/blog", priority: 0.7, changeFrequency: "weekly" },
     { path: "/compare", priority: 0.7, changeFrequency: "monthly" },
+    { path: "/alternatives", priority: 0.7, changeFrequency: "monthly" },
+    { path: "/competitive-intelligence-quiz", priority: 0.6, changeFrequency: "monthly" },
     { path: "/privacy", priority: 0.3, changeFrequency: "yearly" },
     { path: "/terms", priority: 0.3, changeFrequency: "yearly" },
     ...COMPARISONS.map((c) => ({
       path: `/compare/${c.slug}`,
+      priority: 0.6,
+      changeFrequency: "monthly" as const,
+    })),
+    ...COMPARISONS.map((c) => ({
+      path: `/alternatives/${c.slug}`,
       priority: 0.6,
       changeFrequency: "monthly" as const,
     })),
