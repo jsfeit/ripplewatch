@@ -2,14 +2,16 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
-// Fired the moment someone clears the first step of onboarding (company
-// name + email), before they've entered competitors, picked a plan, or set
-// a password — so if they abandon anywhere in the rest of the funnel, we
-// still have an email to retarget with instead of losing them entirely.
-// Writes to the same waitlist_signups table the old pre-launch waitlist
-// used, which the admin leads view already reads from.
+// Shared lead-capture endpoint — not tied to any one funnel. Currently fed
+// by onboarding's first step (before competitors, plan, password, or
+// payment) and the competitive-intel quiz's email-gated results, so that
+// abandoning either one still leaves an email to retarget with. Writes to
+// the "leads" table, tagged with capturePoint so the admin view can tell
+// where each row came from.
+const VALID_CAPTURE_POINTS = new Set(["onboarding", "quiz"]);
+
 export async function POST(request: Request) {
-  if (!checkRateLimit(`onboarding-lead:${getClientIp(request)}`, 5, 60_000)) {
+  if (!checkRateLimit(`lead-capture:${getClientIp(request)}`, 5, 60_000)) {
     return NextResponse.json({ error: "Too many requests. Try again in a minute." }, { status: 429 });
   }
 
@@ -19,6 +21,9 @@ export async function POST(request: Request) {
   const utmSource = typeof body?.utm_source === "string" ? body.utm_source.trim().slice(0, 100) : "";
   const utmMedium = typeof body?.utm_medium === "string" ? body.utm_medium.trim().slice(0, 100) : "";
   const utmCampaign = typeof body?.utm_campaign === "string" ? body.utm_campaign.trim().slice(0, 100) : "";
+  const capturePoint = typeof body?.capturePoint === "string" && VALID_CAPTURE_POINTS.has(body.capturePoint)
+    ? body.capturePoint
+    : null;
 
   const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   if (!isValid) {
@@ -26,18 +31,19 @@ export async function POST(request: Request) {
   }
 
   const supabase = createAdminClient();
-  const { error } = await supabase.from("waitlist_signups").insert({
+  const { error } = await supabase.from("leads").insert({
     email,
     company_name: companyName || null,
     utm_source: utmSource || null,
     utm_medium: utmMedium || null,
     utm_campaign: utmCampaign || null,
+    capture_point: capturePoint,
   });
 
   // Unique violation on email — this email was already captured (e.g. a
   // retry, or they left and came back). Not an error from the caller's POV.
   if (error && error.code !== "23505") {
-    console.error("onboarding lead insert failed:", error);
+    console.error("lead insert failed:", error);
     return NextResponse.json({ error: "Something went wrong." }, { status: 500 });
   }
 
