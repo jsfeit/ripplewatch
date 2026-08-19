@@ -7,6 +7,7 @@ import { AlertTriangle, Check, FileText, Loader2, Pencil, Plus, X } from "lucide
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Panel } from "@/components/ui/panel";
 import { cn, avatarColor } from "@/lib/utils";
 import { COMPETITOR_LIMIT, competitorLimitLabel } from "@/lib/tier-limits";
 import { MOMENTUM_STYLES, type MomentumResult } from "@/lib/momentum";
@@ -167,7 +168,7 @@ export function CompetitorManager({
   }
 
   return (
-    <div className="space-y-4 rounded-xl border border-border bg-card p-5">
+    <Panel className="space-y-4 p-5">
       <div>
         <h2 className="font-medium">Manage competitors</h2>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -386,6 +387,6 @@ export function CompetitorManager({
           <p className="text-sm text-muted-foreground">No competitors yet; add your first one above.</p>
         ) : null}
       </div>
-    </div>
+    </Panel>
   );
 }

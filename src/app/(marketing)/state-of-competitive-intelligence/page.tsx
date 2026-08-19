@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Check, Sparkles, X } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
+import { Panel } from "@/components/ui/panel";
 import { cn } from "@/lib/utils";
 import { MONTHLY_PRICE_USD } from "@/lib/pricing";
 import {
@@ -110,13 +111,13 @@ export default function MarketResearchPage() {
             </p>
           </div>
           {midMarket.map((tool) => (
-            <div key={tool.name} className="rounded-xl border border-border bg-card p-5">
+            <Panel key={tool.name} className="p-5">
               <div className="flex items-baseline justify-between gap-2">
                 <h3 className="font-medium">{tool.name}</h3>
                 <span className="text-xs text-muted-foreground">{tool.pricing}</span>
               </div>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{tool.summary}</p>
-            </div>
+            </Panel>
           ))}
         </div>
       </section>
@@ -280,8 +281,8 @@ export default function MarketResearchPage() {
           before you ever have to ask.
         </p>
         <div className="mt-6">
-          <Link href="/waitlist" className={buttonVariants()}>
-            Join the waitlist
+          <Link href="/pricing" className={buttonVariants()}>
+            Get started
             <ArrowRight className="size-4" />
           </Link>
         </div>

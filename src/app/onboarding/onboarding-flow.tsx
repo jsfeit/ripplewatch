@@ -35,6 +35,7 @@ import { DOMAIN_PATTERN } from "@/lib/domain";
 import { createClient } from "@/lib/supabase/client";
 import { TIERS } from "@/lib/tiers";
 import { COMPETITOR_LIMIT } from "@/lib/tier-limits";
+import { UTM_STORAGE_KEY } from "@/components/utm-capture";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SELF_SERVE_TIERS = TIERS.filter((t) => t.selfServe);
@@ -130,8 +131,21 @@ export function OnboardingFlow({
   const filledCompetitors = competitors.filter((c) => c.name.trim().length > 0);
   const domainsValid = competitors.every((c) => !c.domain.trim() || DOMAIN_PATTERN.test(c.domain.trim()));
 
+  // Asked for on step 0, not just at the final account-creation step — that
+  // way we still have an email for retargeting even if someone abandons
+  // partway through competitors/growth-monitoring/preview and never reaches
+  // account creation at all.
+  const needsEmailUpfront = !initiallySignedIn && !hasAccount;
+
   const canProceed = useMemo(() => {
-    if (step === 0) return companyName.trim() && positioning.trim() && icp.trim();
+    if (step === 0) {
+      return (
+        companyName.trim() &&
+        positioning.trim() &&
+        icp.trim() &&
+        (!needsEmailUpfront || EMAIL_PATTERN.test(email.trim()))
+      );
+    }
     if (step === 1) return filledCompetitors.length >= 3 && domainsValid;
     if (step === 2) return hasSalesCrm || hasPlg;
     if (isAccountStep) {
@@ -144,6 +158,7 @@ export function OnboardingFlow({
     companyName,
     positioning,
     icp,
+    needsEmailUpfront,
     filledCompetitors.length,
     domainsValid,
     hasSalesCrm,
@@ -216,6 +231,38 @@ export function OnboardingFlow({
     () => new Set(competitors.map((c) => c.name.trim().toLowerCase()).filter(Boolean)),
     [competitors]
   );
+
+  const leadCapturedRef = useRef(false);
+
+  // Fire-and-forget: never blocks the Continue click and never surfaces an
+  // error to the user. Losing this row just means we miss retargeting one
+  // visitor, not a broken funnel — completeOnboarding() below is the real
+  // signup path and doesn't depend on this succeeding.
+  function captureLead() {
+    if (leadCapturedRef.current || !needsEmailUpfront) return;
+    leadCapturedRef.current = true;
+
+    let utm: Record<string, string> = {};
+    try {
+      const raw = localStorage.getItem(UTM_STORAGE_KEY);
+      if (raw) utm = JSON.parse(raw);
+    } catch {
+      // ignore malformed/blocked storage
+    }
+
+    fetch("/api/leads", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim(), company: companyName.trim(), capturePoint: "onboarding", ...utm }),
+    })
+      .then(() => trackEvent("generate_lead", { method: "onboarding" }))
+      .catch(() => {});
+  }
+
+  function handleContinue() {
+    if (step === 0) captureLead();
+    setStep((s) => s + 1);
+  }
 
   async function completeOnboarding(overrides?: OnboardingDraft) {
     const payload = overrides ?? {
@@ -499,6 +546,18 @@ export function OnboardingFlow({
                   rows={3}
                 />
               </div>
+              {needsEmailUpfront ? (
+                <div className="space-y-2">
+                  <Label htmlFor="onboardingEmail">Work email</Label>
+                  <Input
+                    id="onboardingEmail"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@company.com"
+                  />
+                </div>
+              ) : null}
             </div>
           )}
 
@@ -740,28 +799,16 @@ export function OnboardingFlow({
               ) : null}
 
               {!initiallySignedIn ? (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="onboardingEmail">Work email</Label>
-                    <Input
-                      id="onboardingEmail"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@company.com"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="onboardingPassword">Password</Label>
-                    <Input
-                      id="onboardingPassword"
-                      type="password"
-                      minLength={6}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                  </div>
-                </>
+                <div className="space-y-2">
+                  <Label htmlFor="onboardingPassword">Password</Label>
+                  <Input
+                    id="onboardingPassword"
+                    type="password"
+                    minLength={6}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
               ) : null}
               <p className="text-xs text-muted-foreground">
                 {initiallySignedIn ? "By continuing, you agree to our" : "By creating an account, you agree to our"}{" "}
@@ -789,7 +836,7 @@ export function OnboardingFlow({
           Back
         </Button>
         {step < STEP_TITLES.length - 1 ? (
-          <Button type="button" onClick={() => setStep((s) => s + 1)} disabled={!canProceed}>
+          <Button type="button" onClick={handleContinue} disabled={!canProceed}>
             Continue
             <ArrowRight className="size-4" />
           </Button>

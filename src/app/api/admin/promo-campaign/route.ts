@@ -8,7 +8,7 @@ export async function GET() {
   const admin = createAdminClient();
   const { data } = await admin
     .from("promo_campaigns")
-    .select("id, active, percent_off, duration_months, code, banner_text")
+    .select("id, active, percent_off, duration_months, code, banner_text, link_url")
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -22,6 +22,7 @@ export async function POST(request: Request) {
   const durationMonths: unknown = body?.durationMonths;
   const code: unknown = body?.code;
   const bannerText: unknown = body?.bannerText;
+  const linkUrl: unknown = body?.linkUrl;
 
   if (typeof active !== "boolean") {
     return NextResponse.json({ error: "active must be true or false." }, { status: 400 });
@@ -38,6 +39,13 @@ export async function POST(request: Request) {
   if (typeof bannerText !== "string" || !bannerText.trim()) {
     return NextResponse.json({ error: "Banner text is required." }, { status: 400 });
   }
+  // Same-origin relative path only — this renders as a plain <Link href>
+  // on every public page, so anything else (a bare domain, javascript:,
+  // an absolute URL to somewhere else) is rejected rather than silently
+  // sent through.
+  if (typeof linkUrl !== "string" || !linkUrl.trim().startsWith("/")) {
+    return NextResponse.json({ error: "Link URL must be a path starting with /, e.g. /pricing." }, { status: 400 });
+  }
 
   const admin = createAdminClient();
   const { data: existing } = await admin
@@ -49,7 +57,7 @@ export async function POST(request: Request) {
 
   // Stripe coupons are immutable once created — a new percent/duration
   // means a genuinely new coupon, not an edit. Toggling active on/off or
-  // just changing the banner text/code label reuses the existing one.
+  // just changing the banner text/code label/link reuses the existing one.
   let stripeCouponId = existing?.stripe_coupon_id ?? null;
   const settingsChanged =
     !existing || existing.percent_off !== percentOff || existing.duration_months !== durationMonths;
@@ -75,6 +83,7 @@ export async function POST(request: Request) {
     duration_months: durationMonths as number,
     code: (code as string).trim(),
     banner_text: (bannerText as string).trim(),
+    link_url: (linkUrl as string).trim(),
     stripe_coupon_id: stripeCouponId,
     updated_at: new Date().toISOString(),
   };

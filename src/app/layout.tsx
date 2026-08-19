@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { CookieConsent } from "@/components/cookie-consent";
+import { UtmCapture } from "@/components/utm-capture";
 import { PromoBanner } from "@/components/marketing/promo-banner";
 import { getBannerCampaign } from "@/lib/promo-campaign";
 import { isSupabaseConfigured } from "@/lib/supabase/is-configured";
@@ -53,7 +54,8 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <PromoBanner bannerText={campaign?.bannerText ?? null} />
+        <UtmCapture />
+        <PromoBanner bannerText={campaign?.bannerText ?? null} linkUrl={campaign?.linkUrl ?? null} />
         {children}
         <Analytics />
         <SpeedInsights />

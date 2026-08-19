@@ -122,7 +122,7 @@ export async function sendDigestEmail(
   if (result.error) throw new Error(result.error.message);
 }
 
-// Marketing campaigns (waitlist notify, launch announcement) — distinct
+// Marketing campaigns (leads follow-up, launch announcement) — distinct
 // from the transactional sends above. Body is already-personalized HTML;
 // callers build that via lib/campaigns.ts's personalize() first.
 export async function sendCampaignEmail(to: string, subject: string, html: string) {
@@ -337,6 +337,29 @@ export async function sendAnthropicCreditAlertEmail(to: string[]) {
       <blockquote style="border-left:3px solid #ddd;margin:8px 0;padding-left:12px;color:#555;">Your credit balance is too low to access the Anthropic API. Please go to Plans &amp; Billing to upgrade or purchase credits.</blockquote>
       <p>Every scoring, scraping-extraction, digest, and trends call is failing until this is resolved. Add credits or check auto-reload at <a href="https://console.anthropic.com">console.anthropic.com</a> → Settings → Billing.</p>
       <p style="color:#888;font-size:12px;">Further alerts are suppressed for a while after this one so a burst of failures doesn't flood this inbox.</p>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
+// Fired by the webhook's invoice.payment_succeeded case — every actual
+// charge, first payment and every renewal alike (checkout.session.completed
+// only fires once, at the very first checkout; recurring renewals bill
+// through an invoice with no new checkout session). Internal alert to
+// ADMIN_EMAILS, not a customer receipt — Stripe already emails the customer
+// their own receipt separately.
+export async function sendPaymentReceivedEmail(
+  to: string[],
+  details: { accountName: string; tier: string; amountUsd: number; currency: string }
+) {
+  if (!isResendConfigured() || to.length === 0) return;
+
+  const amount = `${details.amountUsd.toFixed(2)} ${details.currency.toUpperCase()}`;
+  const result = await getResend().emails.send({
+    from: getAlertsFromEmail(),
+    to,
+    subject: `💳 Payment received: ${amount} from ${details.accountName}`,
+    html: `<p><strong>${details.accountName}</strong> (${details.tier}) just paid <strong>${amount}</strong>.</p>
+      <p style="color:#888;font-size:12px;">Sent by the Stripe webhook on invoice.payment_succeeded. See Admin → Accounts for details.</p>`,
   });
   if (result.error) throw new Error(result.error.message);
 }

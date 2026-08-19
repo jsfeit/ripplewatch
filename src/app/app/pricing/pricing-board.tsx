@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { DollarSign } from "lucide-react";
 import { EmptyState } from "@/components/app/empty-state";
+import { Panel } from "@/components/ui/panel";
 import { cn, avatarColor } from "@/lib/utils";
 import { timeAgo } from "@/lib/date";
 import { BILLING_MODEL_LABELS, BILLING_MODEL_STYLES, BILLING_MODEL_DOT } from "@/lib/billing-model";
@@ -181,7 +182,7 @@ function PricingCard({
   changedAt: string | undefined;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <Panel className="p-4">
       <div className="flex items-center gap-2.5">
         <span
           className={cn(
@@ -276,7 +277,7 @@ function PricingCard({
           </p>
         </>
       )}
-    </div>
+    </Panel>
   );
 }
 

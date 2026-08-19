@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { ArrowUp, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Panel } from "@/components/ui/panel";
 import { cn } from "@/lib/utils";
 
 type Message = { role: "user" | "assistant"; text: string };
@@ -53,7 +54,7 @@ export function AskChat({ competitorNames }: { competitorNames: string[] }) {
   return (
     <div className="flex flex-col">
       {messages.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-6">
+        <Panel radius="lg" dashed className="p-6">
           <div className="flex items-center gap-2 text-sm font-medium">
             <Sparkles className="size-4 text-primary" />
             Try asking
@@ -70,7 +71,7 @@ export function AskChat({ competitorNames }: { competitorNames: string[] }) {
               </button>
             ))}
           </div>
-        </div>
+        </Panel>
       ) : (
         <div className="flex flex-col gap-4">
           {messages.map((message, i) => (

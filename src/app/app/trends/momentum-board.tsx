@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { TrendingUp, TrendingDown, Minus, HelpCircle, ChevronDown } from "lucide-react";
 import { EmptyState } from "@/components/app/empty-state";
+import { Panel } from "@/components/ui/panel";
 import { cn, avatarColor } from "@/lib/utils";
 import { timeAgo } from "@/lib/date";
 import { computeMomentum, MOMENTUM_STYLES, type MomentumResult } from "@/lib/momentum";
@@ -126,7 +127,7 @@ function KeyMetricCard({
   const hasMomentumData = momentum.score !== null;
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <Panel className="p-4">
       <div className="flex items-center gap-2.5">
         <span
           className={cn(
@@ -216,6 +217,6 @@ function KeyMetricCard({
           to see estimated organic traffic.
         </p>
       )}
-    </div>
+    </Panel>
   );
 }

@@ -2,21 +2,20 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, Shield, Users, Building2, Activity, Tag, Briefcase, Radar, Contact2, Mail, Newspaper, Megaphone } from "lucide-react";
+import { LogOut, Shield, Users, Building2, Activity, Briefcase, Radar, Contact2, Mail, Newspaper, Megaphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 
 const NAV = [
-  { href: "/admin/waitlist", label: "Waitlist", icon: Users },
+  { href: "/admin/leads", label: "Leads", icon: Users },
   { href: "/admin/campaigns", label: "Campaigns", icon: Mail },
   { href: "/admin/blog", label: "Blog", icon: Newspaper },
-  { href: "/admin/promo-banner", label: "Promo banner", icon: Megaphone },
+  { href: "/admin/promo-banner", label: "Promotions", icon: Megaphone },
   { href: "/admin/accounts", label: "Accounts", icon: Building2 },
   { href: "/admin/users", label: "Users", icon: Contact2 },
   { href: "/admin/signals", label: "Signals", icon: Radar },
   { href: "/admin/careers", label: "Careers", icon: Briefcase },
-  { href: "/admin/promo-codes", label: "Promo codes", icon: Tag },
   { href: "/admin/status", label: "System status", icon: Activity },
 ];
 
