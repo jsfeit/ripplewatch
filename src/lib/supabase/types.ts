@@ -37,6 +37,10 @@ export interface Database {
           utm_medium: string | null;
           utm_campaign: string | null;
           capture_point: string | null;
+          drip_email_1_sent_at: string | null;
+          drip_email_2_sent_at: string | null;
+          drip_email_3_sent_at: string | null;
+          unsubscribed_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -47,6 +51,10 @@ export interface Database {
           utm_medium?: string | null;
           utm_campaign?: string | null;
           capture_point?: string | null;
+          drip_email_1_sent_at?: string | null;
+          drip_email_2_sent_at?: string | null;
+          drip_email_3_sent_at?: string | null;
+          unsubscribed_at?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["leads"]["Insert"]>;
