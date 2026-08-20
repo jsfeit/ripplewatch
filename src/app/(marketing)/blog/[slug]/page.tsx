@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getPost, type PostBlock } from "@/lib/posts";
 import { formatDate } from "@/lib/date";
+import { QuizCta } from "@/components/marketing/quiz-cta";
 
 export const dynamic = "force-dynamic";
 
@@ -86,6 +87,10 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         {post.body.map((block, i) => (
           <Block key={i} block={block} index={i} />
         ))}
+      </div>
+
+      <div className="mt-16">
+        <QuizCta />
       </div>
     </article>
   );

@@ -4,6 +4,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/panel";
 import { PricingCards } from "@/components/marketing/pricing-cards";
+import { QuizCta } from "@/components/marketing/quiz-cta";
 import { cn, avatarColor } from "@/lib/utils";
 
 export const metadata = { alternates: { canonical: "/" } };
@@ -222,6 +223,10 @@ export default function HomePage() {
             </div>
           </Panel>
         </div>
+      </section>
+
+      <section className="border-t border-border px-6 py-20">
+        <QuizCta />
       </section>
 
       <section className="border-t border-border bg-secondary/40">
