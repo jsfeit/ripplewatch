@@ -6,6 +6,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { AlertCard } from "@/components/app/alert-card";
 import { MOCK_SIGNALS, MOCK_COMPETITORS } from "@/lib/mock-data";
 import { COMPARISONS, getComparison } from "@/lib/comparisons";
+import { QuizCta } from "@/components/marketing/quiz-cta";
 
 const scoredExample = MOCK_SIGNALS.find((s) => s.id === "sig-1")!;
 const rawExample = MOCK_SIGNALS.find((s) => s.id === "sig-4")!;
@@ -104,11 +105,12 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
         </div>
       </div>
 
-      <div className="mt-20 text-center">
+      <div className="mt-20 space-y-3 text-center">
         <Link href="/pricing" className={buttonVariants({ size: "lg" })}>
           Get started
           <ArrowRight className="size-4" />
         </Link>
+        <QuizCta variant="inline" />
       </div>
     </div>
   );
