@@ -25,6 +25,11 @@ export type WinLossTrendRelatedSignal = {
   relationNote: string;
 };
 
+export type IndustryTrendItem = {
+  title: string;
+  description: string;
+};
+
 export interface Database {
   public: {
     Tables: {
@@ -206,6 +211,24 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["win_loss_trends"]["Insert"]>;
+        Relationships: [];
+      };
+      industry_trends: {
+        Row: {
+          id: string;
+          account_id: string;
+          trends: IndustryTrendItem[];
+          generated_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_id: string;
+          trends?: IndustryTrendItem[];
+          generated_at?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["industry_trends"]["Insert"]>;
         Relationships: [];
       };
       api_keys: {
