@@ -18,6 +18,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
 
+  // Idempotency guard: a retried/double-clicked submission (the client has
+  // its own guard against this too, but this is the real source of truth)
+  // used to insert a second, orphaned accounts row and then fail linking
+  // the profile to it — profiles.account_id can only ever point at one
+  // account, so a second insert was always going to be wasted. Treat an
+  // already-linked profile as success instead, returning the existing
+  // account rather than erroring.
+  const { data: existingProfile } = await supabase
+    .from("profiles")
+    .select("account_id")
+    .eq("id", user.id)
+    .single();
+  if (existingProfile?.account_id) {
+    return NextResponse.json({ ok: true, accountId: existingProfile.account_id });
+  }
+
   const body = await request.json().catch(() => null);
   if (!body) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
