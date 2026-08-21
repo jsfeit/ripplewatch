@@ -5,11 +5,14 @@ import { resolveAccountContext } from "@/lib/impersonation";
 import { TIER_SIGNAL_SOURCES } from "@/lib/tier-limits";
 import { bucketMonthlyActivity } from "@/lib/monthly-activity";
 import { DashboardFeed } from "./dashboard-feed";
-import { MomentumBoard } from "../trends/momentum-board";
+import { CompetitorOverview } from "./competitor-overview";
 import { IndustryPulse } from "../trends/industry-pulse";
 import { TrendsBoard } from "../trends/trends-board";
 import { PricingBoard } from "../pricing/pricing-board";
 import { WinLossPageClient } from "../win-loss/win-loss-page-client";
+import type { Database } from "@/lib/supabase/types";
+
+type Signal = Database["public"]["Tables"]["signals"]["Row"];
 
 // Banner goes stale rather than lying: if the weekly cron ever fails to
 // run, an 8-day-old "this week's takeaway" reading as current would be
@@ -18,6 +21,7 @@ import { WinLossPageClient } from "../win-loss/win-loss-page-client";
 const VERDICT_STALE_MS = 8 * 24 * 60 * 60 * 1000;
 
 const SECTIONS = [
+  { id: "overview", label: "Overview" },
   { id: "news", label: "News" },
   { id: "pricing", label: "Competitor pricing" },
   { id: "trends", label: "Trends" },
@@ -82,10 +86,19 @@ export default async function DashboardPage() {
     : { data: [] };
   const evalLabelBySignalId = Object.fromEntries((evalLabels ?? []).map((l) => [l.signal_id, l.label]));
 
+  // Most recent signal per competitor, for the overview strip — `signals`
+  // is already ordered occurred_on desc, so the first match per
+  // competitor_id is the latest.
+  const latestSignalByCompetitor: Record<string, Signal> = {};
+  for (const signal of signals ?? []) {
+    if (!(signal.competitor_id in latestSignalByCompetitor)) latestSignalByCompetitor[signal.competitor_id] = signal;
+  }
+
   // --- Competitor pricing ---
   const { data: pricing } = competitorIds.length
     ? await db.from("competitor_pricing").select("*").in("competitor_id", competitorIds)
     : { data: [] };
+  const pricingByCompetitor = Object.fromEntries((pricing ?? []).map((p) => [p.competitor_id, p]));
   const { data: pricingSignals } = competitorIds.length
     ? await db
         .from("signals")
@@ -200,7 +213,26 @@ export default async function DashboardPage() {
         </div>
       ) : null}
 
-      <section id="news" className="scroll-mt-20">
+      <section id="overview" className="scroll-mt-20">
+        <h2 className="text-sm font-semibold">Overview</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Every tracked competitor at a glance: momentum, latest signal, and price point. Expand a row for the
+          detail behind its momentum score.
+        </p>
+        <div className="mt-4">
+          <CompetitorOverview
+            competitors={competitors ?? []}
+            momentumSignals={momentumSignals ?? []}
+            seoAllowed={seoAllowed}
+            seo={seo ?? []}
+            seoSignals={seoSignals ?? []}
+            latestSignalByCompetitor={latestSignalByCompetitor}
+            pricingByCompetitor={pricingByCompetitor}
+          />
+        </div>
+      </section>
+
+      <section id="news" className="mt-10 scroll-mt-20">
         <h2 className="text-sm font-semibold">News</h2>
         <p className="mt-1 text-xs text-muted-foreground">
           Signals across every tracked competitor. Scored alerts include the reasoning behind the verdict.
@@ -234,19 +266,10 @@ export default async function DashboardPage() {
       <section id="trends" className="mt-10 scroll-mt-20">
         <h2 className="text-sm font-semibold">Trends</h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          Momentum per competitor, category-level activity, and recurring themes across every logged win/loss
-          reason.
+          Category-level activity and recurring themes across every logged win/loss reason. Per-competitor
+          momentum is above, in Overview.
         </p>
         <div className="mt-4">
-          <MomentumBoard
-            competitors={competitors ?? []}
-            momentumSignals={momentumSignals ?? []}
-            seoAllowed={seoAllowed}
-            seo={seo ?? []}
-            seoSignals={seoSignals ?? []}
-          />
-        </div>
-        <div className="mt-6">
           <IndustryPulse
             monthlyActivity={monthlyActivity}
             trends={industryTrends?.trends ?? []}
