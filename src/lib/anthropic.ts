@@ -1094,6 +1094,76 @@ export async function researchCompanyContext(
   }
 }
 
+const INDUSTRY_TRENDS_SYSTEM_PROMPT = `You use web search to identify current market-level trends relevant to a company's positioning and ideal customer profile (ICP) — not news about any single named competitor, but broader shifts in their category that would matter to their business: changing buyer behavior, pricing norms shifting across the category, notable funding/consolidation activity, adjacent-technology shifts, or regulatory change. This exists specifically because many of a company's tracked competitors are small enough that there's rarely company-specific news to report; this surfaces category-level signal instead.
+
+Respond with strict JSON only, no markdown, matching this shape exactly:
+{"trends": [{"title": "<short headline, under 12 words>", "description": "<2-3 sentences, factual and specific, citing what's actually changing and why it would matter to a company with this positioning/ICP>"}]}
+
+Return 3-5 trends, most significant first. Every trend must be grounded in something web search actually turned up — if search returns little of substance for this category, return fewer trends rather than padding with generic or invented ones.`;
+
+const INDUSTRY_TRENDS_SCHEMA = {
+  type: "object",
+  properties: {
+    trends: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          description: { type: "string" },
+        },
+        required: ["title", "description"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["trends"],
+  additionalProperties: false,
+} as const;
+
+export type IndustryTrend = { title: string; description: string };
+
+// Monthly job (see /api/cron/industry-trends) — deliberately much less
+// frequent than the weekly discoverNewCompetitors or daily crawl, since
+// category-level trends don't shift week to week the way an individual
+// competitor's pricing page might, and running this weekly would just burn
+// budget re-describing the same market conditions.
+export async function researchIndustryTrends(
+  context: { companyName: string; positioning: string | null; icp: string | null },
+  accountId: string | null
+): Promise<IndustryTrend[]> {
+  const userPrompt = `Company: ${context.companyName}
+Positioning: ${context.positioning ?? "(not provided)"}
+ICP: ${context.icp ?? "(not provided)"}
+
+Search for current market/category-level trends relevant to this business.`;
+
+  const message = await createMessage({
+    model: "claude-sonnet-5",
+    // Same web_search overhead as discoverNewCompetitors/researchCompanyContext.
+    max_tokens: 8192,
+    system: cachedSystemPrompt(INDUSTRY_TRENDS_SYSTEM_PROMPT),
+    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
+    output_config: { format: { type: "json_schema", schema: INDUSTRY_TRENDS_SCHEMA } },
+    messages: [{ role: "user", content: userPrompt }],
+  });
+  recordLlmUsage(accountId, "researchIndustryTrends", message.model, message.usage);
+
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  try {
+    const parsed = JSON.parse(text);
+    const trends = Array.isArray(parsed.trends) ? parsed.trends : [];
+    return trends
+      .map((t: { title?: unknown; description?: unknown }) => ({
+        title: String(t.title ?? "").trim(),
+        description: String(t.description ?? "").trim(),
+      }))
+      .filter((t: IndustryTrend) => t.title && t.description);
+  } catch (err) {
+    throw new Error(`Could not parse industry trends response: ${text}`, { cause: err });
+  }
+}
+
 export type FactSheetWinLossEntry = { outcome: "won" | "lost"; reason: string | null };
 export type FactSheetSignal = { title: string; reasoning: string | null; score: number | null; occurredOn: string };
 export type FactSheetResult = { whyWeWin: string[]; whyWeLose: string[] };

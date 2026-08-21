@@ -4,6 +4,8 @@ import { resolveAccountContext } from "@/lib/impersonation";
 import { TIER_SIGNAL_SOURCES } from "@/lib/tier-limits";
 import { MomentumBoard } from "./momentum-board";
 import { TrendsBoard } from "./trends-board";
+import { IndustryPulse } from "./industry-pulse";
+import { bucketMonthlyActivity } from "@/lib/monthly-activity";
 
 export const metadata = { title: "Trends" };
 export const dynamic = "force-dynamic";
@@ -64,6 +66,33 @@ export default async function TrendsPage() {
         .gte("occurred_on", sixtyDaysAgo.toISOString().slice(0, 10))
     : { data: [] };
 
+  // 6-month window of job-posting and pricing signals across every tracked
+  // competitor, aggregated (not per-competitor) — the point is a category-
+  // level activity read that still works when any one competitor is too
+  // small to generate much individual signal volume. Uses real signal data
+  // only (job_posting/pricing come from actual scraping), unlike SEO/traffic
+  // which is still a placeholder data source (see seo-data.ts) and stays
+  // out of this chart for the same reason momentum.ts excludes it.
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setUTCMonth(sixMonthsAgo.getUTCMonth() - 6);
+  const { data: activitySignals } = competitorIds.length
+    ? await db
+        .from("signals")
+        .select("type, occurred_on")
+        .in("competitor_id", competitorIds)
+        .in("type", ["job_posting", "pricing"])
+        .gte("occurred_on", sixMonthsAgo.toISOString().slice(0, 10))
+    : { data: [] };
+  const monthlyActivity = bucketMonthlyActivity(activitySignals ?? []);
+
+  const { data: industryTrends } = await db
+    .from("industry_trends")
+    .select("trends, generated_at")
+    .eq("account_id", accountId)
+    .order("generated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   const { data: winLossTrends } = await db
     .from("win_loss_trends")
     .select("*")
@@ -104,6 +133,21 @@ export default async function TrendsPage() {
             seoAllowed={seoAllowed}
             seo={seo ?? []}
             seoSignals={seoSignals ?? []}
+          />
+        </div>
+      </div>
+
+      <div className="mt-10 print:mt-0">
+        <h2 className="text-sm font-semibold print:hidden">Industry pulse</h2>
+        <p className="mt-1 text-xs text-muted-foreground print:hidden">
+          Category-level activity and market trends, for when your tracked competitors are too small to
+          generate much individual news on their own.
+        </p>
+        <div className="mt-4 print:mt-0">
+          <IndustryPulse
+            monthlyActivity={monthlyActivity}
+            trends={industryTrends?.trends ?? []}
+            trendsGeneratedAt={industryTrends?.generated_at ?? null}
           />
         </div>
       </div>
