@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { computeMomentum, type MomentumResult } from "@/lib/momentum";
+import { TIER_SIGNAL_SOURCES } from "@/lib/tier-limits";
 import { SettingsView } from "./settings-view";
 
 export const metadata = { title: "Settings" };
@@ -47,6 +49,44 @@ export default async function SettingsPage() {
         .limit(10)
     : { data: [] };
 
+  const { data: suggestions } = await supabase
+    .from("suggested_competitors")
+    .select("*")
+    .eq("account_id", profile.account_id)
+    .eq("status", "pending")
+    .order("discovered_at", { ascending: false });
+
+  // Same momentum/traffic sort the competitor list already offers on its
+  // own fact-sheet page (see /app/competitors/[id]) — kept for parity now
+  // that the list itself lives here.
+  const sixtyDaysAgo = new Date();
+  sixtyDaysAgo.setUTCDate(sixtyDaysAgo.getUTCDate() - 60);
+  const { data: momentumSignals } = competitorIds.length
+    ? await supabase
+        .from("signals")
+        .select("competitor_id, type, occurred_on, scored, relevance_score")
+        .in("competitor_id", competitorIds)
+        .gte("occurred_on", sixtyDaysAgo.toISOString().slice(0, 10))
+    : { data: [] };
+  const momentumByCompetitorId: Record<string, MomentumResult> = {};
+  for (const c of competitors ?? []) {
+    momentumByCompetitorId[c.id] = computeMomentum(
+      (momentumSignals ?? []).filter((s) => s.competitor_id === c.id)
+    );
+  }
+
+  const seoAllowed = TIER_SIGNAL_SOURCES[account.tier].includes("seo");
+  const { data: seo } =
+    seoAllowed && competitorIds.length
+      ? await supabase
+          .from("competitor_seo")
+          .select("competitor_id, organic_traffic_estimate")
+          .in("competitor_id", competitorIds)
+      : { data: [] };
+  const trafficByCompetitorId = Object.fromEntries(
+    (seo ?? []).map((s) => [s.competitor_id, s.organic_traffic_estimate])
+  );
+
   // Never selects key_hash — the plaintext key is shown once at creation
   // and this list only ever needs the prefix/metadata to render.
   const { data: apiKeys } = await supabase
@@ -61,12 +101,16 @@ export default async function SettingsPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Manage integrations, your team, and your plan.
+          Manage your tracked competitors, integrations, your team, and your plan.
         </p>
       </div>
       <SettingsView
         account={account}
         competitors={competitors ?? []}
+        suggestions={suggestions ?? []}
+        momentum={momentumByCompetitorId}
+        traffic={trafficByCompetitorId}
+        seoAllowed={seoAllowed}
         integrations={integrations ?? []}
         recentSignals={recentSignals ?? []}
         apiKeys={apiKeys ?? []}

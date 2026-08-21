@@ -8,6 +8,9 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { IntegrationConnector } from "@/components/app/integration-connector";
 import { TeamManager } from "@/components/app/team-manager";
 import { ApiKeysManager } from "@/components/app/api-keys-manager";
+import { CompetitorManager } from "@/components/app/competitor-manager";
+import { SuggestedCompetitorsPanel } from "@/components/app/suggested-competitors-panel";
+import type { MomentumResult } from "@/lib/momentum";
 import { BillingPeriodToggle, type BillingPeriod } from "@/components/marketing/billing-period-toggle";
 import { TIERS } from "@/lib/tiers";
 import { ANNUAL_DISCOUNT_PERCENT, annualPriceUsd } from "@/lib/pricing";
@@ -22,6 +25,7 @@ import type { Database } from "@/lib/supabase/types";
 
 type Account = Database["public"]["Tables"]["accounts"]["Row"];
 type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
+type Suggestion = Database["public"]["Tables"]["suggested_competitors"]["Row"];
 type Integration = Database["public"]["Tables"]["integrations"]["Row"];
 type Signal = Database["public"]["Tables"]["signals"]["Row"];
 type ApiKey = Pick<
@@ -29,9 +33,15 @@ type ApiKey = Pick<
   "id" | "name" | "key_prefix" | "last_used_at" | "created_at"
 >;
 
+const KNOWN_TABS = ["competitors", "integrations", "team", "plan", "digest", "developer"] as const;
+
 export function SettingsView({
   account,
   competitors,
+  suggestions,
+  momentum,
+  traffic,
+  seoAllowed,
   integrations,
   recentSignals,
   apiKeys,
@@ -39,6 +49,10 @@ export function SettingsView({
 }: {
   account: Account;
   competitors: Competitor[];
+  suggestions: Suggestion[];
+  momentum: Record<string, MomentumResult>;
+  traffic: Record<string, number | null>;
+  seoAllowed: boolean;
   integrations: Integration[];
   recentSignals: Signal[];
   apiKeys: ApiKey[];
@@ -55,21 +69,23 @@ export function SettingsView({
   const currentTier = TIERS.find((t) => t.id === account.tier) ?? TIERS[0];
   const isConnected = (provider: string) => integrations.some((i) => i.provider === provider && i.connected);
 
-  // Lets a direct/bookmarked link to /app/settings?tab=plan land on the Plan
+  // Lets a direct/bookmarked link to /app/settings?tab=plan (or
+  // ?tab=competitors, from the old /app/competitors redirect) land on that
   // tab instead of always opening on Integrations. Read in an effect (not a
   // lazy useState initializer) so the server-rendered and first-client-render
   // markup always agree on "integrations", avoiding a hydration mismatch;
-  // the effect then flips to "plan" post-mount. This only fires once on
-  // mount, so it doesn't cover in-app "Upgrade to connect" clicks below
-  // (those call setActiveTab directly via onUpgradeClick instead).
+  // the effect then flips tabs post-mount. This only fires once on mount,
+  // so it doesn't cover in-app "Upgrade to connect" clicks below (those call
+  // setActiveTab directly via onUpgradeClick instead).
   const [activeTab, setActiveTab] = useState("integrations");
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("tab") === "plan") {
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (tab && (KNOWN_TABS as readonly string[]).includes(tab)) {
       // Syncing one-time from an external system (the URL) on mount —
       // the case the rule's own guidance calls out as fine.
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setActiveTab("plan");
+      setActiveTab(tab);
     }
   }, []);
 
@@ -162,12 +178,24 @@ export function SettingsView({
       />
       <Tabs value={activeTab} onValueChange={setActiveTab}>
       <TabsList>
+        <TabsTrigger value="competitors">Competitors</TabsTrigger>
         <TabsTrigger value="integrations">Integrations</TabsTrigger>
         <TabsTrigger value="team">Team</TabsTrigger>
         <TabsTrigger value="plan">Plan</TabsTrigger>
         <TabsTrigger value="digest">Digest preview</TabsTrigger>
         <TabsTrigger value="developer">Developer</TabsTrigger>
       </TabsList>
+
+      <TabsContent value="competitors" className="mt-6 space-y-6">
+        <SuggestedCompetitorsPanel suggestions={suggestions} />
+        <CompetitorManager
+          competitors={competitors}
+          tier={account.tier}
+          momentum={momentum}
+          traffic={traffic}
+          seoAllowed={seoAllowed}
+        />
+      </TabsContent>
 
       <TabsContent value="team" className="mt-6">
         <Card>
