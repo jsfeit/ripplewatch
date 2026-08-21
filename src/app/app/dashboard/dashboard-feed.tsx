@@ -27,6 +27,11 @@ const TYPE_FILTERS: Array<SignalType | "all"> = ["all", "pricing", "job_posting"
 // "Background" badge, so what's hidden by default and what's badged when
 // shown stay in sync.
 type DateFilter = "recent" | "all";
+
+// Caps the feed so News doesn't bury Pricing/Trends/Win-loss below it on
+// the merged dashboard — "Show all" is one click away, same pattern as the
+// date filter's "All time".
+const COLLAPSED_COUNT = 5;
 function matchesDateFilter(signal: Signal, filter: DateFilter): boolean {
   if (filter === "all") return true;
   return !isOldSignal(signal.occurred_on);
@@ -65,6 +70,7 @@ export function DashboardFeed({
   const [levelFilter, setLevelFilter] = useState<LevelFilter>("all");
   const [typeFilter, setTypeFilter] = useState<SignalType | "all">("all");
   const [dateFilter, setDateFilter] = useState<DateFilter>("recent");
+  const [showAll, setShowAll] = useState(false);
 
   // One flat feed sorted by score, not grouped by competitor — the highest-
   // relevance signal across every tracked competitor leads regardless of
@@ -89,6 +95,8 @@ export function DashboardFeed({
         return b.signal.occurred_on.localeCompare(a.signal.occurred_on);
       });
   }, [competitors, signals, filter, levelFilter, typeFilter, dateFilter]);
+
+  const visibleRows = showAll ? rows : rows.slice(0, COLLAPSED_COUNT);
 
   return (
     <div>
@@ -152,10 +160,11 @@ export function DashboardFeed({
 
       <p className="mt-3 text-xs text-muted-foreground">
         {rows.length} signal{rows.length === 1 ? "" : "s"}, highest relevance first
+        {!showAll && rows.length > COLLAPSED_COUNT ? ` — showing top ${COLLAPSED_COUNT}` : ""}
       </p>
 
       <div className="mt-2 space-y-3">
-        {rows.map(({ signal, competitor }) => (
+        {visibleRows.map(({ signal, competitor }) => (
           <AlertCard
             key={signal.id}
             signal={{
@@ -194,6 +203,16 @@ export function DashboardFeed({
             />
           ))}
       </div>
+
+      {!showAll && rows.length > COLLAPSED_COUNT ? (
+        <button
+          type="button"
+          onClick={() => setShowAll(true)}
+          className="mt-3 text-xs font-medium text-primary hover:underline"
+        >
+          Show all {rows.length} signals
+        </button>
+      ) : null}
     </div>
   );
 }
