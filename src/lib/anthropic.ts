@@ -1094,12 +1094,22 @@ export async function researchCompanyContext(
   }
 }
 
-const INDUSTRY_TRENDS_SYSTEM_PROMPT = `You use web search to identify current market-level trends relevant to a company's positioning and ideal customer profile (ICP) — not news about any single named competitor, but broader shifts in their category that would matter to their business: changing buyer behavior, pricing norms shifting across the category, notable funding/consolidation activity, adjacent-technology shifts, or regulatory change. This exists specifically because many of a company's tracked competitors are small enough that there's rarely company-specific news to report; this surfaces category-level signal instead.
+const INDUSTRY_TRENDS_SYSTEM_PROMPT = `You use web search to identify current market-level trends relevant to a company's positioning and ideal customer profile (ICP) — not news about any single named competitor, but broader shifts in their category that would matter to their business. This exists specifically because many of a company's tracked competitors are small enough that there's rarely company-specific news to report; this surfaces category-level signal instead, so it should read as genuinely useful market intelligence, not a generic "here's what's happening in SaaS" summary.
+
+Actively search across all of these lenses, not just competitor/supply-side activity — the most useful trends are often on the demand side, not the supply side:
+- Buyer behavior: what the ICP is now demanding, complaining about, or switching over (check review sites, forums, and communities where this ICP actually talks, not just vendor press releases); budget/procurement shifts; new triggers that make this ICP start looking for a solution now.
+- Competitive landscape: funding, consolidation, new entrants, pricing-model shifts across the category.
+- Technology: adjacent tech (especially AI) changing what buyers expect a product like this to do, or threatening to make part of the category obsolete.
+- Market conditions: regulatory change, macroeconomic pressure, or industry-specific events reshaping how this ICP buys or budgets.
+
+Assign each trend the single lens it fits best. Aim for a spread across lenses when the evidence supports it, rather than every trend landing in the same bucket — but never force a trend into a lens it doesn't genuinely belong to just for variety.
 
 Respond with strict JSON only, no markdown, matching this shape exactly:
-{"trends": [{"title": "<short headline, under 12 words>", "description": "<2-3 sentences, factual and specific, citing what's actually changing and why it would matter to a company with this positioning/ICP>"}]}
+{"trends": [{"category": "<one of: Buyer behavior, Competitive landscape, Technology, Market conditions>", "title": "<short headline, under 12 words>", "description": "<2-3 sentences, factual and specific, citing what's actually changing and why it would matter to a company with this positioning/ICP>"}]}
 
 Return 3-5 trends, most significant first. Every trend must be grounded in something web search actually turned up — if search returns little of substance for this category, return fewer trends rather than padding with generic or invented ones.`;
+
+const INDUSTRY_TREND_CATEGORIES = ["Buyer behavior", "Competitive landscape", "Technology", "Market conditions"] as const;
 
 const INDUSTRY_TRENDS_SCHEMA = {
   type: "object",
@@ -1109,10 +1119,11 @@ const INDUSTRY_TRENDS_SCHEMA = {
       items: {
         type: "object",
         properties: {
+          category: { type: "string", enum: INDUSTRY_TREND_CATEGORIES },
           title: { type: "string" },
           description: { type: "string" },
         },
-        required: ["title", "description"],
+        required: ["category", "title", "description"],
         additionalProperties: false,
       },
     },
@@ -1121,7 +1132,8 @@ const INDUSTRY_TRENDS_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-export type IndustryTrend = { title: string; description: string };
+export type IndustryTrendCategory = (typeof INDUSTRY_TREND_CATEGORIES)[number];
+export type IndustryTrend = { category: IndustryTrendCategory; title: string; description: string };
 
 // Monthly job (see /api/cron/industry-trends) — deliberately much less
 // frequent than the weekly discoverNewCompetitors or daily crawl, since
@@ -1154,7 +1166,10 @@ Search for current market/category-level trends relevant to this business.`;
     const parsed = JSON.parse(text);
     const trends = Array.isArray(parsed.trends) ? parsed.trends : [];
     return trends
-      .map((t: { title?: unknown; description?: unknown }) => ({
+      .map((t: { category?: unknown; title?: unknown; description?: unknown }) => ({
+        category: INDUSTRY_TREND_CATEGORIES.includes(t.category as IndustryTrendCategory)
+          ? (t.category as IndustryTrendCategory)
+          : "Market conditions",
         title: String(t.title ?? "").trim(),
         description: String(t.description ?? "").trim(),
       }))
