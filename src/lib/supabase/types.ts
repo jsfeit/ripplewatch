@@ -25,7 +25,10 @@ export type WinLossTrendRelatedSignal = {
   relationNote: string;
 };
 
+export type IndustryTrendCategory = "Buyer behavior" | "Competitive landscape" | "Technology" | "Market conditions";
+
 export type IndustryTrendItem = {
+  category: IndustryTrendCategory;
   title: string;
   description: string;
 };

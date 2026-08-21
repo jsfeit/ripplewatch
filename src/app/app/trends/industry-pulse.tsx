@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { Globe2 } from "lucide-react";
 import { EmptyState } from "@/components/app/empty-state";
 import { Panel } from "@/components/ui/panel";
+import { Badge } from "@/components/ui/badge";
 import { timeAgo } from "@/lib/date";
 import type { MonthlyActivityBucket } from "@/lib/monthly-activity";
 import type { IndustryTrendItem } from "@/lib/supabase/types";
@@ -60,7 +61,10 @@ export function IndustryPulse({
           <ul className="mt-3 space-y-3">
             {trends.map((t) => (
               <li key={t.title} className="border-b border-dashed border-border pb-3 last:border-b-0 last:pb-0">
-                <p className="text-sm font-medium">{t.title}</p>
+                <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                  {t.category}
+                </Badge>
+                <p className="mt-1.5 text-sm font-medium">{t.title}</p>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t.description}</p>
               </li>
             ))}
