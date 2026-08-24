@@ -20,9 +20,9 @@ export const COMPETITOR_LIMIT: Record<AccountTier, number> = {
 // a stubbed data source for now (see src/lib/seo-data.ts) pending a real
 // provider account, but the tier gate is real regardless of the stub.
 export const TIER_SIGNAL_SOURCES: Record<AccountTier, SignalType[]> = {
-  starter: ["pricing", "job_posting", "news", "funding"],
-  plus: ["pricing", "job_posting", "news", "funding", "seo"],
-  advanced: ["pricing", "job_posting", "news", "funding", "seo"],
+  starter: ["pricing", "job_posting", "news", "funding", "product_change"],
+  plus: ["pricing", "job_posting", "news", "funding", "seo", "product_change"],
+  advanced: ["pricing", "job_posting", "news", "funding", "seo", "product_change"],
 };
 
 // CRM (HubSpot) read-only pull is a Plus-and-above feature — same gate

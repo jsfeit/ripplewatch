@@ -2,13 +2,8 @@
 // The real scraping + LLM relevance-scoring pipeline is a later build phase;
 // everything in this file stands in for that pipeline's output.
 
-export type SignalType =
-  | "pricing"
-  | "job_posting"
-  | "review"
-  | "news"
-  | "funding"
-  | "seo";
+import type { SignalType } from "@/lib/supabase/types";
+export type { SignalType };
 
 export type Competitor = {
   id: string;
@@ -39,6 +34,7 @@ export const SIGNAL_TYPE_LABELS: Record<SignalType, string> = {
   news: "News",
   funding: "Funding",
   seo: "SEO / traffic",
+  product_change: "Product / messaging change",
 };
 
 export const MOCK_COMPETITORS: Competitor[] = [

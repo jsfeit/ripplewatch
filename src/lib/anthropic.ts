@@ -236,6 +236,47 @@ export async function summarizePricingChange(
   }
 }
 
+// Homepage copy is far noisier than a pricing page — rotating hero
+// banners, "trusted by" logo carousels, chat-widget scripts, cache-busted
+// asset paths all change the raw text without the site actually saying
+// anything different. This prompt is deliberately stricter than
+// DIFF_SYSTEM_PROMPT about what counts as "meaningful": a genuine
+// positioning shift, a newly-announced feature/product, or a new target
+// segment — not a reworded headline that means the same thing.
+const PRODUCT_DIFF_SYSTEM_PROMPT = `You compare two snapshots of a competitor's homepage (before/after text scraped from their site) and identify whether their product positioning or feature set actually changed. Ignore cosmetic noise: copyright years, timestamps, rotating testimonials/logos, ad content, nav/footer changes, rephrased headlines that mean the same thing, blog post teasers. Only flag a real shift: a newly-announced feature or product, a change in who they're targeting (e.g. "for freelancers" becoming "for enterprise teams"), a new integration or platform they're built on, or a repositioned value proposition (e.g. leading with AI/automation for the first time).
+
+Respond with strict JSON only, no markdown, matching this shape exactly:
+{"meaningful": true | false, "summary": "<one sentence, specific, e.g. 'Now leads with an AI-powered invoicing feature not previously mentioned'>"}
+
+If nothing about their actual product or positioning changed, respond {"meaningful": false, "summary": ""}.`;
+
+export async function summarizeProductChange(
+  oldText: string,
+  newText: string,
+  accountId: string | null
+): Promise<DiffSummary> {
+  const truncate = (s: string) => s.slice(0, 6000);
+  const userPrompt = `BEFORE:\n${truncate(oldText)}\n\nAFTER:\n${truncate(newText)}\n\nWhat changed?`;
+
+  const message = await createMessage({
+    model: "claude-sonnet-5",
+    max_tokens: 200,
+    system: cachedSystemPrompt(PRODUCT_DIFF_SYSTEM_PROMPT),
+    output_config: { format: { type: "json_schema", schema: DIFF_SCHEMA } },
+    messages: [{ role: "user", content: userPrompt }],
+  });
+  recordLlmUsage(accountId, "summarizeProductChange", message.model, message.usage);
+
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+
+  try {
+    const parsed = JSON.parse(text);
+    return { meaningful: Boolean(parsed.meaningful), summary: String(parsed.summary ?? "") };
+  } catch (err) {
+    throw new Error(`Could not parse product diff summary response: ${text}`, { cause: err });
+  }
+}
+
 export type PricingExtraction = {
   billingModel: BillingModel;
   publiclyPriced: boolean;
