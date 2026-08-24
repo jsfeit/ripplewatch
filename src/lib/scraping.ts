@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import {
   summarizePricingChange,
+  summarizeProductChange,
   extractPricingStructure,
   searchCompetitorNews,
   filterRelevantHeadlines,
@@ -147,7 +148,7 @@ function hashText(text: string): string {
   return createHash("sha256").update(text).digest("hex");
 }
 
-type SnapshotKind = "pricing" | "jobs" | "producthunt" | "websearch";
+type SnapshotKind = "pricing" | "jobs" | "producthunt" | "websearch" | "homepage";
 
 async function readSnapshot(supabase: AdminClient, competitorId: string, kind: SnapshotKind) {
   const { data } = await supabase
@@ -373,6 +374,54 @@ export async function checkJobPostingsDiff(
       type: "job_posting",
       title: `${competitor.name} posted ${newTitles.length} new job listing${newTitles.length === 1 ? "" : "s"}`,
       summary,
+      scored: false,
+      source: "pipeline",
+    })
+    .select("*")
+    .single();
+
+  return data;
+}
+
+// Homepage positioning/feature changes — same hash-then-LLM-diff shape as
+// checkPricingDiff, but reads the competitor's homepage instead of a
+// dedicated pricing page (competitor.domain already gives the root, so
+// there's no URL to discover/guess first). No Wayback backfill on the
+// first check, unlike pricing: a homepage redesign from 6 months ago is
+// much more likely to just be noise (full visual/copy overhaul) than a
+// genuinely new positioning claim, so the first check only seeds the
+// snapshot — same stance as checkJobPostingsDiff.
+export async function checkProductMessagingDiff(supabase: AdminClient, competitor: Competitor): Promise<Signal | null> {
+  const clean = normalizeDomain(competitor.domain ?? "");
+  if (!clean) return null;
+  const homepageUrl = `https://${clean}`;
+
+  let newText: string;
+  try {
+    newText = await fetchPageText(homepageUrl);
+  } catch (err) {
+    console.error(`homepage unreachable for ${competitor.name} (${homepageUrl}):`, err);
+    return null;
+  }
+
+  const existing = await readSnapshot(supabase, competitor.id, "homepage");
+  const newHash = hashText(newText);
+  await writeSnapshot(supabase, competitor.id, "homepage", newText);
+
+  if (!existing) return null;
+  if (existing.content_hash === newHash) return null;
+
+  const diff = await summarizeProductChange(existing.raw_text ?? "", newText, competitor.account_id);
+  if (!diff.meaningful || !diff.summary) return null;
+
+  const { data } = await supabase
+    .from("signals")
+    .insert({
+      competitor_id: competitor.id,
+      type: "product_change",
+      title: diff.summary,
+      summary: `Detected on ${competitor.name}'s homepage.`,
+      url: homepageUrl,
       scored: false,
       source: "pipeline",
     })

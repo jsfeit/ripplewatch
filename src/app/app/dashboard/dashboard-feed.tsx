@@ -18,7 +18,7 @@ const LEVEL_FILTERS: LevelFilter[] = ["all", "High", "Medium", "Low", "unscored"
 // "seo" is deliberately excluded — SEO/traffic signals are queried out of
 // the News feed entirely (see dashboard/page.tsx) and shown on their own
 // Trends page instead.
-const TYPE_FILTERS: Array<SignalType | "all"> = ["all", "pricing", "job_posting", "news", "funding"];
+const TYPE_FILTERS: Array<SignalType | "all"> = ["all", "pricing", "job_posting", "news", "funding", "product_change"];
 
 // Defaults to hiding older signals (including "Background"-badged ones) so
 // the feed reads as "what's happening now" rather than being dominated by

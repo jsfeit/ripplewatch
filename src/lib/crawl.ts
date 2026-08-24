@@ -5,6 +5,7 @@ import {
   checkJobPostingsDiff,
   checkSeoTrafficDiff,
   checkProductHuntLaunches,
+  checkProductMessagingDiff,
   checkNews,
   checkFunding,
   checkSearchNews,
@@ -265,6 +266,12 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
       // pricing yet). Enable per the web-search-news-decision checklist item.
       allowedSources.includes("news") && process.env.ENABLE_WEB_SEARCH_NEWS === "true"
         ? checkSearchNews(supabase, competitor, account.id)
+        : null,
+      // Free (just a homepage fetch + a hash-gated LLM call), so allowed on
+      // every tier same as pricing/jobs above — no per-query third-party
+      // cost the way SEO/traffic has.
+      allowedSources.includes("product_change")
+        ? checkProductMessagingDiff(supabase, competitor).then((s) => (s ? [s] : []))
         : null,
     ].filter((p): p is Promise<Signal[]> => p !== null);
 

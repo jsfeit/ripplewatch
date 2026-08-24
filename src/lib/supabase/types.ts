@@ -3,7 +3,7 @@
 // generate it from yet (`supabase gen types typescript` once one exists).
 
 export type Tier = "starter" | "plus" | "advanced";
-export type SignalType = "pricing" | "job_posting" | "review" | "news" | "funding" | "seo";
+export type SignalType = "pricing" | "job_posting" | "review" | "news" | "funding" | "seo" | "product_change";
 export type SeoTrafficTrend = "up" | "down" | "flat" | "unknown";
 export type RelevanceLevel = "High" | "Medium" | "Low";
 export type SignalSource = "manual" | "pipeline" | "backfill";
@@ -356,7 +356,7 @@ export interface Database {
         Row: {
           id: string;
           competitor_id: string;
-          kind: "pricing" | "jobs" | "producthunt" | "websearch";
+          kind: "pricing" | "jobs" | "producthunt" | "websearch" | "homepage";
           content_hash: string;
           raw_text: string | null;
           captured_at: string;
@@ -364,7 +364,7 @@ export interface Database {
         Insert: {
           id?: string;
           competitor_id: string;
-          kind: "pricing" | "jobs" | "producthunt" | "websearch";
+          kind: "pricing" | "jobs" | "producthunt" | "websearch" | "homepage";
           content_hash: string;
           raw_text?: string | null;
           captured_at?: string;
