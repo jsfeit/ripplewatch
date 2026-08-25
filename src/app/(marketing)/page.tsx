@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ArrowUp, Radar, Sparkles, Send, Waves, CircleDashed } from "lucide-react";
+import { ArrowRight, ArrowUp, Radar, Sparkles, Send, Waves, CircleDashed, Calendar } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/panel";
@@ -20,6 +20,8 @@ export const metadata = { alternates: { canonical: "/" } };
 // specific to this marketing example and shouldn't change how real scored/
 // unscored signals render in the actual product.
 const PRICE_HIKE_TITLE = "Northlane raised its Growth plan from $149 to $199/mo";
+
+const DEMO_URL = "https://calendly.com/jeremyripplewatch/30min";
 
 const STEPS = [
   {
@@ -91,6 +93,15 @@ export default function HomePage() {
               See it in action
             </Link>
           </div>
+          <a
+            href={DEMO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+          >
+            <Calendar className="size-4" />
+            Prefer to talk it through first? Book a demo
+          </a>
         </div>
       </section>
 
