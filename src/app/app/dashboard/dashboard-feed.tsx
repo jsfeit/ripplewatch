@@ -160,7 +160,7 @@ export function DashboardFeed({
 
       <p className="mt-3 text-xs text-muted-foreground">
         {rows.length} signal{rows.length === 1 ? "" : "s"}, highest relevance first
-        {!showAll && rows.length > COLLAPSED_COUNT ? ` — showing top ${COLLAPSED_COUNT}` : ""}
+        {!showAll && rows.length > COLLAPSED_COUNT ? ` (showing top ${COLLAPSED_COUNT})` : ""}
       </p>
 
       <div className="mt-2 space-y-3">

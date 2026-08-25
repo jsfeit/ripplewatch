@@ -75,7 +75,7 @@ export default async function AlternativePage({ params }: { params: Promise<{ sl
             <li className="flex gap-2">
               <span className="text-primary">·</span>
               <span>
-                <span className="font-medium text-foreground">Fast, self-serve setup</span> — you should be
+                <span className="font-medium text-foreground">Fast, self-serve setup</span>: you should be
                 able to see it working on your own competitors before deciding whether to switch, not sit
                 through a sales call first.
               </span>

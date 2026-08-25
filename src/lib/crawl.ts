@@ -1,5 +1,6 @@
 import "server-only";
 import {
+  fetchCompetitorPricingText,
   checkPricingDiff,
   checkPricingStructure,
   checkJobPostingsDiff,
@@ -244,11 +245,22 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
       }
     }
 
+    // Fetched once and shared between checkPricingDiff and
+    // checkPricingStructure below (both need the current page text) rather
+    // than each independently fetching the same URL — a plain promise, not
+    // an awaited value, so it still runs concurrently with the other checks
+    // in the array below instead of blocking ahead of them.
+    const pricingPageTextPromise = allowedSources.includes("pricing")
+      ? fetchCompetitorPricingText(competitor)
+      : Promise.resolve(null);
+
     // Pricing/jobs surface at most one signal per run (a diff against the
     // last snapshot) — normalized to arrays here so both shapes flatten into
     // `found` the same way as the sequential checks above.
     const checks = [
-      allowedSources.includes("pricing") ? checkPricingDiff(supabase, competitor).then((s) => (s ? [s] : [])) : null,
+      allowedSources.includes("pricing")
+        ? pricingPageTextPromise.then((text) => checkPricingDiff(supabase, competitor, text)).then((s) => (s ? [s] : []))
+        : null,
       allowedSources.includes("job_posting")
         ? checkJobPostingsDiff(supabase, competitor).then((s) => (s ? [s] : []))
         : null,
@@ -284,7 +296,8 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
     // independent of whether a diff signal fired — runs before the
     // no-new-signals early-return below so it isn't skipped.
     if (allowedSources.includes("pricing")) {
-      await checkPricingStructure(supabase, competitor).catch((err) =>
+      const pricingPageText = await pricingPageTextPromise;
+      await checkPricingStructure(supabase, competitor, pricingPageText).catch((err) =>
         console.error(`pricing structure extraction failed for ${competitor.name}:`, err)
       );
     }

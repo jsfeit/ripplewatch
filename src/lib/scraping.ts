@@ -218,17 +218,35 @@ async function fetchWaybackSnapshotText(url: string): Promise<{ text: string; ca
   }
 }
 
+// Fetches a competitor's pricing page ONCE per crawl run — checkPricingDiff
+// and checkPricingStructure both need the current page text, and
+// previously each called fetchPageText independently, doubling outbound
+// requests (and 403/bot-block risk) per competitor per crawl for no
+// reason. Callers share one in-flight promise (see runCrawlForAccount) so
+// this only runs once; null means "couldn't load," not "no pricing URL"
+// (that's checked separately by each caller).
+export async function fetchCompetitorPricingText(competitor: Competitor): Promise<string | null> {
+  if (!competitor.pricing_url) return null;
+  try {
+    return await fetchPageText(competitor.pricing_url);
+  } catch (err) {
+    console.error(`pricing page unreachable for ${competitor.name} (${competitor.pricing_url}):`, err);
+    return null;
+  }
+}
+
 // Pricing/site diff — compares today's page text against the last crawl,
 // then asks Claude what specifically changed so the signal is a concrete
 // claim ("entry tier dropped to $69/mo") rather than "something changed."
 // Trivial changes (timestamps, copy tweaks) are filtered out entirely.
 export async function checkPricingDiff(
   supabase: AdminClient,
-  competitor: Competitor
+  competitor: Competitor,
+  pageText: string | null
 ): Promise<Signal | null> {
-  if (!competitor.pricing_url) return null;
+  if (!competitor.pricing_url || pageText === null) return null;
 
-  const newText = await fetchPageText(competitor.pricing_url);
+  const newText = pageText;
   const existing = await readSnapshot(supabase, competitor.id, "pricing");
   const newHash = hashText(newText);
   await writeSnapshot(supabase, competitor.id, "pricing", newText);
@@ -284,21 +302,22 @@ export async function checkPricingDiff(
 // just deltas. Overwrites the one row per competitor rather than keeping
 // history — history already lives in the "pricing" signals from
 // checkPricingDiff above.
-export async function checkPricingStructure(supabase: AdminClient, competitor: Competitor): Promise<void> {
+export async function checkPricingStructure(
+  supabase: AdminClient,
+  competitor: Competitor,
+  pageText: string | null
+): Promise<void> {
   if (!competitor.pricing_url) return;
 
-  let pageText: string;
-  try {
-    pageText = await fetchPageText(competitor.pricing_url);
-  } catch (err) {
+  if (pageText === null) {
     // Previously a silent no-op — a page that consistently 403s (bot
     // protection on the pricing page, confirmed on several real competitor
     // domains: same block with a real browser User-Agent, so not a UA-string
     // fix) left the competitor stuck showing "Not yet checked" forever, with
-    // nothing in the logs to explain why. Logged now, and an honest record
-    // is written so the UI can say "couldn't check automatically" instead of
-    // implying a check just hasn't happened yet.
-    console.error(`pricing page unreachable for ${competitor.name} (${competitor.pricing_url}):`, err);
+    // nothing in the logs to explain why. fetchCompetitorPricingText already
+    // logged the fetch failure; an honest record is written here so the UI
+    // can say "couldn't check automatically" instead of implying a check
+    // just hasn't happened yet.
     await supabase.from("competitor_pricing").upsert(
       {
         competitor_id: competitor.id,
@@ -391,10 +410,25 @@ export async function checkJobPostingsDiff(
 // much more likely to just be noise (full visual/copy overhaul) than a
 // genuinely new positioning claim, so the first check only seeds the
 // snapshot — same stance as checkJobPostingsDiff.
+//
+// Weekly-gated like SEO/Product Hunt above, unlike pricing/jobs which
+// check every crawl: a homepage carries far more incidental churn between
+// crawls than a pricing or careers page (rotating testimonials, "N
+// companies signed up today" counters, A/B-tested hero copy) — checking
+// daily would burn a Claude call per competitor per day mostly on noise
+// the LLM just ends up discarding as not meaningful.
+const HOMEPAGE_CHECK_INTERVAL_DAYS = 7;
+
 export async function checkProductMessagingDiff(supabase: AdminClient, competitor: Competitor): Promise<Signal | null> {
   const clean = normalizeDomain(competitor.domain ?? "");
   if (!clean) return null;
   const homepageUrl = `https://${clean}`;
+
+  const existing = await readSnapshot(supabase, competitor.id, "homepage");
+  if (existing) {
+    const daysSinceCheck = (Date.now() - new Date(existing.captured_at).getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceCheck < HOMEPAGE_CHECK_INTERVAL_DAYS) return null;
+  }
 
   let newText: string;
   try {
@@ -404,7 +438,6 @@ export async function checkProductMessagingDiff(supabase: AdminClient, competito
     return null;
   }
 
-  const existing = await readSnapshot(supabase, competitor.id, "homepage");
   const newHash = hashText(newText);
   await writeSnapshot(supabase, competitor.id, "homepage", newText);
 
@@ -613,21 +646,23 @@ async function fetchRecentSignalTitles(supabase: AdminClient, competitorId: stri
   return (data ?? []).map((s) => s.title);
 }
 
-async function existingSignalTitle(
-  supabase: AdminClient,
-  competitorId: string,
-  title: string
-): Promise<boolean> {
-  // Checked across both news and funding so the same headline never ends up
-  // filed under both types if it happens to match both searches.
+// Fetched ONCE per checkNews/checkFunding/checkSearchNews call, then
+// checked in-memory per headline instead of one Supabase round-trip per
+// headline (previously up to HEADLINES_PER_QUERY queries per check, per
+// competitor, per crawl — real added crawl latency for no benefit, since
+// the whole set fits comfortably in memory). Deliberately unscoped by
+// date, unlike fetchRecentSignalTitles's 30-day window above — this is
+// the final exact-match guard before insert, checked across both news and
+// funding so the same headline never ends up filed under both types, and
+// it needs to catch an exact-duplicate title from any point in history,
+// not just recent ones.
+async function fetchAllSignalTitles(supabase: AdminClient, competitorId: string): Promise<Set<string>> {
   const { data } = await supabase
     .from("signals")
-    .select("id")
+    .select("title")
     .eq("competitor_id", competitorId)
-    .in("type", ["news", "funding"])
-    .eq("title", title)
-    .maybeSingle();
-  return Boolean(data);
+    .in("type", ["news", "funding"]);
+  return new Set((data ?? []).map((s) => s.title));
 }
 
 // True the first time a competitor's news/funding gets checked at all — that
@@ -836,9 +871,10 @@ export async function checkNews(supabase: AdminClient, competitor: Competitor, i
   let headlines = await filterHeadlinesForCompetitor(supabase, competitor, await fetchHeadlines(query));
   if (!isFirstCheck) headlines = headlines.filter((h) => isFresh(h.publishedAt));
   const inserted: Signal[] = [];
+  const existingTitles = await fetchAllSignalTitles(supabase, competitor.id);
 
   for (const headline of headlines) {
-    if (await existingSignalTitle(supabase, competitor.id, headline.title)) continue;
+    if (existingTitles.has(headline.title)) continue;
 
     const { data } = await supabase
       .from("signals")
@@ -855,7 +891,10 @@ export async function checkNews(supabase: AdminClient, competitor: Competitor, i
       .select("*")
       .single();
 
-    if (data) inserted.push(data);
+    if (data) {
+      inserted.push(data);
+      existingTitles.add(headline.title);
+    }
   }
 
   return inserted;
@@ -869,9 +908,10 @@ export async function checkFunding(supabase: AdminClient, competitor: Competitor
   let headlines = await filterHeadlinesForCompetitor(supabase, competitor, await fetchHeadlines(query));
   if (!isFirstCheck) headlines = headlines.filter((h) => isFresh(h.publishedAt));
   const inserted: Signal[] = [];
+  const existingTitles = await fetchAllSignalTitles(supabase, competitor.id);
 
   for (const headline of headlines) {
-    if (await existingSignalTitle(supabase, competitor.id, headline.title)) continue;
+    if (existingTitles.has(headline.title)) continue;
 
     const { data } = await supabase
       .from("signals")
@@ -888,7 +928,10 @@ export async function checkFunding(supabase: AdminClient, competitor: Competitor
       .select("*")
       .single();
 
-    if (data) inserted.push(data);
+    if (data) {
+      inserted.push(data);
+      existingTitles.add(headline.title);
+    }
   }
 
   return inserted;
@@ -904,7 +947,7 @@ export async function checkFunding(supabase: AdminClient, competitor: Competitor
 // Weekly-gated even once enabled — same captured_at-age pattern as
 // checkProductHuntLaunches above, using a page_snapshots row purely as a
 // cadence marker (no diff content, since headlines already dedupe via
-// existingSignalTitle). Real per-search + token cost scales with how often
+// fetchAllSignalTitles). Real per-search + token cost scales with how often
 // this runs, not just whether it's on — every crawl would multiply spend
 // for no benefit, since competitor news doesn't change hour to hour.
 const WEB_SEARCH_NEWS_CHECK_INTERVAL_DAYS = 7;
@@ -923,10 +966,11 @@ export async function checkSearchNews(
 
   const headlines = await searchCompetitorNews(competitor.name, accountId);
   const inserted: Signal[] = [];
+  const existingTitles = await fetchAllSignalTitles(supabase, competitor.id);
 
   for (const headline of headlines) {
     if (!headline.title) continue;
-    if (await existingSignalTitle(supabase, competitor.id, headline.title)) continue;
+    if (existingTitles.has(headline.title)) continue;
 
     const { data } = await supabase
       .from("signals")
@@ -942,7 +986,10 @@ export async function checkSearchNews(
       .select("*")
       .single();
 
-    if (data) inserted.push(data);
+    if (data) {
+      inserted.push(data);
+      existingTitles.add(headline.title);
+    }
   }
 
   return inserted;
