@@ -22,10 +22,10 @@ const VERDICT_STALE_MS = 8 * 24 * 60 * 60 * 1000;
 
 const SECTIONS = [
   { id: "overview", label: "Overview" },
-  { id: "news", label: "News" },
-  { id: "pricing", label: "Competitor pricing" },
   { id: "trends", label: "Trends" },
   { id: "win-loss", label: "Win/loss" },
+  { id: "news", label: "News" },
+  { id: "pricing", label: "Competitor pricing" },
 ];
 
 export const metadata = { title: "Dashboard" };
@@ -232,37 +232,6 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <section id="news" className="mt-10 scroll-mt-20">
-        <h2 className="text-sm font-semibold">News</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Signals across every tracked competitor. Scored alerts include the reasoning behind the verdict.
-        </p>
-        <div className="mt-4">
-          <DashboardFeed
-            competitors={competitors ?? []}
-            signals={signals ?? []}
-            evalLabelBySignalId={evalLabelBySignalId}
-            tier={tier}
-            previewContext={{
-              companyName: account?.name ?? "",
-              positioning: account?.positioning ?? "",
-              icp: account?.icp ?? "",
-              lossReason: account?.lost_deal_notes || account?.churn_notes || "",
-            }}
-          />
-        </div>
-      </section>
-
-      <section id="pricing" className="mt-10 scroll-mt-20">
-        <h2 className="text-sm font-semibold">Competitor pricing</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Each competitor&apos;s current tiers, features, and how they actually charge.
-        </p>
-        <div className="mt-4">
-          <PricingBoard competitors={competitors ?? []} pricing={pricing ?? []} pricingSignals={pricingSignals ?? []} />
-        </div>
-      </section>
-
       <section id="trends" className="mt-10 scroll-mt-20">
         <h2 className="text-sm font-semibold">Trends</h2>
         <p className="mt-1 text-xs text-muted-foreground">
@@ -299,6 +268,37 @@ export default async function DashboardPage() {
             showWinLoss={Boolean(account?.has_sales_crm) || !account?.has_plg}
             showChurn={Boolean(account?.has_plg)}
           />
+        </div>
+      </section>
+
+      <section id="news" className="mt-10 scroll-mt-20">
+        <h2 className="text-sm font-semibold">News</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Signals across every tracked competitor. Scored alerts include the reasoning behind the verdict.
+        </p>
+        <div className="mt-4">
+          <DashboardFeed
+            competitors={competitors ?? []}
+            signals={signals ?? []}
+            evalLabelBySignalId={evalLabelBySignalId}
+            tier={tier}
+            previewContext={{
+              companyName: account?.name ?? "",
+              positioning: account?.positioning ?? "",
+              icp: account?.icp ?? "",
+              lossReason: account?.lost_deal_notes || account?.churn_notes || "",
+            }}
+          />
+        </div>
+      </section>
+
+      <section id="pricing" className="mt-10 scroll-mt-20">
+        <h2 className="text-sm font-semibold">Competitor pricing</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Each competitor&apos;s current tiers, features, and how they actually charge.
+        </p>
+        <div className="mt-4">
+          <PricingBoard competitors={competitors ?? []} pricing={pricing ?? []} pricingSignals={pricingSignals ?? []} />
         </div>
       </section>
     </div>
