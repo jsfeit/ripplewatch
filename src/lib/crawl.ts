@@ -39,8 +39,13 @@ type Signal = Database["public"]["Tables"]["signals"]["Row"];
 // limits). A plain sequential for-loop across competitors — each now doing
 // several sequential LLM calls of its own after the news/funding dedup
 // changes — is what pushed a 9-competitor recrawl past Vercel's 300s
-// function timeout; this is the fix.
-async function mapWithConcurrency<T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+// function timeout; this is the fix. Exported so the crawl cron
+// (src/app/api/cron/crawl/route.ts) can apply the same bounded-concurrency
+// pattern across accounts, not just within one — a fully sequential
+// account loop meant one slow account (a rate-limited API, a hung fetch)
+// could push accounts later in the list past the timeout without ever
+// being crawled that day, with no error or partial-progress marker.
+export async function mapWithConcurrency<T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const results: R[] = new Array(items.length);
   let next = 0;
   async function worker() {
@@ -161,7 +166,7 @@ function startOfWeek(): string {
   return monday.toISOString();
 }
 
-export type CrawlSummary = { account: string; newSignals: number; scored: number };
+export type CrawlSummary = { account: string; newSignals: number; scored: number; error?: string };
 
 // The full per-account crawl: check every allowed signal source for each of
 // the account's tracked competitors, score whatever's new, and push High
