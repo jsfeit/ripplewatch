@@ -92,6 +92,8 @@ export interface Database {
           company_research_updated_at: string | null;
           weekly_verdict: string | null;
           weekly_verdict_generated_at: string | null;
+          trends_digest: string | null;
+          trends_digest_generated_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -117,6 +119,8 @@ export interface Database {
           company_research_updated_at?: string | null;
           weekly_verdict?: string | null;
           weekly_verdict_generated_at?: string | null;
+          trends_digest?: string | null;
+          trends_digest_generated_at?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["accounts"]["Insert"]>;

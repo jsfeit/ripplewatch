@@ -1688,3 +1688,79 @@ Write the verdict.`;
     return null;
   }
 }
+
+export type MomentumDigestInput = {
+  competitorName: string;
+  score: number | null;
+  label: string;
+  hiringDelta: string;
+  pricingDelta: string;
+  pressDelta: string;
+};
+
+// Distinct from generateDigestVerdict above: that one synthesizes what
+// individual scored NEWS signals add up to. This one reads the momentum
+// scores themselves (hiring/pricing/press activity deltas, already
+// computed deterministically by computeMomentum) and writes the pattern
+// across competitors — which ones are heating up or cooling, and on what
+// specifically — the same kind of "here's what it means," not "here's the
+// data" takeaway the weekly verdict already models, just for the
+// Trends/momentum view instead of the News feed.
+const MOMENTUM_DIGEST_SYSTEM_PROMPT = `You write a short takeaway summarizing competitive momentum data for one company. You're given each tracked competitor's momentum score (a directional index built from recent hiring/pricing/press activity vs. the prior period) and label (Heating up / Steady / Cooling / Not enough history yet).
+
+Write ONE short takeaway (1-3 sentences) naming which competitor(s) are moving and on what dimension specifically (e.g. "X is hiring aggressively" not just "X has high momentum") — not a recap of every competitor's score. If everything is steady or there's too little data to say anything real, say that plainly rather than manufacturing a trend. Never invent a fact not present in the given data.
+
+Do not open with throat-clearing like "Looking at momentum data...". Lead directly with the takeaway.
+
+Respond with strict JSON only, no markdown, matching this shape exactly:
+{"digest": "<1-3 sentence takeaway, or empty string if there's genuinely nothing to say>"}`;
+
+const MOMENTUM_DIGEST_SCHEMA = {
+  type: "object",
+  properties: {
+    digest: { type: "string" },
+  },
+  required: ["digest"],
+  additionalProperties: false,
+} as const;
+
+export async function generateMomentumDigest(
+  companyName: string,
+  momentum: MomentumDigestInput[],
+  accountId: string | null
+): Promise<string | null> {
+  const withHistory = momentum.filter((m) => m.label !== "Not enough history yet");
+  if (withHistory.length === 0) return null;
+
+  const momentumText = withHistory
+    .map(
+      (m) =>
+        `${m.competitorName}: ${m.label}${m.score !== null ? ` (${m.score > 0 ? "+" : ""}${m.score})` : ""} — hiring ${m.hiringDelta}, pricing activity ${m.pricingDelta}, press/funding ${m.pressDelta}`
+    )
+    .join("\n");
+
+  const userPrompt = `Company: ${companyName}
+
+Competitor momentum this period:
+${momentumText}
+
+Write the takeaway.`;
+
+  const message = await createMessage({
+    model: "claude-sonnet-5",
+    max_tokens: 300,
+    system: cachedSystemPrompt(MOMENTUM_DIGEST_SYSTEM_PROMPT),
+    output_config: { format: { type: "json_schema", schema: MOMENTUM_DIGEST_SCHEMA } },
+    messages: [{ role: "user", content: userPrompt }],
+  });
+  recordLlmUsage(accountId, "generateMomentumDigest", message.model, message.usage);
+
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  try {
+    const parsed = JSON.parse(text);
+    return typeof parsed.digest === "string" && parsed.digest.trim() ? parsed.digest.trim() : null;
+  } catch (err) {
+    console.error("generateMomentumDigest: failed to parse response", text.slice(0, 500), err);
+    return null;
+  }
+}

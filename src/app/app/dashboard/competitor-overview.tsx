@@ -100,6 +100,11 @@ export function CompetitorOverview({
     [competitors, momentumByCompetitor]
   );
 
+  const [expanded, setExpanded] = useState(false);
+
+  const heatingUpCount = sorted.filter((c) => momentumByCompetitor.get(c.id)?.label === "Heating up").length;
+  const coolingCount = sorted.filter((c) => momentumByCompetitor.get(c.id)?.label === "Cooling").length;
+
   if (competitors.length === 0) {
     return (
       <EmptyState
@@ -111,19 +116,54 @@ export function CompetitorOverview({
   }
 
   return (
-    <div className="space-y-2.5">
-      {sorted.map((competitor) => (
-        <CompetitorRow
-          key={competitor.id}
-          competitor={competitor}
-          momentum={momentumByCompetitor.get(competitor.id)!}
-          seoAllowed={seoAllowed}
-          seoRecord={seoByCompetitor.get(competitor.id)}
-          seoChangedAt={latestSeoSignalByCompetitor.get(competitor.id)?.created_at}
-          latestSignal={latestSignalByCompetitor[competitor.id]}
-          pricingRecord={pricingByCompetitor[competitor.id]}
-        />
-      ))}
+    <div>
+      {/* Collapsed by default so Trends (right below) doesn't have to
+          compete with a full per-competitor list for the first screenful —
+          the summary line still surfaces the one thing worth knowing at a
+          glance (who's moving) without requiring a click. */}
+      <button
+        type="button"
+        onClick={() => setExpanded((e) => !e)}
+        className="flex w-full items-center justify-between rounded-lg border border-border bg-card px-4 py-3 text-left hover:border-primary/40"
+      >
+        <span className="text-sm">
+          <span className="font-semibold">{competitors.length}</span>{" "}
+          {competitors.length === 1 ? "competitor" : "competitors"} tracked
+          {heatingUpCount > 0 ? (
+            <span className="text-muted-foreground">
+              {" · "}
+              <span className="font-medium text-foreground">{heatingUpCount}</span> heating up
+            </span>
+          ) : null}
+          {coolingCount > 0 ? (
+            <span className="text-muted-foreground">
+              {" · "}
+              <span className="font-medium text-foreground">{coolingCount}</span> cooling
+            </span>
+          ) : null}
+        </span>
+        <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
+          {expanded ? "Collapse" : "Show all"}
+          <ChevronDown className={cn("size-3.5 transition-transform", expanded && "rotate-180")} />
+        </span>
+      </button>
+
+      {expanded ? (
+        <div className="mt-2.5 space-y-2.5">
+          {sorted.map((competitor) => (
+            <CompetitorRow
+              key={competitor.id}
+              competitor={competitor}
+              momentum={momentumByCompetitor.get(competitor.id)!}
+              seoAllowed={seoAllowed}
+              seoRecord={seoByCompetitor.get(competitor.id)}
+              seoChangedAt={latestSeoSignalByCompetitor.get(competitor.id)?.created_at}
+              latestSignal={latestSignalByCompetitor[competitor.id]}
+              pricingRecord={pricingByCompetitor[competitor.id]}
+            />
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
