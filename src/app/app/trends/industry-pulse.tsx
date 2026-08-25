@@ -1,13 +1,21 @@
 "use client";
 
-import { useMemo } from "react";
-import { Globe2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Globe2, ChevronDown } from "lucide-react";
 import { EmptyState } from "@/components/app/empty-state";
 import { Panel } from "@/components/ui/panel";
 import { Badge } from "@/components/ui/badge";
+import { cn, avatarDotColor } from "@/lib/utils";
 import { timeAgo } from "@/lib/date";
 import type { MonthlyActivityBucket } from "@/lib/monthly-activity";
 import type { IndustryTrendItem } from "@/lib/supabase/types";
+
+// Below this, 6 months of combined hiring+pricing activity across every
+// tracked competitor is thin enough that the chart reads as "broken," not
+// "quiet" — collapsed by default in that case so it doesn't compete with
+// the market-trends synthesis (the actual value-add) for attention. Still
+// always one click away either way; this only sets the default.
+const MEANINGFUL_ACTIVITY_THRESHOLD = 6;
 
 export function IndustryPulse({
   monthlyActivity,
@@ -18,7 +26,9 @@ export function IndustryPulse({
   trends: IndustryTrendItem[];
   trendsGeneratedAt: string | null;
 }) {
-  const hasActivity = monthlyActivity.some((m) => m.hiring > 0 || m.pricing > 0);
+  const totalActivity = monthlyActivity.reduce((sum, m) => sum + m.hiring + m.pricing, 0);
+  const hasActivity = totalActivity > 0;
+  const [chartExpanded, setChartExpanded] = useState(totalActivity >= MEANINGFUL_ACTIVITY_THRESHOLD);
 
   if (!hasActivity && trends.length === 0) {
     return (
@@ -31,21 +41,7 @@ export function IndustryPulse({
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <Panel className="p-4">
-        <p className="text-xs font-semibold text-muted-foreground">
-          Category activity, last 6 months
-        </p>
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          Hiring and pricing changes across every tracked competitor combined.
-        </p>
-        {hasActivity ? (
-          <ActivityChart data={monthlyActivity} />
-        ) : (
-          <p className="mt-6 text-xs text-muted-foreground">Not enough activity yet.</p>
-        )}
-      </Panel>
-
+    <div className="space-y-4">
       <Panel className="p-4">
         <div className="flex items-baseline justify-between">
           <p className="text-xs font-semibold text-muted-foreground">Market trends</p>
@@ -55,15 +51,27 @@ export function IndustryPulse({
         </div>
         {trends.length === 0 ? (
           <p className="mt-3 text-xs text-muted-foreground">
-            Generates monthly, scoped to your positioning and ICP; check back soon.
+            Generates on your first crawl and monthly after that, scoped to your positioning and ICP; check back
+            soon.
           </p>
         ) : (
           <ul className="mt-3 space-y-3">
             {trends.map((t) => (
               <li key={t.title} className="border-b border-dashed border-border pb-3 last:border-b-0 last:pb-0">
-                <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                  {t.category}
-                </Badge>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                    {t.category}
+                  </Badge>
+                  {t.relatedCompetitors.map((name) => (
+                    <span
+                      key={name}
+                      className="flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+                    >
+                      <span className={cn("size-1.5 rounded-full", avatarDotColor(name))} />
+                      {name}
+                    </span>
+                  ))}
+                </div>
                 <p className="mt-1.5 text-sm font-medium">{t.title}</p>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t.description}</p>
               </li>
@@ -71,6 +79,30 @@ export function IndustryPulse({
           </ul>
         )}
       </Panel>
+
+      {hasActivity ? (
+        <Panel className="p-4">
+          <button
+            type="button"
+            onClick={() => setChartExpanded((e) => !e)}
+            className="flex w-full items-center justify-between text-left"
+          >
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground">Category activity, last 6 months</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Hiring and pricing changes across every tracked competitor combined.
+              </p>
+            </div>
+            <ChevronDown
+              className={cn(
+                "size-4 shrink-0 text-muted-foreground transition-transform",
+                chartExpanded && "rotate-180"
+              )}
+            />
+          </button>
+          {chartExpanded ? <ActivityChart data={monthlyActivity} /> : null}
+        </Panel>
+      ) : null}
     </div>
   );
 }

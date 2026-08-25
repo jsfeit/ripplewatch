@@ -21,6 +21,7 @@ import {
   type CompetitorMention,
 } from "@/lib/anthropic";
 import { sendSlackAlert } from "@/lib/slack";
+import { ensureIndustryTrends } from "@/lib/industry-trends";
 import { fetchRecentGongTranscripts } from "@/lib/gong";
 import { fetchRecentZoomTranscripts } from "@/lib/zoom";
 import { fetchClosedLostDealNotes } from "@/lib/hubspot";
@@ -367,6 +368,17 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
   const churnNotes = [account.churn_notes, intercomNotes].filter(Boolean).join(" ") || null;
 
   const companyResearch = await ensureCompanyResearch(supabase, account);
+
+  // Fire-and-forget: nothing later in this function depends on the result,
+  // and runIndustryTrendsForAccount already catches its own errors — this
+  // just shouldn't add its (web-search-grounded, so slower) latency to
+  // every crawl once the one-time self-heal is done. See ensureIndustryTrends
+  // for why this adds no new recurring cost.
+  ensureIndustryTrends(
+    supabase,
+    account,
+    competitors.map((c) => c.name)
+  );
 
   async function scoreOneSignal(signal: Signal): Promise<(Signal & { competitorName: string }) | null> {
     const competitor = competitors.find((c) => c.id === signal.competitor_id);
