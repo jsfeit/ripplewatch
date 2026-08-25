@@ -50,7 +50,7 @@ export default async function DashboardPage() {
   const { data: account } = await db
     .from("accounts")
     .select(
-      "name, positioning, icp, lost_deal_notes, churn_notes, tier, has_sales_crm, has_plg, weekly_verdict, weekly_verdict_generated_at"
+      "name, positioning, icp, lost_deal_notes, churn_notes, tier, has_sales_crm, has_plg, weekly_verdict, weekly_verdict_generated_at, trends_digest, trends_digest_generated_at"
     )
     .eq("id", accountId)
     .single();
@@ -62,6 +62,13 @@ export default async function DashboardPage() {
     account?.weekly_verdict &&
     account.weekly_verdict_generated_at &&
     now.getTime() - new Date(account.weekly_verdict_generated_at).getTime() < VERDICT_STALE_MS;
+  // Same staleness rule as the weekly verdict above, applied to the
+  // separate momentum takeaway (see generateMomentumDigest) — stale rather
+  // than lying if the weekly cron ever misses a run.
+  const trendsDigestIsFresh =
+    account?.trends_digest &&
+    account.trends_digest_generated_at &&
+    now.getTime() - new Date(account.trends_digest_generated_at).getTime() < VERDICT_STALE_MS;
 
   const { data: competitors } = await db
     .from("competitors")
@@ -238,6 +245,12 @@ export default async function DashboardPage() {
           Category-level activity and recurring themes across every logged win/loss reason. Per-competitor
           momentum is above, in Overview.
         </p>
+        {trendsDigestIsFresh ? (
+          <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-primary/25 bg-primary/[0.04] p-3.5">
+            <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
+            <p className="text-sm text-foreground">{account!.trends_digest}</p>
+          </div>
+        ) : null}
         <div className="mt-4">
           <IndustryPulse
             monthlyActivity={monthlyActivity}

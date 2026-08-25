@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendDigestEmail, type DigestSignal } from "@/lib/resend";
-import { generateDigestVerdict, type VerdictSignal } from "@/lib/anthropic";
+import { generateDigestVerdict, generateMomentumDigest, type VerdictSignal, type MomentumDigestInput } from "@/lib/anthropic";
+import { computeMomentum } from "@/lib/momentum";
 import type { Database } from "@/lib/supabase/types";
 
 type Signal = Database["public"]["Tables"]["signals"]["Row"];
@@ -82,6 +83,46 @@ export async function GET(request: Request) {
       } catch (err) {
         console.error(`weekly verdict generation failed for ${account.name}:`, err);
       }
+    }
+
+    // Separate from the verdict above: that one synthesizes scored NEWS
+    // signals, this one reads momentum itself (hiring/pricing/press deltas,
+    // same computeMomentum already used by the Trends dashboard and
+    // /api/v1/momentum) and names which competitors are actually moving —
+    // shown at the top of the Dashboard's Trends section, not in the email.
+    try {
+      const sixtyDaysAgo = new Date();
+      sixtyDaysAgo.setUTCDate(sixtyDaysAgo.getUTCDate() - 60);
+      const { data: momentumSignals } = await supabase
+        .from("signals")
+        .select("competitor_id, type, occurred_on, scored, relevance_score")
+        .in("competitor_id", competitorIds)
+        .gte("occurred_on", sixtyDaysAgo.toISOString().slice(0, 10));
+
+      const momentumInputs: MomentumDigestInput[] = (competitors ?? []).map((c) => {
+        const forCompetitor = (momentumSignals ?? []).filter((s) => s.competitor_id === c.id);
+        const momentum = computeMomentum(forCompetitor);
+        const delta = (component: { recentCount: number; priorCount: number }) =>
+          `${component.recentCount} vs ${component.priorCount} last period`;
+        return {
+          competitorName: c.name,
+          score: momentum.score,
+          label: momentum.label,
+          hiringDelta: delta(momentum.components.hiring),
+          pricingDelta: delta(momentum.components.pricing),
+          pressDelta: delta(momentum.components.pressAndFunding),
+        };
+      });
+
+      const trendsDigest = await generateMomentumDigest(account.name, momentumInputs, account.id);
+      if (trendsDigest) {
+        await supabase
+          .from("accounts")
+          .update({ trends_digest: trendsDigest, trends_digest_generated_at: new Date().toISOString() })
+          .eq("id", account.id);
+      }
+    } catch (err) {
+      console.error(`trends digest generation failed for ${account.name}:`, err);
     }
 
     const { data: signals } = await supabase
