@@ -1145,8 +1145,10 @@ Actively search across all of these lenses, not just competitor/supply-side acti
 
 Assign each trend the single lens it fits best. Aim for a spread across lenses when the evidence supports it, rather than every trend landing in the same bucket — but never force a trend into a lens it doesn't genuinely belong to just for variety.
 
+You're also given the company's own tracked competitor list. For each trend, name which of THOSE SPECIFIC competitors (if any) it most plausibly touches — e.g. a pricing-model shift trend naming a tracked competitor known to use that model, or a buyer-behavior trend that would pressure a specific tracked competitor's positioning. Only ever name a competitor from the given list, copied exactly — never invent one, and leave the list empty for a trend that's genuinely industry-wide with no specific tie to any tracked competitor (that's a legitimate, common outcome, not a failure).
+
 Respond with strict JSON only, no markdown, matching this shape exactly:
-{"trends": [{"category": "<one of: Buyer behavior, Competitive landscape, Technology, Market conditions>", "title": "<short headline, under 12 words>", "description": "<2-3 sentences, factual and specific, citing what's actually changing and why it would matter to a company with this positioning/ICP>"}]}
+{"trends": [{"category": "<one of: Buyer behavior, Competitive landscape, Technology, Market conditions>", "title": "<short headline, under 12 words>", "description": "<2-3 sentences, factual and specific, citing what's actually changing and why it would matter to a company with this positioning/ICP>", "relatedCompetitors": ["<exact name from the given list, or omit entirely if none apply>"]}]}
 
 Return 3-5 trends, most significant first. Every trend must be grounded in something web search actually turned up — if search returns little of substance for this category, return fewer trends rather than padding with generic or invented ones.`;
 
@@ -1163,8 +1165,9 @@ const INDUSTRY_TRENDS_SCHEMA = {
           category: { type: "string", enum: INDUSTRY_TREND_CATEGORIES },
           title: { type: "string" },
           description: { type: "string" },
+          relatedCompetitors: { type: "array", items: { type: "string" } },
         },
-        required: ["category", "title", "description"],
+        required: ["category", "title", "description", "relatedCompetitors"],
         additionalProperties: false,
       },
     },
@@ -1174,20 +1177,30 @@ const INDUSTRY_TRENDS_SCHEMA = {
 } as const;
 
 export type IndustryTrendCategory = (typeof INDUSTRY_TREND_CATEGORIES)[number];
-export type IndustryTrend = { category: IndustryTrendCategory; title: string; description: string };
+export type IndustryTrend = {
+  category: IndustryTrendCategory;
+  title: string;
+  description: string;
+  relatedCompetitors: string[];
+};
 
 // Monthly job (see /api/cron/industry-trends) — deliberately much less
 // frequent than the weekly discoverNewCompetitors or daily crawl, since
 // category-level trends don't shift week to week the way an individual
 // competitor's pricing page might, and running this weekly would just burn
-// budget re-describing the same market conditions.
+// budget re-describing the same market conditions. Also self-healed once
+// per account on its first-ever crawl (see ensureIndustryTrends in
+// industry-trends.ts) so a new account doesn't sit on "check back soon"
+// for however many weeks are left until the next 1st-of-month cron run.
 export async function researchIndustryTrends(
   context: { companyName: string; positioning: string | null; icp: string | null },
+  competitorNames: string[],
   accountId: string | null
 ): Promise<IndustryTrend[]> {
   const userPrompt = `Company: ${context.companyName}
 Positioning: ${context.positioning ?? "(not provided)"}
 ICP: ${context.icp ?? "(not provided)"}
+Tracked competitors: ${competitorNames.length > 0 ? competitorNames.join(", ") : "(none tracked yet)"}
 
 Search for current market/category-level trends relevant to this business.`;
 
@@ -1202,18 +1215,26 @@ Search for current market/category-level trends relevant to this business.`;
   });
   recordLlmUsage(accountId, "researchIndustryTrends", message.model, message.usage);
 
+  const validNames = new Set(competitorNames);
   const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
   try {
     const parsed = JSON.parse(text);
     const trends = Array.isArray(parsed.trends) ? parsed.trends : [];
     return trends
-      .map((t: { category?: unknown; title?: unknown; description?: unknown }) => ({
-        category: INDUSTRY_TREND_CATEGORIES.includes(t.category as IndustryTrendCategory)
-          ? (t.category as IndustryTrendCategory)
-          : "Market conditions",
-        title: String(t.title ?? "").trim(),
-        description: String(t.description ?? "").trim(),
-      }))
+      .map(
+        (t: { category?: unknown; title?: unknown; description?: unknown; relatedCompetitors?: unknown }) => ({
+          category: INDUSTRY_TREND_CATEGORIES.includes(t.category as IndustryTrendCategory)
+            ? (t.category as IndustryTrendCategory)
+            : "Market conditions",
+          title: String(t.title ?? "").trim(),
+          description: String(t.description ?? "").trim(),
+          // Belt-and-suspenders against the one thing the prompt explicitly
+          // forbids (naming a competitor not in the given list) — same
+          // pattern as relatedSignalIds validation in identifyWinLossTrends.
+          relatedCompetitors: (Array.isArray(t.relatedCompetitors) ? t.relatedCompetitors : [])
+            .filter((name: unknown): name is string => typeof name === "string" && validNames.has(name)),
+        })
+      )
       .filter((t: IndustryTrend) => t.title && t.description);
   } catch (err) {
     throw new Error(`Could not parse industry trends response: ${text}`, { cause: err });

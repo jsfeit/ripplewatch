@@ -20,7 +20,8 @@ export async function GET(request: Request) {
 
   const summary = [];
   for (const account of accounts ?? []) {
-    summary.push(await runIndustryTrendsForAccount(supabase, account));
+    const { data: competitors } = await supabase.from("competitors").select("name").eq("account_id", account.id);
+    summary.push(await runIndustryTrendsForAccount(supabase, account, (competitors ?? []).map((c) => c.name)));
   }
 
   return NextResponse.json({ ok: true, summary });
