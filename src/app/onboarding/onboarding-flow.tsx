@@ -86,9 +86,10 @@ export function OnboardingFlow({
     finalPlan && finalPlan in COMPETITOR_LIMIT
       ? COMPETITOR_LIMIT[finalPlan as keyof typeof COMPETITOR_LIMIT]
       : COMPETITOR_LIMIT.advanced;
-  const [checkoutModal, setCheckoutModal] = useState<{ tier: "starter" | "plus"; period: "monthly" | "annual" } | null>(
-    null
-  );
+  const [checkoutModal, setCheckoutModal] = useState<{
+    tier: "starter" | "plus" | "advanced";
+    period: "monthly" | "annual";
+  } | null>(null);
 
   // hasAccount (not initiallySignedIn) decides whether this last step
   // exists at all: a signed-in user with no account yet (e.g. their
@@ -314,7 +315,7 @@ export function OnboardingFlow({
       // this render, since the setChosenPlanId() a few lines up hasn't
       // taken effect yet.
       const tier = payload.tier;
-      if (tier === "starter" || tier === "plus") {
+      if (tier === "starter" || tier === "plus" || tier === "advanced") {
         // Opens the embedded Checkout modal right over this step — the
         // account already exists at this point regardless of payment
         // outcome, so closing the modal (see the modal's onOpenChange
@@ -838,7 +839,7 @@ export function OnboardingFlow({
                 {initiallySignedIn ? "By continuing, you agree to our" : "By creating an account, you agree to our"}{" "}
                 <Link href="/terms" className="text-primary hover:underline">Terms of Service</Link> and{" "}
                 <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>.
-                {finalPlan === "starter" || finalPlan === "plus"
+                {finalPlan === "starter" || finalPlan === "plus" || finalPlan === "advanced"
                   ? " You'll complete payment on the next step."
                   : null}
               </p>
