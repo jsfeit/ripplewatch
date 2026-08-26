@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { PricingCards } from "@/components/marketing/pricing-cards";
+import { TIERS } from "@/lib/tiers";
 
 const description =
   "Relevance-scored competitive intelligence starting at $69/mo. Every tier includes AI-scored alerts against your own positioning and lost-deal reasons.";
@@ -14,9 +15,33 @@ export const metadata = {
   twitter: { card: "summary_large_image", title: "Pricing | Ripplewatch", description },
 };
 
+// Derived from TIERS (the same data PricingCards renders) rather than
+// hardcoded a second time, so this can't silently drift from the real
+// prices the way a copy-pasted schema block would the next time a price
+// changes.
+const STRUCTURED_DATA = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Ripplewatch",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  description,
+  offers: TIERS.map((tier) => ({
+    "@type": "Offer",
+    name: tier.name,
+    price: String(tier.monthlyUsd),
+    priceCurrency: "USD",
+    description: tier.tagline,
+  })),
+};
+
 export default function PricingPage() {
   return (
     <div className="mx-auto max-w-6xl px-6 py-20">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA) }}
+      />
       <div className="mx-auto max-w-2xl text-center">
         <h1 className="text-4xl font-semibold tracking-tight">Pricing that scales with your team, not your headcount</h1>
         <p className="mt-4 text-muted-foreground">
