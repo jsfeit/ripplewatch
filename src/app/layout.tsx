@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { CookieConsent } from "@/components/cookie-consent";
@@ -18,6 +19,8 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
+
+const REDITUS_CUSTOMER_ID = process.env.NEXT_PUBLIC_REDITUS_CUSTOMER_ID;
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 const TITLE = "Ripplewatch | Competitive intelligence that knows what matters to you";
@@ -54,6 +57,24 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        {REDITUS_CUSTOMER_ID && (
+          // beforeInteractive is required by Reditus's own install spec —
+          // Next.js always injects beforeInteractive scripts into <head>
+          // regardless of where they're rendered in the tree, unconditionally
+          // on every page (not gated behind cookie consent like the other
+          // trackers in cookie-consent.tsx), since their install verification
+          // and click-to-signup attribution both depend on it firing that way.
+          <Script id="reditus-init" strategy="beforeInteractive">
+            {`(function (w, d, s, p, t) {
+                w.gr = w.gr || function () { w.gr.ce = 60; w.gr.q = w.gr.q || []; w.gr.q.push(arguments); };
+                p = d.getElementsByTagName(s)[0]; t = d.createElement(s); t.async = true;
+                t.src = "https://script.getreditus.com/v2.js";
+                p.parentNode.insertBefore(t, p);
+              })(window, document, "script");
+              gr("initCustomer", "${REDITUS_CUSTOMER_ID}");
+              gr("track", "pageview");`}
+          </Script>
+        )}
         <UtmCapture />
         <PromoBanner bannerText={campaign?.bannerText ?? null} linkUrl={campaign?.linkUrl ?? null} />
         {children}

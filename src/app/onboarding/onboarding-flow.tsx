@@ -312,7 +312,7 @@ export function OnboardingFlow({
 
       const gr = (window as typeof window & { gr?: (...args: unknown[]) => void }).gr;
       if (typeof gr === "function") {
-        gr("track", "conversion", { email: email.trim() });
+        gr("track", "conversion", { email: email.trim(), uid: data.accountId });
       }
 
       // payload.tier (not finalPlan) — on the resume-from-confirmation-
