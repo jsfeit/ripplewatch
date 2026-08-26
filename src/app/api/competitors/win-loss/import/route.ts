@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { extractWinLossEntries } from "@/lib/anthropic";
 import { applyExtractedWinLossEntries } from "@/lib/win-loss-import";
+import { mapWithConcurrency } from "@/lib/crawl";
 
 // A 1,500-row real-world test took several minutes with no maxDuration set
 // (Vercel's default is far shorter) — bigger batches per call and more
@@ -37,19 +38,6 @@ function chunkCsv(rawText: string): string[] {
     chunks.push([header, ...rows.slice(i, i + CHUNK_ROWS)].join("\n"));
   }
   return chunks;
-}
-
-async function mapWithConcurrency<T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let next = 0;
-  async function worker() {
-    while (next < items.length) {
-      const i = next++;
-      results[i] = await fn(items[i]);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
-  return results;
 }
 
 // Accepts whatever raw text a customer pastes/uploads (CSV, any column

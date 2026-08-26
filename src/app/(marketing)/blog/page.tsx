@@ -2,7 +2,11 @@ import Link from "next/link";
 import { getAllPosts } from "@/lib/posts";
 import { formatDate } from "@/lib/date";
 
-export const dynamic = "force-dynamic";
+// Public content that only changes when an admin publishes/edits a post
+// (see src/app/api/admin/blog) — cached for 5 minutes instead of forced
+// dynamic on every request, with revalidatePath firing immediately on
+// publish/edit/delete so admin changes don't wait out the cache window.
+export const revalidate = 300;
 
 const description = "Notes on competitive intelligence, win/loss analysis, and building a relevance-first alerting system.";
 

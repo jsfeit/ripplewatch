@@ -10,8 +10,21 @@ import { cn, avatarDotColor } from "@/lib/utils";
 import { RECENCY_WINDOW_DAYS, isOldSignal } from "@/lib/signal-freshness";
 import type { Database, SignalType } from "@/lib/supabase/types";
 
-type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
-type Signal = Database["public"]["Tables"]["signals"]["Row"];
+type Competitor = Pick<Database["public"]["Tables"]["competitors"]["Row"], "id" | "name" | "pricing_url" | "careers_url">;
+type Signal = Pick<
+  Database["public"]["Tables"]["signals"]["Row"],
+  | "id"
+  | "competitor_id"
+  | "type"
+  | "title"
+  | "summary"
+  | "scored"
+  | "relevance_level"
+  | "relevance_score"
+  | "relevance_reasoning"
+  | "url"
+  | "occurred_on"
+>;
 
 type LevelFilter = "all" | "High" | "Medium" | "Low" | "unscored";
 const LEVEL_FILTERS: LevelFilter[] = ["all", "High", "Medium", "Low", "unscored"];
