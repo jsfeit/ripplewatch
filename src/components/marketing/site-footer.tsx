@@ -19,6 +19,7 @@ export function SiteFooter() {
           Ripplewatch
         </div>
         <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
+          <Link href="/about" className="hover:text-foreground">About</Link>
           <Link href="/how-it-works" className="hover:text-foreground">How it works</Link>
           <Link href="/pricing" className="hover:text-foreground">Pricing</Link>
           <Link href="/onboarding" className="hover:text-foreground">Live demo</Link>
