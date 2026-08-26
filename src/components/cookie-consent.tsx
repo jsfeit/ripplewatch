@@ -7,14 +7,15 @@ import { Button } from "@/components/ui/button";
 const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 const LINKEDIN_PARTNER_ID = process.env.NEXT_PUBLIC_LINKEDIN_PARTNER_ID;
 const REWARDFUL_API_KEY = process.env.NEXT_PUBLIC_REWARDFUL_API_KEY;
+const REDITUS_CUSTOMER_ID = process.env.NEXT_PUBLIC_REDITUS_CUSTOMER_ID;
 const STORAGE_KEY = "rw-cookie-consent";
 
-// Gates GA4, the LinkedIn Insight Tag, and Rewardful behind consent instead
-// of firing them unconditionally — all three set non-essential ad/analytics/
-// affiliate-attribution cookies (GA's _ga/_gid, LinkedIn's bcookie/
-// UserMatchHistory, Rewardful's referral-attribution cookie), which need
-// consent under GDPR/ePrivacy. Vercel Analytics is unaffected: it's
-// cookieless and stays loaded in layout.tsx.
+// Gates GA4, the LinkedIn Insight Tag, Rewardful, and Reditus behind consent
+// instead of firing them unconditionally — all four set non-essential ad/
+// analytics/affiliate-attribution cookies (GA's _ga/_gid, LinkedIn's bcookie/
+// UserMatchHistory, Rewardful's and Reditus's referral-attribution cookies),
+// which need consent under GDPR/ePrivacy. Vercel Analytics is unaffected:
+// it's cookieless and stays loaded in layout.tsx.
 export function CookieConsent() {
   const [consent, setConsent] = useState<"granted" | "denied" | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -85,6 +86,19 @@ export function CookieConsent() {
           </Script>
           <Script async src="https://r.wdfl.co/rw.js" data-rewardful={REWARDFUL_API_KEY} strategy="afterInteractive" />
         </>
+      )}
+
+      {consent === "granted" && REDITUS_CUSTOMER_ID && (
+        <Script id="reditus-init" strategy="afterInteractive">
+          {`(function (w, d, s, p, t) {
+              w.gr = w.gr || function () { (w.gr.q = w.gr.q || []).push(arguments); };
+              p = d.getElementsByTagName(s)[0]; t = d.createElement(s); t.async = true;
+              t.src = "https://script.getreditus.com/v2.js";
+              p.parentNode.insertBefore(t, p);
+            })(window, document, "script");
+            gr("initCustomer", "${REDITUS_CUSTOMER_ID}");
+            gr("track", "pageview");`}
+        </Script>
       )}
 
       {hydrated && consent === null && (
