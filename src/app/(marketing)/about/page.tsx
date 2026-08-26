@@ -49,7 +49,7 @@ export default function AboutPage() {
       <div className="mt-8 space-y-5 text-[15px] leading-relaxed text-foreground">
         <p>
           Throughout my career, I&apos;ve always kept tabs on competitors. Changes in pricing, job
-          postings, strategy, website copy, new product launches — whatever signals I could find.
+          postings, strategy, website copy, new product launches, or whatever signals I could find.
           It&apos;s just something I&apos;ve done at every company, because it&apos;s genuinely useful.
         </p>
         <p>
