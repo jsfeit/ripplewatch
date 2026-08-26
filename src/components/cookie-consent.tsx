@@ -6,13 +6,15 @@ import { Button } from "@/components/ui/button";
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 const LINKEDIN_PARTNER_ID = process.env.NEXT_PUBLIC_LINKEDIN_PARTNER_ID;
+const REWARDFUL_API_KEY = process.env.NEXT_PUBLIC_REWARDFUL_API_KEY;
 const STORAGE_KEY = "rw-cookie-consent";
 
-// Gates GA4 and the LinkedIn Insight Tag behind consent instead of firing
-// them unconditionally — both set non-essential ad/analytics cookies (GA's
-// _ga/_gid, LinkedIn's bcookie/UserMatchHistory), which need consent under
-// GDPR/ePrivacy. Vercel Analytics is unaffected: it's cookieless and stays
-// loaded in layout.tsx.
+// Gates GA4, the LinkedIn Insight Tag, and Rewardful behind consent instead
+// of firing them unconditionally — all three set non-essential ad/analytics/
+// affiliate-attribution cookies (GA's _ga/_gid, LinkedIn's bcookie/
+// UserMatchHistory, Rewardful's referral-attribution cookie), which need
+// consent under GDPR/ePrivacy. Vercel Analytics is unaffected: it's
+// cookieless and stays loaded in layout.tsx.
 export function CookieConsent() {
   const [consent, setConsent] = useState<"granted" | "denied" | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -73,6 +75,15 @@ export function CookieConsent() {
               src={`https://px.ads.linkedin.com/collect/?pid=${LINKEDIN_PARTNER_ID}&fmt=gif`}
             />
           </noscript>
+        </>
+      )}
+
+      {consent === "granted" && REWARDFUL_API_KEY && (
+        <>
+          <Script id="rewardful-queue" strategy="afterInteractive">
+            {`(function(w,r){w._rwq=r;w[r]=w[r]||function(){(w[r].q=w[r].q||[]).push(arguments)}})(window,'rewardful');`}
+          </Script>
+          <Script async src="https://r.wdfl.co/rw.js" data-rewardful={REWARDFUL_API_KEY} strategy="afterInteractive" />
         </>
       )}
 
