@@ -47,15 +47,25 @@ export default async function DashboardPage() {
   const { accountId, db } = await resolveAccountContext(supabase, user.id);
   if (!accountId) redirect("/onboarding");
 
-  const { data: account } = await db
-    .from("accounts")
-    .select(
-      "name, positioning, icp, lost_deal_notes, churn_notes, tier, has_sales_crm, has_plg, weekly_verdict, weekly_verdict_generated_at, trends_digest, trends_digest_generated_at"
-    )
-    .eq("id", accountId)
-    .single();
+  // account and competitors don't depend on each other — fetched together
+  // instead of two sequential round-trips.
+  const [{ data: account }, { data: competitors }] = await Promise.all([
+    db
+      .from("accounts")
+      .select(
+        "name, positioning, icp, lost_deal_notes, churn_notes, tier, has_sales_crm, has_plg, weekly_verdict, weekly_verdict_generated_at, trends_digest, trends_digest_generated_at"
+      )
+      .eq("id", accountId)
+      .single(),
+    db
+      .from("competitors")
+      .select("id, name, pricing_url, careers_url")
+      .eq("account_id", accountId)
+      .order("created_at", { ascending: true }),
+  ]);
   const tier = account?.tier ?? "starter";
   const seoAllowed = TIER_SIGNAL_SOURCES[tier].includes("seo");
+  const competitorIds = (competitors ?? []).map((c) => c.id);
 
   const now = new Date();
   const verdictIsFresh =
@@ -70,124 +80,130 @@ export default async function DashboardPage() {
     account.trends_digest_generated_at &&
     now.getTime() - new Date(account.trends_digest_generated_at).getTime() < VERDICT_STALE_MS;
 
-  const { data: competitors } = await db
-    .from("competitors")
-    .select("*")
-    .eq("account_id", accountId)
-    .order("created_at", { ascending: true });
-  const competitorIds = (competitors ?? []).map((c) => c.id);
+  const sixtyDaysAgo = new Date();
+  sixtyDaysAgo.setUTCDate(sixtyDaysAgo.getUTCDate() - 60);
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setUTCMonth(sixMonthsAgo.getUTCMonth() - 6);
 
-  // --- News ---
-  // SEO/traffic signals surface in Trends below, not here.
-  const { data: signals } = competitorIds.length
-    ? await db
-        .from("signals")
-        .select("*")
-        .in("competitor_id", competitorIds)
-        .neq("type", "seo")
-        .order("occurred_on", { ascending: false })
-    : { data: [] };
-  const signalIds = (signals ?? []).map((s) => s.id);
-  const { data: evalLabels } = signalIds.length
-    ? await db.from("signal_eval_labels").select("signal_id, label").in("signal_id", signalIds)
-    : { data: [] };
+  // Everything below depends only on competitorIds/accountId/seoAllowed,
+  // none of it on each other — fetched as one batch of round-trips instead
+  // of sequentially.
+  const [
+    { data: signals },
+    { data: pricing },
+    { data: pricingSignals },
+    { data: seo },
+    { data: seoSignals },
+    { data: momentumSignals },
+    { data: activitySignals },
+    { data: industryTrends },
+    { data: winLossTrends },
+    { data: winLossEntries },
+    { data: hubspotIntegration },
+  ] = await Promise.all([
+    // --- News --- (SEO/traffic signals surface in Trends below, not here)
+    competitorIds.length
+      ? db
+          .from("signals")
+          .select("id, competitor_id, type, title, summary, scored, relevance_level, relevance_score, relevance_reasoning, url, occurred_on")
+          .in("competitor_id", competitorIds)
+          .neq("type", "seo")
+          .order("occurred_on", { ascending: false })
+      : Promise.resolve({ data: [] as Signal[] }),
+    // --- Competitor pricing ---
+    competitorIds.length
+      ? db.from("competitor_pricing").select("competitor_id, billing_model, tiers, publicly_priced, note, last_checked_at").in("competitor_id", competitorIds)
+      : Promise.resolve({ data: [] }),
+    competitorIds.length
+      ? db
+          .from("signals")
+          .select("competitor_id, created_at")
+          .in("competitor_id", competitorIds)
+          .eq("type", "pricing")
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] }),
+    // --- Trends: momentum + industry pulse ---
+    seoAllowed && competitorIds.length
+      ? db.from("competitor_seo").select("competitor_id, traffic_trend, organic_traffic_estimate, last_checked_at").in("competitor_id", competitorIds)
+      : Promise.resolve({ data: [] }),
+    seoAllowed && competitorIds.length
+      ? db
+          .from("signals")
+          .select("competitor_id, created_at")
+          .in("competitor_id", competitorIds)
+          .eq("type", "seo")
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] }),
+    competitorIds.length
+      ? db
+          .from("signals")
+          .select("competitor_id, type, occurred_on, scored, relevance_score")
+          .in("competitor_id", competitorIds)
+          .gte("occurred_on", sixtyDaysAgo.toISOString().slice(0, 10))
+      : Promise.resolve({ data: [] }),
+    competitorIds.length
+      ? db
+          .from("signals")
+          .select("type, occurred_on")
+          .in("competitor_id", competitorIds)
+          .in("type", ["job_posting", "pricing"])
+          .gte("occurred_on", sixMonthsAgo.toISOString().slice(0, 10))
+      : Promise.resolve({ data: [] }),
+    db
+      .from("industry_trends")
+      .select("trends, generated_at")
+      .eq("account_id", accountId)
+      .order("generated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    // --- Trends: recurring win/loss themes ---
+    db
+      .from("win_loss_trends")
+      .select("id, theme, summary, won_count, lost_count, example_reasons, related_signals, generated_at")
+      .eq("account_id", accountId)
+      .order("won_count", { ascending: false }),
+    // --- Win/loss log ---
+    competitorIds.length
+      ? db
+          .from("competitor_win_loss")
+          .select("id, competitor_id, outcome, reason, created_at")
+          .in("competitor_id", competitorIds)
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] }),
+    db
+      .from("integrations")
+      .select("connected")
+      .eq("account_id", accountId)
+      .eq("provider", "hubspot")
+      .eq("connected", true)
+      .maybeSingle(),
+  ]);
+
+  const pricingByCompetitor = Object.fromEntries((pricing ?? []).map((p) => [p.competitor_id, p]));
+  const monthlyActivity = bucketMonthlyActivity(activitySignals ?? []);
+  const trendSignalIds = Array.from(
+    new Set((winLossTrends ?? []).flatMap((t) => t.related_signals.map((r) => r.signalId)))
+  );
+  const trendsGeneratedAt = winLossTrends && winLossTrends.length > 0 ? winLossTrends[0].generated_at : null;
+
+  // Last batch: depends on signal/trend ids resolved above.
+  const [{ data: evalLabels }, { data: relatedSignals }] = await Promise.all([
+    signals && signals.length
+      ? db.from("signal_eval_labels").select("signal_id, label").in("signal_id", signals.map((s) => s.id))
+      : Promise.resolve({ data: [] }),
+    trendSignalIds.length
+      ? db.from("signals").select("id, title, url, type, occurred_on").in("id", trendSignalIds)
+      : Promise.resolve({ data: [] }),
+  ]);
   const evalLabelBySignalId = Object.fromEntries((evalLabels ?? []).map((l) => [l.signal_id, l.label]));
 
   // Most recent signal per competitor, for the overview strip — `signals`
   // is already ordered occurred_on desc, so the first match per
   // competitor_id is the latest.
-  const latestSignalByCompetitor: Record<string, Signal> = {};
+  const latestSignalByCompetitor: Record<string, Pick<Signal, "title">> = {};
   for (const signal of signals ?? []) {
     if (!(signal.competitor_id in latestSignalByCompetitor)) latestSignalByCompetitor[signal.competitor_id] = signal;
   }
-
-  // --- Competitor pricing ---
-  const { data: pricing } = competitorIds.length
-    ? await db.from("competitor_pricing").select("*").in("competitor_id", competitorIds)
-    : { data: [] };
-  const pricingByCompetitor = Object.fromEntries((pricing ?? []).map((p) => [p.competitor_id, p]));
-  const { data: pricingSignals } = competitorIds.length
-    ? await db
-        .from("signals")
-        .select("*")
-        .in("competitor_id", competitorIds)
-        .eq("type", "pricing")
-        .order("created_at", { ascending: false })
-    : { data: [] };
-
-  // --- Trends: momentum + industry pulse ---
-  const { data: seo } =
-    seoAllowed && competitorIds.length
-      ? await db.from("competitor_seo").select("*").in("competitor_id", competitorIds)
-      : { data: [] };
-  const { data: seoSignals } =
-    seoAllowed && competitorIds.length
-      ? await db
-          .from("signals")
-          .select("*")
-          .in("competitor_id", competitorIds)
-          .eq("type", "seo")
-          .order("created_at", { ascending: false })
-      : { data: [] };
-  const sixtyDaysAgo = new Date();
-  sixtyDaysAgo.setUTCDate(sixtyDaysAgo.getUTCDate() - 60);
-  const { data: momentumSignals } = competitorIds.length
-    ? await db
-        .from("signals")
-        .select("competitor_id, type, occurred_on, scored, relevance_score")
-        .in("competitor_id", competitorIds)
-        .gte("occurred_on", sixtyDaysAgo.toISOString().slice(0, 10))
-    : { data: [] };
-
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setUTCMonth(sixMonthsAgo.getUTCMonth() - 6);
-  const { data: activitySignals } = competitorIds.length
-    ? await db
-        .from("signals")
-        .select("type, occurred_on")
-        .in("competitor_id", competitorIds)
-        .in("type", ["job_posting", "pricing"])
-        .gte("occurred_on", sixMonthsAgo.toISOString().slice(0, 10))
-    : { data: [] };
-  const monthlyActivity = bucketMonthlyActivity(activitySignals ?? []);
-
-  const { data: industryTrends } = await db
-    .from("industry_trends")
-    .select("trends, generated_at")
-    .eq("account_id", accountId)
-    .order("generated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  // --- Trends: recurring win/loss themes ---
-  const { data: winLossTrends } = await db
-    .from("win_loss_trends")
-    .select("*")
-    .eq("account_id", accountId)
-    .order("won_count", { ascending: false });
-  const trendSignalIds = Array.from(
-    new Set((winLossTrends ?? []).flatMap((t) => t.related_signals.map((r) => r.signalId)))
-  );
-  const { data: relatedSignals } = trendSignalIds.length
-    ? await db.from("signals").select("id, title, url, type, occurred_on").in("id", trendSignalIds)
-    : { data: [] };
-  const trendsGeneratedAt = winLossTrends && winLossTrends.length > 0 ? winLossTrends[0].generated_at : null;
-
-  // --- Win/loss log ---
-  const { data: winLossEntries } = competitorIds.length
-    ? await db
-        .from("competitor_win_loss")
-        .select("id, competitor_id, outcome, reason, created_at")
-        .in("competitor_id", competitorIds)
-        .order("created_at", { ascending: false })
-    : { data: [] };
-  const { data: hubspotIntegration } = await db
-    .from("integrations")
-    .select("connected")
-    .eq("account_id", accountId)
-    .eq("provider", "hubspot")
-    .eq("connected", true)
-    .maybeSingle();
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-10 sm:py-10">

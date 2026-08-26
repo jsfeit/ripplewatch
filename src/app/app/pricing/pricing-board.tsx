@@ -9,9 +9,12 @@ import { timeAgo } from "@/lib/date";
 import { BILLING_MODEL_LABELS, BILLING_MODEL_STYLES, BILLING_MODEL_DOT } from "@/lib/billing-model";
 import type { BillingModel, Database } from "@/lib/supabase/types";
 
-type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
-type CompetitorPricing = Database["public"]["Tables"]["competitor_pricing"]["Row"];
-type Signal = Database["public"]["Tables"]["signals"]["Row"];
+type Competitor = Pick<Database["public"]["Tables"]["competitors"]["Row"], "id" | "name" | "pricing_url">;
+type CompetitorPricing = Pick<
+  Database["public"]["Tables"]["competitor_pricing"]["Row"],
+  "competitor_id" | "billing_model" | "tiers" | "publicly_priced" | "note" | "last_checked_at"
+>;
+type Signal = Pick<Database["public"]["Tables"]["signals"]["Row"], "competitor_id" | "created_at">;
 
 export function PricingBoard({
   competitors,

@@ -10,11 +10,20 @@ import { timeAgo } from "@/lib/date";
 import { computeMomentum, MOMENTUM_STYLES, type MomentumResult } from "@/lib/momentum";
 import type { Database, SeoTrafficTrend } from "@/lib/supabase/types";
 
-type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
-type CompetitorSeo = Database["public"]["Tables"]["competitor_seo"]["Row"];
-type CompetitorPricing = Database["public"]["Tables"]["competitor_pricing"]["Row"];
-type Signal = Database["public"]["Tables"]["signals"]["Row"];
-type MomentumSignal = Pick<Signal, "competitor_id" | "type" | "occurred_on" | "scored" | "relevance_score">;
+type Competitor = Pick<Database["public"]["Tables"]["competitors"]["Row"], "id" | "name">;
+type CompetitorSeo = Pick<
+  Database["public"]["Tables"]["competitor_seo"]["Row"],
+  "competitor_id" | "traffic_trend" | "organic_traffic_estimate" | "last_checked_at"
+>;
+type CompetitorPricing = Pick<Database["public"]["Tables"]["competitor_pricing"]["Row"], "tiers">;
+type SignalRow = Database["public"]["Tables"]["signals"]["Row"];
+type MomentumSignal = Pick<SignalRow, "competitor_id" | "type" | "occurred_on" | "scored" | "relevance_score">;
+// seoSignals is only ever read for .competitor_id/.created_at (see
+// latestSeoSignalByCompetitor below); latestSignalByCompetitor is only
+// ever read for .title (see the CompetitorRow it's passed into) — two
+// different narrow shapes, not the same Signal type reused.
+type SeoSignal = Pick<SignalRow, "competitor_id" | "created_at">;
+type LatestSignal = Pick<SignalRow, "title">;
 
 const TREND_LABELS: Record<SeoTrafficTrend, string> = {
   up: "Trending up",
@@ -65,13 +74,13 @@ export function CompetitorOverview({
   momentumSignals: MomentumSignal[];
   seoAllowed: boolean;
   seo: CompetitorSeo[];
-  seoSignals: Signal[];
-  latestSignalByCompetitor: Record<string, Signal>;
+  seoSignals: SeoSignal[];
+  latestSignalByCompetitor: Record<string, LatestSignal>;
   pricingByCompetitor: Record<string, CompetitorPricing>;
 }) {
   const seoByCompetitor = useMemo(() => new Map(seo.map((s) => [s.competitor_id, s])), [seo]);
   const latestSeoSignalByCompetitor = useMemo(() => {
-    const map = new Map<string, Signal>();
+    const map = new Map<string, SeoSignal>();
     for (const signal of seoSignals) {
       if (!map.has(signal.competitor_id)) map.set(signal.competitor_id, signal);
     }
@@ -182,7 +191,7 @@ function CompetitorRow({
   seoAllowed: boolean;
   seoRecord: CompetitorSeo | undefined;
   seoChangedAt: string | undefined;
-  latestSignal: Signal | undefined;
+  latestSignal: LatestSignal | undefined;
   pricingRecord: CompetitorPricing | undefined;
 }) {
   const [expanded, setExpanded] = useState(false);

@@ -10,7 +10,10 @@ import { cn } from "@/lib/utils";
 import { SIGNAL_TYPE_LABELS } from "@/lib/mock-data";
 import type { Database } from "@/lib/supabase/types";
 
-type Trend = Database["public"]["Tables"]["win_loss_trends"]["Row"];
+type Trend = Pick<
+  Database["public"]["Tables"]["win_loss_trends"]["Row"],
+  "id" | "theme" | "summary" | "won_count" | "lost_count" | "example_reasons" | "related_signals" | "generated_at"
+>;
 type SignalSummary = Pick<
   Database["public"]["Tables"]["signals"]["Row"],
   "id" | "title" | "url" | "type" | "occurred_on"

@@ -7,7 +7,8 @@ import { getPost, type PostBlock } from "@/lib/posts";
 import { formatDate } from "@/lib/date";
 import { QuizCta } from "@/components/marketing/quiz-cta";
 
-export const dynamic = "force-dynamic";
+// Same caching rationale as the blog index — see that file.
+export const revalidate = 300;
 
 export async function generateMetadata({
   params,
