@@ -43,6 +43,10 @@ export async function GET(request: Request) {
       paid: session.payment_status === "paid",
       amountTotal: session.amount_total !== null ? session.amount_total / 100 : null,
       currency: session.currency ?? "usd",
+      // The signed-in user's own email, not session.customer_email — this
+      // account's contact_email is always set from it at signup, so it's
+      // the reliable one to key Rewardful's affiliate conversion on.
+      customerEmail: user.email ?? null,
     });
   } catch {
     return NextResponse.json({ error: "Could not verify checkout session." }, { status: 400 });

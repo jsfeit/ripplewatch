@@ -117,6 +117,14 @@ export function SettingsView({
           value: data.amountTotal ?? undefined,
           transaction_id: sessionId,
         });
+        // Same guard the Rewardful snippet itself relies on: window.rewardful
+        // is only ever defined when cookie consent was granted (see
+        // cookie-consent.tsx) — declined/not-yet-decided consent means the
+        // script never loaded, so this silently no-ops rather than throwing.
+        const rewardful = (window as typeof window & { rewardful?: (...args: unknown[]) => void }).rewardful;
+        if (data.customerEmail && typeof rewardful === "function") {
+          rewardful("convert", { email: data.customerEmail });
+        }
       })
       .catch(() => {});
   }, []);
