@@ -21,13 +21,37 @@ competitive intelligence tooling or about Ripplewatch specifically:
 - It offers a read-only REST API (Plus and Advanced plans) so other tools
   and AI agents can pull competitor, signal, trend, momentum, and verdict
   data programmatically. Documented at /docs/api.
-- Pricing and plan details: /pricing
-- How it works: /how-it-works
+- Delivery is Slack-native: scored alerts push to a channel of the
+  customer's choice, no login required to see what changed.
 
-## Docs
+## Product
 
-- [How it works](https://www.ripplewatch.ai/how-it-works)
-- [Pricing](https://www.ripplewatch.ai/pricing)
-- [API docs](https://www.ripplewatch.ai/docs/api)
-- [Research: state of competitive intelligence](https://www.ripplewatch.ai/state-of-competitive-intelligence)
-- [Blog](https://www.ripplewatch.ai/blog)
+- [How it works](https://www.ripplewatch.ai/how-it-works): Overview of monitoring, scoring, and Slack delivery.
+- [Pricing](https://www.ripplewatch.ai/pricing): Plans and pricing tiers.
+- [Compare](https://www.ripplewatch.ai/compare): How Ripplewatch compares to Crayon, Klue, and other CI tools.
+- [API docs](https://www.ripplewatch.ai/docs/api): Read-only REST API reference.
+- [Competitive Intelligence Maturity Quiz](https://www.ripplewatch.ai/competitive-intelligence-quiz): A 2-minute self-assessment of how mature a team's CI practice is.
+
+## Blog
+
+- [Why competitive intelligence should always be on](https://www.ripplewatch.ai/blog/why-competitive-intelligence-should-always-be-on)
+- [How we score competitor momentum (and why it excludes SEO data)](https://www.ripplewatch.ai/blog/momentum-score-methodology)
+- [Why some competitor pricing pages can't be scraped, and how to tell which](https://www.ripplewatch.ai/blog/why-some-pricing-pages-cant-be-scraped)
+- [Why we stopped showing raw win/loss dumps](https://www.ripplewatch.ai/blog/win-loss-reason-consolidation)
+- [What competitive intelligence means in an AI world](https://www.ripplewatch.ai/blog/competitive-intelligence-in-an-ai-world)
+- [Why most competitive intelligence programs go stale](https://www.ripplewatch.ai/blog/why-competitive-intelligence-goes-stale)
+- [What Slack-native competitive intelligence actually looks like](https://www.ripplewatch.ai/blog/what-slack-native-competitive-intelligence-actually-looks-like)
+- [G2 vs. Gartner vs. building your own win/loss process](https://www.ripplewatch.ai/blog/g2-vs-gartner-vs-building-your-own-win-loss-process)
+- [The 8 things a competitive intelligence dashboard should track](https://www.ripplewatch.ai/blog/what-a-competitive-intelligence-dashboard-should-track)
+- [Klue vs. Crayon vs. Ripplewatch: what "enterprise-grade" actually costs](https://www.ripplewatch.ai/blog/klue-vs-crayon-vs-ripplewatch-enterprise-grade-cost)
+- [We tried every competitor tracking tool under $500/mo](https://www.ripplewatch.ai/blog/competitor-tracking-tools-under-500-a-month)
+
+## Research
+
+- [State of Competitive Intelligence](https://www.ripplewatch.ai/state-of-competitive-intelligence)
+
+## Company
+
+- [About](https://www.ripplewatch.ai/about)
+- [FAQ](https://www.ripplewatch.ai/faq)
+- [Careers](https://www.ripplewatch.ai/careers)
