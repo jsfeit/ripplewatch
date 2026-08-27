@@ -1,11 +1,18 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWelcomeEmail } from "@/lib/resend";
 import { discoverCompetitorUrls } from "@/lib/scraping";
 import { suggestCompetitorCategories, researchCompanyContext } from "@/lib/anthropic";
+import { runCrawlForAccount } from "@/lib/crawl";
 import { COMPETITOR_LIMIT } from "@/lib/tier-limits";
 
 type CompetitorInput = { name: string; domain: string };
+
+// Same budget the scheduled cron gives a full account crawl (see
+// src/app/api/cron/crawl/route.ts) — the initial backfill triggered below
+// runs inside this same invocation via after(), so it needs the same room.
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -161,7 +168,7 @@ export async function POST(request: Request) {
   // crawl's scoring calls already have it, instead of every account's first
   // crawl paying to self-heal it (see ensureCompanyResearch in crawl.ts,
   // which still covers accounts that predate this or where this call fails).
-  researchCompanyContext(companyName.trim(), positioning?.trim() || null, accountId)
+  const researchPromise = researchCompanyContext(companyName.trim(), positioning?.trim() || null, accountId)
     .then((summary) =>
       supabase
         .from("accounts")
@@ -169,6 +176,24 @@ export async function POST(request: Request) {
         .eq("id", accountId)
     )
     .catch((err) => console.error("company research failed:", err));
+
+  // Backfills the account immediately instead of leaving it to wait for the
+  // next scheduled cron run (up to ~24h away) — a brand-new account with
+  // zero signals is the worst possible first impression. Runs via after()
+  // rather than a bare unawaited promise so Vercel keeps the function alive
+  // until it actually finishes, not just until the response above is sent.
+  // Waits on the research call first (best-effort) so the very first crawl's
+  // relevance scoring already has company context instead of racing it.
+  after(async () => {
+    await researchPromise.catch(() => {});
+    try {
+      const admin = createAdminClient();
+      const { data: account } = await admin.from("accounts").select("*").eq("id", accountId).single();
+      if (account) await runCrawlForAccount(admin, account);
+    } catch (err) {
+      console.error("initial backfill crawl failed:", err);
+    }
+  });
 
   return NextResponse.json({ ok: true, accountId });
 }
