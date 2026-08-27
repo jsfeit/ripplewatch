@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
+import { ThemeProvider } from "next-themes";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { CookieConsent } from "@/components/cookie-consent";
@@ -55,17 +56,19 @@ export default async function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
-        {REDITUS_CUSTOMER_ID && (
-          // beforeInteractive is required by Reditus's own install spec —
-          // Next.js always injects beforeInteractive scripts into <head>
-          // regardless of where they're rendered in the tree, unconditionally
-          // on every page (not gated behind cookie consent like the other
-          // trackers in cookie-consent.tsx), since their install verification
-          // and click-to-signup attribution both depend on it firing that way.
-          <Script id="reditus-init" strategy="beforeInteractive">
-            {`(function (w, d, s, p, t) {
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          {REDITUS_CUSTOMER_ID && (
+            // beforeInteractive is required by Reditus's own install spec —
+            // Next.js always injects beforeInteractive scripts into <head>
+            // regardless of where they're rendered in the tree, unconditionally
+            // on every page (not gated behind cookie consent like the other
+            // trackers in cookie-consent.tsx), since their install verification
+            // and click-to-signup attribution both depend on it firing that way.
+            <Script id="reditus-init" strategy="beforeInteractive">
+              {`(function (w, d, s, p, t) {
                 w.gr = w.gr || function () { w.gr.ce = 60; w.gr.q = w.gr.q || []; w.gr.q.push(arguments); };
                 p = d.getElementsByTagName(s)[0]; t = d.createElement(s); t.async = true;
                 t.src = "https://script.getreditus.com/v2.js";
@@ -73,30 +76,31 @@ export default async function RootLayout({
               })(window, document, "script");
               gr("initCustomer", "${REDITUS_CUSTOMER_ID}");
               gr("track", "pageview");`}
-          </Script>
-        )}
-        <UtmCapture />
-        <PromoBanner bannerText={campaign?.bannerText ?? null} linkUrl={campaign?.linkUrl ?? null} />
-        {children}
-        <Analytics />
-        <SpeedInsights />
-        <CookieConsent />
-        <script
-          type="application/ld+json"
-          // Sitewide Organization markup — one static block, safe to inline
-          // since it contains no user data, just fixed brand facts.
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "Organization",
-              name: "Ripplewatch",
-              url: APP_URL,
-              description: DESCRIPTION,
-              logo: `${APP_URL}/opengraph-image`,
-              sameAs: ["https://www.linkedin.com/company/ripplewatch/"],
-            }),
-          }}
-        />
+            </Script>
+          )}
+          <UtmCapture />
+          <PromoBanner bannerText={campaign?.bannerText ?? null} linkUrl={campaign?.linkUrl ?? null} />
+          {children}
+          <Analytics />
+          <SpeedInsights />
+          <CookieConsent />
+          <script
+            type="application/ld+json"
+            // Sitewide Organization markup — one static block, safe to inline
+            // since it contains no user data, just fixed brand facts.
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "Organization",
+                name: "Ripplewatch",
+                url: APP_URL,
+                description: DESCRIPTION,
+                logo: `${APP_URL}/opengraph-image`,
+                sameAs: ["https://www.linkedin.com/company/ripplewatch/"],
+              }),
+            }}
+          />
+        </ThemeProvider>
       </body>
     </html>
   );

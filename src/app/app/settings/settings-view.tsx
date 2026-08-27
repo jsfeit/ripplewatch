@@ -10,6 +10,7 @@ import { TeamManager } from "@/components/app/team-manager";
 import { ApiKeysManager } from "@/components/app/api-keys-manager";
 import { CompetitorManager } from "@/components/app/competitor-manager";
 import { SuggestedCompetitorsPanel } from "@/components/app/suggested-competitors-panel";
+import { ThemeToggle } from "@/components/app/theme-toggle";
 import type { MomentumResult } from "@/lib/momentum";
 import { BillingPeriodToggle, type BillingPeriod } from "@/components/marketing/billing-period-toggle";
 import { TIERS } from "@/lib/tiers";
@@ -33,7 +34,7 @@ type ApiKey = Pick<
   "id" | "name" | "key_prefix" | "last_used_at" | "created_at"
 >;
 
-const KNOWN_TABS = ["competitors", "integrations", "team", "plan", "digest", "developer"] as const;
+const KNOWN_TABS = ["competitors", "integrations", "team", "plan", "digest", "developer", "appearance"] as const;
 
 export function SettingsView({
   account,
@@ -192,6 +193,7 @@ export function SettingsView({
         <TabsTrigger value="plan">Plan</TabsTrigger>
         <TabsTrigger value="digest">Digest preview</TabsTrigger>
         <TabsTrigger value="developer">Developer</TabsTrigger>
+        <TabsTrigger value="appearance">Appearance</TabsTrigger>
       </TabsList>
 
       <TabsContent value="competitors" className="mt-6 space-y-6">
@@ -510,6 +512,20 @@ export function SettingsView({
                 </p>
               </div>
             )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="appearance" className="mt-6">
+        <Card>
+          <CardHeader>
+            <h2 className="font-medium">Appearance</h2>
+            <p className="text-sm text-muted-foreground">
+              Light and dark are built in — System matches your device automatically.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <ThemeToggle />
           </CardContent>
         </Card>
       </TabsContent>
