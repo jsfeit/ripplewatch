@@ -132,6 +132,7 @@ export function CompetitorOverview({
           glance (who's moving) without requiring a click. */}
       <button
         type="button"
+        data-tour="competitor-card"
         onClick={() => setExpanded((e) => !e)}
         className="flex w-full items-center justify-between rounded-lg border border-border bg-card px-4 py-3 text-left hover:border-primary/40"
       >

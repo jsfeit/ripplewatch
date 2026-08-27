@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { Panel } from "@/components/ui/panel";
 import { avatarColor, cn } from "@/lib/utils";
 
@@ -11,8 +11,16 @@ import { avatarColor, cn } from "@/lib/utils";
 // much (a signal, a tier list, a bar chart, a stat row) to squeeze through
 // a fixed shape — only the chrome around it converges.
 
-export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return <Panel className={cn("flex flex-col gap-3 p-4", className)}>{children}</Panel>;
+export function Card({
+  className,
+  children,
+  ...props
+}: { className?: string; children: ReactNode } & Omit<ComponentProps<typeof Panel>, "className" | "children">) {
+  return (
+    <Panel className={cn("flex flex-col gap-3 p-4", className)} {...props}>
+      {children}
+    </Panel>
+  );
 }
 
 export function CardAvatar({ seed, icon, className }: { seed?: string; icon?: ReactNode; className?: string }) {

@@ -252,7 +252,7 @@ function SampleAlertPreview({
           Sample, based on your setup
         </div>
         <p className="mt-3 text-sm font-medium">{preview.headline}</p>
-        <div className="mt-3 rounded-md border border-primary/20 bg-accent/60 p-3">
+        <div data-tour="relevance-badge" className="mt-3 rounded-md border border-primary/20 bg-accent/60 p-3">
           <span className="rounded-full border border-primary/30 bg-primary/15 px-2 py-0.5 text-[11px] font-semibold text-primary">
             High relevance
           </span>

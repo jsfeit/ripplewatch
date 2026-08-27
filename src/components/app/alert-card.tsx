@@ -83,6 +83,7 @@ export function AlertCard({
 
   return (
     <Card
+      data-tour={signal.scored && signal.relevanceLevel ? "relevance-badge" : undefined}
       className={cn(
         "relative overflow-hidden pl-5 transition-colors",
         "before:absolute before:inset-y-0 before:left-0 before:w-1",

@@ -11,6 +11,7 @@ import { TrendsBoard } from "../trends/trends-board";
 import { PricingBoard } from "../pricing/pricing-board";
 import { HiringBoard } from "../hiring/hiring-board";
 import { WinLossPageClient } from "../win-loss/win-loss-page-client";
+import { AutoProductTour } from "@/components/app/product-tour";
 import type { Database } from "@/lib/supabase/types";
 
 type Signal = Database["public"]["Tables"]["signals"]["Row"];
@@ -46,12 +47,16 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { accountId, db } = await resolveAccountContext(supabase, user.id);
+  const { accountId, db, impersonation } = await resolveAccountContext(supabase, user.id);
   if (!accountId) redirect("/onboarding");
 
   // account and competitors don't depend on each other — fetched together
-  // instead of two sequential round-trips.
-  const [{ data: account }, { data: competitors }] = await Promise.all([
+  // instead of two sequential round-trips. The tour flag is read from the
+  // caller's own profile (never db, which is the admin client scoped to the
+  // impersonated account during impersonation) and skipped outright below
+  // when impersonating, so an admin looking at someone else's account never
+  // triggers or marks seen the tour on their own profile.
+  const [{ data: account }, { data: competitors }, { data: profileTour }] = await Promise.all([
     db
       .from("accounts")
       .select(
@@ -64,7 +69,13 @@ export default async function DashboardPage() {
       .select("id, name, pricing_url, careers_url")
       .eq("account_id", accountId)
       .order("created_at", { ascending: true }),
+    impersonation
+      ? { data: null }
+      : supabase.from("profiles").select("has_seen_product_tour").eq("id", user.id).maybeSingle(),
   ]);
+  // Defaults to "seen" (never auto-fires) on any ambiguity: impersonating,
+  // the migration not applied yet, or an unexpected query error.
+  const hasSeenTour = impersonation ? true : (profileTour?.has_seen_product_tour ?? true);
   const tier = account?.tier ?? "starter";
   const seoAllowed = TIER_SIGNAL_SOURCES[tier].includes("seo");
   const competitorIds = (competitors ?? []).map((c) => c.id);
@@ -226,6 +237,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-10 sm:py-10">
+      <AutoProductTour hasSeenTour={hasSeenTour} />
       <div className="mb-4">
         <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
         <p className="mt-1 text-sm text-muted-foreground">

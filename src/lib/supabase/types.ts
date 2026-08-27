@@ -132,12 +132,14 @@ export interface Database {
           id: string;
           account_id: string | null;
           role: ProfileRole;
+          has_seen_product_tour: boolean;
           created_at: string;
         };
         Insert: {
           id: string;
           account_id?: string | null;
           role?: ProfileRole;
+          has_seen_product_tour?: boolean;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;

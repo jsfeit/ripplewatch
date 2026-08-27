@@ -11,6 +11,7 @@ import { ApiKeysManager } from "@/components/app/api-keys-manager";
 import { CompetitorManager } from "@/components/app/competitor-manager";
 import { SuggestedCompetitorsPanel } from "@/components/app/suggested-competitors-panel";
 import { ThemeToggle } from "@/components/app/theme-toggle";
+import { ReplayTourButton } from "@/components/app/product-tour";
 import type { MomentumResult } from "@/lib/momentum";
 import { BillingPeriodToggle, type BillingPeriod } from "@/components/marketing/billing-period-toggle";
 import { TIERS } from "@/lib/tiers";
@@ -526,6 +527,19 @@ export function SettingsView({
           </CardHeader>
           <CardContent>
             <ThemeToggle />
+          </CardContent>
+        </Card>
+
+        <Card className="mt-6">
+          <CardHeader>
+            <h2 className="font-medium">Product tour</h2>
+            <p className="text-sm text-muted-foreground">
+              The 3-step walkthrough you saw right after signing up: your tracked competitors, relevance
+              scoring, and Ask.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <ReplayTourButton />
           </CardContent>
         </Card>
       </TabsContent>
