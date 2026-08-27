@@ -100,6 +100,21 @@ export default async function RootLayout({
               }),
             }}
           />
+          <script
+            type="application/ld+json"
+            // Separate from Organization on purpose — WebSite describes the
+            // site itself (what search/AI engines index and cite), while
+            // Organization describes the company behind it. Same
+            // no-user-data, safe-to-inline reasoning as the block above.
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "WebSite",
+                name: "Ripplewatch",
+                url: APP_URL,
+              }),
+            }}
+          />
         </ThemeProvider>
       </body>
     </html>

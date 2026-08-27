@@ -18,6 +18,7 @@ export type PostEntry = {
   title: string;
   description: string;
   publishedAt: string; // ISO date, e.g. "2026-08-12"
+  updatedAt: string; // ISO timestamp — real last-edit time, written by the admin editor on save
   body: PostBlock[];
 };
 
@@ -30,6 +31,7 @@ function rowToPost(row: BlogPostRow): PostEntry {
     title: row.title,
     description: row.description,
     publishedAt: row.published_at,
+    updatedAt: row.updated_at,
     body: Array.isArray(row.body) ? (row.body as PostBlock[]) : [],
   };
 }
