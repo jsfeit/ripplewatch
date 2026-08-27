@@ -34,6 +34,7 @@ export function AskBubble({ competitorNames }: { competitorNames: string[] }) {
 
       <Button
         size="icon"
+        data-tour="ask-bubble"
         className="ml-auto flex size-12 rounded-full shadow-lg"
         aria-label={open ? "Close Ask" : "Open Ask"}
         onClick={() => setOpen((v) => !v)}
