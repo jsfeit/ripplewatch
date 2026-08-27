@@ -4,8 +4,8 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { TrendingUp, TrendingDown, Minus, HelpCircle, ChevronDown, ArrowUpRight } from "lucide-react";
 import { EmptyState } from "@/components/app/empty-state";
-import { Panel } from "@/components/ui/panel";
-import { cn, avatarColor } from "@/lib/utils";
+import { Card, CardAvatar, CardChangedBadge } from "@/components/app/card";
+import { cn } from "@/lib/utils";
 import { timeAgo } from "@/lib/date";
 import { computeMomentum, MOMENTUM_STYLES, type MomentumResult } from "@/lib/momentum";
 import type { Database, SeoTrafficTrend } from "@/lib/supabase/types";
@@ -200,17 +200,10 @@ function CompetitorRow({
   const hasDetail = hasMomentumData || seoAllowed;
 
   return (
-    <Panel className="p-4">
+    <Card>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
-          <span
-            className={cn(
-              "flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-              avatarColor(competitor.name)
-            )}
-          >
-            {competitor.name.charAt(0).toUpperCase()}
-          </span>
+          <CardAvatar seed={competitor.name} />
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <p className="truncate text-sm font-semibold">{competitor.name}</p>
@@ -255,7 +248,7 @@ function CompetitorRow({
       </div>
 
       {expanded ? (
-        <div className="mt-3 border-t border-dashed border-border pt-3">
+        <div className="border-t border-dashed border-border pt-3">
           {hasMomentumData ? (
             <div className="space-y-1 text-[11px]">
               {Object.values(momentum.components).map((c) => (
@@ -283,8 +276,8 @@ function CompetitorRow({
                     </p>
                     <span className="text-[11px] text-muted-foreground">est. monthly visits</span>
                     {seoChangedAt ? (
-                      <span className="ml-auto shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
-                        Changed {timeAgo(seoChangedAt)}
+                      <span className="ml-auto shrink-0">
+                        <CardChangedBadge>Changed {timeAgo(seoChangedAt)}</CardChangedBadge>
                       </span>
                     ) : null}
                   </div>
@@ -311,6 +304,6 @@ function CompetitorRow({
           )}
         </div>
       ) : null}
-    </Panel>
+    </Card>
   );
 }
