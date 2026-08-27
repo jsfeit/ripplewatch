@@ -236,6 +236,47 @@ export async function summarizePricingChange(
   }
 }
 
+// Homepage copy is far noisier than a pricing page — rotating hero
+// banners, "trusted by" logo carousels, chat-widget scripts, cache-busted
+// asset paths all change the raw text without the site actually saying
+// anything different. This prompt is deliberately stricter than
+// DIFF_SYSTEM_PROMPT about what counts as "meaningful": a genuine
+// positioning shift, a newly-announced feature/product, or a new target
+// segment — not a reworded headline that means the same thing.
+const PRODUCT_DIFF_SYSTEM_PROMPT = `You compare two snapshots of a competitor's homepage (before/after text scraped from their site) and identify whether their product positioning or feature set actually changed. Ignore cosmetic noise: copyright years, timestamps, rotating testimonials/logos, ad content, nav/footer changes, rephrased headlines that mean the same thing, blog post teasers. Only flag a real shift: a newly-announced feature or product, a change in who they're targeting (e.g. "for freelancers" becoming "for enterprise teams"), a new integration or platform they're built on, or a repositioned value proposition (e.g. leading with AI/automation for the first time).
+
+Respond with strict JSON only, no markdown, matching this shape exactly:
+{"meaningful": true | false, "summary": "<one sentence, specific, e.g. 'Now leads with an AI-powered invoicing feature not previously mentioned'>"}
+
+If nothing about their actual product or positioning changed, respond {"meaningful": false, "summary": ""}.`;
+
+export async function summarizeProductChange(
+  oldText: string,
+  newText: string,
+  accountId: string | null
+): Promise<DiffSummary> {
+  const truncate = (s: string) => s.slice(0, 6000);
+  const userPrompt = `BEFORE:\n${truncate(oldText)}\n\nAFTER:\n${truncate(newText)}\n\nWhat changed?`;
+
+  const message = await createMessage({
+    model: "claude-sonnet-5",
+    max_tokens: 200,
+    system: cachedSystemPrompt(PRODUCT_DIFF_SYSTEM_PROMPT),
+    output_config: { format: { type: "json_schema", schema: DIFF_SCHEMA } },
+    messages: [{ role: "user", content: userPrompt }],
+  });
+  recordLlmUsage(accountId, "summarizeProductChange", message.model, message.usage);
+
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+
+  try {
+    const parsed = JSON.parse(text);
+    return { meaningful: Boolean(parsed.meaningful), summary: String(parsed.summary ?? "") };
+  } catch (err) {
+    throw new Error(`Could not parse product diff summary response: ${text}`, { cause: err });
+  }
+}
+
 export type PricingExtraction = {
   billingModel: BillingModel;
   publiclyPriced: boolean;
@@ -1094,6 +1135,112 @@ export async function researchCompanyContext(
   }
 }
 
+const INDUSTRY_TRENDS_SYSTEM_PROMPT = `You use web search to identify current market-level trends relevant to a company's positioning and ideal customer profile (ICP) — not news about any single named competitor, but broader shifts in their category that would matter to their business. This exists specifically because many of a company's tracked competitors are small enough that there's rarely company-specific news to report; this surfaces category-level signal instead, so it should read as genuinely useful market intelligence, not a generic "here's what's happening in SaaS" summary.
+
+Actively search across all of these lenses, not just competitor/supply-side activity — the most useful trends are often on the demand side, not the supply side:
+- Buyer behavior: what the ICP is now demanding, complaining about, or switching over (check review sites, forums, and communities where this ICP actually talks, not just vendor press releases); budget/procurement shifts; new triggers that make this ICP start looking for a solution now.
+- Competitive landscape: funding, consolidation, new entrants, pricing-model shifts across the category.
+- Technology: adjacent tech (especially AI) changing what buyers expect a product like this to do, or threatening to make part of the category obsolete.
+- Market conditions: regulatory change, macroeconomic pressure, or industry-specific events reshaping how this ICP buys or budgets.
+
+Assign each trend the single lens it fits best. Aim for a spread across lenses when the evidence supports it, rather than every trend landing in the same bucket — but never force a trend into a lens it doesn't genuinely belong to just for variety.
+
+You're also given the company's own tracked competitor list. For each trend, name which of THOSE SPECIFIC competitors (if any) it most plausibly touches — e.g. a pricing-model shift trend naming a tracked competitor known to use that model, or a buyer-behavior trend that would pressure a specific tracked competitor's positioning. Only ever name a competitor from the given list, copied exactly — never invent one, and leave the list empty for a trend that's genuinely industry-wide with no specific tie to any tracked competitor (that's a legitimate, common outcome, not a failure).
+
+Respond with strict JSON only, no markdown, matching this shape exactly:
+{"trends": [{"category": "<one of: Buyer behavior, Competitive landscape, Technology, Market conditions>", "title": "<short headline, under 12 words>", "description": "<2-3 sentences, factual and specific, citing what's actually changing and why it would matter to a company with this positioning/ICP>", "relatedCompetitors": ["<exact name from the given list, or omit entirely if none apply>"]}]}
+
+Return 3-5 trends, most significant first. Every trend must be grounded in something web search actually turned up — if search returns little of substance for this category, return fewer trends rather than padding with generic or invented ones.`;
+
+const INDUSTRY_TREND_CATEGORIES = ["Buyer behavior", "Competitive landscape", "Technology", "Market conditions"] as const;
+
+const INDUSTRY_TRENDS_SCHEMA = {
+  type: "object",
+  properties: {
+    trends: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          category: { type: "string", enum: INDUSTRY_TREND_CATEGORIES },
+          title: { type: "string" },
+          description: { type: "string" },
+          relatedCompetitors: { type: "array", items: { type: "string" } },
+        },
+        required: ["category", "title", "description", "relatedCompetitors"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["trends"],
+  additionalProperties: false,
+} as const;
+
+export type IndustryTrendCategory = (typeof INDUSTRY_TREND_CATEGORIES)[number];
+export type IndustryTrend = {
+  category: IndustryTrendCategory;
+  title: string;
+  description: string;
+  relatedCompetitors: string[];
+};
+
+// Monthly job (see /api/cron/industry-trends) — deliberately much less
+// frequent than the weekly discoverNewCompetitors or daily crawl, since
+// category-level trends don't shift week to week the way an individual
+// competitor's pricing page might, and running this weekly would just burn
+// budget re-describing the same market conditions. Also self-healed once
+// per account on its first-ever crawl (see ensureIndustryTrends in
+// industry-trends.ts) so a new account doesn't sit on "check back soon"
+// for however many weeks are left until the next 1st-of-month cron run.
+export async function researchIndustryTrends(
+  context: { companyName: string; positioning: string | null; icp: string | null },
+  competitorNames: string[],
+  accountId: string | null
+): Promise<IndustryTrend[]> {
+  const userPrompt = `Company: ${context.companyName}
+Positioning: ${context.positioning ?? "(not provided)"}
+ICP: ${context.icp ?? "(not provided)"}
+Tracked competitors: ${competitorNames.length > 0 ? competitorNames.join(", ") : "(none tracked yet)"}
+
+Search for current market/category-level trends relevant to this business.`;
+
+  const message = await createMessage({
+    model: "claude-sonnet-5",
+    // Same web_search overhead as discoverNewCompetitors/researchCompanyContext.
+    max_tokens: 8192,
+    system: cachedSystemPrompt(INDUSTRY_TRENDS_SYSTEM_PROMPT),
+    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
+    output_config: { format: { type: "json_schema", schema: INDUSTRY_TRENDS_SCHEMA } },
+    messages: [{ role: "user", content: userPrompt }],
+  });
+  recordLlmUsage(accountId, "researchIndustryTrends", message.model, message.usage);
+
+  const validNames = new Set(competitorNames);
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  try {
+    const parsed = JSON.parse(text);
+    const trends = Array.isArray(parsed.trends) ? parsed.trends : [];
+    return trends
+      .map(
+        (t: { category?: unknown; title?: unknown; description?: unknown; relatedCompetitors?: unknown }) => ({
+          category: INDUSTRY_TREND_CATEGORIES.includes(t.category as IndustryTrendCategory)
+            ? (t.category as IndustryTrendCategory)
+            : "Market conditions",
+          title: String(t.title ?? "").trim(),
+          description: String(t.description ?? "").trim(),
+          // Belt-and-suspenders against the one thing the prompt explicitly
+          // forbids (naming a competitor not in the given list) — same
+          // pattern as relatedSignalIds validation in identifyWinLossTrends.
+          relatedCompetitors: (Array.isArray(t.relatedCompetitors) ? t.relatedCompetitors : [])
+            .filter((name: unknown): name is string => typeof name === "string" && validNames.has(name)),
+        })
+      )
+      .filter((t: IndustryTrend) => t.title && t.description);
+  } catch (err) {
+    throw new Error(`Could not parse industry trends response: ${text}`, { cause: err });
+  }
+}
+
 export type FactSheetWinLossEntry = { outcome: "won" | "lost"; reason: string | null };
 export type FactSheetSignal = { title: string; reasoning: string | null; score: number | null; occurredOn: string };
 export type FactSheetResult = { whyWeWin: string[]; whyWeLose: string[] };
@@ -1559,6 +1706,82 @@ Write the verdict.`;
     return typeof parsed.verdict === "string" && parsed.verdict.trim() ? parsed.verdict.trim() : null;
   } catch (err) {
     console.error("generateDigestVerdict: failed to parse response", text.slice(0, 500), err);
+    return null;
+  }
+}
+
+export type MomentumDigestInput = {
+  competitorName: string;
+  score: number | null;
+  label: string;
+  hiringDelta: string;
+  pricingDelta: string;
+  pressDelta: string;
+};
+
+// Distinct from generateDigestVerdict above: that one synthesizes what
+// individual scored NEWS signals add up to. This one reads the momentum
+// scores themselves (hiring/pricing/press activity deltas, already
+// computed deterministically by computeMomentum) and writes the pattern
+// across competitors — which ones are heating up or cooling, and on what
+// specifically — the same kind of "here's what it means," not "here's the
+// data" takeaway the weekly verdict already models, just for the
+// Trends/momentum view instead of the News feed.
+const MOMENTUM_DIGEST_SYSTEM_PROMPT = `You write a short takeaway summarizing competitive momentum data for one company. You're given each tracked competitor's momentum score (a directional index built from recent hiring/pricing/press activity vs. the prior period) and label (Heating up / Steady / Cooling / Not enough history yet).
+
+Write ONE short takeaway (1-3 sentences) naming which competitor(s) are moving and on what dimension specifically (e.g. "X is hiring aggressively" not just "X has high momentum") — not a recap of every competitor's score. If everything is steady or there's too little data to say anything real, say that plainly rather than manufacturing a trend. Never invent a fact not present in the given data.
+
+Do not open with throat-clearing like "Looking at momentum data...". Lead directly with the takeaway.
+
+Respond with strict JSON only, no markdown, matching this shape exactly:
+{"digest": "<1-3 sentence takeaway, or empty string if there's genuinely nothing to say>"}`;
+
+const MOMENTUM_DIGEST_SCHEMA = {
+  type: "object",
+  properties: {
+    digest: { type: "string" },
+  },
+  required: ["digest"],
+  additionalProperties: false,
+} as const;
+
+export async function generateMomentumDigest(
+  companyName: string,
+  momentum: MomentumDigestInput[],
+  accountId: string | null
+): Promise<string | null> {
+  const withHistory = momentum.filter((m) => m.label !== "Not enough history yet");
+  if (withHistory.length === 0) return null;
+
+  const momentumText = withHistory
+    .map(
+      (m) =>
+        `${m.competitorName}: ${m.label}${m.score !== null ? ` (${m.score > 0 ? "+" : ""}${m.score})` : ""} — hiring ${m.hiringDelta}, pricing activity ${m.pricingDelta}, press/funding ${m.pressDelta}`
+    )
+    .join("\n");
+
+  const userPrompt = `Company: ${companyName}
+
+Competitor momentum this period:
+${momentumText}
+
+Write the takeaway.`;
+
+  const message = await createMessage({
+    model: "claude-sonnet-5",
+    max_tokens: 300,
+    system: cachedSystemPrompt(MOMENTUM_DIGEST_SYSTEM_PROMPT),
+    output_config: { format: { type: "json_schema", schema: MOMENTUM_DIGEST_SCHEMA } },
+    messages: [{ role: "user", content: userPrompt }],
+  });
+  recordLlmUsage(accountId, "generateMomentumDigest", message.model, message.usage);
+
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  try {
+    const parsed = JSON.parse(text);
+    return typeof parsed.digest === "string" && parsed.digest.trim() ? parsed.digest.trim() : null;
+  } catch (err) {
+    console.error("generateMomentumDigest: failed to parse response", text.slice(0, 500), err);
     return null;
   }
 }

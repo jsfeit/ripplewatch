@@ -5,7 +5,7 @@ import type { SignalType, RelevanceLevel } from "@/lib/supabase/types";
 
 const MAX_LIMIT = 100;
 const DEFAULT_LIMIT = 50;
-const SIGNAL_TYPES: SignalType[] = ["pricing", "job_posting", "review", "news", "funding", "seo"];
+const SIGNAL_TYPES: SignalType[] = ["pricing", "job_posting", "review", "news", "funding", "seo", "product_change"];
 const RELEVANCE_LEVELS: RelevanceLevel[] = ["High", "Medium", "Low"];
 
 export async function GET(request: Request) {

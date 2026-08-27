@@ -8,6 +8,11 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { IntegrationConnector } from "@/components/app/integration-connector";
 import { TeamManager } from "@/components/app/team-manager";
 import { ApiKeysManager } from "@/components/app/api-keys-manager";
+import { CompetitorManager } from "@/components/app/competitor-manager";
+import { SuggestedCompetitorsPanel } from "@/components/app/suggested-competitors-panel";
+import { ThemeToggle } from "@/components/app/theme-toggle";
+import { ReplayTourButton } from "@/components/app/product-tour";
+import type { MomentumResult } from "@/lib/momentum";
 import { BillingPeriodToggle, type BillingPeriod } from "@/components/marketing/billing-period-toggle";
 import { TIERS } from "@/lib/tiers";
 import { ANNUAL_DISCOUNT_PERCENT, annualPriceUsd } from "@/lib/pricing";
@@ -22,6 +27,7 @@ import type { Database } from "@/lib/supabase/types";
 
 type Account = Database["public"]["Tables"]["accounts"]["Row"];
 type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
+type Suggestion = Database["public"]["Tables"]["suggested_competitors"]["Row"];
 type Integration = Database["public"]["Tables"]["integrations"]["Row"];
 type Signal = Database["public"]["Tables"]["signals"]["Row"];
 type ApiKey = Pick<
@@ -29,9 +35,15 @@ type ApiKey = Pick<
   "id" | "name" | "key_prefix" | "last_used_at" | "created_at"
 >;
 
+const KNOWN_TABS = ["competitors", "integrations", "team", "plan", "digest", "developer", "appearance"] as const;
+
 export function SettingsView({
   account,
   competitors,
+  suggestions,
+  momentum,
+  traffic,
+  seoAllowed,
   integrations,
   recentSignals,
   apiKeys,
@@ -39,6 +51,10 @@ export function SettingsView({
 }: {
   account: Account;
   competitors: Competitor[];
+  suggestions: Suggestion[];
+  momentum: Record<string, MomentumResult>;
+  traffic: Record<string, number | null>;
+  seoAllowed: boolean;
   integrations: Integration[];
   recentSignals: Signal[];
   apiKeys: ApiKey[];
@@ -55,21 +71,23 @@ export function SettingsView({
   const currentTier = TIERS.find((t) => t.id === account.tier) ?? TIERS[0];
   const isConnected = (provider: string) => integrations.some((i) => i.provider === provider && i.connected);
 
-  // Lets a direct/bookmarked link to /app/settings?tab=plan land on the Plan
+  // Lets a direct/bookmarked link to /app/settings?tab=plan (or
+  // ?tab=competitors, from the old /app/competitors redirect) land on that
   // tab instead of always opening on Integrations. Read in an effect (not a
   // lazy useState initializer) so the server-rendered and first-client-render
   // markup always agree on "integrations", avoiding a hydration mismatch;
-  // the effect then flips to "plan" post-mount. This only fires once on
-  // mount, so it doesn't cover in-app "Upgrade to connect" clicks below
-  // (those call setActiveTab directly via onUpgradeClick instead).
+  // the effect then flips tabs post-mount. This only fires once on mount,
+  // so it doesn't cover in-app "Upgrade to connect" clicks below (those call
+  // setActiveTab directly via onUpgradeClick instead).
   const [activeTab, setActiveTab] = useState("integrations");
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("tab") === "plan") {
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (tab && (KNOWN_TABS as readonly string[]).includes(tab)) {
       // Syncing one-time from an external system (the URL) on mount —
       // the case the rule's own guidance calls out as fine.
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setActiveTab("plan");
+      setActiveTab(tab);
     }
   }, []);
 
@@ -101,6 +119,14 @@ export function SettingsView({
           value: data.amountTotal ?? undefined,
           transaction_id: sessionId,
         });
+        // Same guard the Rewardful snippet itself relies on: window.rewardful
+        // is only ever defined when cookie consent was granted (see
+        // cookie-consent.tsx) — declined/not-yet-decided consent means the
+        // script never loaded, so this silently no-ops rather than throwing.
+        const rewardful = (window as typeof window & { rewardful?: (...args: unknown[]) => void }).rewardful;
+        if (data.customerEmail && typeof rewardful === "function") {
+          rewardful("convert", { email: data.customerEmail });
+        }
       })
       .catch(() => {});
   }, []);
@@ -162,12 +188,25 @@ export function SettingsView({
       />
       <Tabs value={activeTab} onValueChange={setActiveTab}>
       <TabsList>
+        <TabsTrigger value="competitors">Competitors</TabsTrigger>
         <TabsTrigger value="integrations">Integrations</TabsTrigger>
         <TabsTrigger value="team">Team</TabsTrigger>
         <TabsTrigger value="plan">Plan</TabsTrigger>
         <TabsTrigger value="digest">Digest preview</TabsTrigger>
         <TabsTrigger value="developer">Developer</TabsTrigger>
+        <TabsTrigger value="appearance">Appearance</TabsTrigger>
       </TabsList>
+
+      <TabsContent value="competitors" className="mt-6 space-y-6">
+        <SuggestedCompetitorsPanel suggestions={suggestions} />
+        <CompetitorManager
+          competitors={competitors}
+          tier={account.tier}
+          momentum={momentum}
+          traffic={traffic}
+          seoAllowed={seoAllowed}
+        />
+      </TabsContent>
 
       <TabsContent value="team" className="mt-6">
         <Card>
@@ -474,6 +513,33 @@ export function SettingsView({
                 </p>
               </div>
             )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="appearance" className="mt-6">
+        <Card>
+          <CardHeader>
+            <h2 className="font-medium">Appearance</h2>
+            <p className="text-sm text-muted-foreground">
+              Light and dark are built in — System matches your device automatically.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <ThemeToggle />
+          </CardContent>
+        </Card>
+
+        <Card className="mt-6">
+          <CardHeader>
+            <h2 className="font-medium">Product tour</h2>
+            <p className="text-sm text-muted-foreground">
+              The 3-step walkthrough you saw right after signing up: your tracked competitors, relevance
+              scoring, and Ask.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <ReplayTourButton />
           </CardContent>
         </Card>
       </TabsContent>

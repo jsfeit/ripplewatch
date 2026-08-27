@@ -10,7 +10,10 @@ import { cn } from "@/lib/utils";
 import { SIGNAL_TYPE_LABELS } from "@/lib/mock-data";
 import type { Database } from "@/lib/supabase/types";
 
-type Trend = Database["public"]["Tables"]["win_loss_trends"]["Row"];
+type Trend = Pick<
+  Database["public"]["Tables"]["win_loss_trends"]["Row"],
+  "id" | "theme" | "summary" | "won_count" | "lost_count" | "example_reasons" | "related_signals" | "generated_at"
+>;
 type SignalSummary = Pick<
   Database["public"]["Tables"]["signals"]["Row"],
   "id" | "title" | "url" | "type" | "occurred_on"
@@ -110,8 +113,8 @@ export function TrendsBoard({
       {insufficientData ? (
         <p className="mt-3 text-sm text-muted-foreground print:hidden">
           Not enough logged win/loss or churn data yet to identify real trends.{" "}
-          <Link href="/app/win-loss" className="text-primary underline underline-offset-2">
-            Log or import more on the Win/Loss page
+          <Link href="/app/dashboard#win-loss" className="text-primary underline underline-offset-2">
+            Log or import more in the Win/loss section
           </Link>
           , then try again.
         </p>

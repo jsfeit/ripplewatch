@@ -1,5 +1,5 @@
 import "server-only";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import type { Database } from "@/lib/supabase/types";
 
 // Blog content lives in the blog_posts table (migration 0036) so it can be
@@ -35,13 +35,13 @@ function rowToPost(row: BlogPostRow): PostEntry {
 }
 
 export async function getAllPosts(): Promise<PostEntry[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase.from("blog_posts").select("*").order("published_at", { ascending: false });
   return (data ?? []).map(rowToPost);
 }
 
 export async function getPost(slug: string): Promise<PostEntry | undefined> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase.from("blog_posts").select("*").eq("slug", slug).maybeSingle();
   return data ? rowToPost(data) : undefined;
 }

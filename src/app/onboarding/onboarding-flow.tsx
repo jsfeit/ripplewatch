@@ -40,6 +40,14 @@ import { UTM_STORAGE_KEY } from "@/components/utm-capture";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SELF_SERVE_TIERS = TIERS.filter((t) => t.selfServe);
 
+// A failed signUp() or /api/onboarding/complete call can hand back an
+// error whose .message isn't a real string (e.g. an empty auth-provider
+// error body serializes to "{}") — never surface that raw value to the
+// user.
+function readableError(value: unknown, fallback: string): string {
+  return typeof value === "string" && value.trim() ? value : fallback;
+}
+
 // Everything completeOnboarding() needs, saved right before signUp() and
 // restored after email confirmation — otherwise a confirmed signup lands
 // back on a blank form with no memory of what was just filled in.
@@ -78,9 +86,10 @@ export function OnboardingFlow({
     finalPlan && finalPlan in COMPETITOR_LIMIT
       ? COMPETITOR_LIMIT[finalPlan as keyof typeof COMPETITOR_LIMIT]
       : COMPETITOR_LIMIT.advanced;
-  const [checkoutModal, setCheckoutModal] = useState<{ tier: "starter" | "plus"; period: "monthly" | "annual" } | null>(
-    null
-  );
+  const [checkoutModal, setCheckoutModal] = useState<{
+    tier: "starter" | "plus" | "advanced";
+    period: "monthly" | "annual";
+  } | null>(null);
 
   // hasAccount (not initiallySignedIn) decides whether this last step
   // exists at all: a signed-in user with no account yet (e.g. their
@@ -121,6 +130,13 @@ export function OnboardingFlow({
   const [churnReasons, setChurnReasons] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  // Separate from `submitting`: that flag gets set back to false once the
+  // checkout modal opens (so its own spinner isn't stuck mid-open), which
+  // re-enables the "Finish setup" button behind the modal. Without this,
+  // a click in that window re-runs the whole account-creation flow a
+  // second time — hasAccount (a server-fetched prop) doesn't update
+  // mid-session to catch it, so this ref is the only thing that can.
+  const accountCreatedRef = useRef(false);
 
   // null = not fetched yet (derives the loading state below), [] = fetched
   // but empty, array = loaded.
@@ -284,19 +300,27 @@ export function OnboardingFlow({
       });
       const data = await res.json();
       if (!res.ok) {
-        setSubmitError(data.error ?? "Something went wrong. Try again.");
+        setSubmitError(readableError(data.error, "Something went wrong. Try again."));
         setSubmitting(false);
         return;
       }
 
+      // Set only on success, and never cleared — a retry from here on
+      // should no-op rather than attempt account creation again.
+      accountCreatedRef.current = true;
       trackEvent("sign_up", { method: "email" });
+
+      const gr = (window as typeof window & { gr?: (...args: unknown[]) => void }).gr;
+      if (typeof gr === "function") {
+        gr("track", "conversion", { email: email.trim(), uid: data.accountId });
+      }
 
       // payload.tier (not finalPlan) — on the resume-from-confirmation-
       // email path, finalPlan is still the stale pre-restore value from
       // this render, since the setChosenPlanId() a few lines up hasn't
       // taken effect yet.
       const tier = payload.tier;
-      if (tier === "starter" || tier === "plus") {
+      if (tier === "starter" || tier === "plus" || tier === "advanced") {
         // Opens the embedded Checkout modal right over this step — the
         // account already exists at this point regardless of payment
         // outcome, so closing the modal (see the modal's onOpenChange
@@ -359,6 +383,12 @@ export function OnboardingFlow({
   }, [initiallySignedIn, hasAccount]);
 
   async function handleFinish() {
+    // Guards against a click landing on this step's "Finish setup" button
+    // in the moment between a successful completeOnboarding() call and the
+    // checkout modal actually covering the page (see accountCreatedRef's
+    // declaration) — without this, that click re-runs account creation
+    // with a stale hasAccount prop and hits the reassignment guard below.
+    if (accountCreatedRef.current) return;
     setSubmitting(true);
     setSubmitError("");
 
@@ -412,7 +442,7 @@ export function OnboardingFlow({
 
     if (error) {
       sessionStorage.removeItem(DRAFT_STORAGE_KEY);
-      setSubmitError(error.message);
+      setSubmitError(readableError(error.message, "Something went wrong. Try again."));
       setSubmitting(false);
       return;
     }
@@ -814,7 +844,7 @@ export function OnboardingFlow({
                 {initiallySignedIn ? "By continuing, you agree to our" : "By creating an account, you agree to our"}{" "}
                 <Link href="/terms" className="text-primary hover:underline">Terms of Service</Link> and{" "}
                 <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>.
-                {finalPlan === "starter" || finalPlan === "plus"
+                {finalPlan === "starter" || finalPlan === "plus" || finalPlan === "advanced"
                   ? " You'll complete payment on the next step."
                   : null}
               </p>

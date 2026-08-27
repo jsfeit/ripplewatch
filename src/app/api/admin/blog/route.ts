@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { textToBlocks } from "@/lib/posts";
 
@@ -44,6 +45,9 @@ export async function POST(request: Request) {
     const message = error.code === "23505" ? `A post with slug "${slug}" already exists.` : error.message;
     return NextResponse.json({ error: message }, { status: 400 });
   }
+
+  revalidatePath("/blog");
+  revalidatePath(`/blog/${slug}`);
 
   return NextResponse.json({ id: data.id });
 }

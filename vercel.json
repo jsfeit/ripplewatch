@@ -27,6 +27,14 @@
     {
       "path": "/api/cron/discover-competitors",
       "schedule": "30 15 * * 1"
+    },
+    {
+      "path": "/api/cron/lead-drip",
+      "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/cron/industry-trends",
+      "schedule": "0 12 1 * *"
     }
   ]
 }

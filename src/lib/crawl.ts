@@ -1,10 +1,12 @@
 import "server-only";
 import {
+  fetchCompetitorPricingText,
   checkPricingDiff,
   checkPricingStructure,
   checkJobPostingsDiff,
   checkSeoTrafficDiff,
   checkProductHuntLaunches,
+  checkProductMessagingDiff,
   checkNews,
   checkFunding,
   checkSearchNews,
@@ -19,6 +21,7 @@ import {
   type CompetitorMention,
 } from "@/lib/anthropic";
 import { sendSlackAlert } from "@/lib/slack";
+import { ensureIndustryTrends } from "@/lib/industry-trends";
 import { fetchRecentGongTranscripts } from "@/lib/gong";
 import { fetchRecentZoomTranscripts } from "@/lib/zoom";
 import { fetchClosedLostDealNotes } from "@/lib/hubspot";
@@ -37,8 +40,13 @@ type Signal = Database["public"]["Tables"]["signals"]["Row"];
 // limits). A plain sequential for-loop across competitors — each now doing
 // several sequential LLM calls of its own after the news/funding dedup
 // changes — is what pushed a 9-competitor recrawl past Vercel's 300s
-// function timeout; this is the fix.
-async function mapWithConcurrency<T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+// function timeout; this is the fix. Exported so the crawl cron
+// (src/app/api/cron/crawl/route.ts) can apply the same bounded-concurrency
+// pattern across accounts, not just within one — a fully sequential
+// account loop meant one slow account (a rate-limited API, a hung fetch)
+// could push accounts later in the list past the timeout without ever
+// being crawled that day, with no error or partial-progress marker.
+export async function mapWithConcurrency<T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const results: R[] = new Array(items.length);
   let next = 0;
   async function worker() {
@@ -159,7 +167,7 @@ function startOfWeek(): string {
   return monday.toISOString();
 }
 
-export type CrawlSummary = { account: string; newSignals: number; scored: number };
+export type CrawlSummary = { account: string; newSignals: number; scored: number; error?: string };
 
 // The full per-account crawl: check every allowed signal source for each of
 // the account's tracked competitors, score whatever's new, and push High
@@ -243,11 +251,22 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
       }
     }
 
+    // Fetched once and shared between checkPricingDiff and
+    // checkPricingStructure below (both need the current page text) rather
+    // than each independently fetching the same URL — a plain promise, not
+    // an awaited value, so it still runs concurrently with the other checks
+    // in the array below instead of blocking ahead of them.
+    const pricingPageTextPromise = allowedSources.includes("pricing")
+      ? fetchCompetitorPricingText(competitor)
+      : Promise.resolve(null);
+
     // Pricing/jobs surface at most one signal per run (a diff against the
     // last snapshot) — normalized to arrays here so both shapes flatten into
     // `found` the same way as the sequential checks above.
     const checks = [
-      allowedSources.includes("pricing") ? checkPricingDiff(supabase, competitor).then((s) => (s ? [s] : [])) : null,
+      allowedSources.includes("pricing")
+        ? pricingPageTextPromise.then((text) => checkPricingDiff(supabase, competitor, text)).then((s) => (s ? [s] : []))
+        : null,
       allowedSources.includes("job_posting")
         ? checkJobPostingsDiff(supabase, competitor).then((s) => (s ? [s] : []))
         : null,
@@ -266,6 +285,12 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
       allowedSources.includes("news") && process.env.ENABLE_WEB_SEARCH_NEWS === "true"
         ? checkSearchNews(supabase, competitor, account.id)
         : null,
+      // Free (just a homepage fetch + a hash-gated LLM call), so allowed on
+      // every tier same as pricing/jobs above — no per-query third-party
+      // cost the way SEO/traffic has.
+      allowedSources.includes("product_change")
+        ? checkProductMessagingDiff(supabase, competitor).then((s) => (s ? [s] : []))
+        : null,
     ].filter((p): p is Promise<Signal[]> => p !== null);
 
     const results = await Promise.allSettled(checks);
@@ -277,7 +302,8 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
     // independent of whether a diff signal fired — runs before the
     // no-new-signals early-return below so it isn't skipped.
     if (allowedSources.includes("pricing")) {
-      await checkPricingStructure(supabase, competitor).catch((err) =>
+      const pricingPageText = await pricingPageTextPromise;
+      await checkPricingStructure(supabase, competitor, pricingPageText).catch((err) =>
         console.error(`pricing structure extraction failed for ${competitor.name}:`, err)
       );
     }
@@ -342,6 +368,17 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
   const churnNotes = [account.churn_notes, intercomNotes].filter(Boolean).join(" ") || null;
 
   const companyResearch = await ensureCompanyResearch(supabase, account);
+
+  // Fire-and-forget: nothing later in this function depends on the result,
+  // and runIndustryTrendsForAccount already catches its own errors — this
+  // just shouldn't add its (web-search-grounded, so slower) latency to
+  // every crawl once the one-time self-heal is done. See ensureIndustryTrends
+  // for why this adds no new recurring cost.
+  ensureIndustryTrends(
+    supabase,
+    account,
+    competitors.map((c) => c.name)
+  );
 
   async function scoreOneSignal(signal: Signal): Promise<(Signal & { competitorName: string }) | null> {
     const competitor = competitors.find((c) => c.id === signal.competitor_id);

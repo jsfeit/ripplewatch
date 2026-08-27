@@ -1,10 +1,19 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendDigestEmail, type DigestSignal } from "@/lib/resend";
-import { generateDigestVerdict, type VerdictSignal } from "@/lib/anthropic";
+import { generateDigestVerdict, generateMomentumDigest, type VerdictSignal, type MomentumDigestInput } from "@/lib/anthropic";
+import { computeMomentum } from "@/lib/momentum";
+import { mapWithConcurrency } from "@/lib/crawl";
 import type { Database } from "@/lib/supabase/types";
 
 type Signal = Database["public"]["Tables"]["signals"]["Row"];
+type Account = Database["public"]["Tables"]["accounts"]["Row"];
+
+// Bounded the same way digest-daily/crawl fan out across accounts — each
+// account here does a verdict LLM call plus a momentum-digest LLM call, so
+// this is squarely in the "expensive enough to bound, not run unbounded"
+// category, not just left fully sequential.
+const ACCOUNT_CONCURRENCY = 5;
 
 // Runs once a week. Catches everything the daily digest deliberately skips:
 // Low relevance signals and raw (unscored) signals — real, but not urgent
@@ -31,17 +40,15 @@ export async function GET(request: Request) {
   const supabase = createAdminClient();
   const { data: accounts } = await supabase.from("accounts").select("*").not("contact_email", "is", null);
 
-  const summary: Record<string, unknown>[] = [];
-
-  for (const account of accounts ?? []) {
-    if (!account.contact_email) continue;
+  const summary = await mapWithConcurrency(accounts ?? [], ACCOUNT_CONCURRENCY, async (account: Account) => {
+    if (!account.contact_email) return null;
 
     const { data: competitors } = await supabase
       .from("competitors")
       .select("id, name")
       .eq("account_id", account.id);
     const competitorIds = (competitors ?? []).map((c) => c.id);
-    if (competitorIds.length === 0) continue;
+    if (competitorIds.length === 0) return null;
 
     const sevenDaysAgo = new Date(Date.now() - SEVEN_DAYS_MS).toISOString();
     const { data: weekSignals } = await supabase
@@ -84,6 +91,46 @@ export async function GET(request: Request) {
       }
     }
 
+    // Separate from the verdict above: that one synthesizes scored NEWS
+    // signals, this one reads momentum itself (hiring/pricing/press deltas,
+    // same computeMomentum already used by the Trends dashboard and
+    // /api/v1/momentum) and names which competitors are actually moving —
+    // shown at the top of the Dashboard's Trends section, not in the email.
+    try {
+      const sixtyDaysAgo = new Date();
+      sixtyDaysAgo.setUTCDate(sixtyDaysAgo.getUTCDate() - 60);
+      const { data: momentumSignals } = await supabase
+        .from("signals")
+        .select("competitor_id, type, occurred_on, scored, relevance_score")
+        .in("competitor_id", competitorIds)
+        .gte("occurred_on", sixtyDaysAgo.toISOString().slice(0, 10));
+
+      const momentumInputs: MomentumDigestInput[] = (competitors ?? []).map((c) => {
+        const forCompetitor = (momentumSignals ?? []).filter((s) => s.competitor_id === c.id);
+        const momentum = computeMomentum(forCompetitor);
+        const delta = (component: { recentCount: number; priorCount: number }) =>
+          `${component.recentCount} vs ${component.priorCount} last period`;
+        return {
+          competitorName: c.name,
+          score: momentum.score,
+          label: momentum.label,
+          hiringDelta: delta(momentum.components.hiring),
+          pricingDelta: delta(momentum.components.pricing),
+          pressDelta: delta(momentum.components.pressAndFunding),
+        };
+      });
+
+      const trendsDigest = await generateMomentumDigest(account.name, momentumInputs, account.id);
+      if (trendsDigest) {
+        await supabase
+          .from("accounts")
+          .update({ trends_digest: trendsDigest, trends_digest_generated_at: new Date().toISOString() })
+          .eq("id", account.id);
+      }
+    } catch (err) {
+      console.error(`trends digest generation failed for ${account.name}:`, err);
+    }
+
     const { data: signals } = await supabase
       .from("signals")
       .select("*")
@@ -97,8 +144,7 @@ export async function GET(request: Request) {
 
     const pending = (signals ?? []) as Signal[];
     if (pending.length === 0) {
-      summary.push({ account: account.name, sent: 0, verdict: Boolean(verdict) });
-      continue;
+      return { account: account.name, sent: 0, verdict: Boolean(verdict) };
     }
 
     const digestSignals: DigestSignal[] = pending.map((s) => ({
@@ -113,8 +159,7 @@ export async function GET(request: Request) {
       await sendDigestEmail(account.contact_email, account.name, digestSignals, "weekly", verdict);
     } catch (err) {
       console.error(`weekly digest send failed for ${account.name}:`, err);
-      summary.push({ account: account.name, sent: 0, error: true, verdict: Boolean(verdict) });
-      continue;
+      return { account: account.name, sent: 0, error: true, verdict: Boolean(verdict) };
     }
 
     await supabase
@@ -122,8 +167,8 @@ export async function GET(request: Request) {
       .update({ email_digest_sent_at: new Date().toISOString() })
       .in("id", pending.map((s) => s.id));
 
-    summary.push({ account: account.name, sent: pending.length, verdict: Boolean(verdict) });
-  }
+    return { account: account.name, sent: pending.length, verdict: Boolean(verdict) };
+  });
 
-  return NextResponse.json({ ok: true, summary });
+  return NextResponse.json({ ok: true, summary: summary.filter(Boolean) });
 }

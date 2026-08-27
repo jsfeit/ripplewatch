@@ -193,6 +193,95 @@ export async function sendPaymentReminderEmail(
   if (result.error) throw new Error(result.error.message);
 }
 
+// 3-step drip to a captured lead (quiz or onboarding-abandon) who never
+// created an account — distinct from sendPaymentReminderEmail above, which
+// targets someone who *did* create an account but never paid. Step 3 folds
+// in the live evergreen promo when one's active, since that's the strongest
+// closing argument available; when there's no active promo, promo is null
+// and that block is simply omitted rather than inventing one.
+export async function sendLeadDripEmail(
+  to: string,
+  step: 1 | 2 | 3,
+  opts: {
+    leadId: string;
+    companyName: string | null;
+    capturePoint: string | null;
+    appUrl: string;
+    promo: { bannerText: string; linkUrl: string } | null;
+  }
+) {
+  if (!isResendConfigured()) return;
+
+  const { leadId, companyName, capturePoint, appUrl, promo } = opts;
+  const pricingUrl = promo ? `${appUrl}${promo.linkUrl}` : `${appUrl}/pricing`;
+  const unsubscribeUrl = `${appUrl}/unsubscribe?lead=${leadId}`;
+  const greeting = companyName ? `Hi ${companyName} team,` : "Hi,";
+
+  const intro =
+    capturePoint === "quiz"
+      ? "You took the competitive intelligence maturity quiz a few days ago"
+      : "You started setting up Ripplewatch a few days ago";
+
+  let subject: string;
+  let body: string;
+  let ctaLabel = "See Ripplewatch in action";
+
+  if (step === 1) {
+    subject = "Still thinking about competitive intel?";
+    body = `<p style="color:#3a3a3a;font-size:14px;line-height:1.6;">${intro}, but never finished setting up monitoring.</p>
+      <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+        Most competitive intel tools tell you <em>what</em> changed. Ripplewatch scores every finding against
+        your own positioning, ICP, and the real reasons you've won, lost, and churned deals, so you get a
+        verdict you can act on instead of another feed to triage.
+      </p>`;
+  } else if (step === 2) {
+    subject = "The difference between noise and a verdict";
+    body = `<p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+        No pressure, just one more reason it might be worth a look: a pricing change or new feature from a
+        competitor can matter enormously to one company and mean nothing to another. Ripplewatch ties every
+        signal to your actual win/loss history so you only hear about the ones that matter to you.
+      </p>
+      <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+        You can see it working on your own competitors before creating an account; every plan also comes
+        with a 30-day money-back guarantee, so there's no real risk in trying it for real.
+      </p>`;
+    ctaLabel = "Try it on your competitors";
+  } else {
+    subject = promo ? promo.bannerText : "One last look at Ripplewatch";
+    body = `<p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+        Last note from us on this; we won't keep emailing after today.
+      </p>
+      ${
+        promo
+          ? `<p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+              Right now: <strong>${promo.bannerText}</strong>
+            </p>`
+          : `<p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+              If now isn't the right time, no worries at all; the door's always open when it is.
+            </p>`
+      }`;
+    ctaLabel = promo ? "Claim the offer" : "See Ripplewatch in action";
+  }
+
+  const result = await getResend().emails.send({
+    from: getFromEmail(),
+    to,
+    subject,
+    html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+      <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">${greeting}</p>
+      ${body}
+      <a href="${pricingUrl}" style="display:inline-block;margin-top:8px;padding:10px 20px;background:#0f5f56;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">
+        ${ctaLabel}
+      </a>
+      <p style="color:#888;font-size:12px;margin-top:24px;">
+        Questions? Just reply; a person reads every one.<br />
+        <a href="${unsubscribeUrl}" style="color:#888;">Unsubscribe from these emails</a>
+      </p>
+    </div>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
 const TIER_DISPLAY_NAMES: Record<string, string> = { starter: "Starter", plus: "Plus", advanced: "Advanced" };
 const TIER_RANK: Record<string, number> = { starter: 0, plus: 1, advanced: 2 };
 

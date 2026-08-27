@@ -3,7 +3,7 @@
 // generate it from yet (`supabase gen types typescript` once one exists).
 
 export type Tier = "starter" | "plus" | "advanced";
-export type SignalType = "pricing" | "job_posting" | "review" | "news" | "funding" | "seo";
+export type SignalType = "pricing" | "job_posting" | "review" | "news" | "funding" | "seo" | "product_change";
 export type SeoTrafficTrend = "up" | "down" | "flat" | "unknown";
 export type RelevanceLevel = "High" | "Medium" | "Low";
 export type SignalSource = "manual" | "pipeline" | "backfill";
@@ -25,6 +25,15 @@ export type WinLossTrendRelatedSignal = {
   relationNote: string;
 };
 
+export type IndustryTrendCategory = "Buyer behavior" | "Competitive landscape" | "Technology" | "Market conditions";
+
+export type IndustryTrendItem = {
+  category: IndustryTrendCategory;
+  title: string;
+  description: string;
+  relatedCompetitors: string[];
+};
+
 export interface Database {
   public: {
     Tables: {
@@ -37,6 +46,10 @@ export interface Database {
           utm_medium: string | null;
           utm_campaign: string | null;
           capture_point: string | null;
+          drip_email_1_sent_at: string | null;
+          drip_email_2_sent_at: string | null;
+          drip_email_3_sent_at: string | null;
+          unsubscribed_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -47,6 +60,10 @@ export interface Database {
           utm_medium?: string | null;
           utm_campaign?: string | null;
           capture_point?: string | null;
+          drip_email_1_sent_at?: string | null;
+          drip_email_2_sent_at?: string | null;
+          drip_email_3_sent_at?: string | null;
+          unsubscribed_at?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["leads"]["Insert"]>;
@@ -76,6 +93,8 @@ export interface Database {
           company_research_updated_at: string | null;
           weekly_verdict: string | null;
           weekly_verdict_generated_at: string | null;
+          trends_digest: string | null;
+          trends_digest_generated_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -101,6 +120,8 @@ export interface Database {
           company_research_updated_at?: string | null;
           weekly_verdict?: string | null;
           weekly_verdict_generated_at?: string | null;
+          trends_digest?: string | null;
+          trends_digest_generated_at?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["accounts"]["Insert"]>;
@@ -111,12 +132,14 @@ export interface Database {
           id: string;
           account_id: string | null;
           role: ProfileRole;
+          has_seen_product_tour: boolean;
           created_at: string;
         };
         Insert: {
           id: string;
           account_id?: string | null;
           role?: ProfileRole;
+          has_seen_product_tour?: boolean;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
@@ -198,6 +221,24 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["win_loss_trends"]["Insert"]>;
+        Relationships: [];
+      };
+      industry_trends: {
+        Row: {
+          id: string;
+          account_id: string;
+          trends: IndustryTrendItem[];
+          generated_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_id: string;
+          trends?: IndustryTrendItem[];
+          generated_at?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["industry_trends"]["Insert"]>;
         Relationships: [];
       };
       api_keys: {
@@ -322,7 +363,7 @@ export interface Database {
         Row: {
           id: string;
           competitor_id: string;
-          kind: "pricing" | "jobs" | "producthunt" | "websearch";
+          kind: "pricing" | "jobs" | "producthunt" | "websearch" | "homepage";
           content_hash: string;
           raw_text: string | null;
           captured_at: string;
@@ -330,7 +371,7 @@ export interface Database {
         Insert: {
           id?: string;
           competitor_id: string;
-          kind: "pricing" | "jobs" | "producthunt" | "websearch";
+          kind: "pricing" | "jobs" | "producthunt" | "websearch" | "homepage";
           content_hash: string;
           raw_text?: string | null;
           captured_at?: string;
@@ -360,6 +401,28 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["competitor_seo"]["Insert"]>;
+        Relationships: [];
+      };
+      competitor_hiring: {
+        Row: {
+          id: string;
+          competitor_id: string;
+          open_role_count: number;
+          department_breakdown: Record<string, number>;
+          source: string | null;
+          last_checked_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          competitor_id: string;
+          open_role_count: number;
+          department_breakdown?: Record<string, number>;
+          source?: string | null;
+          last_checked_at?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["competitor_hiring"]["Insert"]>;
         Relationships: [];
       };
       competitor_pricing: {

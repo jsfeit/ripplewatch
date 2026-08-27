@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { textToBlocks } from "@/lib/posts";
 
@@ -28,6 +29,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   const admin = createAdminClient();
+  const { data: existing } = await admin.from("blog_posts").select("slug").eq("id", id).maybeSingle();
   const { error } = await admin
     .from("blog_posts")
     .update({
@@ -45,13 +47,22 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
+  revalidatePath("/blog");
+  revalidatePath(`/blog/${slug}`);
+  if (existing && existing.slug !== slug) revalidatePath(`/blog/${existing.slug}`);
+
   return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const admin = createAdminClient();
+  const { data: existing } = await admin.from("blog_posts").select("slug").eq("id", id).maybeSingle();
   const { error } = await admin.from("blog_posts").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+  revalidatePath("/blog");
+  if (existing) revalidatePath(`/blog/${existing.slug}`);
+
   return NextResponse.json({ ok: true });
 }

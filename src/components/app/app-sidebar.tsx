@@ -3,19 +3,20 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { DollarSign, LayoutDashboard, LogOut, Menu, Radar, Scale, Settings, Sparkles, TrendingUp, Waves, X } from "lucide-react";
+import { LayoutDashboard, LogOut, Menu, Settings, Sparkles, Waves, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { TIER_DOT } from "@/lib/tier-style";
 
+// News, competitor pricing, trends, and win/loss all live as sections on
+// one Dashboard page now instead of separate nav items — see
+// /app/dashboard/page.tsx. Competitor list-management moved into Settings;
+// a specific competitor's fact sheet is still its own page
+// (/app/competitors/[id]), just no longer top-level nav.
 const NAV = [
-  { href: "/app/dashboard", label: "News", icon: LayoutDashboard },
+  { href: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/app/ask", label: "Ask", icon: Sparkles },
-  { href: "/app/pricing", label: "Competitor Pricing", icon: DollarSign },
-  { href: "/app/trends", label: "Trends", icon: TrendingUp },
-  { href: "/app/competitors", label: "Competitors", icon: Radar },
-  { href: "/app/win-loss", label: "Win/Loss", icon: Scale },
   { href: "/app/settings", label: "Settings", icon: Settings },
 ];
 
@@ -99,9 +100,12 @@ export function AppSidebar({ tier }: { tier: string }) {
         </div>
         <nav className="flex-1 space-y-1 p-3">
           {NAV.map((item) => {
+            // A competitor's own fact-sheet page (/app/competitors/[id]) has
+            // no nav item of its own — it reads as part of Settings, where
+            // the competitor list now lives.
             const active =
               pathname === item.href ||
-              (item.href.includes("/competitors") && pathname.startsWith("/app/competitors"));
+              (item.href === "/app/settings" && pathname.startsWith("/app/competitors"));
             return (
               <Link
                 key={item.label}

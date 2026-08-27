@@ -4,6 +4,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/panel";
 import { PricingCards } from "@/components/marketing/pricing-cards";
+import { QuizCta } from "@/components/marketing/quiz-cta";
+import { DemoLink } from "@/components/marketing/demo-link";
 import { cn, avatarColor } from "@/lib/utils";
 
 export const metadata = { alternates: { canonical: "/" } };
@@ -90,6 +92,7 @@ export default function HomePage() {
               See it in action
             </Link>
           </div>
+          <DemoLink label="Prefer to talk it through first? Book a demo" className="mt-5" />
         </div>
       </section>
 
@@ -222,6 +225,10 @@ export default function HomePage() {
             </div>
           </Panel>
         </div>
+      </section>
+
+      <section className="border-t border-border px-6 py-20">
+        <QuizCta />
       </section>
 
       <section className="border-t border-border bg-secondary/40">

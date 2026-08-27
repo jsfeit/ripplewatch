@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import {
   summarizePricingChange,
+  summarizeProductChange,
   extractPricingStructure,
   searchCompetitorNews,
   filterRelevantHeadlines,
@@ -126,9 +127,10 @@ async function fetchPageText(url: string): Promise<string> {
 // rather than target one site's structure, pull text from elements that
 // typically hold a listing (links, list items, sub-headings) and keep the
 // ones shaped like a job title. Imprecise by nature — good enough to notice
-// "something new got posted," not a guarantee of zero false positives.
-async function fetchJobListingTitles(url: string): Promise<string[]> {
-  const html = await fetchHtml(url);
+// "something new got posted," not a guarantee of zero false positives. This
+// is the fallback path — see detectAts/fetchAtsJobs below for the precise
+// path used whenever a competitor's board runs on a known ATS.
+function extractJobListingTitles(html: string): string[] {
   const $ = cheerio.load(html);
   $("script, style, noscript, nav, footer, header").remove();
 
@@ -143,11 +145,137 @@ async function fetchJobListingTitles(url: string): Promise<string[]> {
   return Array.from(candidates).sort();
 }
 
+// A handful of ATS platforms cover most startups (Ripplewatch's own
+// audience), and each publishes a public, unauthenticated JSON feed of its
+// job board — a structured read (real title, real department, no HTML
+// noise) instead of guessing at markup. A company either links straight to
+// one of these (careers_url IS the board) or embeds it on their own domain
+// via an iframe/script/link whose src still contains the board's URL —
+// checking the raw HTML for these patterns catches both cases with one
+// fetch. Order matters only in that the first match wins; a page could in
+// theory match more than one pattern (e.g. quoting a competitor's board
+// URL in body copy), but that's rare enough not to guard against.
+export type AtsJob = { title: string; department: string | null };
+type AtsProvider = "greenhouse" | "lever" | "ashby" | "workable" | "smartrecruiters";
+type AtsDetection = { provider: AtsProvider; boardToken: string };
+
+const ATS_PATTERNS: { provider: AtsProvider; regex: RegExp }[] = [
+  { provider: "greenhouse", regex: /(?:boards|job-boards)\.greenhouse\.io\/([a-zA-Z0-9-]+)/ },
+  { provider: "lever", regex: /jobs\.lever\.co\/([a-zA-Z0-9-]+)/ },
+  { provider: "ashby", regex: /jobs\.ashbyhq\.com\/([a-zA-Z0-9-]+)/ },
+  { provider: "workable", regex: /apply\.workable\.com\/([a-zA-Z0-9-]+)/ },
+  { provider: "smartrecruiters", regex: /careers\.smartrecruiters\.com\/([a-zA-Z0-9-]+)/ },
+];
+
+function detectAts(careersUrl: string, html: string): AtsDetection | null {
+  for (const haystack of [careersUrl, html]) {
+    for (const { provider, regex } of ATS_PATTERNS) {
+      const match = haystack.match(regex);
+      if (match) return { provider, boardToken: match[1] };
+    }
+  }
+  return null;
+}
+
+async function fetchJson(url: string): Promise<unknown> {
+  const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+  if (!res.ok) throw new Error(`ATS API fetch failed (${res.status}): ${url}`);
+  return res.json();
+}
+
+// One fetcher per provider, each mapped to the same {title, department}
+// shape — the API responses genuinely differ (Lever nests categories,
+// Greenhouse gives an array of department objects, etc.), so this is where
+// that gets normalized away. Any parse failure (a schema change on their
+// end, an empty/private board) falls back to the generic scrape rather
+// than taking the whole crawl down — see the try/catch in checkJobPostingsDiff.
+async function fetchAtsJobs({ provider, boardToken }: AtsDetection): Promise<AtsJob[]> {
+  switch (provider) {
+    case "greenhouse": {
+      // The plain jobs list never includes a department (confirmed against
+      // several real boards) — department membership is only exposed via a
+      // separate endpoint, keyed the other way around (each department
+      // lists its own job ids), so build a job-id -> department map from
+      // that instead of trusting a field that isn't actually there.
+      const [jobsData, departmentsData] = await Promise.all([
+        fetchJson(`https://boards-api.greenhouse.io/v1/boards/${boardToken}/jobs`) as Promise<{
+          jobs?: { id: number; title: string }[];
+        }>,
+        fetchJson(`https://boards-api.greenhouse.io/v1/boards/${boardToken}/departments`).catch(() => null) as Promise<{
+          departments?: { name: string; jobs?: { id: number }[] }[];
+        } | null>,
+      ]);
+
+      const departmentByJobId = new Map<number, string>();
+      for (const department of departmentsData?.departments ?? []) {
+        for (const job of department.jobs ?? []) {
+          departmentByJobId.set(job.id, department.name);
+        }
+      }
+
+      return (jobsData.jobs ?? []).map((j) => ({ title: j.title, department: departmentByJobId.get(j.id) ?? null }));
+    }
+    case "lever": {
+      const data = (await fetchJson(`https://api.lever.co/v0/postings/${boardToken}?mode=json`)) as {
+        text: string;
+        categories?: { team?: string; department?: string };
+      }[];
+      return (Array.isArray(data) ? data : []).map((j) => ({
+        title: j.text,
+        department: j.categories?.team ?? j.categories?.department ?? null,
+      }));
+    }
+    case "ashby": {
+      const data = (await fetchJson(`https://api.ashbyhq.com/posting-api/job-board/${boardToken}`)) as {
+        jobs?: { title: string; department?: string; team?: string }[];
+      };
+      return (data.jobs ?? []).map((j) => ({ title: j.title, department: j.department ?? j.team ?? null }));
+    }
+    case "workable": {
+      const data = (await fetchJson(
+        `https://apply.workable.com/api/v1/widget/accounts/${boardToken}?details=true`
+      )) as { jobs?: { title: string; department?: string }[] };
+      return (data.jobs ?? []).map((j) => ({ title: j.title, department: j.department ?? null }));
+    }
+    case "smartrecruiters": {
+      const data = (await fetchJson(
+        `https://api.smartrecruiters.com/v1/companies/${boardToken}/postings`
+      )) as { content?: { name: string; department?: { label: string } }[] };
+      return (data.content ?? []).map((j) => ({ title: j.name, department: j.department?.label ?? null }));
+    }
+  }
+}
+
 function hashText(text: string): string {
   return createHash("sha256").update(text).digest("hex");
 }
 
-type SnapshotKind = "pricing" | "jobs" | "producthunt" | "websearch";
+// Keyword-only, deliberately not an LLM call — this runs on every title in
+// every crawl, and a rough department split is worth having for free far
+// more than a precise one is worth paying for. First match wins, in this
+// order, so a title like "Engineering Recruiter" lands in People/HR (the
+// more specific signal) rather than Engineering.
+const DEPARTMENT_PATTERNS: [string, RegExp][] = [
+  ["People/HR", /recruit|talent acquisition|\bhr\b|people ops|people partner/i],
+  ["Engineering", /engineer|developer|\bswe\b|devops|\bsre\b|architect|qa\b|infrastructure/i],
+  ["Product", /product manager|\bpm\b|product owner|product design/i],
+  ["Design", /designer|\bux\b|\bui\b/i],
+  ["Sales", /sales|account executive|\bae\b|\bsdr\b|\bbdr\b|business development/i],
+  ["Marketing", /marketing|brand|content|growth|demand gen/i],
+  ["Customer Success", /customer success|customer support|\bcs\b\W|support engineer/i],
+  ["Operations", /operations|\bops\b/i],
+  ["Finance", /finance|accounting|controller/i],
+  ["Legal", /legal|counsel|compliance/i],
+];
+
+function categorizeTitle(title: string): string {
+  for (const [department, pattern] of DEPARTMENT_PATTERNS) {
+    if (pattern.test(title)) return department;
+  }
+  return "Other";
+}
+
+type SnapshotKind = "pricing" | "jobs" | "producthunt" | "websearch" | "homepage";
 
 async function readSnapshot(supabase: AdminClient, competitorId: string, kind: SnapshotKind) {
   const { data } = await supabase
@@ -217,17 +345,35 @@ async function fetchWaybackSnapshotText(url: string): Promise<{ text: string; ca
   }
 }
 
+// Fetches a competitor's pricing page ONCE per crawl run — checkPricingDiff
+// and checkPricingStructure both need the current page text, and
+// previously each called fetchPageText independently, doubling outbound
+// requests (and 403/bot-block risk) per competitor per crawl for no
+// reason. Callers share one in-flight promise (see runCrawlForAccount) so
+// this only runs once; null means "couldn't load," not "no pricing URL"
+// (that's checked separately by each caller).
+export async function fetchCompetitorPricingText(competitor: Competitor): Promise<string | null> {
+  if (!competitor.pricing_url) return null;
+  try {
+    return await fetchPageText(competitor.pricing_url);
+  } catch (err) {
+    console.error(`pricing page unreachable for ${competitor.name} (${competitor.pricing_url}):`, err);
+    return null;
+  }
+}
+
 // Pricing/site diff — compares today's page text against the last crawl,
 // then asks Claude what specifically changed so the signal is a concrete
 // claim ("entry tier dropped to $69/mo") rather than "something changed."
 // Trivial changes (timestamps, copy tweaks) are filtered out entirely.
 export async function checkPricingDiff(
   supabase: AdminClient,
-  competitor: Competitor
+  competitor: Competitor,
+  pageText: string | null
 ): Promise<Signal | null> {
-  if (!competitor.pricing_url) return null;
+  if (!competitor.pricing_url || pageText === null) return null;
 
-  const newText = await fetchPageText(competitor.pricing_url);
+  const newText = pageText;
   const existing = await readSnapshot(supabase, competitor.id, "pricing");
   const newHash = hashText(newText);
   await writeSnapshot(supabase, competitor.id, "pricing", newText);
@@ -283,21 +429,22 @@ export async function checkPricingDiff(
 // just deltas. Overwrites the one row per competitor rather than keeping
 // history — history already lives in the "pricing" signals from
 // checkPricingDiff above.
-export async function checkPricingStructure(supabase: AdminClient, competitor: Competitor): Promise<void> {
+export async function checkPricingStructure(
+  supabase: AdminClient,
+  competitor: Competitor,
+  pageText: string | null
+): Promise<void> {
   if (!competitor.pricing_url) return;
 
-  let pageText: string;
-  try {
-    pageText = await fetchPageText(competitor.pricing_url);
-  } catch (err) {
+  if (pageText === null) {
     // Previously a silent no-op — a page that consistently 403s (bot
     // protection on the pricing page, confirmed on several real competitor
     // domains: same block with a real browser User-Agent, so not a UA-string
     // fix) left the competitor stuck showing "Not yet checked" forever, with
-    // nothing in the logs to explain why. Logged now, and an honest record
-    // is written so the UI can say "couldn't check automatically" instead of
-    // implying a check just hasn't happened yet.
-    console.error(`pricing page unreachable for ${competitor.name} (${competitor.pricing_url}):`, err);
+    // nothing in the logs to explain why. fetchCompetitorPricingText already
+    // logged the fetch failure; an honest record is written here so the UI
+    // can say "couldn't check automatically" instead of implying a check
+    // just hasn't happened yet.
     await supabase.from("competitor_pricing").upsert(
       {
         competitor_id: competitor.id,
@@ -349,11 +496,56 @@ export async function checkJobPostingsDiff(
 ): Promise<Signal | null> {
   if (!competitor.careers_url) return null;
 
-  const titles = await fetchJobListingTitles(competitor.careers_url);
+  const html = await fetchHtml(competitor.careers_url);
+  const detection = detectAts(competitor.careers_url, html);
+
+  // ATS jobs win when detection succeeds and the API actually returns
+  // something — a private/empty board or a schema change on their end
+  // falls back to the generic scrape rather than reporting zero roles as
+  // if that were a real reading.
+  let atsJobs: AtsJob[] = [];
+  if (detection) {
+    try {
+      atsJobs = await fetchAtsJobs(detection);
+    } catch (err) {
+      console.error(`ATS API fetch failed for ${competitor.name} (${detection.provider}):`, err);
+    }
+  }
+  const usingAts = atsJobs.length > 0;
+
+  const titles = usingAts ? atsJobs.map((j) => j.title) : extractJobListingTitles(html);
   const joined = titles.join("\n");
   const existing = await readSnapshot(supabase, competitor.id, "jobs");
   const newHash = hashText(joined);
   await writeSnapshot(supabase, competitor.id, "jobs", joined);
+
+  // Real department field from the ATS when we have one; a job it left
+  // blank (or the generic-scrape path, which never has one) still gets a
+  // best-guess department from the title, so the breakdown is never just
+  // "everything's Other" because a couple of postings had no metadata.
+  const breakdown: Record<string, number> = {};
+  for (const [title, department] of usingAts
+    ? atsJobs.map((j): [string, string | null] => [j.title, j.department])
+    : titles.map((t): [string, string | null] => [t, null])) {
+    const bucket = department ?? categorizeTitle(title);
+    breakdown[bucket] = (breakdown[bucket] ?? 0) + 1;
+  }
+
+  // Current-state reading (open role count + department mix), same "always
+  // update, regardless of whether a diff signal fires" behavior as
+  // competitor_pricing/competitor_seo above — this is a snapshot table, not
+  // an event log, so it should reflect what's on the page right now even on
+  // a run with zero new listings.
+  await supabase.from("competitor_hiring").upsert(
+    {
+      competitor_id: competitor.id,
+      open_role_count: titles.length,
+      department_breakdown: breakdown,
+      source: usingAts ? detection!.provider : null,
+      last_checked_at: new Date().toISOString(),
+    },
+    { onConflict: "competitor_id" }
+  );
 
   if (!existing) return null;
   if (existing.content_hash === newHash) return null;
@@ -373,6 +565,68 @@ export async function checkJobPostingsDiff(
       type: "job_posting",
       title: `${competitor.name} posted ${newTitles.length} new job listing${newTitles.length === 1 ? "" : "s"}`,
       summary,
+      scored: false,
+      source: "pipeline",
+    })
+    .select("*")
+    .single();
+
+  return data;
+}
+
+// Homepage positioning/feature changes — same hash-then-LLM-diff shape as
+// checkPricingDiff, but reads the competitor's homepage instead of a
+// dedicated pricing page (competitor.domain already gives the root, so
+// there's no URL to discover/guess first). No Wayback backfill on the
+// first check, unlike pricing: a homepage redesign from 6 months ago is
+// much more likely to just be noise (full visual/copy overhaul) than a
+// genuinely new positioning claim, so the first check only seeds the
+// snapshot — same stance as checkJobPostingsDiff.
+//
+// Weekly-gated like SEO/Product Hunt above, unlike pricing/jobs which
+// check every crawl: a homepage carries far more incidental churn between
+// crawls than a pricing or careers page (rotating testimonials, "N
+// companies signed up today" counters, A/B-tested hero copy) — checking
+// daily would burn a Claude call per competitor per day mostly on noise
+// the LLM just ends up discarding as not meaningful.
+const HOMEPAGE_CHECK_INTERVAL_DAYS = 7;
+
+export async function checkProductMessagingDiff(supabase: AdminClient, competitor: Competitor): Promise<Signal | null> {
+  const clean = normalizeDomain(competitor.domain ?? "");
+  if (!clean) return null;
+  const homepageUrl = `https://${clean}`;
+
+  const existing = await readSnapshot(supabase, competitor.id, "homepage");
+  if (existing) {
+    const daysSinceCheck = (Date.now() - new Date(existing.captured_at).getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceCheck < HOMEPAGE_CHECK_INTERVAL_DAYS) return null;
+  }
+
+  let newText: string;
+  try {
+    newText = await fetchPageText(homepageUrl);
+  } catch (err) {
+    console.error(`homepage unreachable for ${competitor.name} (${homepageUrl}):`, err);
+    return null;
+  }
+
+  const newHash = hashText(newText);
+  await writeSnapshot(supabase, competitor.id, "homepage", newText);
+
+  if (!existing) return null;
+  if (existing.content_hash === newHash) return null;
+
+  const diff = await summarizeProductChange(existing.raw_text ?? "", newText, competitor.account_id);
+  if (!diff.meaningful || !diff.summary) return null;
+
+  const { data } = await supabase
+    .from("signals")
+    .insert({
+      competitor_id: competitor.id,
+      type: "product_change",
+      title: diff.summary,
+      summary: `Detected on ${competitor.name}'s homepage.`,
+      url: homepageUrl,
       scored: false,
       source: "pipeline",
     })
@@ -564,21 +818,23 @@ async function fetchRecentSignalTitles(supabase: AdminClient, competitorId: stri
   return (data ?? []).map((s) => s.title);
 }
 
-async function existingSignalTitle(
-  supabase: AdminClient,
-  competitorId: string,
-  title: string
-): Promise<boolean> {
-  // Checked across both news and funding so the same headline never ends up
-  // filed under both types if it happens to match both searches.
+// Fetched ONCE per checkNews/checkFunding/checkSearchNews call, then
+// checked in-memory per headline instead of one Supabase round-trip per
+// headline (previously up to HEADLINES_PER_QUERY queries per check, per
+// competitor, per crawl — real added crawl latency for no benefit, since
+// the whole set fits comfortably in memory). Deliberately unscoped by
+// date, unlike fetchRecentSignalTitles's 30-day window above — this is
+// the final exact-match guard before insert, checked across both news and
+// funding so the same headline never ends up filed under both types, and
+// it needs to catch an exact-duplicate title from any point in history,
+// not just recent ones.
+async function fetchAllSignalTitles(supabase: AdminClient, competitorId: string): Promise<Set<string>> {
   const { data } = await supabase
     .from("signals")
-    .select("id")
+    .select("title")
     .eq("competitor_id", competitorId)
-    .in("type", ["news", "funding"])
-    .eq("title", title)
-    .maybeSingle();
-  return Boolean(data);
+    .in("type", ["news", "funding"]);
+  return new Set((data ?? []).map((s) => s.title));
 }
 
 // True the first time a competitor's news/funding gets checked at all — that
@@ -787,9 +1043,10 @@ export async function checkNews(supabase: AdminClient, competitor: Competitor, i
   let headlines = await filterHeadlinesForCompetitor(supabase, competitor, await fetchHeadlines(query));
   if (!isFirstCheck) headlines = headlines.filter((h) => isFresh(h.publishedAt));
   const inserted: Signal[] = [];
+  const existingTitles = await fetchAllSignalTitles(supabase, competitor.id);
 
   for (const headline of headlines) {
-    if (await existingSignalTitle(supabase, competitor.id, headline.title)) continue;
+    if (existingTitles.has(headline.title)) continue;
 
     const { data } = await supabase
       .from("signals")
@@ -806,7 +1063,10 @@ export async function checkNews(supabase: AdminClient, competitor: Competitor, i
       .select("*")
       .single();
 
-    if (data) inserted.push(data);
+    if (data) {
+      inserted.push(data);
+      existingTitles.add(headline.title);
+    }
   }
 
   return inserted;
@@ -820,9 +1080,10 @@ export async function checkFunding(supabase: AdminClient, competitor: Competitor
   let headlines = await filterHeadlinesForCompetitor(supabase, competitor, await fetchHeadlines(query));
   if (!isFirstCheck) headlines = headlines.filter((h) => isFresh(h.publishedAt));
   const inserted: Signal[] = [];
+  const existingTitles = await fetchAllSignalTitles(supabase, competitor.id);
 
   for (const headline of headlines) {
-    if (await existingSignalTitle(supabase, competitor.id, headline.title)) continue;
+    if (existingTitles.has(headline.title)) continue;
 
     const { data } = await supabase
       .from("signals")
@@ -839,7 +1100,10 @@ export async function checkFunding(supabase: AdminClient, competitor: Competitor
       .select("*")
       .single();
 
-    if (data) inserted.push(data);
+    if (data) {
+      inserted.push(data);
+      existingTitles.add(headline.title);
+    }
   }
 
   return inserted;
@@ -855,7 +1119,7 @@ export async function checkFunding(supabase: AdminClient, competitor: Competitor
 // Weekly-gated even once enabled — same captured_at-age pattern as
 // checkProductHuntLaunches above, using a page_snapshots row purely as a
 // cadence marker (no diff content, since headlines already dedupe via
-// existingSignalTitle). Real per-search + token cost scales with how often
+// fetchAllSignalTitles). Real per-search + token cost scales with how often
 // this runs, not just whether it's on — every crawl would multiply spend
 // for no benefit, since competitor news doesn't change hour to hour.
 const WEB_SEARCH_NEWS_CHECK_INTERVAL_DAYS = 7;
@@ -874,10 +1138,11 @@ export async function checkSearchNews(
 
   const headlines = await searchCompetitorNews(competitor.name, accountId);
   const inserted: Signal[] = [];
+  const existingTitles = await fetchAllSignalTitles(supabase, competitor.id);
 
   for (const headline of headlines) {
     if (!headline.title) continue;
-    if (await existingSignalTitle(supabase, competitor.id, headline.title)) continue;
+    if (existingTitles.has(headline.title)) continue;
 
     const { data } = await supabase
       .from("signals")
@@ -893,7 +1158,10 @@ export async function checkSearchNews(
       .select("*")
       .single();
 
-    if (data) inserted.push(data);
+    if (data) {
+      inserted.push(data);
+      existingTitles.add(headline.title);
+    }
   }
 
   return inserted;

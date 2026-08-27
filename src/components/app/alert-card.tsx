@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { CircleDashed, ExternalLink, History } from "lucide-react";
-import { cn, avatarColor } from "@/lib/utils";
+import { Card, CardAvatar, CardFoot, CardHead } from "@/components/app/card";
+import { cn } from "@/lib/utils";
 import { SIGNAL_TYPE_LABELS } from "@/lib/mock-data";
 import { SignalRatingControl } from "@/components/app/signal-rating-control";
 import type { SignalType, RelevanceLevel } from "@/lib/supabase/types";
@@ -66,94 +67,86 @@ export function AlertCard({
   avatar?: React.ReactNode;
   unscoredReason?: "tier" | "pending";
 }) {
+  const titleLink = signal.url ? (
+    <a
+      href={signal.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1 text-xs font-semibold text-foreground hover:text-primary hover:underline"
+    >
+      {signal.title}
+      <ExternalLink className="size-3 shrink-0" />
+    </a>
+  ) : (
+    <span className="text-xs font-semibold text-foreground">{signal.title}</span>
+  );
+
   return (
-    <div
+    <Card
+      data-tour={signal.scored && signal.relevanceLevel ? "relevance-badge" : undefined}
       className={cn(
-        "relative overflow-hidden rounded-lg border bg-card p-4 pl-5 transition-colors",
+        "relative overflow-hidden pl-5 transition-colors",
         "before:absolute before:inset-y-0 before:left-0 before:w-1",
-        signal.scored && signal.relevanceLevel
-          ? LEVEL_EDGE[signal.relevanceLevel]
-          : "before:bg-border",
+        signal.scored && signal.relevanceLevel ? LEVEL_EDGE[signal.relevanceLevel] : "before:bg-border",
         signal.scored ? "border-primary/25" : "border-border"
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span
-            className={cn(
-              "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-              avatar ? "bg-primary text-primary-foreground" : avatarColor(competitorName)
-            )}
-          >
-            {avatar ?? competitorInitial}
-          </span>
-          <div>
-            <p className="text-sm font-medium leading-none">{competitorName}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{SIGNAL_TYPE_LABELS[signal.type]}</p>
-          </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          {signal.isBackground ? (
-            <Badge variant="outline" className="gap-1 text-muted-foreground" title="Older article, not recently discovered">
-              <History className="size-3" />
-              Background
-            </Badge>
-          ) : null}
-          {signal.scored && signal.relevanceScore !== null && signal.relevanceScore !== undefined ? (
-            <Badge
-              className={cn(
-                "border font-semibold tabular-nums",
-                signal.relevanceLevel ? LEVEL_STYLES[signal.relevanceLevel] : "border-primary/30 bg-primary/10 text-primary"
-              )}
-              title="Relevance score, 0-100"
-            >
-              {signal.relevanceScore}
-            </Badge>
-          ) : signal.scored ? (
-            <Badge className="border-primary/30 bg-primary/10 text-primary">Scored</Badge>
+      <CardHead
+        avatar={
+          avatar ? (
+            <CardAvatar icon={avatar} className="rounded-full bg-primary text-primary-foreground" />
           ) : (
-            <Badge variant="outline" className="gap-1 text-muted-foreground">
-              <CircleDashed className="size-3" />
-              Raw signal
-            </Badge>
-          )}
-        </div>
-      </div>
+            <CardAvatar seed={competitorName} />
+          )
+        }
+        title={competitorName}
+        eyebrow={SIGNAL_TYPE_LABELS[signal.type]}
+        meta={
+          <>
+            {signal.isBackground ? (
+              <Badge variant="outline" className="gap-1 text-muted-foreground" title="Older article, not recently discovered">
+                <History className="size-3" />
+                Background
+              </Badge>
+            ) : null}
+            {signal.scored && signal.relevanceScore !== null && signal.relevanceScore !== undefined ? (
+              <Badge
+                className={cn(
+                  "border font-semibold tabular-nums",
+                  signal.relevanceLevel ? LEVEL_STYLES[signal.relevanceLevel] : "border-primary/30 bg-primary/10 text-primary"
+                )}
+                title="Relevance score, 0-100"
+              >
+                {signal.relevanceScore}
+              </Badge>
+            ) : signal.scored ? (
+              <Badge className="border-primary/30 bg-primary/10 text-primary">Scored</Badge>
+            ) : (
+              <Badge variant="outline" className="gap-1 text-muted-foreground">
+                <CircleDashed className="size-3" />
+                Raw signal
+              </Badge>
+            )}
+          </>
+        }
+      />
 
       {signal.scored && signal.relevanceLevel ? (
         <>
-          <div className="mt-3 flex items-center justify-between gap-2">
-            <span
-              className={cn(
-                "rounded-full border px-2 py-0.5 text-[11px] font-semibold",
-                LEVEL_STYLES[signal.relevanceLevel]
-              )}
-            >
-              {signal.relevanceLevel} relevance
-            </span>
-            {signal.id ? <SignalRatingControl signalId={signal.id} initialLabel={signal.evalLabel ?? null} /> : null}
-          </div>
-          <p className="mt-2 text-[15px] font-medium leading-relaxed text-foreground">
-            {signal.relevanceReasoning}
-          </p>
-          <div className="mt-3 border-l-2 border-border/80 pl-3">
-            {signal.url ? (
-              <a
-                href={signal.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground/90 hover:text-foreground hover:underline"
-              >
-                {signal.title}
-                <ExternalLink className="size-3 shrink-0" />
-              </a>
-            ) : (
-              <p className="text-xs font-medium text-muted-foreground/90">{signal.title}</p>
+          <span
+            className={cn(
+              "w-fit rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+              LEVEL_STYLES[signal.relevanceLevel]
             )}
-            {signal.summary ? (
-              <p className="mt-0.5 text-xs text-muted-foreground/70">{signal.summary}</p>
-            ) : null}
-          </div>
+          >
+            {signal.relevanceLevel} relevance
+          </span>
+          <p className="text-[15px] font-medium leading-relaxed text-foreground">{signal.relevanceReasoning}</p>
+          {signal.summary ? <p className="text-xs text-muted-foreground">{signal.summary}</p> : null}
+          <CardFoot>
+            {titleLink}
+            {signal.id ? <SignalRatingControl signalId={signal.id} initialLabel={signal.evalLabel ?? null} /> : <span />}
+          </CardFoot>
         </>
       ) : (
         <>
@@ -162,22 +155,22 @@ export function AlertCard({
               href={signal.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-3 flex items-center gap-1.5 text-sm font-medium hover:underline"
+              className="flex items-center gap-1.5 text-sm font-medium hover:underline"
             >
               {signal.title}
               <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
             </a>
           ) : (
-            <p className="mt-3 text-sm font-medium">{signal.title}</p>
+            <p className="text-sm font-medium">{signal.title}</p>
           )}
-          <p className="mt-1 text-sm text-muted-foreground">{signal.summary}</p>
-          <div className="mt-3 rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">{signal.summary}</p>
+          <div className="rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground">
             {unscoredReason === "tier"
               ? "No relevance score on this tier; upgrade to see why this would (or wouldn't) matter to you."
               : "Scoring in progress, check back after the next crawl."}
           </div>
         </>
       )}
-    </div>
+    </Card>
   );
 }

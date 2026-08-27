@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { COMPARISONS, getComparison } from "@/lib/comparisons";
+import { QuizCta } from "@/components/marketing/quiz-cta";
 
 export function generateStaticParams() {
   return COMPARISONS.map((c) => ({ slug: c.slug }));
@@ -74,7 +75,7 @@ export default async function AlternativePage({ params }: { params: Promise<{ sl
             <li className="flex gap-2">
               <span className="text-primary">·</span>
               <span>
-                <span className="font-medium text-foreground">Fast, self-serve setup</span> — you should be
+                <span className="font-medium text-foreground">Fast, self-serve setup</span>: you should be
                 able to see it working on your own competitors before deciding whether to switch, not sit
                 through a sales call first.
               </span>
@@ -94,11 +95,12 @@ export default async function AlternativePage({ params }: { params: Promise<{ sl
         </div>
       </div>
 
-      <div className="mt-16 text-center">
+      <div className="mt-16 space-y-3 text-center">
         <Link href="/pricing" className={buttonVariants({ size: "lg" })}>
           Get started
           <ArrowRight className="size-4" />
         </Link>
+        <QuizCta variant="inline" />
       </div>
     </div>
   );
