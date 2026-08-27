@@ -401,6 +401,26 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["competitor_seo"]["Insert"]>;
         Relationships: [];
       };
+      competitor_hiring: {
+        Row: {
+          id: string;
+          competitor_id: string;
+          open_role_count: number;
+          department_breakdown: Record<string, number>;
+          last_checked_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          competitor_id: string;
+          open_role_count: number;
+          department_breakdown?: Record<string, number>;
+          last_checked_at?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["competitor_hiring"]["Insert"]>;
+        Relationships: [];
+      };
       competitor_pricing: {
         Row: {
           id: string;
