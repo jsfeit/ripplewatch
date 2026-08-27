@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Waves } from "lucide-react";
+import { DEMO_URL } from "@/lib/demo";
 
 // lucide-react doesn't ship brand icons — inline glyph instead.
 function LinkedinIcon({ className }: { className?: string }) {
@@ -23,6 +24,9 @@ export function SiteFooter() {
           <Link href="/how-it-works" className="hover:text-foreground">How it works</Link>
           <Link href="/pricing" className="hover:text-foreground">Pricing</Link>
           <Link href="/onboarding" className="hover:text-foreground">Live demo</Link>
+          <a href={DEMO_URL} target="_blank" rel="noopener noreferrer" className="hover:text-foreground">
+            Book a demo
+          </a>
           <Link href="/state-of-competitive-intelligence" className="hover:text-foreground">Research</Link>
           <Link href="/blog" className="hover:text-foreground">Blog</Link>
           <Link href="/compare" className="hover:text-foreground">Compare</Link>

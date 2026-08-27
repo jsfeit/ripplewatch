@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { PricingCards } from "@/components/marketing/pricing-cards";
+import { DemoLink } from "@/components/marketing/demo-link";
 import { TIERS } from "@/lib/tiers";
 
 const description =
@@ -69,9 +70,12 @@ export default function PricingPage() {
           Most self-serve teams start on Starter and move to Plus once relevance scoring proves
           its worth on their first few alerts.
         </p>
-        <Link href="/onboarding?plan=starter&period=monthly" className={buttonVariants({ className: "mt-6" })}>
-          Get started
-        </Link>
+        <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Link href="/onboarding?plan=starter&period=monthly" className={buttonVariants()}>
+            Get started
+          </Link>
+          <DemoLink variant="button" />
+        </div>
       </div>
     </div>
   );

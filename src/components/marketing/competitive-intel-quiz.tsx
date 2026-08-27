@@ -20,6 +20,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
 import { UTM_STORAGE_KEY } from "@/components/utm-capture";
+import { DemoLink } from "@/components/marketing/demo-link";
 
 type Question = { icon: LucideIcon; prompt: string; options: string[] };
 
@@ -250,10 +251,13 @@ export function CompetitiveIntelQuiz() {
             <CheckCircle2 className="size-8 text-primary" />
             <p className="font-medium">Here&apos;s what to do next</p>
             <p className="max-w-md text-sm text-muted-foreground">{tier.nextStep}</p>
-            <Link href="/pricing" className={cn(buttonVariants(), "mt-2")}>
-              Get started
-              <ArrowRight className="size-4" />
-            </Link>
+            <div className="mt-2 flex flex-col items-center gap-3 sm:flex-row">
+              <Link href="/pricing" className={buttonVariants()}>
+                Get started
+                <ArrowRight className="size-4" />
+              </Link>
+              <DemoLink variant="button" />
+            </div>
           </div>
         ) : (
           <form
