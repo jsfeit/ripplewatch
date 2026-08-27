@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Globe2, ChevronDown } from "lucide-react";
+import { Globe2, ChevronDown, TrendingUp, BarChart3 } from "lucide-react";
 import { EmptyState } from "@/components/app/empty-state";
-import { Panel } from "@/components/ui/panel";
+import { Card, CardAvatar, CardHead } from "@/components/app/card";
 import { Badge } from "@/components/ui/badge";
 import { cn, avatarDotColor } from "@/lib/utils";
 import { timeAgo } from "@/lib/date";
@@ -42,20 +42,19 @@ export function IndustryPulse({
 
   return (
     <div className="space-y-4">
-      <Panel className="p-4">
-        <div className="flex items-baseline justify-between">
-          <p className="text-xs font-semibold text-muted-foreground">Market trends</p>
-          {trendsGeneratedAt ? (
-            <span className="text-[10.5px] text-muted-foreground">Updated {timeAgo(trendsGeneratedAt)}</span>
-          ) : null}
-        </div>
+      <Card>
+        <CardHead
+          avatar={<CardAvatar icon={<TrendingUp className="size-4" />} />}
+          title="Market trends"
+          meta={trendsGeneratedAt ? <span className="text-[10.5px] text-muted-foreground">Updated {timeAgo(trendsGeneratedAt)}</span> : null}
+        />
         {trends.length === 0 ? (
-          <p className="mt-3 text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Generates on your first crawl and monthly after that, scoped to your positioning and ICP; check back
             soon.
           </p>
         ) : (
-          <ul className="mt-3 space-y-3">
+          <ul className="space-y-3">
             {trends.map((t) => (
               <li key={t.title} className="border-b border-dashed border-border pb-3 last:border-b-0 last:pb-0">
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -78,21 +77,21 @@ export function IndustryPulse({
             ))}
           </ul>
         )}
-      </Panel>
+      </Card>
 
       {hasActivity ? (
-        <Panel className="p-4">
+        <Card>
           <button
             type="button"
             onClick={() => setChartExpanded((e) => !e)}
             className="flex w-full items-center justify-between text-left"
           >
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground">Category activity, last 6 months</p>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                Hiring and pricing changes across every tracked competitor combined.
-              </p>
-            </div>
+            <CardHead
+              avatar={<CardAvatar icon={<BarChart3 className="size-4" />} />}
+              title="Category activity, last 6 months"
+              eyebrow="Hiring and pricing changes across every tracked competitor combined."
+              className="flex-1"
+            />
             <ChevronDown
               className={cn(
                 "size-4 shrink-0 text-muted-foreground transition-transform",
@@ -101,7 +100,7 @@ export function IndustryPulse({
             />
           </button>
           {chartExpanded ? <ActivityChart data={monthlyActivity} /> : null}
-        </Panel>
+        </Card>
       ) : null}
     </div>
   );
@@ -113,7 +112,7 @@ function ActivityChart({ data }: { data: MonthlyActivityBucket[] }) {
 
   return (
     <div>
-      <div className="mt-5 flex items-end gap-3">
+      <div className="mt-2 flex items-end gap-3">
         {data.map((month) => (
           <div key={month.label} className="flex flex-1 flex-col items-center gap-1">
             <div className="flex h-24 items-end gap-1">

@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 import { DollarSign } from "lucide-react";
 import { EmptyState } from "@/components/app/empty-state";
-import { Panel } from "@/components/ui/panel";
-import { cn, avatarColor } from "@/lib/utils";
+import { Card, CardAvatar, CardChangedBadge, CardFoot, CardHead } from "@/components/app/card";
+import { cn } from "@/lib/utils";
 import { timeAgo } from "@/lib/date";
 import { BILLING_MODEL_LABELS, BILLING_MODEL_STYLES, BILLING_MODEL_DOT } from "@/lib/billing-model";
 import type { BillingModel, Database } from "@/lib/supabase/types";
@@ -185,37 +185,26 @@ function PricingCard({
   changedAt: string | undefined;
 }) {
   return (
-    <Panel className="p-4">
-      <div className="flex items-center gap-2.5">
-        <span
-          className={cn(
-            "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-            avatarColor(competitor.name)
-          )}
-        >
-          {competitor.name.charAt(0).toUpperCase()}
-        </span>
-        <p className="flex-1 truncate text-sm font-semibold">{competitor.name}</p>
-        {changedAt ? (
-          <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
-            Changed {timeAgo(changedAt)}
-          </span>
-        ) : null}
-      </div>
+    <Card>
+      <CardHead
+        avatar={<CardAvatar seed={competitor.name} />}
+        title={competitor.name}
+        meta={changedAt ? <CardChangedBadge>Changed {timeAgo(changedAt)}</CardChangedBadge> : null}
+      />
 
       {!record && !competitor.pricing_url ? (
-        <p className="mt-3 text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           No pricing page URL set for this competitor yet.
         </p>
       ) : !record ? (
-        <p className="mt-3 text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Not checked yet; runs on the next scheduled crawl.
         </p>
       ) : (
         <>
           <span
             className={cn(
-              "mt-2.5 inline-flex w-fit items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold",
+              "inline-flex w-fit items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold",
               BILLING_MODEL_STYLES[record.billing_model]
             )}
           >
@@ -224,7 +213,7 @@ function PricingCard({
           </span>
 
           {!record.publicly_priced || record.tiers.length === 0 ? (
-            <p className="mt-3 text-xs italic text-muted-foreground">
+            <p className="text-xs italic text-muted-foreground">
               {record.note ?? "No public pricing found."}
               {competitor.pricing_url ? (
                 <>
@@ -241,7 +230,7 @@ function PricingCard({
               ) : null}
             </p>
           ) : (
-            <div className="mt-1">
+            <div>
               {record.tiers.map((tier, i) => (
                 <div key={tier.name + i} className={cn("py-2.5", i > 0 && "border-t border-border")}>
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -275,12 +264,12 @@ function PricingCard({
             </div>
           )}
 
-          <p className="mt-2.5 border-t border-dashed border-border pt-2.5 text-[10.5px] text-muted-foreground">
-            Last checked {timeAgo(record.last_checked_at)}
-          </p>
+          <CardFoot>
+            <span>Last checked {timeAgo(record.last_checked_at)}</span>
+          </CardFoot>
         </>
       )}
-    </Panel>
+    </Card>
   );
 }
 

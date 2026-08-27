@@ -8,9 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EmptyState } from "@/components/app/empty-state";
 import { Panel } from "@/components/ui/panel";
+import { CardAvatar, CardFoot, CardHead } from "@/components/app/card";
 import { WinLossReasonSummary, type WinLossEntry } from "@/components/app/win-loss-reason-summary";
 import { createClient } from "@/lib/supabase/client";
-import { avatarColor, cn } from "@/lib/utils";
 import type { WinLossOutcome } from "@/lib/supabase/types";
 
 type Competitor = { id: string; name: string };
@@ -368,30 +368,26 @@ export function WinLossPageClient({
                 <Link
                   key={c.id}
                   href={`/app/competitors/${c.id}#fact-sheet`}
-                  className="flex items-center gap-3 rounded-lg border border-border p-3 transition-colors hover:border-border/80 hover:bg-secondary/30"
+                  className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-border/80 hover:bg-secondary/30"
                 >
-                  <span
-                    className={cn(
-                      "flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-                      avatarColor(c.name)
-                    )}
-                  >
-                    {c.name.charAt(0).toUpperCase()}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{c.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {list.length === 0 ? (
+                  <CardHead
+                    avatar={<CardAvatar seed={c.name} />}
+                    title={c.name}
+                    eyebrow={
+                      list.length === 0 ? (
                         "Nothing logged yet"
                       ) : (
                         <>
                           <span className="font-semibold text-primary">{won} won</span> ·{" "}
                           <span className="font-semibold text-amber-600 dark:text-amber-400">{lost} lost</span>
                         </>
-                      )}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-xs text-muted-foreground">View fact sheet →</span>
+                      )
+                    }
+                  />
+                  <CardFoot>
+                    <span />
+                    <span>View fact sheet →</span>
+                  </CardFoot>
                 </Link>
               );
             })}
