@@ -39,19 +39,31 @@
 .driver-popover-footer-btn,
 .driver-popover-close-btn {
   border-radius: var(--radius-md);
-  font-size: 0.8125rem;
   font-weight: 500;
   text-shadow: none;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s, background-color 0.15s;
 }
 
+/* driver.js hard-codes this as an unlabeled "×" icon button — replaced
+   with a visible "Skip" label so leaving the tour doesn't depend on
+   spotting a tiny corner glyph. font-size:0 collapses the "×" text node
+   itself; the pseudo-element supplies the real, readable label. */
 .driver-popover-close-btn {
+  font-size: 0;
+  top: 10px;
+  right: 10px;
+  padding: 4px 9px;
   color: var(--color-muted-foreground);
+}
+
+.driver-popover-close-btn::before {
+  content: "Skip";
+  font-size: 0.75rem;
 }
 
 .driver-popover-close-btn:hover {
   color: var(--color-card-foreground);
-  background: transparent;
+  background: var(--color-secondary);
 }
 
 .driver-popover-next-btn,

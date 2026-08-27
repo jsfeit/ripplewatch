@@ -503,6 +503,7 @@ export function OnboardingFlow({
         }}
         tier={checkoutModal?.tier ?? "starter"}
         period={checkoutModal?.period ?? "monthly"}
+        returnPath="/app/dashboard"
       />
       <div className="mb-10 flex items-center">
         {STEPS.map((s, i) => (

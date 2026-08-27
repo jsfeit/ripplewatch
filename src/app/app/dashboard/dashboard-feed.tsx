@@ -261,8 +261,8 @@ function SampleAlertPreview({
       </div>
       <EmptyState
         icon={Waves}
-        title="Real signals are on the way"
-        description="Crawling runs on a schedule; this sample will be replaced by your first real alert."
+        title="We're scanning your competitors now"
+        description="First alerts typically show up within a few minutes and will replace this sample. After that, we're always watching, so you won't need to wait like this again."
       />
     </div>
   );

@@ -12,6 +12,7 @@ import { PricingBoard } from "../pricing/pricing-board";
 import { HiringBoard } from "../hiring/hiring-board";
 import { WinLossPageClient } from "../win-loss/win-loss-page-client";
 import { AutoProductTour } from "@/components/app/product-tour";
+import { PurchaseTracker } from "@/components/app/purchase-tracker";
 import type { Database } from "@/lib/supabase/types";
 
 type Signal = Database["public"]["Tables"]["signals"]["Row"];
@@ -238,6 +239,7 @@ export default async function DashboardPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-10 sm:py-10">
       <AutoProductTour hasSeenTour={hasSeenTour} />
+      <PurchaseTracker />
       <div className="mb-4">
         <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
         <p className="mt-1 text-sm text-muted-foreground">

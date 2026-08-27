@@ -9,6 +9,16 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const requestedTier: unknown = body?.tier;
   const requestedPeriod: unknown = body?.period;
+  // Allowlisted rather than trusted as-is: this becomes part of the
+  // redirect URL Stripe sends the browser to after payment, so an
+  // unvalidated client-supplied path would be an open redirect. Onboarding
+  // (a brand-new account, nothing to see in Settings yet) wants /app/dashboard;
+  // every other caller (Settings' own upgrade flow) keeps the existing default.
+  const ALLOWED_RETURN_PATHS = ["/app/dashboard", "/app/settings"] as const;
+  const requestedReturnPath: unknown = body?.returnPath;
+  const returnPath = ALLOWED_RETURN_PATHS.includes(requestedReturnPath as (typeof ALLOWED_RETURN_PATHS)[number])
+    ? (requestedReturnPath as (typeof ALLOWED_RETURN_PATHS)[number])
+    : "/app/settings";
 
   if (requestedTier !== "starter" && requestedTier !== "plus" && requestedTier !== "advanced") {
     return NextResponse.json({ error: "Unknown tier." }, { status: 400 });
@@ -89,7 +99,7 @@ export async function POST(request: Request) {
     automatic_tax: { enabled: true },
     metadata: { account_id: profile.account_id, tier, period },
     subscription_data: { metadata: { account_id: profile.account_id, tier, period } },
-    return_url: `${origin}/app/settings?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+    return_url: `${origin}${returnPath}?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
   };
 
   try {
