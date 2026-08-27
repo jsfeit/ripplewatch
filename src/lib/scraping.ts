@@ -127,9 +127,10 @@ async function fetchPageText(url: string): Promise<string> {
 // rather than target one site's structure, pull text from elements that
 // typically hold a listing (links, list items, sub-headings) and keep the
 // ones shaped like a job title. Imprecise by nature — good enough to notice
-// "something new got posted," not a guarantee of zero false positives.
-async function fetchJobListingTitles(url: string): Promise<string[]> {
-  const html = await fetchHtml(url);
+// "something new got posted," not a guarantee of zero false positives. This
+// is the fallback path — see detectAts/fetchAtsJobs below for the precise
+// path used whenever a competitor's board runs on a known ATS.
+function extractJobListingTitles(html: string): string[] {
   const $ = cheerio.load(html);
   $("script, style, noscript, nav, footer, header").remove();
 
@@ -142,6 +143,107 @@ async function fetchJobListingTitles(url: string): Promise<string[]> {
   });
 
   return Array.from(candidates).sort();
+}
+
+// A handful of ATS platforms cover most startups (Ripplewatch's own
+// audience), and each publishes a public, unauthenticated JSON feed of its
+// job board — a structured read (real title, real department, no HTML
+// noise) instead of guessing at markup. A company either links straight to
+// one of these (careers_url IS the board) or embeds it on their own domain
+// via an iframe/script/link whose src still contains the board's URL —
+// checking the raw HTML for these patterns catches both cases with one
+// fetch. Order matters only in that the first match wins; a page could in
+// theory match more than one pattern (e.g. quoting a competitor's board
+// URL in body copy), but that's rare enough not to guard against.
+export type AtsJob = { title: string; department: string | null };
+type AtsProvider = "greenhouse" | "lever" | "ashby" | "workable" | "smartrecruiters";
+type AtsDetection = { provider: AtsProvider; boardToken: string };
+
+const ATS_PATTERNS: { provider: AtsProvider; regex: RegExp }[] = [
+  { provider: "greenhouse", regex: /(?:boards|job-boards)\.greenhouse\.io\/([a-zA-Z0-9-]+)/ },
+  { provider: "lever", regex: /jobs\.lever\.co\/([a-zA-Z0-9-]+)/ },
+  { provider: "ashby", regex: /jobs\.ashbyhq\.com\/([a-zA-Z0-9-]+)/ },
+  { provider: "workable", regex: /apply\.workable\.com\/([a-zA-Z0-9-]+)/ },
+  { provider: "smartrecruiters", regex: /careers\.smartrecruiters\.com\/([a-zA-Z0-9-]+)/ },
+];
+
+function detectAts(careersUrl: string, html: string): AtsDetection | null {
+  for (const haystack of [careersUrl, html]) {
+    for (const { provider, regex } of ATS_PATTERNS) {
+      const match = haystack.match(regex);
+      if (match) return { provider, boardToken: match[1] };
+    }
+  }
+  return null;
+}
+
+async function fetchJson(url: string): Promise<unknown> {
+  const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+  if (!res.ok) throw new Error(`ATS API fetch failed (${res.status}): ${url}`);
+  return res.json();
+}
+
+// One fetcher per provider, each mapped to the same {title, department}
+// shape — the API responses genuinely differ (Lever nests categories,
+// Greenhouse gives an array of department objects, etc.), so this is where
+// that gets normalized away. Any parse failure (a schema change on their
+// end, an empty/private board) falls back to the generic scrape rather
+// than taking the whole crawl down — see the try/catch in checkJobPostingsDiff.
+async function fetchAtsJobs({ provider, boardToken }: AtsDetection): Promise<AtsJob[]> {
+  switch (provider) {
+    case "greenhouse": {
+      // The plain jobs list never includes a department (confirmed against
+      // several real boards) — department membership is only exposed via a
+      // separate endpoint, keyed the other way around (each department
+      // lists its own job ids), so build a job-id -> department map from
+      // that instead of trusting a field that isn't actually there.
+      const [jobsData, departmentsData] = await Promise.all([
+        fetchJson(`https://boards-api.greenhouse.io/v1/boards/${boardToken}/jobs`) as Promise<{
+          jobs?: { id: number; title: string }[];
+        }>,
+        fetchJson(`https://boards-api.greenhouse.io/v1/boards/${boardToken}/departments`).catch(() => null) as Promise<{
+          departments?: { name: string; jobs?: { id: number }[] }[];
+        } | null>,
+      ]);
+
+      const departmentByJobId = new Map<number, string>();
+      for (const department of departmentsData?.departments ?? []) {
+        for (const job of department.jobs ?? []) {
+          departmentByJobId.set(job.id, department.name);
+        }
+      }
+
+      return (jobsData.jobs ?? []).map((j) => ({ title: j.title, department: departmentByJobId.get(j.id) ?? null }));
+    }
+    case "lever": {
+      const data = (await fetchJson(`https://api.lever.co/v0/postings/${boardToken}?mode=json`)) as {
+        text: string;
+        categories?: { team?: string; department?: string };
+      }[];
+      return (Array.isArray(data) ? data : []).map((j) => ({
+        title: j.text,
+        department: j.categories?.team ?? j.categories?.department ?? null,
+      }));
+    }
+    case "ashby": {
+      const data = (await fetchJson(`https://api.ashbyhq.com/posting-api/job-board/${boardToken}`)) as {
+        jobs?: { title: string; department?: string; team?: string }[];
+      };
+      return (data.jobs ?? []).map((j) => ({ title: j.title, department: j.department ?? j.team ?? null }));
+    }
+    case "workable": {
+      const data = (await fetchJson(
+        `https://apply.workable.com/api/v1/widget/accounts/${boardToken}?details=true`
+      )) as { jobs?: { title: string; department?: string }[] };
+      return (data.jobs ?? []).map((j) => ({ title: j.title, department: j.department ?? null }));
+    }
+    case "smartrecruiters": {
+      const data = (await fetchJson(
+        `https://api.smartrecruiters.com/v1/companies/${boardToken}/postings`
+      )) as { content?: { name: string; department?: { label: string } }[] };
+      return (data.content ?? []).map((j) => ({ title: j.name, department: j.department?.label ?? null }));
+    }
+  }
 }
 
 function hashText(text: string): string {
@@ -171,15 +273,6 @@ function categorizeTitle(title: string): string {
     if (pattern.test(title)) return department;
   }
   return "Other";
-}
-
-function departmentBreakdown(titles: string[]): Record<string, number> {
-  const counts: Record<string, number> = {};
-  for (const title of titles) {
-    const department = categorizeTitle(title);
-    counts[department] = (counts[department] ?? 0) + 1;
-  }
-  return counts;
 }
 
 type SnapshotKind = "pricing" | "jobs" | "producthunt" | "websearch" | "homepage";
@@ -403,11 +496,40 @@ export async function checkJobPostingsDiff(
 ): Promise<Signal | null> {
   if (!competitor.careers_url) return null;
 
-  const titles = await fetchJobListingTitles(competitor.careers_url);
+  const html = await fetchHtml(competitor.careers_url);
+  const detection = detectAts(competitor.careers_url, html);
+
+  // ATS jobs win when detection succeeds and the API actually returns
+  // something — a private/empty board or a schema change on their end
+  // falls back to the generic scrape rather than reporting zero roles as
+  // if that were a real reading.
+  let atsJobs: AtsJob[] = [];
+  if (detection) {
+    try {
+      atsJobs = await fetchAtsJobs(detection);
+    } catch (err) {
+      console.error(`ATS API fetch failed for ${competitor.name} (${detection.provider}):`, err);
+    }
+  }
+  const usingAts = atsJobs.length > 0;
+
+  const titles = usingAts ? atsJobs.map((j) => j.title) : extractJobListingTitles(html);
   const joined = titles.join("\n");
   const existing = await readSnapshot(supabase, competitor.id, "jobs");
   const newHash = hashText(joined);
   await writeSnapshot(supabase, competitor.id, "jobs", joined);
+
+  // Real department field from the ATS when we have one; a job it left
+  // blank (or the generic-scrape path, which never has one) still gets a
+  // best-guess department from the title, so the breakdown is never just
+  // "everything's Other" because a couple of postings had no metadata.
+  const breakdown: Record<string, number> = {};
+  for (const [title, department] of usingAts
+    ? atsJobs.map((j): [string, string | null] => [j.title, j.department])
+    : titles.map((t): [string, string | null] => [t, null])) {
+    const bucket = department ?? categorizeTitle(title);
+    breakdown[bucket] = (breakdown[bucket] ?? 0) + 1;
+  }
 
   // Current-state reading (open role count + department mix), same "always
   // update, regardless of whether a diff signal fires" behavior as
@@ -418,7 +540,8 @@ export async function checkJobPostingsDiff(
     {
       competitor_id: competitor.id,
       open_role_count: titles.length,
-      department_breakdown: departmentBreakdown(titles),
+      department_breakdown: breakdown,
+      source: usingAts ? detection!.provider : null,
       last_checked_at: new Date().toISOString(),
     },
     { onConflict: "competitor_id" }

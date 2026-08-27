@@ -407,6 +407,7 @@ export interface Database {
           competitor_id: string;
           open_role_count: number;
           department_breakdown: Record<string, number>;
+          source: string | null;
           last_checked_at: string;
           created_at: string;
         };
@@ -415,6 +416,7 @@ export interface Database {
           competitor_id: string;
           open_role_count: number;
           department_breakdown?: Record<string, number>;
+          source?: string | null;
           last_checked_at?: string;
           created_at?: string;
         };

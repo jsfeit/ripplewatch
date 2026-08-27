@@ -130,7 +130,7 @@ export default async function DashboardPage() {
     competitorIds.length
       ? db
           .from("competitor_hiring")
-          .select("competitor_id, open_role_count, department_breakdown, last_checked_at")
+          .select("competitor_id, open_role_count, department_breakdown, source, last_checked_at")
           .in("competitor_id", competitorIds)
       : Promise.resolve({ data: [] }),
     competitorIds.length
