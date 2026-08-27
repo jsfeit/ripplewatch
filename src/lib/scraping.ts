@@ -148,6 +148,40 @@ function hashText(text: string): string {
   return createHash("sha256").update(text).digest("hex");
 }
 
+// Keyword-only, deliberately not an LLM call — this runs on every title in
+// every crawl, and a rough department split is worth having for free far
+// more than a precise one is worth paying for. First match wins, in this
+// order, so a title like "Engineering Recruiter" lands in People/HR (the
+// more specific signal) rather than Engineering.
+const DEPARTMENT_PATTERNS: [string, RegExp][] = [
+  ["People/HR", /recruit|talent acquisition|\bhr\b|people ops|people partner/i],
+  ["Engineering", /engineer|developer|\bswe\b|devops|\bsre\b|architect|qa\b|infrastructure/i],
+  ["Product", /product manager|\bpm\b|product owner|product design/i],
+  ["Design", /designer|\bux\b|\bui\b/i],
+  ["Sales", /sales|account executive|\bae\b|\bsdr\b|\bbdr\b|business development/i],
+  ["Marketing", /marketing|brand|content|growth|demand gen/i],
+  ["Customer Success", /customer success|customer support|\bcs\b\W|support engineer/i],
+  ["Operations", /operations|\bops\b/i],
+  ["Finance", /finance|accounting|controller/i],
+  ["Legal", /legal|counsel|compliance/i],
+];
+
+function categorizeTitle(title: string): string {
+  for (const [department, pattern] of DEPARTMENT_PATTERNS) {
+    if (pattern.test(title)) return department;
+  }
+  return "Other";
+}
+
+function departmentBreakdown(titles: string[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const title of titles) {
+    const department = categorizeTitle(title);
+    counts[department] = (counts[department] ?? 0) + 1;
+  }
+  return counts;
+}
+
 type SnapshotKind = "pricing" | "jobs" | "producthunt" | "websearch" | "homepage";
 
 async function readSnapshot(supabase: AdminClient, competitorId: string, kind: SnapshotKind) {
@@ -374,6 +408,21 @@ export async function checkJobPostingsDiff(
   const existing = await readSnapshot(supabase, competitor.id, "jobs");
   const newHash = hashText(joined);
   await writeSnapshot(supabase, competitor.id, "jobs", joined);
+
+  // Current-state reading (open role count + department mix), same "always
+  // update, regardless of whether a diff signal fires" behavior as
+  // competitor_pricing/competitor_seo above — this is a snapshot table, not
+  // an event log, so it should reflect what's on the page right now even on
+  // a run with zero new listings.
+  await supabase.from("competitor_hiring").upsert(
+    {
+      competitor_id: competitor.id,
+      open_role_count: titles.length,
+      department_breakdown: departmentBreakdown(titles),
+      last_checked_at: new Date().toISOString(),
+    },
+    { onConflict: "competitor_id" }
+  );
 
   if (!existing) return null;
   if (existing.content_hash === newHash) return null;

@@ -9,6 +9,7 @@ import { CompetitorOverview } from "./competitor-overview";
 import { IndustryPulse } from "../trends/industry-pulse";
 import { TrendsBoard } from "../trends/trends-board";
 import { PricingBoard } from "../pricing/pricing-board";
+import { HiringBoard } from "../hiring/hiring-board";
 import { WinLossPageClient } from "../win-loss/win-loss-page-client";
 import type { Database } from "@/lib/supabase/types";
 
@@ -26,6 +27,7 @@ const SECTIONS = [
   { id: "win-loss", label: "Win/loss" },
   { id: "news", label: "News" },
   { id: "pricing", label: "Competitor pricing" },
+  { id: "hiring", label: "Hiring" },
 ];
 
 export const metadata = { title: "Dashboard" };
@@ -92,6 +94,8 @@ export default async function DashboardPage() {
     { data: signals },
     { data: pricing },
     { data: pricingSignals },
+    { data: hiring },
+    { data: hiringSignals },
     { data: seo },
     { data: seoSignals },
     { data: momentumSignals },
@@ -120,6 +124,21 @@ export default async function DashboardPage() {
           .select("competitor_id, created_at")
           .in("competitor_id", competitorIds)
           .eq("type", "pricing")
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] }),
+    // --- Hiring ---
+    competitorIds.length
+      ? db
+          .from("competitor_hiring")
+          .select("competitor_id, open_role_count, department_breakdown, last_checked_at")
+          .in("competitor_id", competitorIds)
+      : Promise.resolve({ data: [] }),
+    competitorIds.length
+      ? db
+          .from("signals")
+          .select("competitor_id, created_at")
+          .in("competitor_id", competitorIds)
+          .eq("type", "job_posting")
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: [] }),
     // --- Trends: momentum + industry pulse ---
@@ -328,6 +347,16 @@ export default async function DashboardPage() {
         </p>
         <div className="mt-4">
           <PricingBoard competitors={competitors ?? []} pricing={pricing ?? []} pricingSignals={pricingSignals ?? []} />
+        </div>
+      </section>
+
+      <section id="hiring" className="mt-10 scroll-mt-20">
+        <h2 className="text-sm font-semibold">Hiring</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Open roles and department mix, scraped from each competitor&apos;s careers page.
+        </p>
+        <div className="mt-4">
+          <HiringBoard competitors={competitors ?? []} hiring={hiring ?? []} hiringSignals={hiringSignals ?? []} />
         </div>
       </section>
     </div>
