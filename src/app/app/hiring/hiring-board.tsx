@@ -10,9 +10,21 @@ import type { Database } from "@/lib/supabase/types";
 type Competitor = Pick<Database["public"]["Tables"]["competitors"]["Row"], "id" | "name" | "careers_url">;
 type CompetitorHiring = Pick<
   Database["public"]["Tables"]["competitor_hiring"]["Row"],
-  "competitor_id" | "open_role_count" | "department_breakdown" | "last_checked_at"
+  "competitor_id" | "open_role_count" | "department_breakdown" | "source" | "last_checked_at"
 >;
 type Signal = Pick<Database["public"]["Tables"]["signals"]["Row"], "competitor_id" | "created_at">;
+
+// Real ATS name, not the internal provider key — surfaced as a small
+// provenance label so it's clear which competitors get the structured API
+// read (real department field) versus the generic HTML-scrape fallback
+// (department is a keyword guess). Unlisted/null source means the latter.
+const ATS_LABELS: Record<string, string> = {
+  greenhouse: "Greenhouse",
+  lever: "Lever",
+  ashby: "Ashby",
+  workable: "Workable",
+  smartrecruiters: "SmartRecruiters",
+};
 
 export function HiringBoard({
   competitors,
@@ -116,7 +128,10 @@ function HiringCard({
           ) : null}
 
           <CardFoot>
-            <span>Last checked {timeAgo(record.last_checked_at)}</span>
+            <span>
+              Last checked {timeAgo(record.last_checked_at)}
+              {record.source && ATS_LABELS[record.source] ? ` · via ${ATS_LABELS[record.source]}` : ""}
+            </span>
             {competitor.careers_url ? (
               <a
                 href={competitor.careers_url}
