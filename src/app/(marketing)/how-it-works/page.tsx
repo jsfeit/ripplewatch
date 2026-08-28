@@ -42,9 +42,7 @@ export default function HowItWorksPage() {
     <div className="mx-auto max-w-5xl px-6 py-20">
       <div className="mx-auto max-w-2xl text-center">
         <h1 className="text-4xl font-semibold tracking-tight text-balance">
-          Every competitor tool tells you what changed.
-          <br />
-          We tell you whether it matters to you, and why.
+          From raw signal to relevance verdict, in three steps.
         </h1>
         <p className="mt-4 text-muted-foreground">
           The difference isn&apos;t more data. It&apos;s a verdict you can act on.
