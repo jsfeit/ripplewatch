@@ -92,6 +92,42 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
         </div>
       </div>
 
+      <div className="mt-16">
+        <h2 className="text-lg font-medium">Ripplewatch vs. {entry.name} at a glance</h2>
+        <div className="mt-4 overflow-x-auto rounded-2xl border border-border">
+          <table className="w-full min-w-[520px] border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-border bg-secondary/30 text-left">
+                <th className="px-4 py-3 font-medium text-muted-foreground">&nbsp;</th>
+                <th className="px-4 py-3 font-medium text-primary">Ripplewatch</th>
+                <th className="px-4 py-3 font-medium text-foreground">{entry.name}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-border">
+                <td className="px-4 py-3 font-medium text-muted-foreground">Monitoring approach</td>
+                <td className="px-4 py-3 text-foreground">Continuous tracking of your focused competitor list</td>
+                <td className="px-4 py-3 text-muted-foreground">{entry.theirMechanism}</td>
+              </tr>
+              <tr className="border-b border-border">
+                <td className="px-4 py-3 font-medium text-muted-foreground">How findings are prioritized</td>
+                <td className="px-4 py-3 text-foreground">
+                  Scored against your positioning, ICP, and win/loss history
+                </td>
+                <td className="px-4 py-3 text-muted-foreground">{entry.howPrioritized}</td>
+              </tr>
+              <tr>
+                <td className="px-4 py-3 font-medium text-muted-foreground">Best for</td>
+                <td className="px-4 py-3 text-foreground">
+                  Teams who want every finding scored against their own positioning
+                </td>
+                <td className="px-4 py-3 text-muted-foreground">{entry.bestFor}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div className="mt-16 space-y-10">
         <div>
           <h2 className="text-lg font-medium">What {entry.name} does well</h2>

@@ -2,6 +2,12 @@
 // product marketing, review sites): these are comparison pages, not
 // disparagement, so "what they do well" has to be genuinely true or the
 // whole page loses credibility. Update if a competitor's product changes.
+//
+// whatTheyDoWell/differentiator render only on /compare/[slug] (paired with
+// a comparison table). switchGain/switchConsider render only on
+// /alternatives/[slug] and are framed around switching, not restated from
+// the /compare copy — the two page types need to say different things about
+// the same competitor, not the same paragraph under a different heading.
 
 export type ComparisonEntry = {
   slug: string;
@@ -11,6 +17,10 @@ export type ComparisonEntry = {
   whatTheyDoWell: string;
   theirMechanism: string;
   differentiator: string;
+  bestFor: string;
+  howPrioritized: string;
+  switchGain: string;
+  switchConsider: string;
 };
 
 export const COMPARISONS: ComparisonEntry[] = [
@@ -25,6 +35,12 @@ export const COMPARISONS: ComparisonEntry[] = [
     theirMechanism: "a P0/P1/P2 priority framework",
     differentiator:
       "The priority level itself is generic severity: the same kind of signal gets the same P0/P1/P2 rating regardless of whose business is reading it. Ripplewatch's relevance score is computed against your specific positioning, ICP, and the actual reasons your deals were lost or customers churned. The same signal can be High for one company and Low for another, because it's scored against what matters to that business, not a general urgency scale.",
+    bestFor: "CEOs who want a single daily glance, not a feed to monitor",
+    howPrioritized: "Generic P0/P1/P2 severity, same for every company",
+    switchGain:
+      "You get relevance computed against your own positioning instead of a general P0/P1/P2 severity scale, so a signal isn't automatically urgent for you just because it was urgent for someone else's business. Every score also comes with the reasoning attached, not just a priority label.",
+    switchConsider:
+      "Caelian's predictive lean, treating hiring and filings as leading indicators before a launch confirms them, is a genuine feature Ripplewatch doesn't try to replicate. If that predictive angle is what you value most, weigh it against personalized scoring before switching.",
   },
   {
     slug: "kompyte",
@@ -37,6 +53,12 @@ export const COMPARISONS: ComparisonEntry[] = [
     theirMechanism: "daily scraping feeding auto-generated, always-current battlecards",
     differentiator:
       "A battlecard is the same battlecard for every rep and every deal: comprehensive, but it doesn't rank which of today's changes actually matters right now versus which is background noise. Ripplewatch scores each finding against your specific positioning and real win/loss history, so a pricing change that's dangerous for one company can be irrelevant for another.",
+    bestFor: "Sales teams who need auto-updating battlecards synced to their CRM",
+    howPrioritized: "One battlecard for every rep and every deal",
+    switchGain:
+      "Every finding arrives pre-scored for your specific positioning and win/loss history, instead of a battlecard that reads the same for every rep on every deal. You stop being the one who has to judge which of today's updates is actually urgent.",
+    switchConsider:
+      "If your team leans on CRM-tied battlecards and Semrush's SEO/traffic data as part of a broader sales-enablement motion, that combination isn't something switching to Ripplewatch replaces outright.",
   },
   {
     slug: "contify",
@@ -49,6 +71,12 @@ export const COMPARISONS: ComparisonEntry[] = [
     theirMechanism: "a curated multi-source corpus plus a natural-language Q&A layer",
     differentiator:
       "Contify is built to answer whatever you ask it, which is powerful, but it means the underlying prioritization is breadth-based, not scored against your specific win/loss reasons. Ripplewatch flips that: every finding already comes with a relevance score computed against your positioning and ICP, so you're not the one deciding what to ask about.",
+    bestFor: "Analyst teams doing open-ended research across a huge curated corpus",
+    howPrioritized: "Breadth-based; you ask, it answers",
+    switchGain:
+      "Instead of deciding what to ask a research assistant, you get findings that already arrive with a relevance score attached, computed against your positioning and ICP. Less digging, less framing your own queries.",
+    switchConsider:
+      "If your job is genuinely open-ended research, not just watching for what matters to your existing deals, Contify's breadth and \"Ask Athena\" query layer covers ground a focused, scored feed isn't built for.",
   },
   {
     slug: "similarweb",
@@ -61,6 +89,12 @@ export const COMPARISONS: ComparisonEntry[] = [
     theirMechanism: "modeled website traffic and channel-mix analytics",
     differentiator:
       "Similarweb tells you how much traffic a competitor gets and where it's from, but it doesn't tell you whether a specific pricing change, hire, or funding round matters to your deals. Ripplewatch is built around scored, actionable findings tied to your own positioning and win/loss history, not traffic analytics.",
+    bestFor: "Understanding a competitor's traffic and channel mix specifically",
+    howPrioritized: "Not scored — traffic and channel analytics only",
+    switchGain:
+      "Ripplewatch tells you whether a pricing change, hire, or funding round actually threatens a deal you're in, which traffic and channel-mix data alone can't answer.",
+    switchConsider:
+      "Similarweb isn't really a competing tool for what Ripplewatch does. If channel-mix and traffic benchmarking is the actual job, it's worth keeping alongside Ripplewatch rather than replacing it.",
   },
   {
     slug: "owler",
@@ -73,6 +107,12 @@ export const COMPARISONS: ComparisonEntry[] = [
     theirMechanism: "crowdsourced company profiles plus broad news alerts",
     differentiator:
       "Because profile data is community-edited, accuracy varies company to company: a well-documented tradeoff of the crowdsourcing model, not a knock on the idea. And news alerts, however broad, aren't scored for relevance to your specific positioning: Ripplewatch tracks a focused list of real competitors and scores every finding against your own ICP and win/loss reasons.",
+    bestFor: "Broadly discovering and mapping competitors you don't already have a short list for",
+    howPrioritized: "Broad news alerts, not scored for relevance",
+    switchGain:
+      "You move from a wide, crowdsourced set of profiles and unscored news alerts to a focused competitor list where every finding is scored against your own ICP and win/loss reasons, so relevance stops varying company to company.",
+    switchConsider:
+      "If discovery, finding competitors you didn't know about, is still the job, Owler's crowdsourced scale is worth keeping around even after you add Ripplewatch for the companies you're actually tracking closely.",
   },
   {
     slug: "parano-ai",
@@ -85,6 +125,12 @@ export const COMPARISONS: ComparisonEntry[] = [
     theirMechanism: "a weekly AI-synthesized digest across several signal types",
     differentiator:
       "A weekly digest bundles everything into one message without ranking it: there's no way to tell which item in this week's summary is the one that actually matters to a deal you're in right now. Ripplewatch scores each individual finding for relevance as it happens, rather than batching everything into a single weekly read.",
+    bestFor: "Teams who want one broad weekly summary and don't mind reading past the noise",
+    howPrioritized: "Everything bundled into one weekly digest, unranked",
+    switchGain:
+      "Findings get scored and delivered as they happen instead of batched into one weekly digest, so the one item that actually matters to a live deal doesn't have to wait for Friday's summary or get lost among the rest.",
+    switchConsider:
+      "If a once-a-week cadence is genuinely enough for your team and you like having everything in one message, that simplicity is a real tradeoff against Ripplewatch's continuous, individually scored alerts.",
   },
   {
     slug: "compttr",
@@ -97,6 +143,12 @@ export const COMPARISONS: ComparisonEntry[] = [
     theirMechanism: "on-demand review-site sentiment synthesis",
     differentiator:
       "It's a snapshot of review sentiment at one point in time, not continuous tracking: it won't tell you about a pricing change or a new hire next week, and it isn't scored against your own win/loss data. Ripplewatch monitors continuously and scores every finding, review sentiment or otherwise, against your specific positioning.",
+    bestFor: "A fast, one-time gut-check on review sentiment before a call",
+    howPrioritized: "One-time snapshot, not scored against your data",
+    switchGain:
+      "You get continuous tracking instead of a single snapshot, and every finding, review sentiment included, is scored against your own positioning rather than left as an unscored one-time report.",
+    switchConsider:
+      "For a quick pre-call check with no ongoing subscription, Compttr's 60-second, on-demand model is genuinely cheaper and simpler than an always-on monitor if that's really all you need.",
   },
   {
     slug: "competely",
@@ -109,6 +161,12 @@ export const COMPARISONS: ComparisonEntry[] = [
     theirMechanism: "an AI-generated, source-linked feature/pricing comparison table",
     differentiator:
       "A comparison table is a snapshot of features and pricing as they stand today, useful for onboarding onto a new competitor, but not a relevance-ranked feed of what changed and why it matters to your specific deals. Ripplewatch is built for the ongoing question, not the one-time snapshot.",
+    bestFor: "Getting oriented fast on a brand-new competitor",
+    howPrioritized: "Feature/pricing snapshot, not relevance-ranked",
+    switchGain:
+      "Instead of a one-time, source-linked snapshot of features and pricing, you get an ongoing, relevance-ranked feed of what changes after that first snapshot, and why it matters to your specific deals.",
+    switchConsider:
+      "If you mainly need the fast initial-orientation table Competely generates in minutes, that one-time research step is still worth doing first, even if Ripplewatch becomes the ongoing monitor afterward.",
   },
   {
     slug: "seeto",
@@ -121,6 +179,12 @@ export const COMPARISONS: ComparisonEntry[] = [
     theirMechanism: "a one-time, wide-competitor-set analysis from a single URL",
     differentiator:
       "It's a one-time analysis rather than continuous monitoring, so it can't tell you what changed after the report was generated. Ripplewatch tracks a focused competitor set continuously and scores each new finding for relevance, rather than producing a single point-in-time snapshot.",
+    bestFor: "Broad first-pass coverage across up to 15 competitors from one URL",
+    howPrioritized: "One-time report, not continuously scored",
+    switchGain:
+      "You trade a one-time report for continuous monitoring of a focused competitor set, so you find out what changed after the report, not just what was true the day it ran.",
+    switchConsider:
+      "If you genuinely don't know yet who your real competitors are, Seeto's wide first-pass sweep is a reasonable way to narrow that list before committing to ongoing tracking with Ripplewatch.",
   },
   {
     slug: "analook",
@@ -133,6 +197,12 @@ export const COMPARISONS: ComparisonEntry[] = [
     theirMechanism: "a one-time, multi-signal AI teardown and verdict",
     differentiator:
       "It's a snapshot verdict generated once, not an ongoing monitor: there's no way to know what changed after the teardown ran. Ripplewatch continuously tracks your competitors and scores every new finding against your positioning, rather than producing a single verdict at one point in time.",
+    bestFor: "A cheap, fast first look at a single competitor, especially for technical teams already in Claude or Cursor",
+    howPrioritized: "One-time verdict, not an ongoing score",
+    switchGain:
+      "A single verdict generated once becomes an ongoing monitor: you find out what changed after the teardown ran, scored against your own positioning instead of a generic strategic verdict.",
+    switchConsider:
+      "If speed and price are the priority for a one-off look, and you're already working inside an MCP-connected AI tool, Analook's teardown is a genuinely low-cost way to get oriented before committing to continuous tracking.",
   },
   {
     slug: "outmano",
@@ -145,6 +215,12 @@ export const COMPARISONS: ComparisonEntry[] = [
     theirMechanism: "per-competitor crawling agents feeding a weekly digest and Slack alerts",
     differentiator:
       "Broad coverage synthesized into a digest still runs into the same-severity problem: a competitor's SEO change reads with the same urgency as their pricing change, regardless of which one actually threatens a deal you're in. Ripplewatch scores each finding against your specific positioning and win/loss history instead of a flat alert stream.",
+    bestFor: "SMB teams who want Klue/Crayon-style coverage without the enterprise price tag",
+    howPrioritized: "Flat digest — every change reads the same urgency",
+    switchGain:
+      "Findings get scored against your specific positioning and win/loss history instead of arriving in a flat digest where an SEO change reads with the same urgency as a pricing change.",
+    switchConsider:
+      "Outmano's per-competitor agent coverage at SMB pricing is a real value proposition if broad coverage at low cost matters more to you than personalized relevance scoring.",
   },
   {
     slug: "playwise-hq",
@@ -157,6 +233,12 @@ export const COMPARISONS: ComparisonEntry[] = [
     theirMechanism: "rep-sourced field intel combined with LLM research, searchable from Slack",
     differentiator:
       "Rep-sourced intel is a real strength for capturing what happens inside deals, but it doesn't independently score external signals (a competitor's pricing change, a funding round, a hiring spike) the way Ripplewatch does. The two mechanisms are complementary more than substitutes: one captures what your team hears, the other scores what's happening outside your deals.",
+    bestFor: "Sales teams who want rep-sourced field intel alongside AI research",
+    howPrioritized: "Rep-logged intel; external signals aren't independently scored",
+    switchGain:
+      "You add independent scoring of external signals, like a pricing change or a hiring spike, that rep-sourced intel alone doesn't cover, since it depends on your team happening to hear about it in a live deal.",
+    switchConsider:
+      "Playwise's rep-logged intel captures nuance from actual deal conversations that no automated tool, Ripplewatch included, can fully replace; the two are genuinely complementary rather than substitutes.",
   },
   {
     slug: "watchmycompetitor",
@@ -169,6 +251,12 @@ export const COMPARISONS: ComparisonEntry[] = [
     theirMechanism: "AI monitoring reviewed and curated by human analysts",
     differentiator:
       "Human curation adds real judgment, but also cost and lag compared to fully-automated scoring, and it isn't tuned to your specific positioning or ICP: the analyst is applying general judgment, not your company's own definition of what matters. Ripplewatch's relevance score is computed against your own positioning and win/loss history specifically, and updates as fast as the underlying signal does.",
+    bestFor: "Teams who want a human analyst's judgment layered on top of AI monitoring",
+    howPrioritized: "Human-analyst judgment, not tuned to your ICP",
+    switchGain:
+      "You get scoring computed against your own positioning and win/loss history that updates as fast as the underlying signal does, without the added cost and lag of a human-curation step.",
+    switchConsider:
+      "If nuanced human judgment on less-structured signals is worth the added cost and lag to you, WatchMyCompetitor's analyst layer is a genuine tradeoff to weigh against faster, fully-automated scoring.",
   },
   {
     slug: "competitors-app",
@@ -181,6 +269,12 @@ export const COMPARISONS: ComparisonEntry[] = [
     theirMechanism: "marketing-channel monitoring, including subscribing to competitors' own email flows",
     differentiator:
       "It's strong on marketing-channel visibility specifically, but that's channel monitoring, not relevance-scored competitive intelligence tied to why deals are actually won or lost. Ripplewatch scores every finding, marketing moves included, against your specific positioning and real win/loss reasons, not just channel activity.",
+    bestFor: "Deep visibility into a competitor's marketing channels and lifecycle emails",
+    howPrioritized: "Channel activity tracked, not relevance-scored",
+    switchGain:
+      "Every finding, marketing moves included, gets scored against your specific positioning and real win/loss reasons, instead of being reported as channel activity with no relevance judgment attached.",
+    switchConsider:
+      "Competitors App's trick of actually subscribing to a competitor's own trials and newsletters is a genuinely clever way to see their lifecycle marketing that switching to Ripplewatch wouldn't replicate on its own.",
   },
   {
     slug: "industrylens",
@@ -193,6 +287,12 @@ export const COMPARISONS: ComparisonEntry[] = [
     theirMechanism: "broad, sourced monitoring delivered as a weekly briefing",
     differentiator:
       "A sourced weekly briefing is trustworthy, but the prioritization inside it is breadth-first and generic: every account reading the same briefing sees the same emphasis. Ripplewatch scores each finding against your own positioning and win/loss history, so the same event can rank differently for two different companies.",
+    bestFor: "Teams who want every claim in a briefing linked back to its source",
+    howPrioritized: "Breadth-first briefing, same emphasis for every account",
+    switchGain:
+      "Instead of a weekly briefing where every account sees the same breadth-first emphasis, findings are scored against your own positioning and win/loss history, so the same event can rank differently for two different companies.",
+    switchConsider:
+      "IndustryLens's sourced weekly briefing and MCP server integration are genuinely useful if a once-a-week, fully-cited format is what your team actually wants to read.",
   },
   {
     slug: "valona-intelligence",
@@ -205,6 +305,12 @@ export const COMPARISONS: ComparisonEntry[] = [
     theirMechanism: "large-scale source monitoring with human analyst curation, built for enterprise and regulatory intelligence",
     differentiator:
       "Valona is built for large-enterprise engagements: regulatory and market intelligence at a scale and price point that assumes a dedicated analyst relationship, not a self-serve tool a smaller team signs up for directly. Ripplewatch's relevance scoring is built to be self-serve from day one, tuned to your own positioning without an analyst engagement in between.",
+    bestFor: "Large enterprises needing regulatory and market intelligence at scale, especially in chemicals",
+    howPrioritized: "Enterprise analyst engagement, not self-serve scoring",
+    switchGain:
+      "Ripplewatch is self-serve from day one, so you get relevance scoring tuned to your own positioning without a dedicated analyst engagement or enterprise contract in between.",
+    switchConsider:
+      "If you're already working at the scale Valona is built for, its quarter-century operating history, analyst recognition, and chemicals-industry depth aren't things a self-serve tool replaces.",
   },
 ];
 
