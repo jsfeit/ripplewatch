@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { getPost, type PostBlock } from "@/lib/posts";
 import { formatDate } from "@/lib/date";
 import { QuizCta } from "@/components/marketing/quiz-cta";
+import { EmailCaptureForm } from "@/components/marketing/email-capture-form";
 
 // Same caching rationale as the blog index — see that file.
 export const revalidate = 300;
@@ -229,6 +230,10 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       </div>
 
       <div className="mt-16">
+        <EmailCaptureForm capturePoint="blog" />
+      </div>
+
+      <div className="mt-8">
         <QuizCta />
       </div>
     </article>

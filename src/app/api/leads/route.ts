@@ -4,11 +4,11 @@ import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 // Shared lead-capture endpoint — not tied to any one funnel. Currently fed
 // by onboarding's first step (before competitors, plan, password, or
-// payment) and the competitive-intel quiz's email-gated results, so that
-// abandoning either one still leaves an email to retarget with. Writes to
-// the "leads" table, tagged with capturePoint so the admin view can tell
-// where each row came from.
-const VALID_CAPTURE_POINTS = new Set(["onboarding", "quiz"]);
+// payment), the competitive-intel quiz's email-gated results, and the blog
+// post newsletter form, so that abandoning any of them still leaves an
+// email to retarget with. Writes to the "leads" table, tagged with
+// capturePoint so the admin view can tell where each row came from.
+const VALID_CAPTURE_POINTS = new Set(["onboarding", "quiz", "blog"]);
 
 export async function POST(request: Request) {
   if (!checkRateLimit(`lead-capture:${getClientIp(request)}`, 5, 60_000)) {
