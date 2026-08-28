@@ -166,7 +166,14 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
             // publishedAt, which meant this field was always wrong for any
             // post that had ever been edited after it went live.
             dateModified: post.updatedAt,
-            author: { "@type": "Organization", name: "Ripplewatch" },
+            // Every post is written by the founder — a named Person (matching
+            // the About page's Person schema) is a stronger E-E-A-T/AEO
+            // signal than attributing authorship to the org itself.
+            author: {
+              "@type": "Person",
+              name: "Jeremy Feit",
+              url: `${APP_URL}/about`,
+            },
             publisher: {
               "@type": "Organization",
               name: "Ripplewatch",
@@ -206,7 +213,12 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         <ArrowLeft className="size-3.5" />
         Blog
       </Link>
-      <p className="mt-6 text-xs text-muted-foreground">{formatDate(post.publishedAt)}</p>
+      <p className="mt-6 text-xs text-muted-foreground">
+        {formatDate(post.publishedAt)} · By{" "}
+        <Link href="/about" className="hover:text-foreground">
+          Jeremy Feit
+        </Link>
+      </p>
       <h1 className="mt-1 text-3xl font-semibold tracking-tight text-balance">{post.title}</h1>
       <p className="mt-3 text-muted-foreground">{post.description}</p>
 

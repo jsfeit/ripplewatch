@@ -74,9 +74,13 @@ const QUESTIONS: Question[] = [
   },
 ];
 
-type Tier = { name: string; icon: LucideIcon; range: [number, number]; summary: string; nextStep: string };
+export type Tier = { name: string; icon: LucideIcon; range: [number, number]; summary: string; nextStep: string };
 
-const TIERS: Tier[] = [
+// Exported so the server-rendered page can list every tier's description in
+// static HTML: the interactive quiz result (which tier *you* land in) is
+// necessarily client-only, but the tier definitions themselves are static
+// content that should be crawlable without running JS.
+export const TIERS: Tier[] = [
   {
     name: "Reactive",
     icon: Eye,

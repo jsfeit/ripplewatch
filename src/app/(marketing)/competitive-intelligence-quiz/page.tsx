@@ -1,4 +1,4 @@
-import { CompetitiveIntelQuiz } from "@/components/marketing/competitive-intel-quiz";
+import { CompetitiveIntelQuiz, TIERS } from "@/components/marketing/competitive-intel-quiz";
 import { DemoLink } from "@/components/marketing/demo-link";
 
 const description =
@@ -29,6 +29,19 @@ export default function CompetitiveIntelligenceQuizPage() {
       </div>
       <div className="mt-12">
         <CompetitiveIntelQuiz />
+      </div>
+
+      <div className="mt-20 border-t border-border pt-12">
+        <h2 className="text-lg font-medium">The four maturity levels</h2>
+        <dl className="mt-6 space-y-8">
+          {TIERS.map((tier) => (
+            <div key={tier.name}>
+              <dt className="font-medium text-foreground">{tier.name}</dt>
+              <dd className="mt-1 leading-relaxed text-muted-foreground">{tier.summary}</dd>
+              <dd className="mt-2 text-sm leading-relaxed text-muted-foreground">{tier.nextStep}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
     </div>
   );
