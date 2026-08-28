@@ -330,6 +330,42 @@ export const COMPARISONS: ComparisonEntry[] = [
     switchConsider:
       "If you're already working at the scale Valona is built for, its quarter-century operating history, analyst recognition, and chemicals-industry depth aren't things a self-serve tool replaces.",
   },
+  {
+    slug: "klue",
+    name: "Klue",
+    domain: "klue.com",
+    tagline:
+      "An enterprise competitive-intelligence platform built around a Compete Agent that continuously gathers intel, a Win-Loss Suite with AI-interviewed verified buyer interviews, and Ask Klue, a chat interface for querying competitive data on demand.",
+    whatTheyDoWell:
+      "The Win-Loss Suite's verified buyer interviews, including an AI interviewer for voice conversations, are a genuinely deep capability most competitive-intelligence tools don't attempt: real, structured feedback from actual buyers, not just internal rep opinions. Ask Klue's chat interface is a reasonable way to query competitive data without digging through a dashboard.",
+    theirMechanism: "a continuously-running Compete Agent feeding deal-specific insight to reps, plus a separate verified buyer-interview product",
+    differentiator:
+      "Klue is built and priced for large enterprise sales organizations: pricing isn't published, deals are customized and sold through a sales cycle, and the buyer-interview product assumes a dedicated CI or enablement function running it. Ripplewatch is self-serve with published pricing from day one, built for a team that wants to start monitoring competitors this afternoon, not after a multi-week evaluation.",
+    bestFor: "Large enterprise sales orgs that want verified buyer win-loss interviews alongside monitoring",
+    howPrioritized: "Deal-specific insight pushed to reps; no published self-serve pricing or scoring tier",
+    switchGain:
+      "You get published, self-serve pricing and relevance scoring tied to your own positioning from day one, instead of a multi-week sales evaluation before you can see it working.",
+    switchConsider:
+      "Klue's verified buyer win-loss interviews, including an AI interviewer for voice conversations, are a genuinely deep capability Ripplewatch doesn't attempt to replicate; if that's the core need, it's worth the sales call.",
+  },
+  {
+    slug: "crayon",
+    name: "Crayon",
+    domain: "crayon.co",
+    tagline:
+      "An enterprise competitive-intelligence platform combining automated competitor monitoring with battlecards deployed into Salesforce and Slack, plus Sparks, an AI feature that runs scheduled passes over competitor news, social activity, and PR.",
+    whatTheyDoWell:
+      "Deploying battlecards straight into Salesforce and Slack, where reps already work, is a genuinely practical distribution choice, and Sparks' scheduled passes over news, social, and PR give broad, automated coverage without a person doing that scanning manually.",
+    theirMechanism: "automated monitoring paired with Salesforce/Slack-deployed battlecards and scheduled AI passes over public sources",
+    differentiator:
+      "Crayon, like Klue, doesn't publish pricing: deals are customized, sold through a sales cycle, and priced for teams that need dedicated implementation support, not a self-serve signup. Ripplewatch publishes its pricing and scores every finding against your specific positioning and win/loss history from the first day, without an enterprise sales process in between.",
+    bestFor: "Enterprise sales teams who want automated battlecards live in Salesforce and Slack",
+    howPrioritized: "Scheduled AI passes over public sources; no published self-serve pricing or personalized scoring",
+    switchGain:
+      "You get transparent, self-serve pricing and relevance scoring tied to your own positioning and win/loss history, without an enterprise sales cycle or custom-quoted contract first.",
+    switchConsider:
+      "If your team is already at the scale where dedicated implementation support and a Salesforce-embedded battlecard workflow matter more than self-serve simplicity, Crayon's enterprise-focused build is a real fit worth the sales conversation.",
+  },
 ];
 
 export function getComparison(slug: string): ComparisonEntry | undefined {
