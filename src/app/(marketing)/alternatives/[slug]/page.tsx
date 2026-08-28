@@ -54,12 +54,12 @@ export default async function AlternativePage({ params }: { params: Promise<{ sl
 
       <div className="mt-16 space-y-10">
         <div>
-          <h2 className="text-lg font-medium">What {entry.name} does well</h2>
-          <p className="mt-2 leading-relaxed text-muted-foreground">{entry.whatTheyDoWell}</p>
+          <h2 className="text-lg font-medium">What you&apos;d gain by switching</h2>
+          <p className="mt-2 leading-relaxed text-muted-foreground">{entry.switchGain}</p>
         </div>
         <div>
-          <h2 className="text-lg font-medium">Why teams look at Ripplewatch instead</h2>
-          <p className="mt-2 leading-relaxed text-muted-foreground">{entry.differentiator}</p>
+          <h2 className="text-lg font-medium">What to consider before switching</h2>
+          <p className="mt-2 leading-relaxed text-muted-foreground">{entry.switchConsider}</p>
         </div>
         <div>
           <h2 className="text-lg font-medium">What to look for in a {entry.name} alternative</h2>
