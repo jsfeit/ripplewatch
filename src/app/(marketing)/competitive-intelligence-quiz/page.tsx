@@ -1,5 +1,6 @@
-import { CompetitiveIntelQuiz, TIERS } from "@/components/marketing/competitive-intel-quiz";
+import { CompetitiveIntelQuiz } from "@/components/marketing/competitive-intel-quiz";
 import { DemoLink } from "@/components/marketing/demo-link";
+import { TIERS } from "@/lib/quiz-tiers";
 
 const description =
   "Answer 5 quick questions to find out whether your competitive intelligence is Reactive, Aware, Systematic, or Predictive, and what to do about it.";
