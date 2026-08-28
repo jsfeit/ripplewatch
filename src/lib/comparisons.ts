@@ -295,6 +295,24 @@ export const COMPARISONS: ComparisonEntry[] = [
       "IndustryLens's sourced weekly briefing and MCP server integration are genuinely useful if a once-a-week, fully-cited format is what your team actually wants to read.",
   },
   {
+    slug: "rivalwatch",
+    name: "RivalWatch",
+    domain: "rivalwatch.online",
+    tagline:
+      "A weekly snapshot-diff tool for small B2B SaaS teams: it re-crawls each tracked competitor's pages every week, compares the snapshot to the one before, and emails an AI-written explanation of what changed.",
+    whatTheyDoWell:
+      "The weekly cadence is genuinely simple to reason about: sign up, add competitor URLs, and a digest lands every Monday morning with no ongoing setup. At $29/month, it's a low-commitment way for a solo founder or small team to start watching a handful of competitors without evaluating a bigger platform first.",
+    theirMechanism: "weekly page-snapshot diffing across pricing, copy, features, and job postings",
+    differentiator:
+      "A once-a-week snapshot means a signal can sit for up to six days before anyone sees it, and every change lands in the same undifferentiated Monday digest regardless of how much it actually threatens your business. Ripplewatch scores each finding as it happens against your specific positioning and win/loss history, rather than batching everything into one weekly read.",
+    bestFor: "Solo founders or small teams who want a cheap, once-a-week competitor snapshot",
+    howPrioritized: "Weekly digest, no personalized scoring",
+    switchGain:
+      "You move from a once-a-week digest to alerts scored against your own positioning as they happen, so a signal doesn't sit for up to six days before anyone sees it.",
+    switchConsider:
+      "If a once-a-week, $29/mo digest is genuinely all the coverage you need and price is the primary constraint, RivalWatch's cost is hard to beat for that scope.",
+  },
+  {
     slug: "valona-intelligence",
     name: "Valona Intelligence",
     domain: "valonaintelligence.com",
