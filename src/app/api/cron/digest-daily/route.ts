@@ -107,7 +107,11 @@ export async function GET(request: Request) {
   }
 
   const supabase = createAdminClient();
-  const { data: accounts } = await supabase.from("accounts").select("*").not("contact_email", "is", null);
+  const { data: accounts } = await supabase
+    .from("accounts")
+    .select("*")
+    .not("contact_email", "is", null)
+    .eq("status", "active");
 
   // Accounts run concurrently (bounded), not one at a time — same reasoning
   // as the crawl cron: a fully sequential loop with no time budget meant one

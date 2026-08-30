@@ -21,7 +21,7 @@ export async function GET(request: Request) {
   }
 
   const supabase = createAdminClient();
-  const { data: accounts } = await supabase.from("accounts").select("*");
+  const { data: accounts } = await supabase.from("accounts").select("*").eq("status", "active");
 
   const summary = await mapWithConcurrency(accounts ?? [], ACCOUNT_CONCURRENCY, (account: Account) =>
     runDiscoveryForAccount(supabase, account)

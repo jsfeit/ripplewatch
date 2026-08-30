@@ -30,6 +30,12 @@ const TIER_LABELS: Record<string, string> = {
   advanced: "Advanced",
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  active: "Active",
+  hold: "Hold",
+  cancelled: "Cancelled",
+};
+
 const FUNCTION_LABELS: Record<string, string> = {
   scoreSignal: "Relevance scoring",
   summarizePricingChange: "Pricing diff summary",
@@ -57,6 +63,8 @@ export function AccountAdminView({
 }) {
   const [tier, setTier] = useState(account.tier);
   const [savingTier, setSavingTier] = useState(false);
+  const [status, setStatus] = useState(account.status);
+  const [savingStatus, setSavingStatus] = useState(false);
   const [startingViewAs, setStartingViewAs] = useState(false);
 
   async function handleViewAs() {
@@ -168,6 +176,20 @@ export function AccountAdminView({
     if (!res.ok) setTier(previous);
   }
 
+  async function handleStatusChange(newStatus: string | null) {
+    if (!newStatus) return;
+    const previous = status;
+    setStatus(newStatus as typeof status);
+    setSavingStatus(true);
+    const res = await fetch(`/api/admin/accounts/${account.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    setSavingStatus(false);
+    if (!res.ok) setStatus(previous);
+  }
+
   async function handleRecrawl() {
     setRecrawling(true);
     setRecrawlResult(null);
@@ -208,6 +230,25 @@ export function AccountAdminView({
             </SelectContent>
           </Select>
           {savingTier ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : null}
+          <Select value={status} onValueChange={handleStatusChange}>
+            <SelectTrigger
+              className={
+                status === "active"
+                  ? "h-8 w-32"
+                  : "h-8 w-32 border-destructive/40 text-destructive"
+              }
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {savingStatus ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : null}
           {account.subscription_status ? (
             <Badge variant="outline" className="text-xs text-muted-foreground">
               {account.subscription_status}

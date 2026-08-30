@@ -3,6 +3,7 @@
 // generate it from yet (`supabase gen types typescript` once one exists).
 
 export type Tier = "starter" | "plus" | "advanced";
+export type AccountStatus = "active" | "hold" | "cancelled";
 export type SignalType = "pricing" | "job_posting" | "review" | "news" | "funding" | "seo" | "product_change";
 export type SeoTrafficTrend = "up" | "down" | "flat" | "unknown";
 export type RelevanceLevel = "High" | "Medium" | "Low";
@@ -81,6 +82,7 @@ export interface Database {
           won_deal_notes: string | null;
           churn_notes: string | null;
           tier: Tier;
+          status: AccountStatus;
           stripe_customer_id: string | null;
           stripe_subscription_id: string | null;
           subscription_status: string | null;
@@ -108,6 +110,7 @@ export interface Database {
           won_deal_notes?: string | null;
           churn_notes?: string | null;
           tier?: Tier;
+          status?: AccountStatus;
           stripe_customer_id?: string | null;
           stripe_subscription_id?: string | null;
           subscription_status?: string | null;

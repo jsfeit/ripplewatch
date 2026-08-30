@@ -17,6 +17,12 @@ const TIER_LABELS: Record<string, string> = {
   advanced: "Advanced",
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  active: "Active",
+  hold: "Hold",
+  cancelled: "Cancelled",
+};
+
 const MONTHLY_USD_BY_TIER: Record<string, number> = Object.fromEntries(TIERS.map((t) => [t.id, t.monthlyUsd]));
 
 const LLM_COST_WINDOW_DAYS = 30;
@@ -81,6 +87,7 @@ export default async function AdminAccountsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Tier</TableHead>
                 <TableHead>Billing</TableHead>
                 <TableHead>Competitors</TableHead>
@@ -96,6 +103,17 @@ export default async function AdminAccountsPage() {
                     <Link href={`/admin/accounts/${a.id}`} className="hover:underline">
                       {a.name}
                     </Link>
+                  </TableCell>
+                  <TableCell>
+                    {a.status === "active" ? (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        {STATUS_LABELS[a.status] ?? a.status}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="border-destructive/40 text-destructive">
+                        {STATUS_LABELS[a.status] ?? a.status}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary">{TIER_LABELS[a.tier] ?? a.tier}</Badge>
@@ -146,7 +164,7 @@ export default async function AdminAccountsPage() {
               ))}
               {accounts?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
                     No accounts yet.
                   </TableCell>
                 </TableRow>

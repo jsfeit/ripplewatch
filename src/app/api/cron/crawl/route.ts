@@ -25,7 +25,7 @@ export async function GET(request: Request) {
   }
 
   const supabase = createAdminClient();
-  const { data: accounts } = await supabase.from("accounts").select("*");
+  const { data: accounts } = await supabase.from("accounts").select("*").eq("status", "active");
 
   // Isolated per account: previously an uncaught throw from one account's
   // crawl (e.g. a Supabase error) would kill the whole for-loop, silently
