@@ -38,7 +38,11 @@ export async function GET(request: Request) {
   }
 
   const supabase = createAdminClient();
-  const { data: accounts } = await supabase.from("accounts").select("*").not("contact_email", "is", null);
+  const { data: accounts } = await supabase
+    .from("accounts")
+    .select("*")
+    .not("contact_email", "is", null)
+    .eq("status", "active");
 
   const summary = await mapWithConcurrency(accounts ?? [], ACCOUNT_CONCURRENCY, async (account: Account) => {
     if (!account.contact_email) return null;

@@ -24,7 +24,8 @@ export async function GET(request: Request) {
   const { data: accounts } = await supabase
     .from("accounts")
     .select("id, name, contact_email, created_at, payment_reminder_1_sent_at, payment_reminder_2_sent_at")
-    .is("stripe_subscription_id", null);
+    .is("stripe_subscription_id", null)
+    .eq("status", "active");
 
   const now = Date.now();
   const summary: Record<string, unknown>[] = [];
