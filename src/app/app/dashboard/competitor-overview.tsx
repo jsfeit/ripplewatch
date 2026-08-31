@@ -255,9 +255,7 @@ function CompetitorRow({
               {Object.values(momentum.components).map((c) => (
                 <div key={c.label} className="flex items-center justify-between text-muted-foreground">
                   <span>{c.label}</span>
-                  <span className="tabular-nums">
-                    {c.score === null ? "no data" : `${c.recentCount} vs ${c.priorCount} last period`}
-                  </span>
+                  <span className="tabular-nums">{c.detail}</span>
                 </div>
               ))}
             </div>

@@ -24,6 +24,14 @@ export type MomentumComponent = {
   score: number | null;
   recentCount: number;
   priorCount: number;
+  // Pre-formatted so every consumer (dashboard UI, weekly digest email)
+  // renders the same text without reimplementing the "what do these two
+  // numbers mean" logic per component. Hiring/pricing/press are raw
+  // signal-volume counts, so "X vs Y" reads naturally; relevanceTrend's
+  // recentCount/priorCount are just how many signals got scored in each
+  // window, not a measure of relevance itself, so it needs its own wording
+  // (average score, not signal count) or it silently misleads.
+  detail: string;
 };
 
 export type MomentumResult = {
@@ -85,30 +93,46 @@ export function computeMomentum(signals: Signal[]): MomentumResult {
         )
       : null;
 
+  const countDetail = (score: number | null, recentCount: number, priorCount: number) =>
+    score === null ? "no data" : `${recentCount} vs ${priorCount} last period`;
+
+  const hiringScore = countDelta(hiringRecent, hiringPrior);
+  const pricingScore = countDelta(pricingRecent, pricingPrior);
+  const pressScore = countDelta(pressRecent, pressPrior);
+  const relevanceRecentAvg = scoredRecent.length > 0 ? Math.round(avg(scoredRecent.map((s) => s.relevance_score!))) : null;
+  const relevancePriorAvg = scoredPrior.length > 0 ? Math.round(avg(scoredPrior.map((s) => s.relevance_score!))) : null;
+
   const components: MomentumResult["components"] = {
     hiring: {
       label: "Hiring",
-      score: countDelta(hiringRecent, hiringPrior),
+      score: hiringScore,
       recentCount: hiringRecent,
       priorCount: hiringPrior,
+      detail: countDetail(hiringScore, hiringRecent, hiringPrior),
     },
     pricing: {
       label: "Pricing activity",
-      score: countDelta(pricingRecent, pricingPrior),
+      score: pricingScore,
       recentCount: pricingRecent,
       priorCount: pricingPrior,
+      detail: countDetail(pricingScore, pricingRecent, pricingPrior),
     },
     pressAndFunding: {
       label: "Press & funding",
-      score: countDelta(pressRecent, pressPrior),
+      score: pressScore,
       recentCount: pressRecent,
       priorCount: pressPrior,
+      detail: countDetail(pressScore, pressRecent, pressPrior),
     },
     relevanceTrend: {
       label: "Relevance trend",
       score: relevanceTrendScore,
       recentCount: scoredRecent.length,
       priorCount: scoredPrior.length,
+      detail:
+        relevanceTrendScore === null
+          ? "no data"
+          : `avg ${relevanceRecentAvg} vs ${relevancePriorAvg} last period`,
     },
   };
 
