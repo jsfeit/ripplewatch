@@ -112,15 +112,13 @@ export async function GET(request: Request) {
       const momentumInputs: MomentumDigestInput[] = (competitors ?? []).map((c) => {
         const forCompetitor = (momentumSignals ?? []).filter((s) => s.competitor_id === c.id);
         const momentum = computeMomentum(forCompetitor);
-        const delta = (component: { recentCount: number; priorCount: number }) =>
-          `${component.recentCount} vs ${component.priorCount} last period`;
         return {
           competitorName: c.name,
           score: momentum.score,
           label: momentum.label,
-          hiringDelta: delta(momentum.components.hiring),
-          pricingDelta: delta(momentum.components.pricing),
-          pressDelta: delta(momentum.components.pressAndFunding),
+          hiringDelta: momentum.components.hiring.detail,
+          pricingDelta: momentum.components.pricing.detail,
+          pressDelta: momentum.components.pressAndFunding.detail,
         };
       });
 
