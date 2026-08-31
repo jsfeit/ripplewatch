@@ -30,6 +30,7 @@ export function SiteFooter() {
           <Link href="/state-of-competitive-intelligence" className="hover:text-foreground">Research</Link>
           <Link href="/blog" className="hover:text-foreground">Blog</Link>
           <Link href="/compare" className="hover:text-foreground">Compare</Link>
+          <Link href="/alternatives" className="hover:text-foreground">Alternatives</Link>
           <Link href="/competitive-intelligence-quiz" className="hover:text-foreground">CI Quiz</Link>
           <Link href="/faq" className="hover:text-foreground">FAQ</Link>
           <Link href="/careers" className="hover:text-foreground">Careers</Link>
