@@ -45,9 +45,22 @@ export type MomentumComponent = {
   detail: string;
 };
 
+// Below this many populated components (out of the 5 computeMomentum can
+// ever populate), the averaged score is one or two
+// signals doing all the work — real, but fragile enough that a UI showing
+// it should say so rather than presenting it with the same confidence as a
+// fully-populated score.
+const LOW_CONFIDENCE_THRESHOLD = 3;
+
+export type MomentumConfidence = "low" | "full";
+
 export type MomentumResult = {
   score: number | null;
   label: MomentumLabel;
+  // "low" when fewer than LOW_CONFIDENCE_THRESHOLD of the 5 components have
+  // real data — surfaced in the UI so a score built from one thin signal
+  // doesn't read with the same weight as one built from all five.
+  confidence: MomentumConfidence;
   components: {
     hiring: MomentumComponent;
     pricing: MomentumComponent;
@@ -236,21 +249,24 @@ export function computeMomentum(signals: Signal[], winLossEntries: WinLossEntry[
       priorCount: winLossOlder.length,
       detail:
         winRateScore === null
-          ? "no data"
+          ? sortedWinLoss.length === 0
+            ? "no data — log a win/loss to include this"
+            : `${sortedWinLoss.length} logged — need ${MIN_WIN_LOSS_ENTRIES} to include this`
           : `${describeWinLossMix(winLossNewer)} recently vs ${describeWinLossMix(winLossOlder)} earlier`,
     },
   };
 
   const present = Object.values(components).filter((c): c is MomentumComponent & { score: number } => c.score !== null);
+  const confidence: MomentumConfidence = present.length >= LOW_CONFIDENCE_THRESHOLD ? "full" : "low";
   if (present.length === 0) {
-    return { score: null, label: "Not enough history yet", components };
+    return { score: null, label: "Not enough history yet", confidence, components };
   }
 
   const score = avg(present.map((c) => c.score));
   const label: MomentumLabel =
     score >= HEATING_UP_THRESHOLD ? "Heating up" : score <= COOLING_THRESHOLD ? "Cooling" : "Steady";
 
-  return { score: Math.round(score), label, components };
+  return { score: Math.round(score), label, confidence, components };
 }
 
 function avg(nums: number[]): number {

@@ -340,9 +340,15 @@ export function CompetitorManager({
                         "flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold",
                         MOMENTUM_STYLES[momentum[c.id].label]
                       )}
+                      title={
+                        momentum[c.id].confidence === "low"
+                          ? "Based on limited data — log win/loss data or wait for more signals to sharpen this."
+                          : undefined
+                      }
                     >
                       {momentum[c.id].score! > 0 ? "+" : ""}
                       {momentum[c.id].score} · {momentum[c.id].label}
+                      {momentum[c.id].confidence === "low" ? <span className="opacity-70">*</span> : null}
                     </span>
                   ) : null}
                 </div>
