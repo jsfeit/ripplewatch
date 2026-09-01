@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, Shield, Users, Building2, Activity, Briefcase, Radar, Contact2, Mail, Newspaper, Megaphone, Handshake } from "lucide-react";
+import { LogOut, Shield, Users, Building2, Activity, Briefcase, Radar, Contact2, Mail, Newspaper, Megaphone, Handshake, Gift } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
@@ -17,6 +17,7 @@ const NAV = [
   { href: "/admin/signals", label: "Signals", icon: Radar },
   { href: "/admin/careers", label: "Careers", icon: Briefcase },
   { href: "/admin/affiliates", label: "Affiliates", icon: Handshake },
+  { href: "/admin/referrals", label: "Referrals", icon: Gift },
   { href: "/admin/status", label: "System status", icon: Activity },
 ];
 

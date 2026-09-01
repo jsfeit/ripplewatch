@@ -103,6 +103,12 @@ export default async function SettingsPage() {
     .is("revoked_at", null)
     .order("created_at", { ascending: false });
 
+  const { data: referrals } = await supabase
+    .from("referrals")
+    .select("id, referred_account_id, referred_at, qualified_at")
+    .eq("referrer_account_id", profile.account_id)
+    .order("referred_at", { ascending: false });
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-10 sm:py-10">
       <div className="mb-8">
@@ -121,6 +127,7 @@ export default async function SettingsPage() {
         integrations={integrations ?? []}
         recentSignals={recentSignals ?? []}
         apiKeys={apiKeys ?? []}
+        referrals={referrals ?? []}
         currentUserId={user.id}
       />
     </div>
