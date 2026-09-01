@@ -33,6 +33,16 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
         answer:
           "A chat interface scoped to your own tracked competitors and business context. Instead of waiting for an alert, you can ask something like \"what has this competitor changed recently that matters to us?\" and get an answer grounded in your last 90 days of signals.",
       },
+      {
+        question: "What is Momentum?",
+        answer:
+          "A single directional score (Heating up, Steady, or Cooling) for each competitor, built from five things we already track: hiring velocity, pricing activity, press/funding coverage weighted by whether it's actually good or bad news for them, how our own relevance scoring is trending, and your win/loss record against them. It's meant to answer \"is this competitor getting more or less dangerous\" at a glance, without you having to read four separate trend charts.",
+      },
+      {
+        question: "How do I get win/loss data into Ripplewatch?",
+        answer:
+          'Whichever fits how your team already works: paste a CSV export or sync HubSpot deals from the dashboard\'s Win/loss section, push outcomes programmatically via <a href="/docs/api">POST /api/v1/win-loss</a> the moment a deal closes, or just forward or CC a "we lost this deal" email to your personal address shown in Settings → Developer (Plus/Advanced plans). All three feed the same pipeline, and update each competitor\'s Momentum win-rate trend immediately.',
+      },
     ],
   },
   {
