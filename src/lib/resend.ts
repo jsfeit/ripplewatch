@@ -58,7 +58,8 @@ function renderDigestHtml(
   companyName: string,
   signals: DigestSignal[],
   cadence: DigestCadence,
-  verdict?: string | null
+  verdict?: string | null,
+  winLossNudge?: string | null
 ): string {
   const rows = [...signals]
     .sort((a, b) => digestSignalRank(a) - digestSignalRank(b))
@@ -88,11 +89,21 @@ function renderDigestHtml(
       </div>`
     : "";
 
+  // Deliberately understated compared to verdictHtml above — this is a
+  // nudge riding along on an email that's already going out, not a second
+  // headline competing with the actual signals for attention.
+  const nudgeHtml = winLossNudge
+    ? `<div style="border-top:1px solid #e5e5e5;margin-top:20px;padding-top:12px;">
+        <p style="margin:0;color:#666;font-size:13px;line-height:1.5;">${winLossNudge}</p>
+      </div>`
+    : "";
+
   return `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;">
     <p style="color:#888;font-size:13px;">${eyebrow}</p>
     <h2 style="margin:4px 0 16px;">${signals.length} signals, ${scoredCount} worth acting on</h2>
     ${verdictHtml}
     ${rows}
+    ${nudgeHtml}
     <p style="color:#888;font-size:12px;margin-top:24px;">Ripplewatch, for ${companyName}</p>
   </div>`;
 }
@@ -107,7 +118,12 @@ export async function sendDigestEmail(
   companyName: string,
   signals: DigestSignal[],
   cadence: DigestCadence = "daily",
-  verdict?: string | null
+  verdict?: string | null,
+  // Piggybacks on the weekly send rather than triggering a separate email —
+  // this only ever reaches someone when the digest was already going out
+  // for real signals, so it never becomes its own source of inbox noise.
+  // See digest-weekly/route.ts for the staleness check that produces it.
+  winLossNudge?: string | null
 ) {
   if (!isResendConfigured() || signals.length === 0) return;
 
@@ -117,7 +133,7 @@ export async function sendDigestEmail(
     from: getAlertsFromEmail(),
     to,
     subject: `${signals.filter((s) => s.scored).length} scored alert${signals.length === 1 ? "" : "s"} ${noun}`,
-    html: renderDigestHtml(companyName, signals, cadence, verdict),
+    html: renderDigestHtml(companyName, signals, cadence, verdict, winLossNudge),
   });
   if (result.error) throw new Error(result.error.message);
 }
