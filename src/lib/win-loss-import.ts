@@ -41,7 +41,11 @@ export type ApplyResult = {
 export async function applyExtractedWinLossEntries(
   supabase: SupabaseClient<Database>,
   accountId: string,
-  userId: string,
+  // Null for entries submitted via the public API or inbound email — there's
+  // no signed-in profile behind an API key or a forwarded email, and
+  // created_by is nullable (on delete set null) precisely so this has
+  // somewhere valid to point.
+  userId: string | null,
   competitors: { id: string; name: string }[],
   entries: ExtractedWinLossEntry[]
 ): Promise<ApplyResult> {
