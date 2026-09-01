@@ -279,6 +279,7 @@ export default async function DashboardPage() {
           <CompetitorOverview
             competitors={competitors ?? []}
             momentumSignals={momentumSignals ?? []}
+            momentumWinLoss={winLossEntries ?? []}
             seoAllowed={seoAllowed}
             seo={seo ?? []}
             seoSignals={seoSignals ?? []}

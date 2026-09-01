@@ -5,6 +5,17 @@ type Signal = Pick<
   "type" | "occurred_on" | "scored" | "relevance_score" | "sentiment"
 >;
 
+type WinLossEntry = Pick<Database["public"]["Tables"]["competitor_win_loss"]["Row"], "outcome" | "created_at">;
+
+// win/loss entries have no real deal-close date, only created_at (when it
+// was logged) — a bulk CSV import lands every historical row on the same
+// day, which would break a calendar-window comparison the same way an
+// empty prior-window baseline did for the other components (see
+// countDelta). Ordering by created_at and splitting into an older/newer
+// half sidesteps that: it works the same whether the data arrived as one
+// big backfill or trickled in one deal at a time via the API/email path.
+const MIN_WIN_LOSS_ENTRIES = 4;
+
 // Rolls up four things Ripplewatch already tracks for free — hiring
 // velocity, pricing activity, press/funding activity, and how the model's
 // own relevance scoring is trending — into one directional number, rather
@@ -42,6 +53,7 @@ export type MomentumResult = {
     pricing: MomentumComponent;
     pressAndFunding: MomentumComponent;
     relevanceTrend: MomentumComponent;
+    winRate: MomentumComponent;
   };
 };
 
@@ -109,7 +121,31 @@ function describeSentimentMix(signals: Signal[]): string {
   return parts.join(", ");
 }
 
-export function computeMomentum(signals: Signal[]): MomentumResult {
+function winRate(entries: WinLossEntry[]): number {
+  return avg(entries.map((e) => (e.outcome === "won" ? 1 : 0)));
+}
+
+// Older/newer split by logged order, not calendar time — see the type
+// comment above for why. Requires MIN_WIN_LOSS_ENTRIES total before
+// splitting at all; below that, a 1-vs-1 comparison is too noisy to mean
+// anything (one flipped outcome would swing from +100 to -100).
+function winRateDelta(sortedEntries: WinLossEntry[]): number | null {
+  if (sortedEntries.length < MIN_WIN_LOSS_ENTRIES) return null;
+  const mid = Math.floor(sortedEntries.length / 2);
+  const older = sortedEntries.slice(0, mid);
+  const newer = sortedEntries.slice(mid);
+  return Math.max(-100, Math.min(100, (winRate(newer) - winRate(older)) * 100));
+}
+
+// "3W-1L vs 1W-2L" — same "why is this the score it is" framing as the
+// other components' detail text.
+function describeWinLossMix(entries: WinLossEntry[]): string {
+  const won = entries.filter((e) => e.outcome === "won").length;
+  const lost = entries.filter((e) => e.outcome === "lost").length;
+  return `${won}W-${lost}L`;
+}
+
+export function computeMomentum(signals: Signal[], winLossEntries: WinLossEntry[] = []): MomentumResult {
   const now = new Date();
   const recentStart = new Date(now);
   recentStart.setUTCDate(recentStart.getUTCDate() - WINDOW_DAYS);
@@ -127,6 +163,14 @@ export function computeMomentum(signals: Signal[]): MomentumResult {
 
   const pressRecentSignals = recent.filter((s) => s.type === "news" || s.type === "funding");
   const pressPriorSignals = prior.filter((s) => s.type === "news" || s.type === "funding");
+
+  const sortedWinLoss = [...winLossEntries].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+  const winRateScore = winRateDelta(sortedWinLoss);
+  const winLossMid = Math.floor(sortedWinLoss.length / 2);
+  const winLossOlder = sortedWinLoss.slice(0, winLossMid);
+  const winLossNewer = sortedWinLoss.slice(winLossMid);
 
   const scoredRecent = recent.filter((s) => s.scored && s.relevance_score !== null);
   const scoredPrior = prior.filter((s) => s.scored && s.relevance_score !== null);
@@ -184,6 +228,16 @@ export function computeMomentum(signals: Signal[]): MomentumResult {
         relevanceTrendScore === null
           ? "no data"
           : `avg ${relevanceRecentAvg} vs ${relevancePriorAvg} last period`,
+    },
+    winRate: {
+      label: "Win rate trend",
+      score: winRateScore,
+      recentCount: winLossNewer.length,
+      priorCount: winLossOlder.length,
+      detail:
+        winRateScore === null
+          ? "no data"
+          : `${describeWinLossMix(winLossNewer)} recently vs ${describeWinLossMix(winLossOlder)} earlier`,
     },
   };
 
