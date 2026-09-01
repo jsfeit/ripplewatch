@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { computeMomentum } from "@/lib/momentum";
 import type { WinLossOutcome } from "@/lib/supabase/types";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -34,5 +35,24 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ entry: data });
+  // Immediate payoff, same pattern as POST /api/v1/win-loss: show the
+  // logging person the Momentum shift right away instead of making them
+  // navigate to the dashboard to discover it happened.
+  const sixtyDaysAgo = new Date();
+  sixtyDaysAgo.setUTCDate(sixtyDaysAgo.getUTCDate() - 60);
+  const { data: momentumSignals } = await supabase
+    .from("signals")
+    .select("competitor_id, type, sentiment, occurred_on, scored, relevance_score")
+    .eq("competitor_id", id)
+    .gte("occurred_on", sixtyDaysAgo.toISOString().slice(0, 10));
+  const { data: momentumWinLoss } = await supabase
+    .from("competitor_win_loss")
+    .select("competitor_id, outcome, created_at")
+    .eq("competitor_id", id);
+  const computed = computeMomentum(momentumSignals ?? [], momentumWinLoss ?? []);
+
+  return NextResponse.json({
+    entry: data,
+    momentum: { score: computed.score, label: computed.label, confidence: computed.confidence },
+  });
 }

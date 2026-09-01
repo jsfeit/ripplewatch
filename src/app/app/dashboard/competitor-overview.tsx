@@ -261,6 +261,14 @@ function CompetitorRow({
               </span>
             ) : null}
             <span className="text-xs font-semibold whitespace-nowrap">{momentum.label}</span>
+            {hasMomentumData && momentum.confidence === "low" ? (
+              <span
+                className="text-[10px] font-medium whitespace-nowrap opacity-70"
+                title="Based on limited data — this score may shift as more signals and win/loss data come in."
+              >
+                (limited data)
+              </span>
+            ) : null}
             {hasDetail ? (
               <ChevronDown className={cn("size-3.5 transition-transform", expanded && "rotate-180")} />
             ) : null}

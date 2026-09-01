@@ -91,6 +91,7 @@ export function WinLossPageClient({
   const [outcome, setOutcome] = useState<WinLossOutcome>("lost");
   const [reason, setReason] = useState("");
   const [savingEntry, setSavingEntry] = useState(false);
+  const [momentumMessage, setMomentumMessage] = useState<string | null>(null);
 
   const [churnReason, setChurnReason] = useState("");
   const [savingChurn, setSavingChurn] = useState(false);
@@ -150,6 +151,7 @@ export function WinLossPageClient({
   async function addEntry() {
     if (!reason.trim() || !selectedCompetitorId) return;
     setSavingEntry(true);
+    setMomentumMessage(null);
     try {
       const res = await fetch(`/api/competitors/${selectedCompetitorId}/win-loss`, {
         method: "POST",
@@ -161,6 +163,19 @@ export function WinLossPageClient({
       setEntries((prev) => [{ ...data.entry, competitor_id: selectedCompetitorId }, ...prev]);
       setReason("");
       setFormOpen(false);
+
+      // Immediate payoff: show the Momentum shift right here instead of
+      // making them navigate to the dashboard to discover it happened.
+      const competitorName = competitors.find((c) => c.id === selectedCompetitorId)?.name ?? "This competitor";
+      if (data.momentum?.score !== null && data.momentum?.score !== undefined) {
+        const sign = data.momentum.score > 0 ? "+" : "";
+        const confidenceNote = data.momentum.confidence === "low" ? " (still based on limited data)" : "";
+        setMomentumMessage(
+          `Momentum updated: ${competitorName} is now ${sign}${data.momentum.score} ${data.momentum.label}${confidenceNote}.`
+        );
+      } else {
+        setMomentumMessage(`Logged. Add a few more for ${competitorName} to start showing a Momentum win-rate trend.`);
+      }
     } catch {
       // Left in the form so nothing typed is lost; the button just stops spinning.
     } finally {
@@ -253,6 +268,12 @@ export function WinLossPageClient({
             </p>
           ) : importMessage ? (
             <p className="mt-2 text-xs text-muted-foreground">{importMessage}</p>
+          ) : null}
+
+          {momentumMessage ? (
+            <p className="mt-2 rounded-md border border-primary/20 bg-primary/[0.04] px-2.5 py-1.5 text-xs font-medium text-foreground">
+              {momentumMessage}
+            </p>
           ) : null}
 
           {formOpen ? (
