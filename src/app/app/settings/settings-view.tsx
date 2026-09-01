@@ -9,6 +9,7 @@ import { IntegrationConnector } from "@/components/app/integration-connector";
 import { TeamManager } from "@/components/app/team-manager";
 import { ApiKeysManager } from "@/components/app/api-keys-manager";
 import { WinLossEmailAddress } from "@/components/app/win-loss-email-address";
+import { ReferralCodeManager } from "@/components/app/referral-code-manager";
 import { CompetitorManager } from "@/components/app/competitor-manager";
 import { SuggestedCompetitorsPanel } from "@/components/app/suggested-competitors-panel";
 import { ThemeToggle } from "@/components/app/theme-toggle";
@@ -36,6 +37,7 @@ type ApiKey = Pick<
   Database["public"]["Tables"]["api_keys"]["Row"],
   "id" | "name" | "key_prefix" | "last_used_at" | "created_at"
 >;
+type Referral = Pick<Database["public"]["Tables"]["referrals"]["Row"], "id" | "referred_at" | "qualified_at">;
 
 const KNOWN_TABS = ["competitors", "integrations", "team", "plan", "digest", "developer", "appearance"] as const;
 
@@ -49,6 +51,7 @@ export function SettingsView({
   integrations,
   recentSignals,
   apiKeys,
+  referrals,
   currentUserId,
 }: {
   account: Account;
@@ -60,6 +63,7 @@ export function SettingsView({
   integrations: Integration[];
   recentSignals: Signal[];
   apiKeys: ApiKey[];
+  referrals: Referral[];
   currentUserId: string;
 }) {
   const [error, setError] = useState("");
@@ -364,6 +368,12 @@ export function SettingsView({
             </div>
           </CardContent>
         </Card>
+
+        {account.stripe_customer_id ? (
+          <div className="mt-6">
+            <ReferralCodeManager initialCode={account.referral_code} referrals={referrals} />
+          </div>
+        ) : null}
       </TabsContent>
 
       <TabsContent value="digest" className="mt-6 space-y-6">
