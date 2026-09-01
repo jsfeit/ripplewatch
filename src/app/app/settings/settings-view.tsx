@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { IntegrationConnector } from "@/components/app/integration-connector";
 import { TeamManager } from "@/components/app/team-manager";
 import { ApiKeysManager } from "@/components/app/api-keys-manager";
+import { WinLossEmailAddress } from "@/components/app/win-loss-email-address";
 import { CompetitorManager } from "@/components/app/competitor-manager";
 import { SuggestedCompetitorsPanel } from "@/components/app/suggested-competitors-panel";
 import { ThemeToggle } from "@/components/app/theme-toggle";
@@ -477,6 +478,21 @@ export function SettingsView({
             )}
           </CardContent>
         </Card>
+
+        {API_ACCESS_ALLOWED[account.tier] && (
+          <Card className="mt-6">
+            <CardHeader>
+              <h2 className="font-medium">Email win/loss data in</h2>
+              <p className="text-sm text-muted-foreground">
+                Forward a deal-closed email — or CC this address from your CRM — and we&apos;ll pull the outcome
+                straight into Momentum. No login, no export, nothing to remember.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <WinLossEmailAddress accountId={account.id} />
+            </CardContent>
+          </Card>
+        )}
       </TabsContent>
 
       <TabsContent value="appearance" className="mt-6">
