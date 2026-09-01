@@ -6,6 +6,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { CookieConsent } from "@/components/cookie-consent";
 import { UtmCapture } from "@/components/utm-capture";
+import { ReferralCapture } from "@/components/referral-capture";
 import { PromoBanner } from "@/components/marketing/promo-banner";
 import { getBannerCampaign } from "@/lib/promo-campaign";
 import { isSupabaseConfigured } from "@/lib/supabase/is-configured";
@@ -79,6 +80,7 @@ export default async function RootLayout({
             </Script>
           )}
           <UtmCapture />
+          <ReferralCapture />
           <PromoBanner bannerText={campaign?.bannerText ?? null} linkUrl={campaign?.linkUrl ?? null} />
           {children}
           <Analytics />

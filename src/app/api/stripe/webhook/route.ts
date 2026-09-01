@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getStripe, TIER_BY_PRICE } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendPlanChangeEmail, sendPaymentReceivedEmail } from "@/lib/resend";
+import { sendPlanChangeEmail, sendPaymentReceivedEmail, sendReferralWelcomeEmail, sendReferralSignedUpEmail } from "@/lib/resend";
 
 export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
@@ -40,6 +40,33 @@ export async function POST(request: Request) {
             })
             .eq("id", accountId);
           if (error) throw new Error(`checkout.session.completed account update failed: ${error.message}`);
+
+          // Best-effort, fire-and-forget — a referral notification failing
+          // shouldn't fail the webhook (Stripe would retry the whole event,
+          // re-running the account update above pointlessly).
+          const { data: referredAccount } = await supabase
+            .from("accounts")
+            .select("name, contact_email, referred_by_account_id")
+            .eq("id", accountId)
+            .single();
+          if (referredAccount?.referred_by_account_id) {
+            const { data: referrerAccount } = await supabase
+              .from("accounts")
+              .select("name, contact_email")
+              .eq("id", referredAccount.referred_by_account_id)
+              .single();
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
+            if (referredAccount.contact_email && referrerAccount?.name) {
+              sendReferralWelcomeEmail(referredAccount.contact_email, referredAccount.name, referrerAccount.name, appUrl).catch(
+                (err) => console.error("referral welcome email failed:", err)
+              );
+            }
+            if (referrerAccount?.contact_email) {
+              sendReferralSignedUpEmail(referrerAccount.contact_email, referrerAccount.name, referredAccount.name).catch(
+                (err) => console.error("referral signed-up email failed:", err)
+              );
+            }
+          }
         }
         break;
       }

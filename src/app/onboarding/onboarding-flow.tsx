@@ -36,6 +36,7 @@ import { createClient } from "@/lib/supabase/client";
 import { TIERS } from "@/lib/tiers";
 import { COMPETITOR_LIMIT } from "@/lib/tier-limits";
 import { UTM_STORAGE_KEY } from "@/components/utm-capture";
+import { REFERRAL_STORAGE_KEY } from "@/components/referral-capture";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SELF_SERVE_TIERS = TIERS.filter((t) => t.selfServe);
@@ -292,11 +293,22 @@ export function OnboardingFlow({
       churnReasons,
       tier: finalPlan,
     };
+    // Read fresh at submit time rather than folded into OnboardingDraft —
+    // it isn't something the user fills in, just whatever ?ref= landed in
+    // localStorage (see referral-capture.tsx), so it should apply the same
+    // way whether this is a fresh submission or a resume-from-email retry.
+    let referralCode: string | undefined;
+    try {
+      referralCode = localStorage.getItem(REFERRAL_STORAGE_KEY) ?? undefined;
+    } catch {
+      // ignore malformed/blocked storage
+    }
+
     try {
       const res = await fetch("/api/onboarding/complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, referralCode }),
       });
       const data = await res.json();
       if (!res.ok) {

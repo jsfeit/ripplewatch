@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sparkles, Loader2, CheckCircle2 } from "lucide-react";
+import { Sparkles, Loader2, CheckCircle2, Gift } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -39,7 +39,7 @@ type ApiKey = Pick<
 >;
 type Referral = Pick<Database["public"]["Tables"]["referrals"]["Row"], "id" | "referred_at" | "qualified_at">;
 
-const KNOWN_TABS = ["competitors", "integrations", "team", "plan", "digest", "developer", "appearance"] as const;
+const KNOWN_TABS = ["competitors", "integrations", "team", "plan", "referrals", "digest", "developer", "appearance"] as const;
 
 export function SettingsView({
   account,
@@ -159,6 +159,7 @@ export function SettingsView({
         <TabsTrigger value="integrations">Integrations</TabsTrigger>
         <TabsTrigger value="team">Team</TabsTrigger>
         <TabsTrigger value="plan">Plan</TabsTrigger>
+        <TabsTrigger value="referrals">Referrals</TabsTrigger>
         <TabsTrigger value="digest">Digest preview</TabsTrigger>
         <TabsTrigger value="developer">Developer</TabsTrigger>
         <TabsTrigger value="appearance">Appearance</TabsTrigger>
@@ -370,10 +371,44 @@ export function SettingsView({
         </Card>
 
         {account.stripe_customer_id ? (
-          <div className="mt-6">
-            <ReferralCodeManager initialCode={account.referral_code} referrals={referrals} />
-          </div>
+          <Card className="mt-6">
+            <CardContent className="flex flex-wrap items-center justify-between gap-3 py-5">
+              <div className="flex items-center gap-2.5">
+                <Gift className="size-4 text-primary" />
+                <div>
+                  <p className="text-sm font-semibold">Refer & earn</p>
+                  <p className="text-xs text-muted-foreground">
+                    {referrals.length > 0
+                      ? `${referrals.length} referral${referrals.length === 1 ? "" : "s"} sent, ${referrals.filter((r) => r.qualified_at).length} confirmed.`
+                      : "Get 2 months free for every company you refer."}
+                  </p>
+                </div>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={() => setActiveTab("referrals")}>
+                View referrals
+              </Button>
+            </CardContent>
+          </Card>
         ) : null}
+      </TabsContent>
+
+      <TabsContent value="referrals" className="mt-6">
+        {account.stripe_customer_id ? (
+          <Card>
+            <CardHeader>
+              <h2 className="font-medium">Refer & earn</h2>
+            </CardHeader>
+            <CardContent>
+              <ReferralCodeManager initialCode={account.referral_code} referrals={referrals} />
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="py-8 text-center text-sm text-muted-foreground">
+              Referrals unlock once you&apos;re on a paid plan.
+            </CardContent>
+          </Card>
+        )}
       </TabsContent>
 
       <TabsContent value="digest" className="mt-6 space-y-6">

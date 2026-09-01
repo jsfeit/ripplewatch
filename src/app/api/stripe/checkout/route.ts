@@ -59,7 +59,7 @@ export async function POST(request: Request) {
 
   const { data: account } = await supabase
     .from("accounts")
-    .select("stripe_customer_id")
+    .select("stripe_customer_id, referred_by_account_id")
     .eq("id", profile.account_id)
     .single();
 
@@ -75,6 +75,36 @@ export async function POST(request: Request) {
   // signup" without any extra new-customer check here.
   const tierIsSelfServe = TIERS.find((t) => t.id === tier)?.selfServe ?? false;
   const campaign = tierIsSelfServe ? await getCheckoutCampaign() : null;
+
+  // Referral discount takes priority over an evergreen campaign — a
+  // personal invite beats a generic promo. Tier-agnostic percent_off (never
+  // amount_off) so the same math works across Starter/Plus/Advanced without
+  // per-tier coupons: monthly gets 2 months fully free (repeating), annual
+  // gets ~2/12 off applied once at this one signup invoice. Created inline,
+  // single-use — this route only ever runs on a customer's first paid
+  // checkout, so there's no reuse/tracking column needed to prevent a
+  // referred account from getting the discount twice.
+  let referralCoupon: string | null = null;
+  if (account?.referred_by_account_id) {
+    try {
+      const coupon =
+        period === "monthly"
+          ? await getStripe().coupons.create({
+              percent_off: 100,
+              duration: "repeating",
+              duration_in_months: 2,
+              name: "Referral — 2 months free",
+            })
+          : await getStripe().coupons.create({
+              percent_off: Math.round((200 / 12) * 100) / 100,
+              duration: "once",
+              name: "Referral — 2 months free (annual)",
+            });
+      referralCoupon = coupon.id;
+    } catch (err) {
+      console.error("referral coupon creation failed, continuing without it:", err);
+    }
+  }
 
   // Embedded (renders inline via @stripe/react-stripe-js) instead of the
   // classic hosted redirect — same Stripe-managed form/PCI scope, just no
@@ -105,9 +135,11 @@ export async function POST(request: Request) {
   try {
     const session = await getStripe().checkout.sessions.create({
       ...baseParams,
-      ...(campaign
-        ? { discounts: [{ coupon: campaign.stripeCouponId }] }
-        : { allow_promotion_codes: true }),
+      ...(referralCoupon
+        ? { discounts: [{ coupon: referralCoupon }] }
+        : campaign
+          ? { discounts: [{ coupon: campaign.stripeCouponId }] }
+          : { allow_promotion_codes: true }),
     });
     return NextResponse.json({ clientSecret: session.client_secret });
   } catch (err) {
@@ -115,9 +147,11 @@ export async function POST(request: Request) {
     // the Stripe dashboard) without anything here knowing — without this
     // fallback, that single bad coupon ID would silently block every new
     // signup, not just the ones eligible for the promo. Retry once without
-    // the discount rather than failing the whole checkout over it.
-    if (campaign) {
-      console.error("checkout with promo coupon failed, retrying without it:", err);
+    // the discount rather than failing the whole checkout over it. Same
+    // fallback covers a referral coupon that somehow fails at session-
+    // creation time despite succeeding at coupons.create above.
+    if (referralCoupon || campaign) {
+      console.error("checkout with discount coupon failed, retrying without it:", err);
       try {
         const session = await getStripe().checkout.sessions.create({
           ...baseParams,
