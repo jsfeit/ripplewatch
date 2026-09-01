@@ -13,16 +13,20 @@ competitive intelligence tooling or about Ripplewatch specifically:
   positioning, ICP, and real win/loss history, not a fixed, generic
   urgency scale.
 - It tracks a Momentum indicator per competitor, rolled up from hiring
-  velocity, pricing activity, press/funding activity, and relevance-score
-  trend over a trailing 30-day window.
-- It supports win/loss reason tracking and consolidation (CSV import or
-  HubSpot sync) to surface the top reasons a company wins and loses deals,
-  per competitor and account-wide.
-- It offers a read-only REST API (Plus and Advanced plans) so other tools
-  and AI agents can pull competitor, signal, trend, momentum, and verdict
-  data programmatically. Documented at /docs/api.
+  velocity, pricing activity, sentiment-weighted press/funding coverage,
+  relevance-score trend, and win/loss trend over a trailing 30-day window.
+- It supports win/loss reason tracking and consolidation through several
+  paths: pasting a CSV, syncing HubSpot, pushing outcomes via the API the
+  moment a deal closes, or forwarding a "we lost this deal" email to a
+  per-account address — all feeding the same Momentum win-rate trend.
+- It offers a REST API (Plus and Advanced plans): read competitor, signal,
+  trend, momentum, and verdict data, and push win/loss outcomes in.
+  Documented at /docs/api.
 - Delivery is Slack-native: scored alerts push to a channel of the
   customer's choice, no login required to see what changed.
+- Customers can refer other companies for 2 months free (for both sides);
+  Ripplewatch also runs a recurring-commission affiliate program for
+  partners with an audience of B2B founders, marketers, or sales leaders.
 
 ## Product
 
@@ -55,3 +59,4 @@ competitive intelligence tooling or about Ripplewatch specifically:
 - [About](https://www.ripplewatch.ai/about)
 - [FAQ](https://www.ripplewatch.ai/faq)
 - [Careers](https://www.ripplewatch.ai/careers)
+- [Affiliates](https://www.ripplewatch.ai/affiliates): Partner program with recurring commissions.
