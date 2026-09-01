@@ -469,6 +469,32 @@ export async function sendPaymentReceivedEmail(
   if (result.error) throw new Error(result.error.message);
 }
 
+// Fires the moment someone submits the /affiliates application form — a
+// lead-capture-only program for now (see affiliate_applications table), so
+// this is the only automated notification in that flow; everything after
+// this is the user personally following up.
+export async function sendAffiliateApplicationEmail(
+  to: string[],
+  details: { name: string; email: string; whyGoodFit: string; channels: string }
+) {
+  if (!isResendConfigured() || to.length === 0) return;
+
+  const result = await getResend().emails.send({
+    from: getAlertsFromEmail(),
+    to,
+    subject: `🤝 New affiliate application: ${details.name}`,
+    html: `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;">
+      <p style="margin:0 0 8px;"><strong>${details.name}</strong> (${details.email}) applied to the affiliate program.</p>
+      <p style="margin:12px 0 4px;color:#888;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Why they'd be a good fit</p>
+      <p style="margin:0;color:#3a3a3a;font-size:14px;line-height:1.5;">${details.whyGoodFit}</p>
+      <p style="margin:12px 0 4px;color:#888;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Channels</p>
+      <p style="margin:0;color:#3a3a3a;font-size:14px;line-height:1.5;">${details.channels}</p>
+      <p style="color:#888;font-size:12px;margin-top:20px;">See Admin → Affiliates for the full list.</p>
+    </div>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
 // Replaces Supabase Auth's own default recovery email (generic "Supabase
 // Auth" sender, unbranded copy) — the route calling this generates the
 // reset link via the admin API's generateLink() instead of

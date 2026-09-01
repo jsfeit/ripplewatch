@@ -98,6 +98,9 @@ export interface Database {
           weekly_verdict_generated_at: string | null;
           trends_digest: string | null;
           trends_digest_generated_at: string | null;
+          referral_code: string | null;
+          referred_by_account_id: string | null;
+          referral_reward_coupon_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -126,6 +129,9 @@ export interface Database {
           weekly_verdict_generated_at?: string | null;
           trends_digest?: string | null;
           trends_digest_generated_at?: string | null;
+          referral_code?: string | null;
+          referred_by_account_id?: string | null;
+          referral_reward_coupon_id?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["accounts"]["Insert"]>;
@@ -521,6 +527,48 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["career_applications"]["Insert"]>;
+        Relationships: [];
+      };
+      referrals: {
+        Row: {
+          id: string;
+          referrer_account_id: string;
+          referred_account_id: string;
+          referred_at: string;
+          qualified_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          referrer_account_id: string;
+          referred_account_id: string;
+          referred_at?: string;
+          qualified_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["referrals"]["Insert"]>;
+        Relationships: [];
+      };
+      affiliate_applications: {
+        Row: {
+          id: string;
+          name: string;
+          email: string;
+          why_good_fit: string;
+          channels: string;
+          status: "pending" | "contacted" | "approved" | "rejected";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          email: string;
+          why_good_fit: string;
+          channels: string;
+          status?: "pending" | "contacted" | "approved" | "rejected";
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["affiliate_applications"]["Insert"]>;
         Relationships: [];
       };
       email_campaigns: {
