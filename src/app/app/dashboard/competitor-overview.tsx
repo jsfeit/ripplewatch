@@ -17,7 +17,10 @@ type CompetitorSeo = Pick<
 >;
 type CompetitorPricing = Pick<Database["public"]["Tables"]["competitor_pricing"]["Row"], "tiers">;
 type SignalRow = Database["public"]["Tables"]["signals"]["Row"];
-type MomentumSignal = Pick<SignalRow, "competitor_id" | "type" | "occurred_on" | "scored" | "relevance_score">;
+type MomentumSignal = Pick<
+  SignalRow,
+  "competitor_id" | "type" | "sentiment" | "occurred_on" | "scored" | "relevance_score"
+>;
 // seoSignals is only ever read for .competitor_id/.created_at (see
 // latestSeoSignalByCompetitor below); latestSignalByCompetitor is only
 // ever read for .title (see the CompetitorRow it's passed into) — two

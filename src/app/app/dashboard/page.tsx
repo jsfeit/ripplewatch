@@ -168,7 +168,7 @@ export default async function DashboardPage() {
     competitorIds.length
       ? db
           .from("signals")
-          .select("competitor_id, type, occurred_on, scored, relevance_score")
+          .select("competitor_id, type, sentiment, occurred_on, scored, relevance_score")
           .in("competitor_id", competitorIds)
           .gte("occurred_on", sixtyDaysAgo.toISOString().slice(0, 10))
       : Promise.resolve({ data: [] }),

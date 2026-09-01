@@ -573,8 +573,10 @@ When a business category/description is given for the company, use it as the dec
 
 These headlines were found via a keyword search, which can surface false matches on an ambiguous word — most commonly "raises," which means both "raised money" (funding) and "raised prices" (not funding at all). Classify each headline's real content instead of trusting why it matched the search: "type": "funding" only for an actual capital raise, acquisition, or investment round; everything else (a price change, a product launch, a hire, general press) is "news."
 
+Also classify "sentiment": whether this development is good, bad, or neutral news FOR THE COMPANY ITSELF — its own business health, reputation, or trajectory — not whether it's good or bad news for anyone competing with it. An actual funding round, a well-received product launch, a partnership, or growth news is "positive." A lawsuit, data breach, layoffs, an executive departure under a cloud, a service outage, backlash, or financial trouble is "negative." A price change on its own is usually "neutral" unless the headline itself frames it as a sign of strength or weakness — judge each headline on its own content, not on assumptions about what a price move generally means. Routine, ambiguous, or purely factual coverage with no clear direction is "neutral."
+
 Respond with strict JSON only, no markdown, matching this shape exactly:
-{"headlines": [{"relevant": true | false, "type": "news" | "funding"}, ...]}
+{"headlines": [{"relevant": true | false, "type": "news" | "funding", "sentiment": "positive" | "negative" | "neutral"}, ...]}
 
 One entry per headline, in the same order given. relevant: true only if the headline is genuinely about the named company itself, operating in its stated category — not a different entity, and not a different company in a different industry that happens to share the name. If genuinely unsure and no category was given to check against, default relevant to true (better to keep a maybe than to hide something real). If a category was given and the headline clearly describes a different industry, default relevant to false.`;
 
@@ -588,8 +590,9 @@ const HEADLINE_RELEVANCE_SCHEMA = {
         properties: {
           relevant: { type: "boolean" },
           type: { type: "string", enum: ["news", "funding"] },
+          sentiment: { type: "string", enum: ["positive", "negative", "neutral"] },
         },
-        required: ["relevant", "type"],
+        required: ["relevant", "type", "sentiment"],
         additionalProperties: false,
       },
     },
@@ -598,7 +601,9 @@ const HEADLINE_RELEVANCE_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-export type ClassifiedHeadline = { relevant: boolean; type: "news" | "funding" };
+export type SignalSentiment = "positive" | "negative" | "neutral";
+
+export type ClassifiedHeadline = { relevant: boolean; type: "news" | "funding"; sentiment: SignalSentiment };
 
 // Filters out headlines that just happen to contain a competitor's name as
 // part of an unrelated proper noun (a company called "Square" vs. "Union
@@ -648,12 +653,16 @@ For each headline, is it genuinely about this company, and is it actually a fund
       return {
         relevant: typeof r?.relevant === "boolean" ? r.relevant : true,
         type: r?.type === "funding" ? "funding" : "news",
+        sentiment:
+          r?.sentiment === "positive" || r?.sentiment === "negative" ? r.sentiment : ("neutral" as const),
       };
     });
   } catch {
-    // Parse failure: fail open (keep everything, default type) rather than
-    // lose real signals to a formatting glitch in the filter itself.
-    return headlines.map(() => ({ relevant: true, type: "news" as const }));
+    // Parse failure: fail open (keep everything, default type/sentiment)
+    // rather than lose real signals to a formatting glitch in the filter
+    // itself. Neutral is the safe default — it doesn't skew Momentum's
+    // sentiment-weighted press component in either direction.
+    return headlines.map(() => ({ relevant: true, type: "news" as const, sentiment: "neutral" as const }));
   }
 }
 
