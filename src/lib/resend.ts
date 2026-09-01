@@ -495,6 +495,97 @@ export async function sendAffiliateApplicationEmail(
   if (result.error) throw new Error(result.error.message);
 }
 
+// Fires from the checkout.session.completed webhook handler when the new
+// account was referred — confirms the 2 free months and names who sent
+// them, so the discount doesn't read as unexplained.
+export async function sendReferralWelcomeEmail(
+  to: string,
+  referredCompanyName: string,
+  referrerCompanyName: string,
+  appUrl: string
+) {
+  if (!isResendConfigured()) return;
+
+  const result = await getResend().emails.send({
+    from: getFromEmail(),
+    to,
+    subject: "You've got 2 months free on Ripplewatch",
+    html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+      <h2 style="margin:0 0 12px;">Welcome to Ripplewatch, ${referredCompanyName}</h2>
+      <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+        ${referrerCompanyName} referred you, so your first two months are on us — already applied, nothing
+        further to do.
+      </p>
+      <a href="${appUrl}/app/dashboard" style="display:inline-block;margin-top:8px;padding:10px 20px;background:#0f5f56;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">
+        Go to your dashboard
+      </a>
+      <p style="color:#888;font-size:12px;margin-top:24px;">
+        Questions? Just reply; a person reads every one.
+      </p>
+    </div>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
+// Fires alongside sendReferralWelcomeEmail, to the referrer instead — an
+// immediate "it worked" notice with no reward attached yet. The reward
+// itself only lands once the referral has stuck around for 60 days (see
+// sendReferralRewardEmail, sent by the referral-rewards cron).
+export async function sendReferralSignedUpEmail(to: string, referrerCompanyName: string, referredCompanyName: string) {
+  if (!isResendConfigured()) return;
+
+  const result = await getResend().emails.send({
+    from: getFromEmail(),
+    to,
+    subject: `${referredCompanyName} just signed up using your referral`,
+    html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+      <h2 style="margin:0 0 12px;">Your referral signed up</h2>
+      <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+        <strong>${referredCompanyName}</strong> just signed up on Ripplewatch using your referral link.
+        Once they've been an active customer for 60 days, your free months land automatically — we'll
+        email you, ${referrerCompanyName}, when that happens.
+      </p>
+      <p style="color:#888;font-size:12px;margin-top:24px;">
+        Questions? Just reply; a person reads every one.
+      </p>
+    </div>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
+// Fires from the referral-rewards cron once a referral qualifies (the
+// referred account has stayed active/paying for 60 days) and the reward
+// coupon has actually been attached to the referrer's own subscription.
+export async function sendReferralRewardEmail(
+  to: string,
+  referrerCompanyName: string,
+  referredCompanyName: string,
+  monthsEarned: number,
+  appUrl: string
+) {
+  if (!isResendConfigured()) return;
+
+  const result = await getResend().emails.send({
+    from: getFromEmail(),
+    to,
+    subject: `Your referral is confirmed — ${monthsEarned} free month${monthsEarned === 1 ? "" : "s"} applied`,
+    html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+      <h2 style="margin:0 0 12px;">Your referral to ${referredCompanyName} is confirmed</h2>
+      <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+        They've been an active Ripplewatch customer for 60 days now, ${referrerCompanyName} — ${monthsEarned}
+        free month${monthsEarned === 1 ? "" : "s"} just landed on your own account, already applied.
+      </p>
+      <a href="${appUrl}/app/settings?tab=referrals" style="display:inline-block;margin-top:8px;padding:10px 20px;background:#0f5f56;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">
+        View your referrals
+      </a>
+      <p style="color:#888;font-size:12px;margin-top:24px;">
+        Questions? Just reply; a person reads every one.
+      </p>
+    </div>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
 // Replaces Supabase Auth's own default recovery email (generic "Supabase
 // Auth" sender, unbranded copy) — the route calling this generates the
 // reset link via the admin API's generateLink() instead of

@@ -68,6 +68,11 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
         answer: "Yes, on every plan: annual billing is 20% cheaper than paying monthly.",
       },
       {
+        question: "Do you have a referral program?",
+        answer:
+          'Yes. Any paying customer can generate a shareable link from <a href="/app/settings?tab=referrals">Settings → Referrals</a>. The company you refer gets 2 months free the moment they sign up, and you get 2 months free of your own once they\'ve been an active, paying customer for 60 days (not immediately — this keeps the reward tied to a referral that actually sticks, not a signup that cancels right away). Multiple successful referrals stack. See our <a href="/terms#referral-program">Terms of Service</a> for the full details.',
+      },
+      {
         question: "What happens if I add more competitors than my plan allows?",
         answer:
           "You can add as many as you like, but only up to your plan's limit stay actively monitored (the earliest ones you added). The rest are visible but paused until you upgrade or remove one to make room.",

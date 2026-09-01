@@ -56,6 +56,7 @@ export async function POST(request: Request) {
     lostDealReasons,
     churnReasons,
     tier,
+    referralCode,
   }: {
     companyName: string;
     positioning: string;
@@ -66,6 +67,7 @@ export async function POST(request: Request) {
     lostDealReasons: string;
     churnReasons: string;
     tier?: string;
+    referralCode?: string;
   } = body;
 
   const namedCompetitors = (competitors ?? []).filter((c) => c.name?.trim());
@@ -115,6 +117,26 @@ export async function POST(request: Request) {
 
   if (profileError) {
     return NextResponse.json({ error: "Could not link account to your profile." }, { status: 500 });
+  }
+
+  // Referral attribution: best-effort, never blocks signup. Looking up
+  // another account by referral_code needs the service-role client — the
+  // signed-in session's RLS policy on accounts only ever exposes the
+  // caller's own row, not an arbitrary lookup by code.
+  if (referralCode?.trim()) {
+    (async () => {
+      const admin = createAdminClient();
+      const { data: referrer } = await admin
+        .from("accounts")
+        .select("id")
+        .eq("referral_code", referralCode.trim().toUpperCase())
+        .maybeSingle();
+      if (!referrer) return;
+      await Promise.all([
+        admin.from("accounts").update({ referred_by_account_id: referrer.id }).eq("id", accountId),
+        admin.from("referrals").insert({ referrer_account_id: referrer.id, referred_account_id: accountId }),
+      ]);
+    })().catch((err) => console.error("referral attribution failed:", err));
   }
 
   // Discovery fetches each competitor's homepage once, in parallel — with

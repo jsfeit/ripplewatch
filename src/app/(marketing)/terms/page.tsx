@@ -13,7 +13,7 @@ export const metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalDoc title="Terms of Service" updated="July 23, 2026">
+    <LegalDoc title="Terms of Service" updated="September 1, 2026">
       <p className="text-muted-foreground">
         These terms govern your use of ripplewatch.ai and the Ripplewatch application (&ldquo;Ripplewatch,&rdquo; &ldquo;we,&rdquo;
         &ldquo;us&rdquo;). By creating an account or using the service, you agree to them. If you are agreeing on
@@ -56,7 +56,25 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>4. Acceptable use</h2>
+        <h2 id="referral-program">4. Referral program</h2>
+        <p>
+          Customers on a paid plan can generate a referral link from Settings. If someone signs up through
+          your link, they get 2 months free applied automatically at checkout. You get 2 months free of
+          your own once the account you referred has been an active, paying customer for 60 consecutive
+          days — not immediately at signup. Multiple successful referrals stack. Referral credit is applied
+          as a discount on your own subscription; it has no cash value, can&apos;t be redeemed or transferred,
+          and expires if your subscription ends before it&apos;s used.
+        </p>
+        <p>
+          We may decline or reverse a referral reward if we reasonably believe it resulted from
+          self-referral, a fake or duplicate account, or any other attempt to abuse the program, and we may
+          modify, pause, or end the referral program at any time; doing so won&apos;t affect referral credit
+          already applied to your account.
+        </p>
+      </section>
+
+      <section>
+        <h2>5. Acceptable use</h2>
         <p>You agree not to:</p>
         <ul>
           <li>Use Ripplewatch for any unlawful purpose, or in a way that violates a third party&apos;s rights.</li>
@@ -67,7 +85,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>5. AI-generated content</h2>
+        <h2>6. AI-generated content</h2>
         <p>
           Relevance scores, reasoning, summaries, competitor suggestions, and answers from the Ask feature
           are generated automatically by AI models. They&apos;re intended to help you prioritize your attention,
@@ -78,7 +96,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>6. Third-party integrations</h2>
+        <h2>7. Third-party integrations</h2>
         <p>
           If you connect Slack, HubSpot, Gong, Zoom, or any other third-party service, your use of that
           service remains subject to its own terms. We are not responsible for the availability, accuracy,
@@ -87,7 +105,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2 id="subprocessors">7. Subprocessors</h2>
+        <h2 id="subprocessors">8. Subprocessors</h2>
         <p>
           We use a small number of third-party service providers (&ldquo;subprocessors&rdquo;) to run
           Ripplewatch. Each one only processes the data described below, only for the purpose listed: see
@@ -106,7 +124,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>8. Intellectual property</h2>
+        <h2>9. Intellectual property</h2>
         <p>
           We own Ripplewatch&apos;s software, design, and branding. You own the business information you input
           into the product (your positioning, ICP, notes, and uploaded documents), and you grant us a
@@ -115,7 +133,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>9. Termination</h2>
+        <h2>10. Termination</h2>
         <p>
           You can cancel your account at any time. We may suspend or terminate your access if you violate
           these terms, and we will make a reasonable effort to notify you first except where immediate
@@ -124,7 +142,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>10. Disclaimer of warranties</h2>
+        <h2>11. Disclaimer of warranties</h2>
         <p>
           Ripplewatch is provided &ldquo;as is&rdquo; without warranties of any kind, express or implied, including
           any warranty of merchantability, fitness for a particular purpose, or uninterrupted or
@@ -133,7 +151,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>11. Limitation of liability</h2>
+        <h2>12. Limitation of liability</h2>
         <p>
           To the fullest extent permitted by law, Ripplewatch will not be liable for any indirect, incidental,
           or consequential damages, and our total liability for any claim relating to the service is
@@ -142,7 +160,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>12. Governing law</h2>
+        <h2>13. Governing law</h2>
         <p>
           These terms are governed by the laws of the State of Delaware, USA, without regard to conflict-of-law
           principles. Any disputes will be resolved in the state or federal courts located in Delaware.
@@ -150,7 +168,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>13. Changes to these terms</h2>
+        <h2>14. Changes to these terms</h2>
         <p>
           We may update these terms from time to time. If we make material changes, we will update the date
           above and notify you by email or an in-app notice. Continued use of Ripplewatch after a change
@@ -159,7 +177,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>14. Contact us</h2>
+        <h2>15. Contact us</h2>
         <p>
           Questions about these terms? Reach us at{" "}
           <a href="mailto:hello@ripplewatch.ai">hello@ripplewatch.ai</a>.
