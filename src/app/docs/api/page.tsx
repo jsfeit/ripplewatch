@@ -1,6 +1,7 @@
 import { LegalDoc } from "@/components/marketing/legal-doc";
 
-const description = "Read-only REST API for pulling Ripplewatch's competitive intel into your own agents or tools.";
+const description =
+  "REST API for pulling Ripplewatch's competitive intel into your own agents or tools, and pushing win/loss data in.";
 
 export const metadata = {
   title: "API Docs",
@@ -60,7 +61,9 @@ function Endpoint({
 
       {params ? (
         <div className="mt-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Query params</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {method === "POST" ? "Body params" : "Query params"}
+          </p>
           <ul className="mt-1.5 space-y-1">{params}</ul>
         </div>
       ) : null}
@@ -81,8 +84,9 @@ export default function ApiDocsPage() {
   return (
     <LegalDoc title="API" updated="August 25, 2026">
       <p className="text-muted-foreground">
-        A read-only REST API for pulling your competitive intel into your own agents or tools, instead of a
-        person reading the dashboard. Available on Plus and Advanced plans: generate a key from{" "}
+        A REST API for pulling your competitive intel into your own agents or tools, instead of a person reading
+        the dashboard, and for pushing win/loss data in the moment a deal closes instead of batch-exporting a
+        CSV later. Available on Plus and Advanced plans: generate a key from{" "}
         <a href="/app/settings?tab=developer">Settings → Developer</a>.
       </p>
 
@@ -231,7 +235,7 @@ export default function ApiDocsPage() {
         <Endpoint
           method="GET"
           path="/api/v1/momentum"
-          description="A momentum score and label (e.g. Heating up, Steady, Cooling) for every tracked competitor, computed from hiring/pricing/press activity over the last 60 days. Deterministic — no LLM cost, safe to poll."
+          description="A momentum score and label (e.g. Heating up, Steady, Cooling) for every tracked competitor, computed from hiring, pricing, sentiment-weighted press/funding coverage, and win/loss trend. Deterministic — no LLM cost, safe to poll."
           example={`curl https://www.ripplewatch.ai/api/v1/momentum \\
   -H "Authorization: Bearer rw_live_..."`}
           response={`{
@@ -254,7 +258,46 @@ export default function ApiDocsPage() {
   }
 }`}
         />
+
+        <Endpoint
+          method="POST"
+          path="/api/v1/win-loss"
+          description="Push a single deal outcome in the moment it closes, instead of batch-exporting a CSV later. Matches competitor_name case-insensitively against your tracked competitors; a name that doesn't match becomes a suggested competitor instead of being rejected. Updates that competitor's Momentum win-rate trend immediately, returned in the response."
+          params={
+            <>
+              <Param name="competitor_name" type="string, required">
+                Matched case-insensitively against your tracked competitors.
+              </Param>
+              <Param name="outcome" type="string, required">
+                One of <code>won</code>, <code>lost</code>.
+              </Param>
+              <Param name="reason" type="string">
+                Optional free text — why the deal went that way.
+              </Param>
+            </>
+          }
+          example={`curl -X POST https://www.ripplewatch.ai/api/v1/win-loss \\
+  -H "Authorization: Bearer rw_live_..." \\
+  -H "Content-Type: application/json" \\
+  -d '{"competitor_name": "Xero", "outcome": "lost", "reason": "Price was the deciding factor"}'`}
+          response={`{
+  "matched": true,
+  "imported": 1,
+  "skipped": 0,
+  "suggestedCompetitors": [],
+  "momentum": { "score": 24, "label": "Heating up" }
+}`}
+        />
       </div>
+
+      <h2>Email win/loss data in</h2>
+      <p>
+        No integration or script needed: on Plus/Advanced plans, Settings → Developer shows a personal address of
+        the form <code>winloss+&lt;accountId&gt;@in.ripplewatch.ai</code>. Forward a &quot;we lost this deal&quot;
+        email there, or CC it from your CRM&apos;s outcome notification, and it runs through the same extraction
+        pipeline as a CSV import — matched against your tracked competitors, or added as a suggested competitor if
+        it isn&apos;t one yet.
+      </p>
 
       <h2>Response shape</h2>
       <p>
