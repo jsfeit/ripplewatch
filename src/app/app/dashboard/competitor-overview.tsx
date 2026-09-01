@@ -27,6 +27,10 @@ type MomentumSignal = Pick<
 // different narrow shapes, not the same Signal type reused.
 type SeoSignal = Pick<SignalRow, "competitor_id" | "created_at">;
 type LatestSignal = Pick<SignalRow, "title">;
+type MomentumWinLoss = Pick<
+  Database["public"]["Tables"]["competitor_win_loss"]["Row"],
+  "competitor_id" | "outcome" | "created_at"
+>;
 
 const TREND_LABELS: Record<SeoTrafficTrend, string> = {
   up: "Trending up",
@@ -67,6 +71,7 @@ function pricingSummary(record: CompetitorPricing | undefined): string {
 export function CompetitorOverview({
   competitors,
   momentumSignals,
+  momentumWinLoss,
   seoAllowed,
   seo,
   seoSignals,
@@ -75,6 +80,7 @@ export function CompetitorOverview({
 }: {
   competitors: Competitor[];
   momentumSignals: MomentumSignal[];
+  momentumWinLoss: MomentumWinLoss[];
   seoAllowed: boolean;
   seo: CompetitorSeo[];
   seoSignals: SeoSignal[];
@@ -97,8 +103,19 @@ export function CompetitorOverview({
       list.push(signal);
       byCompetitor.set(signal.competitor_id, list);
     }
-    return new Map(competitors.map((c) => [c.id, computeMomentum(byCompetitor.get(c.id) ?? [])]));
-  }, [competitors, momentumSignals]);
+    const winLossByCompetitor = new Map<string, MomentumWinLoss[]>();
+    for (const entry of momentumWinLoss) {
+      const list = winLossByCompetitor.get(entry.competitor_id) ?? [];
+      list.push(entry);
+      winLossByCompetitor.set(entry.competitor_id, list);
+    }
+    return new Map(
+      competitors.map((c) => [
+        c.id,
+        computeMomentum(byCompetitor.get(c.id) ?? [], winLossByCompetitor.get(c.id) ?? []),
+      ])
+    );
+  }, [competitors, momentumSignals, momentumWinLoss]);
 
   const sorted = useMemo(
     () =>

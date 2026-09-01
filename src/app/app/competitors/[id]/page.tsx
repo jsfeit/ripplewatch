@@ -77,10 +77,14 @@ export default async function CompetitorDetailPage({
         .in("competitor_id", competitorIds)
         .gte("occurred_on", sixtyDaysAgo.toISOString().slice(0, 10))
     : { data: [] };
+  const { data: momentumWinLoss } = competitorIds.length
+    ? await db.from("competitor_win_loss").select("competitor_id, outcome, created_at").in("competitor_id", competitorIds)
+    : { data: [] };
   const momentumByCompetitorId: Record<string, MomentumResult> = {};
   for (const c of competitors ?? []) {
     momentumByCompetitorId[c.id] = computeMomentum(
-      (momentumSignals ?? []).filter((s) => s.competitor_id === c.id)
+      (momentumSignals ?? []).filter((s) => s.competitor_id === c.id),
+      (momentumWinLoss ?? []).filter((e) => e.competitor_id === c.id)
     );
   }
 

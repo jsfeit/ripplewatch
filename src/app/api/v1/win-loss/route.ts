@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { authenticateApiRequest } from "@/lib/api-auth";
 import { applyExtractedWinLossEntries } from "@/lib/win-loss-import";
+import { computeMomentum } from "@/lib/momentum";
 import type { ExtractedWinLossEntry } from "@/lib/anthropic";
 
 // Structured counterpart to the CSV-paste/HubSpot-sync import flow: a
@@ -48,10 +49,32 @@ export async function POST(request: Request) {
 
   const result = await applyExtractedWinLossEntries(supabase, auth.accountId, null, competitors, [entry]);
 
+  // Immediate payoff: a tracked competitor's win/loss trend is now one of the
+  // Momentum components, so a caller pushing data through this endpoint can
+  // see the shift land in the same response instead of having to reload the
+  // dashboard to find out it mattered.
+  let momentum: { score: number | null; label: string } | null = null;
+  if (tracked) {
+    const sixtyDaysAgo = new Date();
+    sixtyDaysAgo.setUTCDate(sixtyDaysAgo.getUTCDate() - 60);
+    const { data: momentumSignals } = await supabase
+      .from("signals")
+      .select("competitor_id, type, sentiment, occurred_on, scored, relevance_score")
+      .eq("competitor_id", tracked.id)
+      .gte("occurred_on", sixtyDaysAgo.toISOString().slice(0, 10));
+    const { data: momentumWinLoss } = await supabase
+      .from("competitor_win_loss")
+      .select("competitor_id, outcome, created_at")
+      .eq("competitor_id", tracked.id);
+    const computed = computeMomentum(momentumSignals ?? [], momentumWinLoss ?? []);
+    momentum = { score: computed.score, label: computed.label };
+  }
+
   return NextResponse.json({
     matched: Boolean(tracked),
     imported: result.imported,
     skipped: result.skipped,
     suggestedCompetitors: result.suggestedCompetitors,
+    momentum,
   });
 }

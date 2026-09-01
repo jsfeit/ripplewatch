@@ -108,10 +108,15 @@ export async function GET(request: Request) {
         .select("competitor_id, type, sentiment, occurred_on, scored, relevance_score")
         .in("competitor_id", competitorIds)
         .gte("occurred_on", sixtyDaysAgo.toISOString().slice(0, 10));
+      const { data: momentumWinLoss } = await supabase
+        .from("competitor_win_loss")
+        .select("competitor_id, outcome, created_at")
+        .in("competitor_id", competitorIds);
 
       const momentumInputs: MomentumDigestInput[] = (competitors ?? []).map((c) => {
         const forCompetitor = (momentumSignals ?? []).filter((s) => s.competitor_id === c.id);
-        const momentum = computeMomentum(forCompetitor);
+        const winLossForCompetitor = (momentumWinLoss ?? []).filter((e) => e.competitor_id === c.id);
+        const momentum = computeMomentum(forCompetitor, winLossForCompetitor);
         return {
           competitorName: c.name,
           score: momentum.score,
@@ -119,6 +124,7 @@ export async function GET(request: Request) {
           hiringDelta: momentum.components.hiring.detail,
           pricingDelta: momentum.components.pricing.detail,
           pressDelta: momentum.components.pressAndFunding.detail,
+          winRateDelta: momentum.components.winRate.detail,
         };
       });
 
