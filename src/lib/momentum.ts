@@ -49,9 +49,21 @@ export type MomentumResult = {
 // changed, approaches +/-100 as activity swings entirely to one window.
 // The +2 smoothing keeps a lone signal (1 vs 0) from immediately maxing
 // out the score the way a plain percentage-change would.
+//
+// Requires at least one signal in BOTH windows, not just total > 0. A
+// zero-count prior window isn't evidence the competitor went quiet — for
+// an account that's only been tracking a competitor for a few weeks, the
+// prior 30-60-days-ago window is often sparse simply because backfill
+// coverage doesn't reach that far back yet, not because nothing happened.
+// Without this guard, "9 recent vs 0 prior" scores as a ~+82 spike purely
+// from an empty baseline, which is indistinguishable from real momentum
+// in the UI and was producing implausible, clustered "Heating up" labels
+// across newly-tracked competitors. relevanceTrend already had an
+// equivalent guard (both window lengths must be > 0); this brings the
+// other three components in line with it.
 function countDelta(recentCount: number, priorCount: number): number | null {
+  if (recentCount === 0 || priorCount === 0) return null;
   const total = recentCount + priorCount;
-  if (total === 0) return null;
   const raw = (100 * (recentCount - priorCount)) / (total + 2);
   return Math.max(-100, Math.min(100, raw));
 }
