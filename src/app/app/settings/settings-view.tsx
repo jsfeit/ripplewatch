@@ -77,25 +77,40 @@ export function SettingsView({
   const currentTier = TIERS.find((t) => t.id === account.tier) ?? TIERS[0];
   const isConnected = (provider: string) => integrations.some((i) => i.provider === provider && i.connected);
 
-  // Lets a direct/bookmarked link to /app/settings?tab=plan (or
-  // ?tab=competitors, from the old /app/competitors redirect) land on that
+  // Lets a direct/bookmarked link to /app/settings#referrals (or the older
+  // ?tab=plan form, still used by existing emails/FAQ/CTAs) land on that
   // tab instead of always opening on Integrations. Read in an effect (not a
   // lazy useState initializer) so the server-rendered and first-client-render
   // markup always agree on "integrations", avoiding a hydration mismatch;
-  // the effect then flips tabs post-mount. This only fires once on mount,
-  // so it doesn't cover in-app "Upgrade to connect" clicks below (those call
-  // setActiveTab directly via onUpgradeClick instead).
+  // the effect then flips tabs post-mount. This only fires once on mount —
+  // every in-app tab switch after that goes through selectTab() below
+  // instead, which also keeps the address bar's hash in sync.
   const [activeTab, setActiveTab] = useState("integrations");
 
   useEffect(() => {
-    const tab = new URLSearchParams(window.location.search).get("tab");
-    if (tab && (KNOWN_TABS as readonly string[]).includes(tab)) {
+    // Hash takes priority — it's the form worth sharing (short, no "?tab="
+    // noise), but ?tab= links already exist in emails/FAQ/other pages, so
+    // both keep working rather than picking one and breaking the other.
+    const hashTab = window.location.hash.slice(1);
+    const queryTab = new URLSearchParams(window.location.search).get("tab");
+    const tab = [hashTab, queryTab].find((t) => t && (KNOWN_TABS as readonly string[]).includes(t));
+    if (tab) {
       // Syncing one-time from an external system (the URL) on mount —
       // the case the rule's own guidance calls out as fine.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab(tab);
     }
   }, []);
+
+  // Keeps the address bar's hash in sync with whichever tab is showing, so
+  // switching to Referrals (say, via the "View referrals" button on Plan)
+  // leaves a #referrals URL in the bar that's immediately copy-pasteable —
+  // replaceState rather than pushState, so tab-switching doesn't pollute
+  // browser back/forward history.
+  function selectTab(tab: string) {
+    setActiveTab(tab);
+    window.history.replaceState(null, "", `#${tab}`);
+  }
 
   async function handleManageBilling() {
     setBillingLoading("portal");
@@ -153,7 +168,7 @@ export function SettingsView({
         tier={checkoutModal?.tier ?? "starter"}
         period={checkoutModal?.period ?? "monthly"}
       />
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={selectTab}>
       <TabsList>
         <TabsTrigger value="competitors">Competitors</TabsTrigger>
         <TabsTrigger value="integrations">Integrations</TabsTrigger>
@@ -235,7 +250,7 @@ export function SettingsView({
               provider="hubspot"
               disconnectAction={disconnectIntegrationAction}
               requiresUpgrade={!CRM_ALLOWED[account.tier]}
-              onUpgradeClick={() => setActiveTab("plan")}
+              onUpgradeClick={() => selectTab("plan")}
             />
             <IntegrationConnector
               name="Intercom"
@@ -249,7 +264,7 @@ export function SettingsView({
               provider="intercom"
               disconnectAction={disconnectIntegrationAction}
               requiresUpgrade={!INTERCOM_ALLOWED[account.tier]}
-              onUpgradeClick={() => setActiveTab("plan")}
+              onUpgradeClick={() => selectTab("plan")}
             />
           </CardContent>
         </Card>
@@ -282,7 +297,7 @@ export function SettingsView({
               provider="zoom"
               disconnectAction={disconnectIntegrationAction}
               requiresUpgrade={!CALL_INTEL_ALLOWED[account.tier]}
-              onUpgradeClick={() => setActiveTab("plan")}
+              onUpgradeClick={() => selectTab("plan")}
             />
           </CardContent>
         </Card>
@@ -384,7 +399,7 @@ export function SettingsView({
                   </p>
                 </div>
               </div>
-              <Button type="button" variant="outline" size="sm" onClick={() => setActiveTab("referrals")}>
+              <Button type="button" variant="outline" size="sm" onClick={() => selectTab("referrals")}>
                 View referrals
               </Button>
             </CardContent>
@@ -512,7 +527,7 @@ export function SettingsView({
                   API access is a Plus/Advanced feature.{" "}
                   <button
                     type="button"
-                    onClick={() => setActiveTab("plan")}
+                    onClick={() => selectTab("plan")}
                     className="underline underline-offset-2"
                   >
                     Upgrade
