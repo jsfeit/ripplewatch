@@ -370,7 +370,7 @@ export function SettingsView({
           </CardContent>
         </Card>
 
-        {account.stripe_customer_id ? (
+        {account.status === "active" ? (
           <Card className="mt-6">
             <CardContent className="flex flex-wrap items-center justify-between gap-3 py-5">
               <div className="flex items-center gap-2.5">
@@ -393,7 +393,7 @@ export function SettingsView({
       </TabsContent>
 
       <TabsContent value="referrals" className="mt-6">
-        {account.stripe_customer_id ? (
+        {account.status === "active" ? (
           <Card>
             <CardHeader>
               <h2 className="font-medium">Refer & earn</h2>
@@ -405,7 +405,7 @@ export function SettingsView({
         ) : (
           <Card>
             <CardContent className="py-8 text-center text-sm text-muted-foreground">
-              Referrals unlock once you&apos;re on a paid plan.
+              Referrals aren&apos;t available while your account is on hold.
             </CardContent>
           </Card>
         )}
