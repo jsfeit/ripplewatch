@@ -7,6 +7,7 @@ export type AccountStatus = "active" | "hold" | "cancelled";
 export type SignalType = "pricing" | "job_posting" | "review" | "news" | "funding" | "seo" | "product_change";
 export type SeoTrafficTrend = "up" | "down" | "flat" | "unknown";
 export type RelevanceLevel = "High" | "Medium" | "Low";
+export type SignalSentimentValue = "positive" | "negative" | "neutral";
 export type SignalSource = "manual" | "pipeline" | "backfill";
 export type IntegrationProvider = "slack" | "email" | "hubspot" | "salesforce" | "intercom" | "gong" | "zoom";
 export type ProfileRole = "member" | "admin";
@@ -305,6 +306,7 @@ export interface Database {
           id: string;
           competitor_id: string;
           type: SignalType;
+          sentiment: SignalSentimentValue | null;
           title: string;
           summary: string | null;
           url: string | null;
@@ -323,6 +325,7 @@ export interface Database {
           id?: string;
           competitor_id: string;
           type: SignalType;
+          sentiment?: SignalSentimentValue | null;
           title: string;
           summary?: string | null;
           url?: string | null;

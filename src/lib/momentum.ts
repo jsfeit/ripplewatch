@@ -2,7 +2,7 @@ import type { Database } from "@/lib/supabase/types";
 
 type Signal = Pick<
   Database["public"]["Tables"]["signals"]["Row"],
-  "type" | "occurred_on" | "scored" | "relevance_score"
+  "type" | "occurred_on" | "scored" | "relevance_score" | "sentiment"
 >;
 
 // Rolls up four things Ripplewatch already tracks for free — hiring
@@ -73,6 +73,42 @@ function inWindow(occurredOn: string, start: Date, end: Date): boolean {
   return d >= start && d < end;
 }
 
+function sentimentWeight(sentiment: Signal["sentiment"]): number {
+  if (sentiment === "positive") return 1;
+  if (sentiment === "negative") return -1;
+  return 0; // neutral, or unclassified (older signals predating sentiment tagging)
+}
+
+// Measures whether press/funding coverage is trending more favorable or
+// more unfavorable for the competitor between the two windows — not just
+// whether there's more or less of it. Pure volume ("8 stories this month
+// vs 2 last month") reads as "heating up" regardless of whether that
+// coverage is a funding round or a lawsuit; averaging sentiment per
+// signal and comparing the two windows' averages answers "is this good or
+// bad news for them" instead. Same zero-baseline guard as countDelta:
+// requires at least one signal in both windows, since an empty prior
+// window says nothing about sentiment either.
+function sentimentDelta(recent: Signal[], prior: Signal[]): number | null {
+  if (recent.length === 0 || prior.length === 0) return null;
+  const avgRecent = avg(recent.map((s) => sentimentWeight(s.sentiment)));
+  const avgPrior = avg(prior.map((s) => sentimentWeight(s.sentiment)));
+  return Math.max(-100, Math.min(100, (avgRecent - avgPrior) * 100));
+}
+
+// "3 positive, 1 negative" — omits a sentiment bucket entirely when it's
+// zero, and falls back to a plain count when everything in the window is
+// neutral/unclassified, so the detail text never reads as padded with
+// zeroes.
+function describeSentimentMix(signals: Signal[]): string {
+  const positive = signals.filter((s) => s.sentiment === "positive").length;
+  const negative = signals.filter((s) => s.sentiment === "negative").length;
+  const parts: string[] = [];
+  if (positive > 0) parts.push(`${positive} positive`);
+  if (negative > 0) parts.push(`${negative} negative`);
+  if (parts.length === 0) return `${signals.length} neutral`;
+  return parts.join(", ");
+}
+
 export function computeMomentum(signals: Signal[]): MomentumResult {
   const now = new Date();
   const recentStart = new Date(now);
@@ -89,8 +125,8 @@ export function computeMomentum(signals: Signal[]): MomentumResult {
   const pricingRecent = recent.filter((s) => s.type === "pricing").length;
   const pricingPrior = prior.filter((s) => s.type === "pricing").length;
 
-  const pressRecent = recent.filter((s) => s.type === "news" || s.type === "funding").length;
-  const pressPrior = prior.filter((s) => s.type === "news" || s.type === "funding").length;
+  const pressRecentSignals = recent.filter((s) => s.type === "news" || s.type === "funding");
+  const pressPriorSignals = prior.filter((s) => s.type === "news" || s.type === "funding");
 
   const scoredRecent = recent.filter((s) => s.scored && s.relevance_score !== null);
   const scoredPrior = prior.filter((s) => s.scored && s.relevance_score !== null);
@@ -110,7 +146,7 @@ export function computeMomentum(signals: Signal[]): MomentumResult {
 
   const hiringScore = countDelta(hiringRecent, hiringPrior);
   const pricingScore = countDelta(pricingRecent, pricingPrior);
-  const pressScore = countDelta(pressRecent, pressPrior);
+  const pressScore = sentimentDelta(pressRecentSignals, pressPriorSignals);
   const relevanceRecentAvg = scoredRecent.length > 0 ? Math.round(avg(scoredRecent.map((s) => s.relevance_score!))) : null;
   const relevancePriorAvg = scoredPrior.length > 0 ? Math.round(avg(scoredPrior.map((s) => s.relevance_score!))) : null;
 
@@ -132,9 +168,12 @@ export function computeMomentum(signals: Signal[]): MomentumResult {
     pressAndFunding: {
       label: "Press & funding",
       score: pressScore,
-      recentCount: pressRecent,
-      priorCount: pressPrior,
-      detail: countDetail(pressScore, pressRecent, pressPrior),
+      recentCount: pressRecentSignals.length,
+      priorCount: pressPriorSignals.length,
+      detail:
+        pressScore === null
+          ? "no data"
+          : `${describeSentimentMix(pressRecentSignals)} vs ${describeSentimentMix(pressPriorSignals)} last period`,
     },
     relevanceTrend: {
       label: "Relevance trend",

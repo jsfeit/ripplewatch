@@ -105,7 +105,7 @@ export async function GET(request: Request) {
       sixtyDaysAgo.setUTCDate(sixtyDaysAgo.getUTCDate() - 60);
       const { data: momentumSignals } = await supabase
         .from("signals")
-        .select("competitor_id, type, occurred_on, scored, relevance_score")
+        .select("competitor_id, type, sentiment, occurred_on, scored, relevance_score")
         .in("competitor_id", competitorIds)
         .gte("occurred_on", sixtyDaysAgo.toISOString().slice(0, 10));
 

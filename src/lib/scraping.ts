@@ -10,6 +10,7 @@ import {
   searchCompetitorNews,
   filterRelevantHeadlines,
   canonicalizeHeadlines,
+  type SignalSentiment,
 } from "@/lib/anthropic";
 import { normalizeDomain, guessPricingUrl, guessCareersUrl } from "@/lib/domain";
 import { fetchDomainTrafficMetrics } from "@/lib/seo-data";
@@ -672,6 +673,9 @@ export async function checkProductHuntLaunches(supabase: AdminClient, competitor
       .insert({
         competitor_id: competitor.id,
         type: "news",
+        // Always positive by definition — a product launch is inherently
+        // favorable framing, no LLM classification needed for this one.
+        sentiment: "positive",
         title: `${competitor.name} launched "${launch.title}" on Product Hunt`,
         summary: launch.tagline,
         url: launch.url,
@@ -997,7 +1001,7 @@ async function filterHeadlinesForCompetitor<T extends { title: string; descripti
   supabase: AdminClient,
   competitor: Competitor,
   headlines: T[]
-): Promise<(T & { classifiedType: "news" | "funding" })[]> {
+): Promise<(T & { classifiedType: "news" | "funding"; classifiedSentiment: SignalSentiment })[]> {
   if (headlines.length === 0) return [];
   const classified = await filterRelevantHeadlines(
     competitor.name,
@@ -1012,7 +1016,7 @@ async function filterHeadlinesForCompetitor<T extends { title: string; descripti
   // that surfaced a headline isn't a reliable signal of what it's actually
   // about.
   const relevantHeadlines = headlines
-    .map((h, i) => ({ ...h, classifiedType: classified[i].type }))
+    .map((h, i) => ({ ...h, classifiedType: classified[i].type, classifiedSentiment: classified[i].sentiment }))
     .filter((_, i) => classified[i].relevant);
   if (relevantHeadlines.length === 0) return relevantHeadlines;
 
@@ -1053,6 +1057,7 @@ export async function checkNews(supabase: AdminClient, competitor: Competitor, i
       .insert({
         competitor_id: competitor.id,
         type: headline.classifiedType,
+        sentiment: headline.classifiedSentiment,
         title: headline.title,
         summary: headline.description ?? headline.source,
         url: headline.link,
@@ -1090,6 +1095,7 @@ export async function checkFunding(supabase: AdminClient, competitor: Competitor
       .insert({
         competitor_id: competitor.id,
         type: headline.classifiedType,
+        sentiment: headline.classifiedSentiment,
         title: headline.title,
         summary: headline.description ?? headline.source,
         url: headline.link,
