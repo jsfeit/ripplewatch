@@ -575,7 +575,7 @@ export async function sendReferralRewardEmail(
         They've been an active Ripplewatch customer for 60 days now, ${referrerCompanyName} — ${monthsEarned}
         free month${monthsEarned === 1 ? "" : "s"} just landed on your own account, already applied.
       </p>
-      <a href="${appUrl}/app/settings?tab=referrals" style="display:inline-block;margin-top:8px;padding:10px 20px;background:#0f5f56;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">
+      <a href="${appUrl}/app/settings#referrals" style="display:inline-block;margin-top:8px;padding:10px 20px;background:#0f5f56;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">
         View your referrals
       </a>
       <p style="color:#888;font-size:12px;margin-top:24px;">
