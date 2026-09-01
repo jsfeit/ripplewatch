@@ -88,9 +88,14 @@ export async function POST(request: Request) {
           console.error(`customer.subscription.created: no tier mapped for price ${priceId} (account ${accountId})`);
         }
         if (accountId) {
+          // A new subscription being created is the reactivation signal —
+          // status may have been auto-set to "hold" by the previous
+          // subscription's cancellation (see customer.subscription.deleted);
+          // a real new subscription always clears that, regardless of why
+          // it was held.
           const { error } = await supabase
             .from("accounts")
-            .update({ ...(tier ? { tier } : {}), subscription_status: subscription.status })
+            .update({ ...(tier ? { tier } : {}), subscription_status: subscription.status, status: "active" })
             .eq("id", accountId);
           if (error) throw new Error(`customer.subscription.created account update failed: ${error.message}`);
         }
@@ -175,9 +180,20 @@ export async function POST(request: Request) {
         const subscription = event.data.object as Stripe.Subscription;
         const accountId = subscription.metadata?.account_id;
         if (accountId) {
+          // status (the admin-controlled field every spend-affecting cron
+          // gates on) previously only ever moved to "hold" by a human
+          // manually noticing a cancelled/non-paying account in Admin —
+          // this was the exact gap that let a month-old, no-subscription
+          // test account rack up daily crawl/scoring spend before that
+          // field even existed. Setting it here closes the same gap for
+          // every real customer whose subscription actually cancels: no
+          // human has to notice before the cost stops. Reactivating (a
+          // new subscription via checkout) sets tier/subscription_status
+          // again below (customer.subscription.created) but does not
+          // touch status, so also flip it back to "active" there.
           const { error } = await supabase
             .from("accounts")
-            .update({ tier: "starter", stripe_subscription_id: null, subscription_status: "canceled" })
+            .update({ tier: "starter", stripe_subscription_id: null, subscription_status: "canceled", status: "hold" })
             .eq("id", accountId);
           if (error) throw new Error(`customer.subscription.deleted account update failed: ${error.message}`);
         }

@@ -79,6 +79,34 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // A cancelled subscription (not the separate admin-controlled "hold"
+  // status — see accounts.status vs. subscription_status) blocks the rest
+  // of /app until they resubscribe, rather than leaving a stale dashboard
+  // browsable forever with no prompt to reactivate. Deliberately keyed on
+  // subscription_status alone, not status: a brand-new account that
+  // hasn't paid yet has subscription_status null (not "canceled"), so this
+  // never blocks someone mid-onboarding who's simply never subscribed —
+  // only an account that had a subscription and lost it. Clears itself the
+  // moment a new subscription is created (see the Stripe webhook), so no
+  // separate "un-cancel" step is needed here.
+  if (pathname.startsWith("/app") && user && pathname !== "/app/reactivate") {
+    // Single embedded query (profiles -> accounts is an unambiguous FK, so
+    // PostgREST can join it in one round trip) rather than two sequential
+    // ones — this runs on every /app request for every logged-in customer,
+    // so it's worth the one query it costs rather than two.
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("accounts(subscription_status)")
+      .eq("id", user.id)
+      .single();
+    const account = Array.isArray(profile?.accounts) ? profile.accounts[0] : profile?.accounts;
+    if (account?.subscription_status === "canceled") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/app/reactivate";
+      return NextResponse.redirect(url);
+    }
+  }
+
   if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
     if (!user) {
       const url = request.nextUrl.clone();
