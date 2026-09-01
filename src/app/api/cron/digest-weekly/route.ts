@@ -31,11 +31,15 @@ const ACCOUNT_CONCURRENCY = 5;
 // signals, and vice versa.
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
+// Threshold for the win/loss nudge riding along on this email — see below.
+const WIN_LOSS_STALE_DAYS = 30;
+
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
 
   const supabase = createAdminClient();
   const { data: accounts } = await supabase
@@ -95,6 +99,14 @@ export async function GET(request: Request) {
       }
     }
 
+    // Fetched once, shared by the momentum digest below and the win/loss
+    // staleness nudge further down — both need to know what's logged for
+    // this account's competitors.
+    const { data: accountWinLoss } = await supabase
+      .from("competitor_win_loss")
+      .select("competitor_id, outcome, created_at")
+      .in("competitor_id", competitorIds);
+
     // Separate from the verdict above: that one synthesizes scored NEWS
     // signals, this one reads momentum itself (hiring/pricing/press deltas,
     // same computeMomentum already used by the Trends dashboard and
@@ -108,14 +120,10 @@ export async function GET(request: Request) {
         .select("competitor_id, type, sentiment, occurred_on, scored, relevance_score")
         .in("competitor_id", competitorIds)
         .gte("occurred_on", sixtyDaysAgo.toISOString().slice(0, 10));
-      const { data: momentumWinLoss } = await supabase
-        .from("competitor_win_loss")
-        .select("competitor_id, outcome, created_at")
-        .in("competitor_id", competitorIds);
 
       const momentumInputs: MomentumDigestInput[] = (competitors ?? []).map((c) => {
         const forCompetitor = (momentumSignals ?? []).filter((s) => s.competitor_id === c.id);
-        const winLossForCompetitor = (momentumWinLoss ?? []).filter((e) => e.competitor_id === c.id);
+        const winLossForCompetitor = (accountWinLoss ?? []).filter((e) => e.competitor_id === c.id);
         const momentum = computeMomentum(forCompetitor, winLossForCompetitor);
         return {
           competitorName: c.name,
@@ -163,8 +171,29 @@ export async function GET(request: Request) {
       relevanceReasoning: s.relevance_reasoning,
     }));
 
+    // Piggybacks on this send rather than triggering a separate email (see
+    // sendDigestEmail's winLossNudge param) — reaches someone only when the
+    // digest was already going out for real signals, never becoming its
+    // own source of inbox noise. Nudges when nothing's ever been logged, or
+    // when the most recent entry has gone stale.
+    const winLossNudge = (() => {
+      const entries = accountWinLoss ?? [];
+      if (entries.length === 0) {
+        return `You haven't logged any win/loss data yet — even one entry sharpens fact sheets and starts feeding Momentum's win-rate trend. <a href="${appUrl}/app/win-loss">Log one</a>.`;
+      }
+      const mostRecent = entries.reduce(
+        (latest, e) => Math.max(latest, new Date(e.created_at).getTime()),
+        0
+      );
+      const daysSinceLastEntry = (Date.now() - mostRecent) / (24 * 60 * 60 * 1000);
+      if (daysSinceLastEntry > WIN_LOSS_STALE_DAYS) {
+        return `It's been over ${WIN_LOSS_STALE_DAYS} days since your last logged win/loss — a recent one keeps Momentum's win-rate trend accurate. <a href="${appUrl}/app/win-loss">Log one</a>.`;
+      }
+      return null;
+    })();
+
     try {
-      await sendDigestEmail(account.contact_email, account.name, digestSignals, "weekly", verdict);
+      await sendDigestEmail(account.contact_email, account.name, digestSignals, "weekly", verdict, winLossNudge);
     } catch (err) {
       console.error(`weekly digest send failed for ${account.name}:`, err);
       return { account: account.name, sent: 0, error: true, verdict: Boolean(verdict) };
