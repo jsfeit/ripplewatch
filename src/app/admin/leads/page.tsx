@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/is-configured";
 import { SupabaseNotConfigured } from "@/components/admin/not-configured";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { buildOrdinalMap } from "@/lib/admin-numbering";
 
 export const metadata = { title: "Leads | Admin" };
 export const dynamic = "force-dynamic";
@@ -19,6 +20,8 @@ export default async function AdminLeadsPage() {
         .select("*")
         .order("created_at", { ascending: false })
     : { data: null, error: null };
+
+  const leadNumbers = buildOrdinalMap(leads ?? [], (l) => l.id, (l) => l.created_at);
 
   return (
     <div className="mx-auto max-w-4xl px-8 py-10">
@@ -42,6 +45,7 @@ export default async function AdminLeadsPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>#</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Company</TableHead>
                 <TableHead>Captured via</TableHead>
@@ -52,6 +56,7 @@ export default async function AdminLeadsPage() {
             <TableBody>
               {leads?.map((l) => (
                 <TableRow key={l.id}>
+                  <TableCell className="text-muted-foreground tabular-nums">#{leadNumbers.get(l.id)}</TableCell>
                   <TableCell className="font-medium">{l.email}</TableCell>
                   <TableCell className="text-muted-foreground">{l.company_name ?? "–"}</TableCell>
                   <TableCell className="text-muted-foreground">
@@ -69,7 +74,7 @@ export default async function AdminLeadsPage() {
               ))}
               {leads?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     No leads yet.
                   </TableCell>
                 </TableRow>

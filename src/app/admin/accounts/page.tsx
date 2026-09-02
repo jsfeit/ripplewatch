@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { Database } from "@/lib/supabase/types";
 import { sumLlmUsageByAccount } from "@/lib/llm-pricing";
 import { TIERS } from "@/lib/tiers";
+import { buildOrdinalMap } from "@/lib/admin-numbering";
 
 export const metadata = { title: "Accounts | Admin" };
 export const dynamic = "force-dynamic";
@@ -33,7 +34,7 @@ export default async function AdminAccountsPage() {
   const configured = isSupabaseConfigured();
   const competitorCounts = new Map<string, number>();
   const userCounts = new Map<string, number>();
-  const accountNumbers = new Map<string, number>();
+  let accountNumbers = new Map<string, number>();
   let accounts: Account[] | null = null;
   let error: { message: string } | null = null;
   let llmCostByAccount = new Map<string, { tokens: number; costUsd: number; calls: number }>();
@@ -47,12 +48,7 @@ export default async function AdminAccountsPage() {
     // A stable, human-referenceable "Account #N" (oldest = 1) — the table
     // itself still lists newest-first, so this is a separate ascending rank
     // rather than the row's position in the rendered list.
-    const bySignupOrder = [...(accounts ?? [])].sort(
-      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
-    for (const [index, a] of bySignupOrder.entries()) {
-      accountNumbers.set(a.id, index + 1);
-    }
+    accountNumbers = buildOrdinalMap(accounts ?? [], (a) => a.id, (a) => a.created_at);
 
     const { data: competitorRows } = await supabase.from("competitors").select("account_id");
     for (const row of competitorRows ?? []) {

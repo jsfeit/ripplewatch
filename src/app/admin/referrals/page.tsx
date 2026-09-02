@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/is-configured";
 import { SupabaseNotConfigured } from "@/components/admin/not-configured";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { buildOrdinalMap } from "@/lib/admin-numbering";
 
 export const metadata = { title: "Referrals | Admin" };
 export const dynamic = "force-dynamic";
@@ -24,6 +25,7 @@ export default async function AdminReferralsPage() {
     ? await supabase.from("accounts").select("id, name, contact_email").in("id", accountIds)
     : { data: [] };
   const accountById = new Map((accounts ?? []).map((a) => [a.id, a]));
+  const referralNumbers = buildOrdinalMap(referrals ?? [], (r) => r.id, (r) => r.referred_at);
 
   return (
     <div className="mx-auto max-w-5xl px-8 py-10">
@@ -46,6 +48,7 @@ export default async function AdminReferralsPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>#</TableHead>
                 <TableHead>Referrer</TableHead>
                 <TableHead>Referred</TableHead>
                 <TableHead>Referred at</TableHead>
@@ -58,6 +61,7 @@ export default async function AdminReferralsPage() {
                 const referred = accountById.get(r.referred_account_id);
                 return (
                   <TableRow key={r.id}>
+                    <TableCell className="text-muted-foreground tabular-nums">#{referralNumbers.get(r.id)}</TableCell>
                     <TableCell className="font-medium">{referrer?.name ?? r.referrer_account_id}</TableCell>
                     <TableCell className="text-muted-foreground">{referred?.name ?? r.referred_account_id}</TableCell>
                     <TableCell className="text-muted-foreground">
@@ -79,7 +83,7 @@ export default async function AdminReferralsPage() {
               })}
               {referrals?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     No referrals yet.
                   </TableCell>
                 </TableRow>
