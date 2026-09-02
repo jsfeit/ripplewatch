@@ -26,7 +26,7 @@ import { fetchRecentGongTranscripts } from "@/lib/gong";
 import { fetchRecentZoomTranscripts } from "@/lib/zoom";
 import { fetchClosedLostDealNotes } from "@/lib/hubspot";
 import { fetchRecentIntercomChurnNotes } from "@/lib/intercom";
-import { TIER_SIGNAL_SOURCES, COMPETITOR_LIMIT, CALL_INTEL_ALLOWED, CRM_ALLOWED, INTERCOM_ALLOWED } from "@/lib/tier-limits";
+import { TIER_SIGNAL_SOURCES, CALL_INTEL_ALLOWED, CRM_ALLOWED, INTERCOM_ALLOWED, effectiveTier, competitorCap } from "@/lib/tier-limits";
 import type { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/types";
 
@@ -184,10 +184,13 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
   // If the account has more competitors than its current tier allows (e.g.
   // downgraded after adding them under a higher tier), only the
   // earliest-added ones up to the limit stay actively monitored — matches
-  // what Settings displays as "Not monitored" for the rest.
-  const competitors = (allCompetitors ?? []).slice(0, COMPETITOR_LIMIT[account.tier]);
+  // what Settings displays as "Not monitored" for the rest. A demo_mode
+  // account is uncapped (see tier-limits.ts) so every tracked competitor
+  // actually gets crawled.
+  const tier = effectiveTier(account.tier, account.demo_mode);
+  const competitors = (allCompetitors ?? []).slice(0, competitorCap(account.tier, account.demo_mode));
 
-  const allowedSources = TIER_SIGNAL_SOURCES[account.tier];
+  const allowedSources = TIER_SIGNAL_SOURCES[tier];
 
   // Competitors run concurrently (bounded — see mapWithConcurrency), not one
   // at a time: each one can now make several sequential LLM calls (news
@@ -353,7 +356,7 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
     alreadyScoredThisWeek = Boolean(count && count > 0);
   }
 
-  const callMentions = CALL_INTEL_ALLOWED[account.tier]
+  const callMentions = CALL_INTEL_ALLOWED[tier]
     ? await buildCallMentions(
         supabase,
         account.id,
@@ -361,10 +364,10 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
       )
     : [];
 
-  const hubspotNotes = CRM_ALLOWED[account.tier] ? await buildHubspotNotes(supabase, account.id) : null;
+  const hubspotNotes = CRM_ALLOWED[tier] ? await buildHubspotNotes(supabase, account.id) : null;
   const lostDealNotes = [account.lost_deal_notes, hubspotNotes].filter(Boolean).join(" ") || null;
 
-  const intercomNotes = INTERCOM_ALLOWED[account.tier] ? await buildIntercomNotes(supabase, account.id) : null;
+  const intercomNotes = INTERCOM_ALLOWED[tier] ? await buildIntercomNotes(supabase, account.id) : null;
   const churnNotes = [account.churn_notes, intercomNotes].filter(Boolean).join(" ") || null;
 
   const companyResearch = await ensureCompanyResearch(supabase, account);
@@ -487,6 +490,7 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
           url: signal.url,
           reasoning: signal.relevance_reasoning ?? "",
           relevanceLevel: signal.relevance_level ?? "",
+          type: signal.type,
         });
         await supabase.from("signals").update({ slack_sent_at: new Date().toISOString() }).eq("id", signal.id);
       }

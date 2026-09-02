@@ -19,7 +19,7 @@ import { BillingPeriodToggle, type BillingPeriod } from "@/components/marketing/
 import { TIERS } from "@/lib/tiers";
 import { ANNUAL_DISCOUNT_PERCENT, annualPriceUsd } from "@/lib/pricing";
 import { trackEvent } from "@/lib/analytics";
-import { CRM_ALLOWED, CALL_INTEL_ALLOWED, INTERCOM_ALLOWED, API_ACCESS_ALLOWED } from "@/lib/tier-limits";
+import { CRM_ALLOWED, CALL_INTEL_ALLOWED, INTERCOM_ALLOWED, API_ACCESS_ALLOWED, effectiveTier } from "@/lib/tier-limits";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { TIER_BADGE } from "@/lib/tier-style";
@@ -40,7 +40,7 @@ type ApiKey = Pick<
 type Referral = Pick<Database["public"]["Tables"]["referrals"]["Row"], "id" | "referred_at" | "qualified_at">;
 
 const KNOWN_TABS = ["competitors", "integrations", "team", "plan", "referrals", "digest", "developer", "appearance"] as const;
-const DEMO_HIDDEN_TABS = ["team", "plan", "referrals", "developer"] as const;
+const DEMO_HIDDEN_TABS = ["team", "plan", "referrals", "developer", "appearance"] as const;
 
 export function SettingsView({
   account,
@@ -79,6 +79,7 @@ export function SettingsView({
   const isConnected = (provider: string) => integrations.some((i) => i.provider === provider && i.connected);
   const demoMode = account.demo_mode;
   const tabHidden = (tab: string) => demoMode && (DEMO_HIDDEN_TABS as readonly string[]).includes(tab);
+  const gatingTier = effectiveTier(account.tier, demoMode);
 
   // Lets a direct/bookmarked link to /app/settings#referrals (or the older
   // ?tab=plan form, still used by existing emails/FAQ/CTAs) land on that
@@ -180,7 +181,7 @@ export function SettingsView({
         {tabHidden("referrals") ? null : <TabsTrigger value="referrals">Referrals</TabsTrigger>}
         <TabsTrigger value="digest">Digest preview</TabsTrigger>
         {tabHidden("developer") ? null : <TabsTrigger value="developer">Developer</TabsTrigger>}
-        <TabsTrigger value="appearance">Appearance</TabsTrigger>
+        {tabHidden("appearance") ? null : <TabsTrigger value="appearance">Appearance</TabsTrigger>}
       </TabsList>
 
       <TabsContent value="competitors" className="mt-6 space-y-6">
@@ -188,6 +189,7 @@ export function SettingsView({
         <CompetitorManager
           competitors={competitors}
           tier={account.tier}
+          demoMode={demoMode}
           momentum={momentum}
           traffic={traffic}
           seoAllowed={seoAllowed}
@@ -246,7 +248,7 @@ export function SettingsView({
             <IntegrationConnector
               name="HubSpot"
               description={
-                CRM_ALLOWED[account.tier]
+                CRM_ALLOWED[gatingTier]
                   ? "Read-only pull of closed-lost deal reasons"
                   : "Read-only pull of closed-lost deal reasons, Plus and above"
               }
@@ -254,13 +256,13 @@ export function SettingsView({
               connectHref="/api/integrations/hubspot/connect"
               provider="hubspot"
               disconnectAction={disconnectIntegrationAction}
-              requiresUpgrade={!CRM_ALLOWED[account.tier]}
+              requiresUpgrade={!CRM_ALLOWED[gatingTier]}
               onUpgradeClick={() => selectTab("plan")}
             />
             <IntegrationConnector
               name="Intercom"
               description={
-                INTERCOM_ALLOWED[account.tier]
+                INTERCOM_ALLOWED[gatingTier]
                   ? "Read-only pull of churn and cancellation reasons"
                   : "Read-only pull of churn and cancellation reasons, Advanced only"
               }
@@ -268,7 +270,7 @@ export function SettingsView({
               connectHref="/api/integrations/intercom/connect"
               provider="intercom"
               disconnectAction={disconnectIntegrationAction}
-              requiresUpgrade={!INTERCOM_ALLOWED[account.tier]}
+              requiresUpgrade={!INTERCOM_ALLOWED[gatingTier]}
               onUpgradeClick={() => selectTab("plan")}
             />
           </CardContent>
@@ -293,7 +295,7 @@ export function SettingsView({
             <IntegrationConnector
               name="Zoom"
               description={
-                CALL_INTEL_ALLOWED[account.tier]
+                CALL_INTEL_ALLOWED[gatingTier]
                   ? "Pull competitor mentions from recorded meeting transcripts"
                   : "Pull competitor mentions from recorded meeting transcripts, Advanced only"
               }
@@ -301,7 +303,7 @@ export function SettingsView({
               connectHref="/api/integrations/zoom/connect"
               provider="zoom"
               disconnectAction={disconnectIntegrationAction}
-              requiresUpgrade={!CALL_INTEL_ALLOWED[account.tier]}
+              requiresUpgrade={!CALL_INTEL_ALLOWED[gatingTier]}
               onUpgradeClick={() => selectTab("plan")}
             />
           </CardContent>
@@ -568,32 +570,34 @@ export function SettingsView({
       </TabsContent>
       )}
 
-      <TabsContent value="appearance" className="mt-6">
-        <Card>
-          <CardHeader>
-            <h2 className="font-medium">Appearance</h2>
-            <p className="text-sm text-muted-foreground">
-              Light and dark are built in. System matches your device automatically.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <ThemeToggle />
-          </CardContent>
-        </Card>
+      {tabHidden("appearance") ? null : (
+        <TabsContent value="appearance" className="mt-6">
+          <Card>
+            <CardHeader>
+              <h2 className="font-medium">Appearance</h2>
+              <p className="text-sm text-muted-foreground">
+                Light and dark are built in. System matches your device automatically.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <ThemeToggle />
+            </CardContent>
+          </Card>
 
-        <Card className="mt-6">
-          <CardHeader>
-            <h2 className="font-medium">Product tour</h2>
-            <p className="text-sm text-muted-foreground">
-              The 3-step walkthrough you saw right after signing up: your tracked competitors, relevance
-              scoring, and Ask.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <ReplayTourButton />
-          </CardContent>
-        </Card>
-      </TabsContent>
+          <Card className="mt-6">
+            <CardHeader>
+              <h2 className="font-medium">Product tour</h2>
+              <p className="text-sm text-muted-foreground">
+                The 3-step walkthrough you saw right after signing up: your tracked competitors, relevance
+                scoring, and Ask.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <ReplayTourButton />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      )}
       </Tabs>
     </>
   );
