@@ -93,12 +93,12 @@ export async function POST(request: Request) {
               percent_off: 100,
               duration: "repeating",
               duration_in_months: 2,
-              name: "Referral — 2 months free",
+              name: "Referral: 2 months free",
             })
           : await getStripe().coupons.create({
               percent_off: Math.round((200 / 12) * 100) / 100,
               duration: "once",
-              name: "Referral — 2 months free (annual)",
+              name: "Referral: 2 months free (annual)",
             });
       referralCoupon = coupon.id;
     } catch (err) {

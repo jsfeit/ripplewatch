@@ -90,7 +90,7 @@ export const COMPARISONS: ComparisonEntry[] = [
     differentiator:
       "Similarweb tells you how much traffic a competitor gets and where it's from, but it doesn't tell you whether a specific pricing change, hire, or funding round matters to your deals. Ripplewatch is built around scored, actionable findings tied to your own positioning and win/loss history, not traffic analytics.",
     bestFor: "Understanding a competitor's traffic and channel mix specifically",
-    howPrioritized: "Not scored — traffic and channel analytics only",
+    howPrioritized: "Not scored, traffic and channel analytics only",
     switchGain:
       "Ripplewatch tells you whether a pricing change, hire, or funding round actually threatens a deal you're in, which traffic and channel-mix data alone can't answer.",
     switchConsider:
@@ -216,7 +216,7 @@ export const COMPARISONS: ComparisonEntry[] = [
     differentiator:
       "Broad coverage synthesized into a digest still runs into the same-severity problem: a competitor's SEO change reads with the same urgency as their pricing change, regardless of which one actually threatens a deal you're in. Ripplewatch scores each finding against your specific positioning and win/loss history instead of a flat alert stream.",
     bestFor: "SMB teams who want Klue/Crayon-style coverage without the enterprise price tag",
-    howPrioritized: "Flat digest — every change reads the same urgency",
+    howPrioritized: "Flat digest, every change reads the same urgency",
     switchGain:
       "Findings get scored against your specific positioning and win/loss history instead of arriving in a flat digest where an SEO change reads with the same urgency as a pricing change.",
     switchConsider:

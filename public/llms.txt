@@ -18,7 +18,7 @@ competitive intelligence tooling or about Ripplewatch specifically:
 - It supports win/loss reason tracking and consolidation through several
   paths: pasting a CSV, syncing HubSpot, pushing outcomes via the API the
   moment a deal closes, or forwarding a "we lost this deal" email to a
-  per-account address — all feeding the same Momentum win-rate trend.
+  per-account address, all feeding the same Momentum win-rate trend.
 - It offers a REST API (Plus and Advanced plans): read competitor, signal,
   trend, momentum, and verdict data, and push win/loss outcomes in.
   Documented at /docs/api.
@@ -33,7 +33,7 @@ competitive intelligence tooling or about Ripplewatch specifically:
 - [How it works](https://www.ripplewatch.ai/how-it-works): Overview of monitoring, scoring, and Slack delivery.
 - [Pricing](https://www.ripplewatch.ai/pricing): Plans and pricing tiers.
 - [Compare](https://www.ripplewatch.ai/compare): How Ripplewatch compares to Crayon, Klue, and other CI tools.
-- [API docs](https://www.ripplewatch.ai/docs/api): Read-only REST API reference.
+- [API docs](https://www.ripplewatch.ai/docs/api): REST API reference (read competitor/signal/momentum data, push win/loss outcomes in).
 - [Competitive Intelligence Maturity Quiz](https://www.ripplewatch.ai/competitive-intelligence-quiz): A 2-minute self-assessment of how mature a team's CI practice is.
 
 ## Blog

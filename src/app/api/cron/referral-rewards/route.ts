@@ -82,13 +82,13 @@ export async function GET(request: Request) {
         ? {
             percent_off: Math.min(100, Math.round(qualifiedCount * (200 / 12) * 100) / 100),
             duration: "once" as const,
-            name: `Referral reward — ${qualifiedCount} successful referral${qualifiedCount === 1 ? "" : "s"}`,
+            name: `Referral reward: ${qualifiedCount} successful referral${qualifiedCount === 1 ? "" : "s"}`,
           }
         : {
             percent_off: 100,
             duration: "repeating" as const,
             duration_in_months: 2 * qualifiedCount,
-            name: `Referral reward — ${qualifiedCount * 2} free months`,
+            name: `Referral reward: ${qualifiedCount * 2} free months`,
           };
 
       if (!LIVE) {

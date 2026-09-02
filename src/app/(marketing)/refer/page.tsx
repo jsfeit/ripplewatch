@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/is-configured";
 
 const description =
-  "You were referred to Ripplewatch — sign up and get 2 months free. Companies know companies, and they know who actually gives good intel.";
+  "You were referred to Ripplewatch: sign up and get 2 months free. Companies know companies, and they know who actually gives good intel.";
 
 export const metadata = {
   title: "You're invited",
@@ -16,7 +16,7 @@ export const metadata = {
   twitter: { card: "summary_large_image", title: "You're invited to Ripplewatch", description, images: ["/opengraph-image"] },
 };
 
-// Looks up the referring company's name for a personalized headline —
+// Looks up the referring company's name for a personalized headline:
 // public info (a company name), read via the admin client since this page
 // has no signed-in session. Falls back to generic copy if the code is
 // missing or doesn't resolve to a real account.
@@ -49,7 +49,7 @@ export default async function ReferPage({
         {referrer ? `${referrer} thinks you'd get real value from Ripplewatch` : "Get 2 months free on Ripplewatch"}
       </h1>
       <p className="mt-4 max-w-xl text-lg text-muted-foreground">
-        Companies know companies — and the ones already using Ripplewatch to track their competitors are
+        Companies know companies, and the ones already using Ripplewatch to track their competitors are
         exactly the ones best positioned to know who actually gives good intel, and who&apos;s just another
         dashboard nobody opens.
       </p>
@@ -57,7 +57,7 @@ export default async function ReferPage({
       <div className="mt-8 rounded-xl border border-primary/30 bg-primary/[0.04] p-6">
         <p className="text-sm font-semibold">The offer</p>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          Sign up through this link and your first two months are free — no code to enter, it&apos;s applied
+          Sign up through this link and your first two months are free. No code to enter, it&apos;s applied
           automatically the moment you check out.
         </p>
       </div>
@@ -67,7 +67,7 @@ export default async function ReferPage({
           <Radar className="size-5 text-primary" />
           <h2 className="mt-3 text-sm font-semibold">Every signal, actually scored</h2>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Pricing changes, job postings, news, funding — scored against your own positioning and history,
+            Pricing changes, job postings, news, funding: scored against your own positioning and history,
             not dumped in a generic feed.
           </p>
         </div>
@@ -75,7 +75,7 @@ export default async function ReferPage({
           <Users className="size-5 text-primary" />
           <h2 className="mt-3 text-sm font-semibold">Set up in minutes</h2>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Tell us your positioning and who you compete with — alerts start showing up as soon as the
+            Tell us your positioning and who you compete with. Alerts start showing up as soon as the
             first crawl runs.
           </p>
         </div>

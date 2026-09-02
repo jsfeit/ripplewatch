@@ -513,7 +513,7 @@ export async function sendReferralWelcomeEmail(
     html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
       <h2 style="margin:0 0 12px;">Welcome to Ripplewatch, ${referredCompanyName}</h2>
       <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
-        ${referrerCompanyName} referred you, so your first two months are on us — already applied, nothing
+        ${referrerCompanyName} referred you, so your first two months are on us, already applied, nothing
         further to do.
       </p>
       <a href="${appUrl}/app/dashboard" style="display:inline-block;margin-top:8px;padding:10px 20px;background:#0f5f56;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">
@@ -542,7 +542,7 @@ export async function sendReferralSignedUpEmail(to: string, referrerCompanyName:
       <h2 style="margin:0 0 12px;">Your referral signed up</h2>
       <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
         <strong>${referredCompanyName}</strong> just signed up on Ripplewatch using your referral link.
-        Once they've been an active customer for 60 days, your free months land automatically — we'll
+        Once they've been an active customer for 60 days, your free months land automatically. We'll
         email you, ${referrerCompanyName}, when that happens.
       </p>
       <p style="color:#888;font-size:12px;margin-top:24px;">
@@ -568,11 +568,11 @@ export async function sendReferralRewardEmail(
   const result = await getResend().emails.send({
     from: getFromEmail(),
     to,
-    subject: `Your referral is confirmed — ${monthsEarned} free month${monthsEarned === 1 ? "" : "s"} applied`,
+    subject: `Your referral is confirmed: ${monthsEarned} free month${monthsEarned === 1 ? "" : "s"} applied`,
     html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
       <h2 style="margin:0 0 12px;">Your referral to ${referredCompanyName} is confirmed</h2>
       <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
-        They've been an active Ripplewatch customer for 60 days now, ${referrerCompanyName} — ${monthsEarned}
+        They've been an active Ripplewatch customer for 60 days now, ${referrerCompanyName} - ${monthsEarned}
         free month${monthsEarned === 1 ? "" : "s"} just landed on your own account, already applied.
       </p>
       <a href="${appUrl}/app/settings#referrals" style="display:inline-block;margin-top:8px;padding:10px 20px;background:#0f5f56;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">

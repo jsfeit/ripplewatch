@@ -31,7 +31,7 @@ function Param({
   return (
     <li className="text-xs">
       <code className="rounded bg-secondary/50 px-1 py-0.5 font-mono">{name}</code>{" "}
-      <span className="text-muted-foreground">({type})</span> — {children}
+      <span className="text-muted-foreground">({type})</span> - {children}
     </li>
   );
 }
@@ -235,7 +235,7 @@ export default function ApiDocsPage() {
         <Endpoint
           method="GET"
           path="/api/v1/momentum"
-          description="A momentum score and label (e.g. Heating up, Steady, Cooling) for every tracked competitor, computed from hiring, pricing, sentiment-weighted press/funding coverage, and win/loss trend. Deterministic — no LLM cost, safe to poll."
+          description="A momentum score and label (e.g. Heating up, Steady, Cooling) for every tracked competitor, computed from hiring, pricing, sentiment-weighted press/funding coverage, and win/loss trend. Deterministic: no LLM cost, safe to poll."
           example={`curl https://www.ripplewatch.ai/api/v1/momentum \\
   -H "Authorization: Bearer rw_live_..."`}
           response={`{
@@ -248,7 +248,7 @@ export default function ApiDocsPage() {
         <Endpoint
           method="GET"
           path="/api/v1/verdict"
-          description="This week's synthesized takeaway — the same one-paragraph summary shown at the top of the dashboard — if one has been generated in the last 8 days. Returns null fields once it goes stale rather than serving week-old context as current."
+          description="This week's synthesized takeaway (the same one-paragraph summary shown at the top of the dashboard) if one has been generated in the last 8 days. Returns null fields once it goes stale rather than serving week-old context as current."
           example={`curl https://www.ripplewatch.ai/api/v1/verdict \\
   -H "Authorization: Bearer rw_live_..."`}
           response={`{
@@ -272,7 +272,7 @@ export default function ApiDocsPage() {
                 One of <code>won</code>, <code>lost</code>.
               </Param>
               <Param name="reason" type="string">
-                Optional free text — why the deal went that way.
+                Optional free text: why the deal went that way.
               </Param>
             </>
           }
@@ -295,7 +295,7 @@ export default function ApiDocsPage() {
         No integration or script needed: on Plus/Advanced plans, Settings → Developer shows a personal address of
         the form <code>winloss+&lt;accountId&gt;@in.ripplewatch.ai</code>. Forward a &quot;we lost this deal&quot;
         email there, or CC it from your CRM&apos;s outcome notification, and it runs through the same extraction
-        pipeline as a CSV import — matched against your tracked competitors, or added as a suggested competitor if
+        pipeline as a CSV import: matched against your tracked competitors, or added as a suggested competitor if
         it isn&apos;t one yet.
       </p>
 
@@ -309,11 +309,11 @@ export default function ApiDocsPage() {
       <h2>Errors</h2>
       <p>Errors return <code>{"{ error: string }"}</code> with one of these statuses:</p>
       <ul>
-        <li><code>401</code> — missing, malformed, or revoked API key.</li>
-        <li><code>403</code> — the key&apos;s account isn&apos;t on Plus or Advanced (API access is gated by plan, checked on every request, not just at key creation).</li>
-        <li><code>404</code> — resource not found, or not owned by your account.</li>
-        <li><code>429</code> — rate limit exceeded (60 requests/minute per key). Retry after a few seconds.</li>
-        <li><code>500</code> — something went wrong on our end.</li>
+        <li><code>401</code> - missing, malformed, or revoked API key.</li>
+        <li><code>403</code> - the key&apos;s account isn&apos;t on Plus or Advanced (API access is gated by plan, checked on every request, not just at key creation).</li>
+        <li><code>404</code> - resource not found, or not owned by your account.</li>
+        <li><code>429</code> - rate limit exceeded (60 requests/minute per key). Retry after a few seconds.</li>
+        <li><code>500</code> - something went wrong on our end.</li>
       </ul>
     </LegalDoc>
   );

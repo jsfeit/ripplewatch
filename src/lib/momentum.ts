@@ -250,8 +250,8 @@ export function computeMomentum(signals: Signal[], winLossEntries: WinLossEntry[
       detail:
         winRateScore === null
           ? sortedWinLoss.length === 0
-            ? "no data — log a win/loss to include this"
-            : `${sortedWinLoss.length} logged — need ${MIN_WIN_LOSS_ENTRIES} to include this`
+            ? "no data, log a win/loss to include this"
+            : `${sortedWinLoss.length} logged, need ${MIN_WIN_LOSS_ENTRIES} to include this`
           : `${describeWinLossMix(winLossNewer)} recently vs ${describeWinLossMix(winLossOlder)} earlier`,
     },
   };

@@ -179,7 +179,7 @@ export async function GET(request: Request) {
     const winLossNudge = (() => {
       const entries = accountWinLoss ?? [];
       if (entries.length === 0) {
-        return `You haven't logged any win/loss data yet — even one entry sharpens fact sheets and starts feeding Momentum's win-rate trend. <a href="${appUrl}/app/win-loss">Log one</a>.`;
+        return `You haven't logged any win/loss data yet, and even one entry sharpens fact sheets and starts feeding Momentum's win-rate trend. <a href="${appUrl}/app/win-loss">Log one</a>.`;
       }
       const mostRecent = entries.reduce(
         (latest, e) => Math.max(latest, new Date(e.created_at).getTime()),
@@ -187,7 +187,7 @@ export async function GET(request: Request) {
       );
       const daysSinceLastEntry = (Date.now() - mostRecent) / (24 * 60 * 60 * 1000);
       if (daysSinceLastEntry > WIN_LOSS_STALE_DAYS) {
-        return `It's been over ${WIN_LOSS_STALE_DAYS} days since your last logged win/loss — a recent one keeps Momentum's win-rate trend accurate. <a href="${appUrl}/app/win-loss">Log one</a>.`;
+        return `It's been over ${WIN_LOSS_STALE_DAYS} days since your last logged win/loss. A recent one keeps Momentum's win-rate trend accurate. <a href="${appUrl}/app/win-loss">Log one</a>.`;
       }
       return null;
     })();
