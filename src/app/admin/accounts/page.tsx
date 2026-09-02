@@ -33,6 +33,7 @@ export default async function AdminAccountsPage() {
   const configured = isSupabaseConfigured();
   const competitorCounts = new Map<string, number>();
   const userCounts = new Map<string, number>();
+  const accountNumbers = new Map<string, number>();
   let accounts: Account[] | null = null;
   let error: { message: string } | null = null;
   let llmCostByAccount = new Map<string, { tokens: number; costUsd: number; calls: number }>();
@@ -42,6 +43,16 @@ export default async function AdminAccountsPage() {
     const accountsResult = await supabase.from("accounts").select("*").order("created_at", { ascending: false });
     accounts = accountsResult.data;
     error = accountsResult.error;
+
+    // A stable, human-referenceable "Account #N" (oldest = 1) — the table
+    // itself still lists newest-first, so this is a separate ascending rank
+    // rather than the row's position in the rendered list.
+    const bySignupOrder = [...(accounts ?? [])].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    for (const [index, a] of bySignupOrder.entries()) {
+      accountNumbers.set(a.id, index + 1);
+    }
 
     const { data: competitorRows } = await supabase.from("competitors").select("account_id");
     for (const row of competitorRows ?? []) {
@@ -86,6 +97,7 @@ export default async function AdminAccountsPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>#</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Tier</TableHead>
@@ -99,6 +111,7 @@ export default async function AdminAccountsPage() {
             <TableBody>
               {accounts?.map((a) => (
                 <TableRow key={a.id} className="cursor-pointer">
+                  <TableCell className="text-muted-foreground tabular-nums">#{accountNumbers.get(a.id)}</TableCell>
                   <TableCell className="font-medium">
                     <Link href={`/admin/accounts/${a.id}`} className="hover:underline">
                       {a.name}
@@ -164,7 +177,7 @@ export default async function AdminAccountsPage() {
               ))}
               {accounts?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground">
                     No accounts yet.
                   </TableCell>
                 </TableRow>

@@ -49,6 +49,7 @@ const FUNCTION_LABELS: Record<string, string> = {
 
 export function AccountAdminView({
   account,
+  accountNumber,
   competitors: initialCompetitors,
   signals: initialSignals,
   llmUsageByFunction = [],
@@ -56,6 +57,9 @@ export function AccountAdminView({
   llmUsageWindowDays,
 }: {
   account: Account;
+  // "Account #N" (oldest = 1), same rank shown in the accounts list —
+  // undefined only if Supabase's count failed to resolve.
+  accountNumber?: number;
   competitors: Competitor[];
   signals: Signal[];
   llmUsageByFunction?: LlmUsageByFunction[];
@@ -233,6 +237,11 @@ export function AccountAdminView({
       <div>
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight">{account.name}</h1>
+          {accountNumber ? (
+            <Badge variant="outline" className="tabular-nums text-muted-foreground">
+              Account #{accountNumber}
+            </Badge>
+          ) : null}
           <Select value={tier} onValueChange={handleTierChange}>
             <SelectTrigger className="h-8 w-40">
               <SelectValue />

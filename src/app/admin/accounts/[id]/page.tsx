@@ -29,6 +29,14 @@ export default async function AdminAccountDetailPage({
   const { data: account } = await supabase.from("accounts").select("*").eq("id", id).single();
   if (!account) notFound();
 
+  // Same "Account #N" rank shown in the list (oldest = 1) — a count of
+  // accounts created at or before this one is cheaper than fetching every
+  // account just to find this one's position.
+  const { count: accountNumber } = await supabase
+    .from("accounts")
+    .select("id", { count: "exact", head: true })
+    .lte("created_at", account.created_at);
+
   const { data: competitors } = await supabase
     .from("competitors")
     .select("*")
@@ -63,6 +71,7 @@ export default async function AdminAccountDetailPage({
     <div className="mx-auto max-w-4xl px-8 py-10">
       <AccountAdminView
         account={account}
+        accountNumber={accountNumber ?? undefined}
         competitors={competitors ?? []}
         signals={signals ?? []}
         llmUsageByFunction={llmUsageByFunction}
