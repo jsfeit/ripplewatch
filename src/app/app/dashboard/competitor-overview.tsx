@@ -264,7 +264,7 @@ function CompetitorRow({
             {hasMomentumData && momentum.confidence === "low" ? (
               <span
                 className="text-[10px] font-medium whitespace-nowrap opacity-70"
-                title="Based on limited data — this score may shift as more signals and win/loss data come in."
+                title="Based on limited data. This score may shift as more signals and win/loss data come in."
               >
                 (limited data)
               </span>
@@ -299,7 +299,7 @@ function CompetitorRow({
                     <p className="text-lg font-bold tabular-nums">
                       {seoRecord.organic_traffic_estimate !== null
                         ? seoRecord.organic_traffic_estimate.toLocaleString()
-                        : "—"}
+                        : "-"}
                     </p>
                     <span className="text-[11px] text-muted-foreground">est. monthly visits</span>
                     {seoChangedAt ? (

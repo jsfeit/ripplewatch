@@ -22,7 +22,7 @@ export default async function AdminAffiliatesPage() {
         <h1 className="text-2xl font-semibold tracking-tight">Affiliates</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {applications?.length ?? 0} application{applications?.length === 1 ? "" : "s"} submitted via
-          /affiliates. Lead-capture only — update status here as you follow up.
+          /affiliates. Lead-capture only; update status here as you follow up.
         </p>
       </div>
 

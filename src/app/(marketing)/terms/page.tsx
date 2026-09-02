@@ -61,7 +61,7 @@ export default function TermsPage() {
           Customers on a paid plan can generate a referral link from Settings. If someone signs up through
           your link, they get 2 months free applied automatically at checkout. You get 2 months free of
           your own once the account you referred has been an active, paying customer for 60 consecutive
-          days — not immediately at signup. Multiple successful referrals stack. Referral credit is applied
+          days, not immediately at signup. Multiple successful referrals stack. Referral credit is applied
           as a discount on your own subscription; it has no cash value, can&apos;t be redeemed or transferred,
           and expires if your subscription ends before it&apos;s used.
         </p>

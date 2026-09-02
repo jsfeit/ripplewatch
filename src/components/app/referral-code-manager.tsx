@@ -51,7 +51,7 @@ export function ReferralCodeManager({
         <h3 className="text-sm font-semibold">Refer & earn</h3>
       </div>
       <p className="mt-1.5 text-xs text-muted-foreground">
-        Share your link — the company you refer gets 2 months free the moment they sign up, and you get 2
+        Share your link: the company you refer gets 2 months free the moment they sign up, and you get 2
         months free of your own once they&apos;ve stuck around as a customer for 60 days. Multiple referrals
         stack.
       </p>
@@ -79,7 +79,7 @@ export function ReferralCodeManager({
       {referrals.length > 0 ? (
         <p className="mt-3 text-xs text-muted-foreground">
           <span className="font-medium text-foreground">{referrals.length}</span> referral
-          {referrals.length === 1 ? "" : "s"} sent —{" "}
+          {referrals.length === 1 ? "" : "s"} sent -{" "}
           <span className="font-medium text-emerald-600 dark:text-emerald-400">{qualified} confirmed</span>
           {pending > 0 ? (
             <>

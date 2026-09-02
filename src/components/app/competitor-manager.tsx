@@ -342,7 +342,7 @@ export function CompetitorManager({
                       )}
                       title={
                         momentum[c.id].confidence === "low"
-                          ? "Based on limited data — log win/loss data or wait for more signals to sharpen this."
+                          ? "Based on limited data. Log win/loss data or wait for more signals to sharpen this."
                           : undefined
                       }
                     >

@@ -70,7 +70,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "Do you have a referral program?",
         answer:
-          'Yes. Any paying customer can generate a shareable link from <a href="/app/settings#referrals">Settings → Referrals</a>. The company you refer gets 2 months free the moment they sign up, and you get 2 months free of your own once they\'ve been an active, paying customer for 60 days (not immediately — this keeps the reward tied to a referral that actually sticks, not a signup that cancels right away). Multiple successful referrals stack. See our <a href="/terms#referral-program">Terms of Service</a> for the full details.',
+          'Yes. Any paying customer can generate a shareable link from <a href="/app/settings#referrals">Settings → Referrals</a>. The company you refer gets 2 months free the moment they sign up, and you get 2 months free of your own once they\'ve been an active, paying customer for 60 days (not immediately, this keeps the reward tied to a referral that actually sticks, not a signup that cancels right away). Multiple successful referrals stack. See our <a href="/terms#referral-program">Terms of Service</a> for the full details.',
       },
       {
         question: "What happens if I add more competitors than my plan allows?",

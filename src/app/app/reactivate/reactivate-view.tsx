@@ -35,7 +35,7 @@ export function ReactivateView({ companyName }: { companyName: string }) {
 
       <h1 className="text-2xl font-semibold tracking-tight">Reactivate your account</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        {companyName}&apos;s subscription ended, so monitoring is paused — your competitors, signals, and
+        {companyName}&apos;s subscription ended, so monitoring is paused. Your competitors, signals, and
         history are all still here. Pick a plan to pick up where you left off.
       </p>
 

@@ -544,7 +544,7 @@ export function SettingsView({
             <CardHeader>
               <h2 className="font-medium">Email win/loss data in</h2>
               <p className="text-sm text-muted-foreground">
-                Forward a deal-closed email — or CC this address from your CRM — and we&apos;ll pull the outcome
+                Forward a deal-closed email, or CC this address from your CRM, and we&apos;ll pull the outcome
                 straight into Momentum. No login, no export, nothing to remember.
               </p>
             </CardHeader>
@@ -560,7 +560,7 @@ export function SettingsView({
           <CardHeader>
             <h2 className="font-medium">Appearance</h2>
             <p className="text-sm text-muted-foreground">
-              Light and dark are built in — System matches your device automatically.
+              Light and dark are built in. System matches your device automatically.
             </p>
           </CardHeader>
           <CardContent>
