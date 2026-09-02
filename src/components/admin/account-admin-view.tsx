@@ -5,6 +5,7 @@ import { Pencil, Plus, Trash2, Loader2, RefreshCw, Sparkles, Eye } from "lucide-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
@@ -65,6 +66,8 @@ export function AccountAdminView({
   const [savingTier, setSavingTier] = useState(false);
   const [status, setStatus] = useState(account.status);
   const [savingStatus, setSavingStatus] = useState(false);
+  const [demoMode, setDemoMode] = useState(account.demo_mode);
+  const [savingDemoMode, setSavingDemoMode] = useState(false);
   const [startingViewAs, setStartingViewAs] = useState(false);
 
   async function handleViewAs() {
@@ -190,6 +193,19 @@ export function AccountAdminView({
     if (!res.ok) setStatus(previous);
   }
 
+  async function handleDemoModeChange(next: boolean) {
+    const previous = demoMode;
+    setDemoMode(next);
+    setSavingDemoMode(true);
+    const res = await fetch(`/api/admin/accounts/${account.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ demo_mode: next }),
+    });
+    setSavingDemoMode(false);
+    if (!res.ok) setDemoMode(previous);
+  }
+
   async function handleRecrawl() {
     setRecrawling(true);
     setRecrawlResult(null);
@@ -249,6 +265,11 @@ export function AccountAdminView({
             </SelectContent>
           </Select>
           {savingStatus ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : null}
+          <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <Switch checked={demoMode} onCheckedChange={handleDemoModeChange} disabled={savingDemoMode} />
+            Demo mode
+          </label>
+          {savingDemoMode ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : null}
           {account.subscription_status ? (
             <Badge variant="outline" className="text-xs text-muted-foreground">
               {account.subscription_status}

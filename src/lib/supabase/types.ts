@@ -101,6 +101,7 @@ export interface Database {
           referral_code: string | null;
           referred_by_account_id: string | null;
           referral_reward_coupon_id: string | null;
+          demo_mode: boolean;
           created_at: string;
         };
         Insert: {
@@ -132,6 +133,7 @@ export interface Database {
           referral_code?: string | null;
           referred_by_account_id?: string | null;
           referral_reward_coupon_id?: string | null;
+          demo_mode?: boolean;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["accounts"]["Insert"]>;

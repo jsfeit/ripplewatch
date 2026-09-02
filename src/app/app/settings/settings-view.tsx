@@ -40,6 +40,7 @@ type ApiKey = Pick<
 type Referral = Pick<Database["public"]["Tables"]["referrals"]["Row"], "id" | "referred_at" | "qualified_at">;
 
 const KNOWN_TABS = ["competitors", "integrations", "team", "plan", "referrals", "digest", "developer", "appearance"] as const;
+const DEMO_HIDDEN_TABS = ["team", "plan", "referrals", "developer"] as const;
 
 export function SettingsView({
   account,
@@ -76,6 +77,8 @@ export function SettingsView({
 
   const currentTier = TIERS.find((t) => t.id === account.tier) ?? TIERS[0];
   const isConnected = (provider: string) => integrations.some((i) => i.provider === provider && i.connected);
+  const demoMode = account.demo_mode;
+  const tabHidden = (tab: string) => demoMode && (DEMO_HIDDEN_TABS as readonly string[]).includes(tab);
 
   // Lets a direct/bookmarked link to /app/settings#referrals (or the older
   // ?tab=plan form, still used by existing emails/FAQ/CTAs) land on that
@@ -93,7 +96,7 @@ export function SettingsView({
     // both keep working rather than picking one and breaking the other.
     const hashTab = window.location.hash.slice(1);
     const queryTab = new URLSearchParams(window.location.search).get("tab");
-    const tab = [hashTab, queryTab].find((t) => t && (KNOWN_TABS as readonly string[]).includes(t));
+    const tab = [hashTab, queryTab].find((t) => t && (KNOWN_TABS as readonly string[]).includes(t) && !tabHidden(t));
     if (tab) {
       // Syncing one-time from an external system (the URL) on mount —
       // the case the rule's own guidance calls out as fine.
@@ -172,11 +175,11 @@ export function SettingsView({
       <TabsList>
         <TabsTrigger value="competitors">Competitors</TabsTrigger>
         <TabsTrigger value="integrations">Integrations</TabsTrigger>
-        <TabsTrigger value="team">Team</TabsTrigger>
-        <TabsTrigger value="plan">Plan</TabsTrigger>
-        <TabsTrigger value="referrals">Referrals</TabsTrigger>
+        {tabHidden("team") ? null : <TabsTrigger value="team">Team</TabsTrigger>}
+        {tabHidden("plan") ? null : <TabsTrigger value="plan">Plan</TabsTrigger>}
+        {tabHidden("referrals") ? null : <TabsTrigger value="referrals">Referrals</TabsTrigger>}
         <TabsTrigger value="digest">Digest preview</TabsTrigger>
-        <TabsTrigger value="developer">Developer</TabsTrigger>
+        {tabHidden("developer") ? null : <TabsTrigger value="developer">Developer</TabsTrigger>}
         <TabsTrigger value="appearance">Appearance</TabsTrigger>
       </TabsList>
 
@@ -191,19 +194,21 @@ export function SettingsView({
         />
       </TabsContent>
 
-      <TabsContent value="team" className="mt-6">
-        <Card>
-          <CardHeader>
-            <h2 className="font-medium">Team</h2>
-            <p className="text-sm text-muted-foreground">
-              Invite co-workers to your workspace; everyone shares the same competitors and alerts.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <TeamManager tier={account.tier} currentUserId={currentUserId} />
-          </CardContent>
-        </Card>
-      </TabsContent>
+      {tabHidden("team") ? null : (
+        <TabsContent value="team" className="mt-6">
+          <Card>
+            <CardHeader>
+              <h2 className="font-medium">Team</h2>
+              <p className="text-sm text-muted-foreground">
+                Invite co-workers to your workspace; everyone shares the same competitors and alerts.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <TeamManager tier={account.tier} currentUserId={currentUserId} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      )}
 
       <TabsContent value="integrations" className="mt-6 space-y-6">
         <Card>
@@ -303,6 +308,7 @@ export function SettingsView({
         </Card>
       </TabsContent>
 
+      {tabHidden("plan") ? null : (
       <TabsContent value="plan" className="mt-6">
         <Card>
           <CardHeader>
@@ -406,7 +412,9 @@ export function SettingsView({
           </Card>
         ) : null}
       </TabsContent>
+      )}
 
+      {tabHidden("referrals") ? null : (
       <TabsContent value="referrals" className="mt-6">
         {account.status === "active" ? (
           <Card>
@@ -425,6 +433,7 @@ export function SettingsView({
           </Card>
         )}
       </TabsContent>
+      )}
 
       <TabsContent value="digest" className="mt-6 space-y-6">
         {recentSignals.length === 0 ? (
@@ -448,10 +457,12 @@ export function SettingsView({
                   <CardContent>
                     <div className="rounded-lg border border-border bg-[#1a1d21] p-4 font-sans text-sm text-white">
                       <div className="flex items-center gap-2 font-semibold">
-                        <span className="flex size-6 items-center justify-center rounded bg-primary text-[10px] text-primary-foreground">
-                          R
-                        </span>
-                        Ripplewatch
+                        {demoMode ? null : (
+                          <span className="flex size-6 items-center justify-center rounded bg-primary text-[10px] text-primary-foreground">
+                            R
+                          </span>
+                        )}
+                        {demoMode ? "Competitive Intelligence" : "Ripplewatch"}
                         <span className="text-xs font-normal text-white/50">APP</span>
                       </div>
                       <p className="mt-2 flex items-center gap-1 font-medium">
@@ -467,7 +478,7 @@ export function SettingsView({
                       <p className="mt-1 text-white/80">
                         {topScored.scored ? topScored.relevance_reasoning : topScored.title}
                       </p>
-                      <p className="mt-2 text-xs text-white/50">View in Ripplewatch →</p>
+                      <p className="mt-2 text-xs text-white/50">{demoMode ? "View details →" : "View in Ripplewatch →"}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -512,6 +523,7 @@ export function SettingsView({
         )}
       </TabsContent>
 
+      {tabHidden("developer") ? null : (
       <TabsContent value="developer" className="mt-6">
         <Card>
           <CardHeader>
@@ -554,6 +566,7 @@ export function SettingsView({
           </Card>
         )}
       </TabsContent>
+      )}
 
       <TabsContent value="appearance" className="mt-6">
         <Card>

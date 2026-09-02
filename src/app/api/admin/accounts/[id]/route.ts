@@ -15,7 +15,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { id } = await params;
   const body = await request.json().catch(() => null);
 
-  const update: { tier?: Tier; status?: AccountStatus } = {};
+  const update: { tier?: Tier; status?: AccountStatus; demo_mode?: boolean } = {};
 
   if (body?.tier !== undefined) {
     if (!VALID_TIERS.includes(body.tier)) {
@@ -29,6 +29,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       return NextResponse.json({ error: "Invalid status." }, { status: 400 });
     }
     update.status = body.status as AccountStatus;
+  }
+
+  if (body?.demo_mode !== undefined) {
+    if (typeof body.demo_mode !== "boolean") {
+      return NextResponse.json({ error: "Invalid demo_mode." }, { status: 400 });
+    }
+    update.demo_mode = body.demo_mode;
   }
 
   if (Object.keys(update).length === 0) {
