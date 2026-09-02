@@ -78,6 +78,11 @@ export function SettingsView({
   const currentTier = TIERS.find((t) => t.id === account.tier) ?? TIERS[0];
   const isConnected = (provider: string) => integrations.some((i) => i.provider === provider && i.connected);
   const demoMode = account.demo_mode;
+  // In demo mode, every integration reads as available-to-connect and none
+  // read as already connected — a real connected provider (or the account's
+  // real contact email on the Email row) would otherwise leak into the
+  // white-labeled session.
+  const demoConnected = (provider: string) => !demoMode && isConnected(provider);
   const tabHidden = (tab: string) => demoMode && (DEMO_HIDDEN_TABS as readonly string[]).includes(tab);
   const gatingTier = effectiveTier(account.tier, demoMode);
 
@@ -222,15 +227,15 @@ export function SettingsView({
             <IntegrationConnector
               name="Slack"
               description="Deliver scored alerts to a channel"
-              connected={isConnected("slack")}
+              connected={demoConnected("slack")}
               connectHref="/api/integrations/slack/connect"
               provider="slack"
               disconnectAction={disconnectIntegrationAction}
             />
             <IntegrationConnector
               name="Email"
-              description={`Digests delivered to ${account.contact_email ?? "your signup email"}`}
-              connected={Boolean(account.contact_email)}
+              description={demoMode ? "Digests delivered to your email" : `Digests delivered to ${account.contact_email ?? "your signup email"}`}
+              connected={demoMode ? false : Boolean(account.contact_email)}
               connectHref="#"
               provider="email"
             />
@@ -252,7 +257,7 @@ export function SettingsView({
                   ? "Read-only pull of closed-lost deal reasons"
                   : "Read-only pull of closed-lost deal reasons, Plus and above"
               }
-              connected={isConnected("hubspot")}
+              connected={demoConnected("hubspot")}
               connectHref="/api/integrations/hubspot/connect"
               provider="hubspot"
               disconnectAction={disconnectIntegrationAction}
@@ -266,7 +271,7 @@ export function SettingsView({
                   ? "Read-only pull of churn and cancellation reasons"
                   : "Read-only pull of churn and cancellation reasons, Advanced only"
               }
-              connected={isConnected("intercom")}
+              connected={demoConnected("intercom")}
               connectHref="/api/integrations/intercom/connect"
               provider="intercom"
               disconnectAction={disconnectIntegrationAction}
@@ -299,7 +304,7 @@ export function SettingsView({
                   ? "Pull competitor mentions from recorded meeting transcripts"
                   : "Pull competitor mentions from recorded meeting transcripts, Advanced only"
               }
-              connected={isConnected("zoom")}
+              connected={demoConnected("zoom")}
               connectHref="/api/integrations/zoom/connect"
               provider="zoom"
               disconnectAction={disconnectIntegrationAction}
