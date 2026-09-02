@@ -4,6 +4,7 @@ import { SupabaseNotConfigured } from "@/components/admin/not-configured";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { buttonVariants } from "@/components/ui/button";
 import { Download } from "lucide-react";
+import { buildOrdinalMap } from "@/lib/admin-numbering";
 
 export const metadata = { title: "Careers | Admin" };
 export const dynamic = "force-dynamic";
@@ -43,6 +44,8 @@ export default async function AdminCareersPage() {
     }
   }
 
+  const applicationNumbers = buildOrdinalMap(applications, (a) => a.id, (a) => a.created_at);
+
   return (
     <div className="mx-auto max-w-4xl px-8 py-10">
       <div className="mb-8">
@@ -63,6 +66,7 @@ export default async function AdminCareersPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>#</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Role wanted</TableHead>
@@ -73,6 +77,7 @@ export default async function AdminCareersPage() {
             <TableBody>
               {applications.map((app) => (
                 <TableRow key={app.id}>
+                  <TableCell className="text-muted-foreground tabular-nums">#{applicationNumbers.get(app.id)}</TableCell>
                   <TableCell className="font-medium">{app.name}</TableCell>
                   <TableCell className="text-muted-foreground">{app.email}</TableCell>
                   <TableCell className="text-muted-foreground">{app.job_title}</TableCell>
@@ -98,7 +103,7 @@ export default async function AdminCareersPage() {
               ))}
               {applications.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     No applications yet.
                   </TableCell>
                 </TableRow>

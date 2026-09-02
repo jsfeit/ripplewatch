@@ -3,6 +3,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/is-configured";
 import { SupabaseNotConfigured } from "@/components/admin/not-configured";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AffiliateStatusSelect } from "@/components/admin/affiliate-status-select";
+import { buildOrdinalMap } from "@/lib/admin-numbering";
 
 export const metadata = { title: "Affiliates | Admin" };
 export const dynamic = "force-dynamic";
@@ -15,6 +16,8 @@ export default async function AdminAffiliatesPage() {
         .select("*")
         .order("created_at", { ascending: false })
     : { data: null, error: null };
+
+  const applicationNumbers = buildOrdinalMap(applications ?? [], (a) => a.id, (a) => a.created_at);
 
   return (
     <div className="mx-auto max-w-5xl px-8 py-10">
@@ -37,6 +40,7 @@ export default async function AdminAffiliatesPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>#</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Why good fit</TableHead>
@@ -48,6 +52,7 @@ export default async function AdminAffiliatesPage() {
             <TableBody>
               {applications?.map((a) => (
                 <TableRow key={a.id}>
+                  <TableCell className="text-muted-foreground tabular-nums">#{applicationNumbers.get(a.id)}</TableCell>
                   <TableCell className="font-medium">{a.name}</TableCell>
                   <TableCell className="text-muted-foreground">{a.email}</TableCell>
                   <TableCell className="max-w-xs text-muted-foreground">{a.why_good_fit}</TableCell>
@@ -62,7 +67,7 @@ export default async function AdminAffiliatesPage() {
               ))}
               {applications?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
                     No applications yet.
                   </TableCell>
                 </TableRow>

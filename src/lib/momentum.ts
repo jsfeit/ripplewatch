@@ -28,6 +28,21 @@ const WINDOW_DAYS = 30;
 const HEATING_UP_THRESHOLD = 15;
 const COOLING_THRESHOLD = -15;
 
+// The number of components computeMomentum can ever populate — used to
+// shrink the final score toward zero in proportion to how many are
+// actually missing (see the score computation below), not just as the
+// LOW_CONFIDENCE_THRESHOLD cutoff for the confidence flag.
+const TOTAL_COMPONENTS = 5;
+
+// Press/funding sentiment is weighted by recency (not a flat window
+// average) so a big story right when it breaks dominates the score, then
+// fades — the number of days for a signal's weight to halve. 7 days means
+// something from today counts ~2x a week-old story and ~16x a month-old
+// one, so a real spike is felt immediately and washes out on its own
+// rather than lingering at full weight until it falls out of the 30-day
+// window entirely.
+const NEWS_DECAY_HALF_LIFE_DAYS = 7;
+
 export type MomentumLabel = "Heating up" | "Steady" | "Cooling" | "Not enough history yet";
 
 export type MomentumComponent = {
@@ -104,19 +119,37 @@ function sentimentWeight(sentiment: Signal["sentiment"]): number {
   return 0; // neutral, or unclassified (older signals predating sentiment tagging)
 }
 
+// Recency-weighted sentiment average: each signal's contribution decays
+// by how many days old it is (relative to now), so a story from
+// yesterday counts far more than one from three weeks ago even though
+// both sit in the same "recent" window. Falls back to 0 (neutral) only
+// if every signal passed in somehow has zero weight, which in practice
+// can't happen for a non-empty list since weight is always > 0.
+function decayWeightedSentiment(signals: Signal[], now: Date): number {
+  let weightedSum = 0;
+  let totalWeight = 0;
+  for (const signal of signals) {
+    const daysAgo = (now.getTime() - new Date(signal.occurred_on).getTime()) / (24 * 60 * 60 * 1000);
+    const weight = Math.pow(0.5, Math.max(0, daysAgo) / NEWS_DECAY_HALF_LIFE_DAYS);
+    weightedSum += sentimentWeight(signal.sentiment) * weight;
+    totalWeight += weight;
+  }
+  return totalWeight > 0 ? weightedSum / totalWeight : 0;
+}
+
 // Measures whether press/funding coverage is trending more favorable or
 // more unfavorable for the competitor between the two windows — not just
 // whether there's more or less of it. Pure volume ("8 stories this month
 // vs 2 last month") reads as "heating up" regardless of whether that
-// coverage is a funding round or a lawsuit; averaging sentiment per
-// signal and comparing the two windows' averages answers "is this good or
-// bad news for them" instead. Same zero-baseline guard as countDelta:
-// requires at least one signal in both windows, since an empty prior
-// window says nothing about sentiment either.
-function sentimentDelta(recent: Signal[], prior: Signal[]): number | null {
+// coverage is a funding round or a lawsuit; a recency-weighted average of
+// sentiment per signal and comparing the two windows' averages answers
+// "is this good or bad news for them, and how fresh is it" instead. Same
+// zero-baseline guard as countDelta: requires at least one signal in both
+// windows, since an empty prior window says nothing about sentiment either.
+function sentimentDelta(recent: Signal[], prior: Signal[], now: Date): number | null {
   if (recent.length === 0 || prior.length === 0) return null;
-  const avgRecent = avg(recent.map((s) => sentimentWeight(s.sentiment)));
-  const avgPrior = avg(prior.map((s) => sentimentWeight(s.sentiment)));
+  const avgRecent = decayWeightedSentiment(recent, now);
+  const avgPrior = decayWeightedSentiment(prior, now);
   return Math.max(-100, Math.min(100, (avgRecent - avgPrior) * 100));
 }
 
@@ -203,7 +236,7 @@ export function computeMomentum(signals: Signal[], winLossEntries: WinLossEntry[
 
   const hiringScore = countDelta(hiringRecent, hiringPrior);
   const pricingScore = countDelta(pricingRecent, pricingPrior);
-  const pressScore = sentimentDelta(pressRecentSignals, pressPriorSignals);
+  const pressScore = sentimentDelta(pressRecentSignals, pressPriorSignals, now);
   const relevanceRecentAvg = scoredRecent.length > 0 ? Math.round(avg(scoredRecent.map((s) => s.relevance_score!))) : null;
   const relevancePriorAvg = scoredPrior.length > 0 ? Math.round(avg(scoredPrior.map((s) => s.relevance_score!))) : null;
 
@@ -262,7 +295,16 @@ export function computeMomentum(signals: Signal[], winLossEntries: WinLossEntry[
     return { score: null, label: "Not enough history yet", confidence, components };
   }
 
-  const score = avg(present.map((c) => c.score));
+  // Shrunk toward zero by how many of the 5 possible components are
+  // actually missing, rather than averaging only over what's present. A
+  // single populated component (e.g. only win rate, everything else "no
+  // data") no longer swings the score to its full raw magnitude — it's
+  // divided by 5, not by 1 — so a thin score can't cross into "Heating
+  // up"/"Cooling" as easily as a well-populated one built from real
+  // agreement across several signals. Present.length === 5 (nothing
+  // missing) leaves the score identical to a plain average, since dividing
+  // by a fixed 5 and dividing by present.length are the same thing then.
+  const score = present.reduce((sum, c) => sum + c.score, 0) / TOTAL_COMPONENTS;
   const label: MomentumLabel =
     score >= HEATING_UP_THRESHOLD ? "Heating up" : score <= COOLING_THRESHOLD ? "Cooling" : "Steady";
 
