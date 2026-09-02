@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { resolveAccountContext } from "@/lib/impersonation";
 import { competitorCap, competitorCapLabel } from "@/lib/tier-limits";
 import { discoverCompetitorUrls } from "@/lib/scraping";
 import { suggestCompetitorCategories } from "@/lib/anthropic";
 
-// Scoped to the caller's own account via RLS — unlike /api/admin/competitors,
-// this never touches other accounts' data even if account_id were spoofed.
+// Scoped to the caller's own account via RLS, except during an admin "View
+// as" session (resolveAccountContext swaps in the impersonated account and
+// an RLS-bypassing client) — unlike /api/admin/competitors, this never
+// touches an account the caller doesn't own or isn't impersonating even if
+// account_id were spoofed.
 export async function POST(request: Request) {
   const supabase = await createClient();
   const {
@@ -15,25 +19,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("account_id")
-    .eq("id", user.id)
-    .single();
-  if (!profile?.account_id) {
+  const { accountId, db } = await resolveAccountContext(supabase, user.id);
+  if (!accountId) {
     return NextResponse.json({ error: "Finish onboarding first." }, { status: 400 });
   }
 
-  const { data: account } = await supabase
+  const { data: account } = await db
     .from("accounts")
     .select("tier, demo_mode")
-    .eq("id", profile.account_id)
+    .eq("id", accountId)
     .single();
 
-  const { count } = await supabase
+  const { count } = await db
     .from("competitors")
     .select("id", { count: "exact", head: true })
-    .eq("account_id", profile.account_id);
+    .eq("account_id", accountId);
 
   const tier = account?.tier ?? "starter";
   const limit = competitorCap(tier, account?.demo_mode ?? false);
@@ -53,13 +53,13 @@ export async function POST(request: Request) {
 
   const [urls, categories] = await Promise.all([
     domain ? discoverCompetitorUrls(domain) : Promise.resolve({ pricingUrl: null, careersUrl: null }),
-    suggestCompetitorCategories([{ name, domain: domain || null }], profile.account_id).catch(() => [""]),
+    suggestCompetitorCategories([{ name, domain: domain || null }], accountId).catch(() => [""]),
   ]);
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("competitors")
     .insert({
-      account_id: profile.account_id,
+      account_id: accountId,
       name,
       domain: domain || null,
       category: categories[0] || null,

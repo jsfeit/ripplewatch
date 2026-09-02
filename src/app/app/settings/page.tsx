@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { resolveAccountContext } from "@/lib/impersonation";
 import { computeMomentum, type MomentumResult } from "@/lib/momentum";
 import { TIER_SIGNAL_SOURCES, effectiveTier } from "@/lib/tier-limits";
 import { SettingsView } from "./settings-view";
@@ -14,34 +15,36 @@ export default async function SettingsPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("account_id")
-    .eq("id", user.id)
-    .single();
-  if (!profile?.account_id) redirect("/onboarding");
+  // Uses resolveAccountContext (not a plain profiles.account_id lookup) so
+  // an admin's "View as" session shows the impersonated account's own
+  // Settings instead of the admin's own — this page previously ignored
+  // impersonation entirely and always rendered the real logged-in user's
+  // account, which is what made demo_mode invisible during a View as
+  // session even with the flag correctly set on the target account.
+  const { accountId, db } = await resolveAccountContext(supabase, user.id);
+  if (!accountId) redirect("/onboarding");
 
-  const { data: account } = await supabase
+  const { data: account } = await db
     .from("accounts")
     .select("*")
-    .eq("id", profile.account_id)
+    .eq("id", accountId)
     .single();
   if (!account) redirect("/onboarding");
 
-  const { data: competitors } = await supabase
+  const { data: competitors } = await db
     .from("competitors")
     .select("*")
-    .eq("account_id", profile.account_id)
+    .eq("account_id", accountId)
     .order("created_at", { ascending: true });
 
-  const { data: integrations } = await supabase
+  const { data: integrations } = await db
     .from("integrations")
     .select("*")
-    .eq("account_id", profile.account_id);
+    .eq("account_id", accountId);
 
   const competitorIds = (competitors ?? []).map((c) => c.id);
   const { data: recentSignals } = competitorIds.length
-    ? await supabase
+    ? await db
         .from("signals")
         .select("*")
         .in("competitor_id", competitorIds)
@@ -49,10 +52,10 @@ export default async function SettingsPage() {
         .limit(10)
     : { data: [] };
 
-  const { data: suggestions } = await supabase
+  const { data: suggestions } = await db
     .from("suggested_competitors")
     .select("*")
-    .eq("account_id", profile.account_id)
+    .eq("account_id", accountId)
     .eq("status", "pending")
     .order("discovered_at", { ascending: false });
 
@@ -62,14 +65,14 @@ export default async function SettingsPage() {
   const sixtyDaysAgo = new Date();
   sixtyDaysAgo.setUTCDate(sixtyDaysAgo.getUTCDate() - 60);
   const { data: momentumSignals } = competitorIds.length
-    ? await supabase
+    ? await db
         .from("signals")
         .select("competitor_id, type, sentiment, occurred_on, scored, relevance_score")
         .in("competitor_id", competitorIds)
         .gte("occurred_on", sixtyDaysAgo.toISOString().slice(0, 10))
     : { data: [] };
   const { data: momentumWinLoss } = competitorIds.length
-    ? await supabase
+    ? await db
         .from("competitor_win_loss")
         .select("competitor_id, outcome, created_at")
         .in("competitor_id", competitorIds)
@@ -85,7 +88,7 @@ export default async function SettingsPage() {
   const seoAllowed = TIER_SIGNAL_SOURCES[effectiveTier(account.tier, account.demo_mode)].includes("seo");
   const { data: seo } =
     seoAllowed && competitorIds.length
-      ? await supabase
+      ? await db
           .from("competitor_seo")
           .select("competitor_id, organic_traffic_estimate")
           .in("competitor_id", competitorIds)
@@ -96,17 +99,17 @@ export default async function SettingsPage() {
 
   // Never selects key_hash — the plaintext key is shown once at creation
   // and this list only ever needs the prefix/metadata to render.
-  const { data: apiKeys } = await supabase
+  const { data: apiKeys } = await db
     .from("api_keys")
     .select("id, name, key_prefix, last_used_at, revoked_at, created_at")
-    .eq("account_id", profile.account_id)
+    .eq("account_id", accountId)
     .is("revoked_at", null)
     .order("created_at", { ascending: false });
 
-  const { data: referrals } = await supabase
+  const { data: referrals } = await db
     .from("referrals")
     .select("id, referred_account_id, referred_at, qualified_at")
-    .eq("referrer_account_id", profile.account_id)
+    .eq("referrer_account_id", accountId)
     .order("referred_at", { ascending: false });
 
   return (
