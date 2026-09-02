@@ -44,7 +44,7 @@ type DateFilter = "recent" | "all";
 // Caps the feed so News doesn't bury Pricing/Trends/Win-loss below it on
 // the merged dashboard — "Show all" is one click away, same pattern as the
 // date filter's "All time".
-const COLLAPSED_COUNT = 5;
+const COLLAPSED_COUNT = 3;
 function matchesDateFilter(signal: Signal, filter: DateFilter): boolean {
   if (filter === "all") return true;
   return !isOldSignal(signal.occurred_on);

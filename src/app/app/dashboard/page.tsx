@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Sparkles } from "lucide-react";
+import { Sparkles, TrendingUp, Scale } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { resolveAccountContext } from "@/lib/impersonation";
 import { TIER_SIGNAL_SOURCES } from "@/lib/tier-limits";
@@ -23,13 +23,18 @@ type Signal = Database["public"]["Tables"]["signals"]["Row"];
 // trust — regenerating next successful cron run brings it back.
 const VERDICT_STALE_MS = 8 * 24 * 60 * 60 * 1000;
 
+// Ordered synthesis-first, raw-data-last: Momentum and Win/loss are the
+// differentiated features (per-competitor and per-outcome synthesis), so
+// they lead; Trends is aggregate synthesis one level up; Pricing/Hiring
+// are reference data; News is the rawest, most granular feed, so it
+// trails instead of competing with the synthesized sections for attention.
 const SECTIONS = [
-  { id: "overview", label: "Overview" },
-  { id: "trends", label: "Trends" },
+  { id: "overview", label: "Momentum" },
   { id: "win-loss", label: "Win/loss" },
-  { id: "news", label: "News" },
+  { id: "trends", label: "Trends" },
   { id: "pricing", label: "Competitor pricing" },
   { id: "hiring", label: "Hiring" },
+  { id: "news", label: "News" },
 ];
 
 export const metadata = { title: "Dashboard" };
@@ -236,6 +241,12 @@ export default async function DashboardPage() {
     if (!(signal.competitor_id in latestSignalByCompetitor)) latestSignalByCompetitor[signal.competitor_id] = signal;
   }
 
+  // Headline number for the Win/loss section header — the one thing worth
+  // knowing without opening the full log below.
+  const wonCount = (winLossEntries ?? []).filter((e) => e.outcome === "won").length;
+  const lostCount = (winLossEntries ?? []).filter((e) => e.outcome === "lost").length;
+  const winRatePercent = wonCount + lostCount > 0 ? Math.round((wonCount / (wonCount + lostCount)) * 100) : null;
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-10 sm:py-10">
       <AutoProductTour hasSeenTour={hasSeenTour} />
@@ -259,18 +270,39 @@ export default async function DashboardPage() {
         ))}
       </nav>
 
-      {verdictIsFresh ? (
-        <div className="mb-5 flex items-start gap-2.5 rounded-lg border border-primary/25 bg-primary/[0.04] p-3.5">
-          <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-primary">This week&apos;s takeaway</p>
-            <p className="mt-1 text-sm text-foreground">{account!.weekly_verdict}</p>
-          </div>
+      {verdictIsFresh || trendsDigestIsFresh ? (
+        <div className="mb-6 space-y-3 rounded-xl border border-primary/25 bg-primary/[0.06] p-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary">This week</p>
+          {verdictIsFresh ? (
+            <div className="flex items-start gap-2.5">
+              <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  The verdict
+                </p>
+                <p className="mt-0.5 text-sm text-foreground">{account!.weekly_verdict}</p>
+              </div>
+            </div>
+          ) : null}
+          {trendsDigestIsFresh ? (
+            <div className="flex items-start gap-2.5">
+              <TrendingUp className="mt-0.5 size-4 shrink-0 text-primary" />
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Momentum</p>
+                <p className="mt-0.5 text-sm text-foreground">{account!.trends_digest}</p>
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
       <section id="overview" className="scroll-mt-20">
-        <h2 className="text-sm font-semibold">Overview</h2>
+        <div className="flex items-center gap-2">
+          <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+            <TrendingUp className="size-3.5" />
+          </span>
+          <h2 className="text-sm font-semibold">Momentum</h2>
+        </div>
         <p className="mt-1 text-xs text-muted-foreground">
           Every tracked competitor at a glance: momentum, latest signal, and price point. Expand a row for the
           detail behind its momentum score.
@@ -289,37 +321,19 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <section id="trends" className="mt-10 scroll-mt-20">
-        <h2 className="text-sm font-semibold">Trends</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Category-level activity and recurring themes across every logged win/loss reason. Per-competitor
-          momentum is above, in Overview.
-        </p>
-        {trendsDigestIsFresh ? (
-          <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-primary/25 bg-primary/[0.04] p-3.5">
-            <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
-            <p className="text-sm text-foreground">{account!.trends_digest}</p>
-          </div>
-        ) : null}
-        <div className="mt-4">
-          <IndustryPulse
-            monthlyActivity={monthlyActivity}
-            trends={industryTrends?.trends ?? []}
-            trendsGeneratedAt={industryTrends?.generated_at ?? null}
-          />
-        </div>
-        <div className="mt-6">
-          <TrendsBoard
-            accountName={account?.name ?? ""}
-            initialTrends={winLossTrends ?? []}
-            initialGeneratedAt={trendsGeneratedAt}
-            signalsById={Object.fromEntries((relatedSignals ?? []).map((s) => [s.id, s]))}
-          />
-        </div>
-      </section>
-
       <section id="win-loss" className="mt-10 scroll-mt-20">
-        <h2 className="text-sm font-semibold">Win/loss</h2>
+        <div className="flex items-center gap-2">
+          <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+            <Scale className="size-3.5" />
+          </span>
+          <h2 className="text-sm font-semibold">Win/loss</h2>
+          {winRatePercent !== null ? (
+            <span className="text-xs font-medium text-muted-foreground">
+              · <span className="font-semibold text-foreground">{winRatePercent}%</span> win rate ·{" "}
+              {wonCount + lostCount} logged
+            </span>
+          ) : null}
+        </div>
         <p className="mt-1 text-xs text-muted-foreground">
           Import, log, and see the recurring reasons behind every deal, across every competitor.
         </p>
@@ -334,23 +348,25 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <section id="news" className="mt-10 scroll-mt-20">
-        <h2 className="text-sm font-semibold">News</h2>
+      <section id="trends" className="mt-10 scroll-mt-20">
+        <h2 className="text-sm font-semibold">Trends</h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          Signals across every tracked competitor. Scored alerts include the reasoning behind the verdict.
+          Category-level activity and recurring themes across every logged win/loss reason. Per-competitor
+          momentum is above, in Momentum.
         </p>
         <div className="mt-4">
-          <DashboardFeed
-            competitors={competitors ?? []}
-            signals={signals ?? []}
-            evalLabelBySignalId={evalLabelBySignalId}
-            tier={tier}
-            previewContext={{
-              companyName: account?.name ?? "",
-              positioning: account?.positioning ?? "",
-              icp: account?.icp ?? "",
-              lossReason: account?.lost_deal_notes || account?.churn_notes || "",
-            }}
+          <IndustryPulse
+            monthlyActivity={monthlyActivity}
+            trends={industryTrends?.trends ?? []}
+            trendsGeneratedAt={industryTrends?.generated_at ?? null}
+          />
+        </div>
+        <div className="mt-6">
+          <TrendsBoard
+            accountName={account?.name ?? ""}
+            initialTrends={winLossTrends ?? []}
+            initialGeneratedAt={trendsGeneratedAt}
+            signalsById={Object.fromEntries((relatedSignals ?? []).map((s) => [s.id, s]))}
           />
         </div>
       </section>
@@ -372,6 +388,27 @@ export default async function DashboardPage() {
         </p>
         <div className="mt-4">
           <HiringBoard competitors={competitors ?? []} hiring={hiring ?? []} hiringSignals={hiringSignals ?? []} />
+        </div>
+      </section>
+
+      <section id="news" className="mt-10 scroll-mt-20">
+        <h2 className="text-sm font-semibold">News</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Signals across every tracked competitor. Scored alerts include the reasoning behind the verdict.
+        </p>
+        <div className="mt-4">
+          <DashboardFeed
+            competitors={competitors ?? []}
+            signals={signals ?? []}
+            evalLabelBySignalId={evalLabelBySignalId}
+            tier={tier}
+            previewContext={{
+              companyName: account?.name ?? "",
+              positioning: account?.positioning ?? "",
+              icp: account?.icp ?? "",
+              lossReason: account?.lost_deal_notes || account?.churn_notes || "",
+            }}
+          />
         </div>
       </section>
     </div>
