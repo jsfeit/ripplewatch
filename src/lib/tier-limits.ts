@@ -75,3 +75,20 @@ export function competitorLimitLabel(tier: AccountTier): string {
   const limit = COMPETITOR_LIMIT[tier];
   return limit === Infinity ? "unlimited" : String(limit);
 }
+
+// White-label demo accounts (accounts.demo_mode) get the full Advanced
+// feature set — including integrations that are normally gated below
+// Advanced — plus an uncapped competitor count beyond what even Advanced
+// allows, so a demo can show a long, real list of tracked and suggested
+// competitors without hitting an upgrade prompt.
+export function effectiveTier(tier: AccountTier, demoMode: boolean): AccountTier {
+  return demoMode ? "advanced" : tier;
+}
+
+export function competitorCap(tier: AccountTier, demoMode: boolean): number {
+  return demoMode ? Infinity : COMPETITOR_LIMIT[tier];
+}
+
+export function competitorCapLabel(cap: number): string {
+  return cap === Infinity ? "unlimited" : String(cap);
+}

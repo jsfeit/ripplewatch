@@ -9,7 +9,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
 import { cn, avatarColor } from "@/lib/utils";
-import { COMPETITOR_LIMIT, competitorLimitLabel } from "@/lib/tier-limits";
+import { competitorCap, competitorCapLabel } from "@/lib/tier-limits";
 import { MOMENTUM_STYLES, type MomentumResult } from "@/lib/momentum";
 import type { Database } from "@/lib/supabase/types";
 
@@ -28,6 +28,7 @@ const SORT_STORAGE_KEY = "ripplewatch:competitor-sort";
 export function CompetitorManager({
   competitors: initialCompetitors,
   tier,
+  demoMode = false,
   activeId,
   momentum,
   traffic,
@@ -35,6 +36,9 @@ export function CompetitorManager({
 }: {
   competitors: Competitor[];
   tier: Tier;
+  // Uncaps the competitor count entirely for a white-labeled demo account,
+  // beyond even what Advanced allows — see tier-limits.ts.
+  demoMode?: boolean;
   activeId?: string;
   // Keyed by competitor id — same computeMomentum result the Trends
   // page renders, just surfaced here too so it's visible on the page
@@ -80,7 +84,7 @@ export function CompetitorManager({
     localStorage.setItem(SORT_STORAGE_KEY, next);
   }
 
-  const competitorLimit = COMPETITOR_LIMIT[tier];
+  const competitorLimit = competitorCap(tier, demoMode);
   const isOverLimit = competitors.length > competitorLimit;
   // Same "earliest N stay covered" ordering the cron job uses, so this
   // matches which competitors are actually still being monitored —
@@ -172,7 +176,7 @@ export function CompetitorManager({
       <div>
         <h2 className="font-medium">Manage competitors</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {`${competitors.length} of ${competitorLimitLabel(tier)} tracked on your plan. Keep names and domains consistent once you start tracking a competitor: the scoring model learns from each one's history, so renaming or re-adding it under a slightly different name resets that context.`}
+          {`${competitors.length} of ${competitorCapLabel(competitorLimit)} tracked${demoMode ? "" : " on your plan"}. Keep names and domains consistent once you start tracking a competitor: the scoring model learns from each one's history, so renaming or re-adding it under a slightly different name resets that context.`}
         </p>
       </div>
 
@@ -181,7 +185,7 @@ export function CompetitorManager({
           <AlertTriangle className="mt-0.5 size-4 shrink-0" />
           <p>
             You have {competitors.length} competitors but your plan only monitors{" "}
-            {competitorLimitLabel(tier)}. The {competitors.length - competitorLimit} most recently
+            {competitorCapLabel(competitorLimit)}. The {competitors.length - competitorLimit} most recently
             added are no longer being crawled; remove some or{" "}
             <Link href="/app/settings?tab=plan" className="underline">
               upgrade

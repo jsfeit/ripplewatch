@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { COMPETITOR_LIMIT, competitorLimitLabel } from "@/lib/tier-limits";
+import { competitorCap, competitorCapLabel } from "@/lib/tier-limits";
 import { discoverCompetitorUrls } from "@/lib/scraping";
 
 // Promotes a discovered suggestion into a real tracked competitor. Scoped to
@@ -41,7 +41,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const { data: account } = await supabase
     .from("accounts")
-    .select("tier")
+    .select("tier, demo_mode")
     .eq("id", profile.account_id)
     .single();
 
@@ -51,10 +51,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .eq("account_id", profile.account_id);
 
   const tier = account?.tier ?? "starter";
-  const limit = COMPETITOR_LIMIT[tier];
+  const limit = competitorCap(tier, account?.demo_mode ?? false);
   if ((count ?? 0) >= limit) {
     return NextResponse.json(
-      { error: `Your plan tracks up to ${competitorLimitLabel(tier)} competitors. Upgrade to add more.`, upgradeRequired: true },
+      { error: `Your plan tracks up to ${competitorCapLabel(limit)} competitors. Upgrade to add more.`, upgradeRequired: true },
       { status: 403 }
     );
   }

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { computeMomentum, type MomentumResult } from "@/lib/momentum";
-import { TIER_SIGNAL_SOURCES } from "@/lib/tier-limits";
+import { TIER_SIGNAL_SOURCES, effectiveTier } from "@/lib/tier-limits";
 import { SettingsView } from "./settings-view";
 
 export const metadata = { title: "Settings" };
@@ -82,7 +82,7 @@ export default async function SettingsPage() {
     );
   }
 
-  const seoAllowed = TIER_SIGNAL_SOURCES[account.tier].includes("seo");
+  const seoAllowed = TIER_SIGNAL_SOURCES[effectiveTier(account.tier, account.demo_mode)].includes("seo");
   const { data: seo } =
     seoAllowed && competitorIds.length
       ? await supabase
