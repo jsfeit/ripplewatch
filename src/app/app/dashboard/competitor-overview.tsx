@@ -129,7 +129,7 @@ export function CompetitorOverview({
     [competitors, momentumByCompetitor]
   );
 
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
 
   const heatingUpCount = sorted.filter((c) => momentumByCompetitor.get(c.id)?.label === "Heating up").length;
   const coolingCount = sorted.filter((c) => momentumByCompetitor.get(c.id)?.label === "Cooling").length;
@@ -146,10 +146,10 @@ export function CompetitorOverview({
 
   return (
     <div>
-      {/* Collapsed by default so Trends (right below) doesn't have to
-          compete with a full per-competitor list for the first screenful —
-          the summary line still surfaces the one thing worth knowing at a
-          glance (who's moving) without requiring a click. */}
+      {/* Expanded by default — Momentum leads the dashboard now, so the
+          full per-competitor list is the point of the section rather than
+          something to reveal after a click. Still collapsible for anyone
+          who just wants the summary line. */}
       <button
         type="button"
         data-tour="competitor-card"
