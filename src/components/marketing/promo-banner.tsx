@@ -21,8 +21,13 @@ export function PromoBanner({ bannerText, linkUrl }: { bannerText: string | null
     setDismissed(sessionStorage.getItem(STORAGE_KEY) === bannerText);
   }, [bannerText]);
 
-  // Signed-in surfaces aren't the audience for a new-signup promo.
-  if (pathname?.startsWith("/app") || pathname?.startsWith("/admin")) return null;
+  // Signed-in surfaces aren't the audience for a new-signup promo. /refer is
+  // excluded too: it already leads with its own specific offer (2 months
+  // free via referral), and stacking a second, different-shaped generic
+  // promo (a percent-off evergreen code) right above it read as two
+  // competing deals rather than reinforcing the one that actually applies
+  // to whoever followed this link.
+  if (pathname?.startsWith("/app") || pathname?.startsWith("/admin") || pathname === "/refer") return null;
   if (!bannerText || dismissed) return null;
 
   const content = (
