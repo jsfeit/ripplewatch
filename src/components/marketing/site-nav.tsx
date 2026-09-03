@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Menu, Waves, X } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { DemoLink } from "@/components/marketing/demo-link";
@@ -14,6 +15,13 @@ const LINKS = [
 
 export function SiteNav() {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+  // Everywhere else, "Get started" sends people to /pricing to pick a tier
+  // first, which is the right funnel. But a Link to the page you're already
+  // on doesn't navigate at all — no reload, no scroll, nothing — so on
+  // /pricing itself it just looks dead. There, skip straight to onboarding
+  // with the same default tier/period the pricing page's own CTA uses.
+  const getStartedHref = pathname === "/pricing" ? "/onboarding?plan=starter&period=monthly" : "/pricing";
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur">
@@ -45,7 +53,7 @@ export function SiteNav() {
           >
             Sign in
           </Link>
-          <Link href="/pricing" className={cn(buttonVariants(), "hidden sm:inline-flex")}>
+          <Link href={getStartedHref} className={cn(buttonVariants(), "hidden sm:inline-flex")}>
             Get started
           </Link>
           <button
@@ -91,7 +99,7 @@ export function SiteNav() {
             Sign in
           </Link>
           <Link
-            href="/pricing"
+            href={getStartedHref}
             className={cn(buttonVariants(), "mt-2 w-full")}
             onClick={() => setOpen(false)}
           >
