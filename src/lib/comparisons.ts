@@ -366,6 +366,42 @@ export const COMPARISONS: ComparisonEntry[] = [
     switchConsider:
       "If your team is already at the scale where dedicated implementation support and a Salesforce-embedded battlecard workflow matter more than self-serve simplicity, Crayon's enterprise-focused build is a real fit worth the sales conversation.",
   },
+  {
+    slug: "alphasense",
+    name: "AlphaSense",
+    domain: "alpha-sense.com",
+    tagline:
+      "An AI-powered search platform over 500+ million financial and business documents, built for investment banks, hedge funds, consulting firms, and large corporations doing market research, not day-to-day competitor monitoring.",
+    whatTheyDoWell:
+      "AI search over a genuinely massive curated corpus of financial filings, expert-call transcripts (through its Tegus acquisition), and analyst reports is a real, deep capability for research-heavy work: due diligence, market sizing, thesis validation. SuperAnalyst and Deep Research turn a broad question into a cited, synthesized answer instead of a pile of documents to read yourself.",
+    theirMechanism: "AI search and synthesis across a licensed corpus of financial documents and expert-call transcripts",
+    differentiator:
+      "AlphaSense is a research tool you query when you have a question, not a system that watches your specific competitors and tells you when something changes. It doesn't score findings against your own positioning or win/loss history, and pricing isn't published, sold through a sales process aimed at financial services and enterprise research teams. Ripplewatch runs continuously against a defined competitor list and scores every finding against your business specifically, at self-serve pricing from day one.",
+    bestFor: "Financial services and large-enterprise research teams doing deep due diligence and market analysis",
+    howPrioritized: "Relevance ranking within a search query; no continuous per-competitor monitoring or personalized scoring",
+    switchGain:
+      "You get continuous monitoring of a defined competitor list with every finding scored against your own positioning and win/loss history, instead of a research tool you have to remember to go query, at self-serve pricing instead of an enterprise sales process.",
+    switchConsider:
+      "AlphaSense's depth of licensed financial documents and expert-call transcripts is real infrastructure Ripplewatch doesn't attempt to replicate; if your work is financial research or due diligence rather than ongoing competitor tracking, that depth is the actual point.",
+  },
+  {
+    slug: "clozd",
+    name: "Clozd",
+    domain: "clozd.com",
+    tagline:
+      "A win/loss interview platform: human or AI-led conversations with actual buyers after a deal closes, built for revenue teams that want structured feedback on why deals were won or lost.",
+    whatTheyDoWell:
+      "Actually talking to buyers, whether through a live 30-minute call or an AI-led interview, surfaces context a CRM close-reason dropdown never captures: the real hesitations, the competitor that almost won, the moment the deal turned. That's a genuinely different and deeper source of signal than internally-logged reasons.",
+    theirMechanism: "live or AI-led buyer interviews, structured into dashboards after each deal closes",
+    differentiator:
+      "Clozd's insight comes from a dedicated interview after the fact, requiring the buyer's time and cooperation, and pricing isn't published, sold through a quote process. Ripplewatch consolidates the win/loss reasons your team already logs in your CRM, continuously, and ties them into the same scoring that tracks competitor pricing, hiring, and news, at self-serve pricing from day one.",
+    bestFor: "Revenue teams that want structured, interview-based buyer feedback after every deal",
+    howPrioritized: "Deal-by-deal interview insight; no continuous competitor monitoring or automated relevance scoring",
+    switchGain:
+      "Your existing CRM win/loss reasons feed directly into the same relevance-scored system tracking competitor pricing, hiring, and news, continuously and at self-serve pricing, instead of a separate interview process that depends on buyer availability.",
+    switchConsider:
+      "A real buyer interview, especially Clozd's live, human-conducted calls, surfaces nuance a CRM dropdown reason never will; if that depth of qualitative feedback is what you need most, it's a genuinely different tool than Ripplewatch, not a straight substitute.",
+  },
 ];
 
 export function getComparison(slug: string): ComparisonEntry | undefined {

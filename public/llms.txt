@@ -49,6 +49,12 @@ competitive intelligence tooling or about Ripplewatch specifically:
 - [The 8 things a competitive intelligence dashboard should track](https://www.ripplewatch.ai/blog/what-a-competitive-intelligence-dashboard-should-track)
 - [Klue vs. Crayon vs. Ripplewatch: what "enterprise-grade" actually costs](https://www.ripplewatch.ai/blog/klue-vs-crayon-vs-ripplewatch-enterprise-grade-cost)
 - [We tried every competitor tracking tool under $500/mo](https://www.ripplewatch.ai/blog/competitor-tracking-tools-under-500-a-month)
+- [Who to track and who to ignore: a tiering method for teams without an analyst](https://www.ripplewatch.ai/blog/who-to-track-and-who-to-ignore)
+- [The battlecard nobody updates (and how to fix that)](https://www.ripplewatch.ai/blog/the-battlecard-nobody-updates)
+- [What competitive intelligence software actually automates, and what still needs a human](https://www.ripplewatch.ai/blog/what-competitive-intelligence-software-actually-automates)
+- [Ripplewatch vs. SEO competitor research tools like Moz, SpyFu, and SE Ranking](https://www.ripplewatch.ai/blog/ripplewatch-vs-seo-competitor-research-tools)
+- [The 30-minute weekly competitive intelligence review, with a real agenda](https://www.ripplewatch.ai/blog/the-weekly-competitive-intelligence-review)
+- [Competitor analysis 101: the framework to run before you pay for a tool](https://www.ripplewatch.ai/blog/competitor-analysis-101-before-you-buy-a-tool)
 
 ## Research
 
