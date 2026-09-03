@@ -14,11 +14,7 @@ const STORAGE_KEY = "rw-cookie-consent";
 // affiliate-attribution cookies (GA's _ga/_gid, LinkedIn's bcookie/
 // UserMatchHistory, Rewardful's referral-attribution cookie), which need
 // consent under GDPR/ePrivacy. Vercel Analytics is unaffected: it's
-// cookieless and stays loaded in layout.tsx. Reditus is NOT gated here — its
-// own install spec requires it unconditionally in <head> on every page load
-// (see the beforeInteractive Script in layout.tsx), a deliberate exception
-// to this file's pattern, chosen so its own verification/attribution works
-// as documented.
+// cookieless and stays loaded in layout.tsx.
 export function CookieConsent() {
   const [consent, setConsent] = useState<"granted" | "denied" | null>(null);
   const [hydrated, setHydrated] = useState(false);

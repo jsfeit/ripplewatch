@@ -322,11 +322,6 @@ export function OnboardingFlow({
       accountCreatedRef.current = true;
       trackEvent("sign_up", { method: "email" });
 
-      const gr = (window as typeof window & { gr?: (...args: unknown[]) => void }).gr;
-      if (typeof gr === "function") {
-        gr("track", "conversion", { email: email.trim(), uid: data.accountId });
-      }
-
       // payload.tier (not finalPlan) — on the resume-from-confirmation-
       // email path, finalPlan is still the stale pre-restore value from
       // this render, since the setChosenPlanId() a few lines up hasn't
