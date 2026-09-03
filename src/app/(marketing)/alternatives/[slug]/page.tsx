@@ -5,6 +5,9 @@ import { ArrowRight } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { COMPARISONS, getComparison } from "@/lib/comparisons";
 import { QuizCta } from "@/components/marketing/quiz-cta";
+import { TIERS } from "@/lib/tiers";
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 export function generateStaticParams() {
   return COMPARISONS.map((c) => ({ slug: c.slug }));
@@ -42,6 +45,45 @@ export default async function AlternativePage({ params }: { params: Promise<{ sl
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-20">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            name: "Ripplewatch",
+            applicationCategory: "BusinessApplication",
+            operatingSystem: "Web",
+            description: `Considering a ${entry.name} alternative? Here's how Ripplewatch compares: ${entry.tagline}`,
+            offers: TIERS.map((tier) => ({
+              "@type": "Offer",
+              name: tier.name,
+              price: String(tier.monthlyUsd),
+              priceCurrency: "USD",
+              description: tier.tagline,
+            })),
+          }),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Home", item: APP_URL },
+              { "@type": "ListItem", position: 2, name: "Alternatives", item: `${APP_URL}/alternatives` },
+              {
+                "@type": "ListItem",
+                position: 3,
+                name: `${entry.name} Alternative`,
+                item: `${APP_URL}/alternatives/${entry.slug}`,
+              },
+            ],
+          }),
+        }}
+      />
       <div className="mx-auto max-w-2xl text-center">
         <span className="inline-flex items-center rounded-full border border-border bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground">
           {entry.name} alternative
