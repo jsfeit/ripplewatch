@@ -47,8 +47,6 @@ export function SettingsView({
   competitors,
   suggestions,
   momentum,
-  traffic,
-  seoAllowed,
   integrations,
   recentSignals,
   apiKeys,
@@ -59,8 +57,6 @@ export function SettingsView({
   competitors: Competitor[];
   suggestions: Suggestion[];
   momentum: Record<string, MomentumResult>;
-  traffic: Record<string, number | null>;
-  seoAllowed: boolean;
   integrations: Integration[];
   recentSignals: Signal[];
   apiKeys: ApiKey[];
@@ -196,8 +192,6 @@ export function SettingsView({
           tier={account.tier}
           demoMode={demoMode}
           momentum={momentum}
-          traffic={traffic}
-          seoAllowed={seoAllowed}
         />
       </TabsContent>
 

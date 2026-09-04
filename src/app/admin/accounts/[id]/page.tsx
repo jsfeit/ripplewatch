@@ -52,6 +52,33 @@ export default async function AdminAccountDetailPage({
         .order("occurred_on", { ascending: false })
     : { data: [] };
 
+  // "Last crawled" per competitor — competitor_pricing/competitor_hiring are
+  // the two current-state snapshot tables every crawl unconditionally
+  // touches, regardless of whether anything actually changed (see their own
+  // migration comments), so the more recent of the two last_checked_at
+  // values is a true "was this competitor actually crawled recently"
+  // signal. signals.occurred_on isn't used for this: a signal only exists
+  // when a diff was detected, so a competitor with nothing new to report
+  // would wrongly look stale even on a crawl that ran an hour ago.
+  const [{ data: pricingChecks }, { data: hiringChecks }] = competitorIds.length
+    ? await Promise.all([
+        supabase.from("competitor_pricing").select("competitor_id, last_checked_at").in("competitor_id", competitorIds),
+        supabase.from("competitor_hiring").select("competitor_id, last_checked_at").in("competitor_id", competitorIds),
+      ])
+    : [{ data: [] }, { data: [] }];
+
+  const lastCrawledByCompetitor: Record<string, string | null> = {};
+  for (const row of [...(pricingChecks ?? []), ...(hiringChecks ?? [])]) {
+    const existing = lastCrawledByCompetitor[row.competitor_id];
+    if (!existing || new Date(row.last_checked_at) > new Date(existing)) {
+      lastCrawledByCompetitor[row.competitor_id] = row.last_checked_at;
+    }
+  }
+  const lastCrawledOverall = Object.values(lastCrawledByCompetitor).reduce<string | null>(
+    (latest, ts) => (ts && (!latest || new Date(ts) > new Date(latest)) ? ts : latest),
+    null
+  );
+
   const since = new Date();
   since.setUTCDate(since.getUTCDate() - LLM_USAGE_LOOKBACK_DAYS);
   const { data: usageRows } = await supabase
@@ -74,6 +101,8 @@ export default async function AdminAccountDetailPage({
         accountNumber={accountNumber ?? undefined}
         competitors={competitors ?? []}
         signals={signals ?? []}
+        lastCrawledByCompetitor={lastCrawledByCompetitor}
+        lastCrawledOverall={lastCrawledOverall}
         llmUsageByFunction={llmUsageByFunction}
         llmUsageTotalUsd={llmUsageTotalUsd}
         llmUsageWindowDays={LLM_USAGE_LOOKBACK_DAYS}

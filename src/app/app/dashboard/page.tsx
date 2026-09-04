@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { Sparkles, TrendingUp, Scale } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { resolveAccountContext } from "@/lib/impersonation";
-import { TIER_SIGNAL_SOURCES } from "@/lib/tier-limits";
 import { bucketMonthlyActivity } from "@/lib/monthly-activity";
 import { DashboardFeed } from "./dashboard-feed";
 import { CompetitorOverview } from "./competitor-overview";
@@ -23,11 +22,12 @@ type Signal = Database["public"]["Tables"]["signals"]["Row"];
 // trust — regenerating next successful cron run brings it back.
 const VERDICT_STALE_MS = 8 * 24 * 60 * 60 * 1000;
 
-// Ordered synthesis-first, raw-data-last: Momentum and Win/loss are the
-// differentiated features (per-competitor and per-outcome synthesis), so
-// they lead; Trends is aggregate synthesis one level up; Pricing/Hiring
-// are reference data; News is the rawest, most granular feed, so it
-// trails instead of competing with the synthesized sections for attention.
+// Ordered synthesis-first, raw-data-last: Momentum is the most differentiated
+// feature (per-competitor synthesis), so it leads; Trends is aggregate
+// synthesis one level up, right behind it; Win/loss (per-outcome synthesis)
+// follows; Pricing/Hiring are reference data; News is the rawest, most
+// granular feed, so it trails instead of competing with the synthesized
+// sections for attention.
 const SECTIONS = [
   { id: "overview", label: "Momentum" },
   { id: "win-loss", label: "Win/loss" },
@@ -83,7 +83,6 @@ export default async function DashboardPage() {
   // the migration not applied yet, or an unexpected query error.
   const hasSeenTour = impersonation ? true : (profileTour?.has_seen_product_tour ?? true);
   const tier = account?.tier ?? "starter";
-  const seoAllowed = TIER_SIGNAL_SOURCES[tier].includes("seo");
   const competitorIds = (competitors ?? []).map((c) => c.id);
 
   const now = new Date();
@@ -109,17 +108,15 @@ export default async function DashboardPage() {
   const reliabilityLookbackStart = new Date();
   reliabilityLookbackStart.setUTCDate(reliabilityLookbackStart.getUTCDate() - 180);
 
-  // Everything below depends only on competitorIds/accountId/seoAllowed,
-  // none of it on each other — fetched as one batch of round-trips instead
-  // of sequentially.
+  // Everything below depends only on competitorIds/accountId, none of it on
+  // each other — fetched as one batch of round-trips instead of
+  // sequentially.
   const [
     { data: signals },
     { data: pricing },
     { data: pricingSignals },
     { data: hiring },
     { data: hiringSignals },
-    { data: seo },
-    { data: seoSignals },
     { data: momentumSignals },
     { data: stateHistory },
     { data: activitySignals },
@@ -128,13 +125,12 @@ export default async function DashboardPage() {
     { data: winLossEntries },
     { data: hubspotIntegration },
   ] = await Promise.all([
-    // --- News --- (SEO/traffic signals surface in Trends below, not here)
+    // --- News ---
     competitorIds.length
       ? db
           .from("signals")
           .select("id, competitor_id, type, title, summary, scored, relevance_level, relevance_score, relevance_reasoning, url, occurred_on")
           .in("competitor_id", competitorIds)
-          .neq("type", "seo")
           .order("occurred_on", { ascending: false })
       : Promise.resolve({ data: [] as Signal[] }),
     // --- Competitor pricing ---
@@ -165,17 +161,6 @@ export default async function DashboardPage() {
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: [] }),
     // --- Trends: momentum + industry pulse ---
-    seoAllowed && competitorIds.length
-      ? db.from("competitor_seo").select("competitor_id, traffic_trend, organic_traffic_estimate, last_checked_at").in("competitor_id", competitorIds)
-      : Promise.resolve({ data: [] }),
-    seoAllowed && competitorIds.length
-      ? db
-          .from("signals")
-          .select("competitor_id, created_at")
-          .in("competitor_id", competitorIds)
-          .eq("type", "seo")
-          .order("created_at", { ascending: false })
-      : Promise.resolve({ data: [] }),
     competitorIds.length
       ? db
           .from("signals")
@@ -328,9 +313,6 @@ export default async function DashboardPage() {
             momentumSignals={momentumSignals ?? []}
             momentumWinLoss={winLossEntries ?? []}
             momentumStateHistory={stateHistory ?? []}
-            seoAllowed={seoAllowed}
-            seo={seo ?? []}
-            seoSignals={seoSignals ?? []}
             latestSignalByCompetitor={latestSignalByCompetitor}
             pricingByCompetitor={pricingByCompetitor}
           />

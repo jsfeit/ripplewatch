@@ -18,6 +18,7 @@ import {
 import { SIGNAL_TYPE_LABELS } from "@/lib/mock-data";
 import { SignalDialog, type SignalFormValues } from "./signal-dialog";
 import { TIERS } from "@/lib/tiers";
+import { timeAgo } from "@/lib/date";
 import type { Database } from "@/lib/supabase/types";
 
 type Account = Database["public"]["Tables"]["accounts"]["Row"];
@@ -52,6 +53,8 @@ export function AccountAdminView({
   accountNumber,
   competitors: initialCompetitors,
   signals: initialSignals,
+  lastCrawledByCompetitor = {},
+  lastCrawledOverall = null,
   llmUsageByFunction = [],
   llmUsageTotalUsd = 0,
   llmUsageWindowDays,
@@ -62,6 +65,16 @@ export function AccountAdminView({
   accountNumber?: number;
   competitors: Competitor[];
   signals: Signal[];
+  // Most recent competitor_pricing/competitor_hiring last_checked_at per
+  // competitor — the two current-state tables every crawl unconditionally
+  // touches, so this is "was this competitor actually crawled recently,"
+  // not just "did it produce a new signal." null/missing means never
+  // checked (a brand-new competitor, or one with no domain to crawl).
+  lastCrawledByCompetitor?: Record<string, string | null>;
+  // The most recent of the above across every competitor on this account —
+  // shown next to Recrawl for an at-a-glance "is this account's data
+  // fresh" without scrolling to any one competitor.
+  lastCrawledOverall?: string | null;
   llmUsageByFunction?: LlmUsageByFunction[];
   llmUsageTotalUsd?: number;
   llmUsageWindowDays?: number;
@@ -288,6 +301,9 @@ export function AccountAdminView({
             {recrawling ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
             Recrawl now
           </Button>
+          <span className="text-xs text-muted-foreground" title="Most recent competitor_pricing/competitor_hiring check across every tracked competitor">
+            Last crawled {timeAgo(lastCrawledOverall)}
+          </span>
           {recrawlResult ? <span className="text-xs text-muted-foreground">{recrawlResult}</span> : null}
           <Button variant="outline" size="sm" onClick={handleDiscoverCompetitors} disabled={discovering}>
             {discovering ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
@@ -414,6 +430,9 @@ export function AccountAdminView({
                       {competitor.domain ? (
                         <p className="text-xs text-muted-foreground">{competitor.domain}</p>
                       ) : null}
+                      <p className="text-xs text-muted-foreground">
+                        Last crawled {timeAgo(lastCrawledByCompetitor[competitor.id] ?? null)}
+                      </p>
                     </div>
                     <div className="flex gap-2">
                       <Button

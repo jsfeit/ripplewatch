@@ -16,10 +16,9 @@ import type { Database } from "@/lib/supabase/types";
 type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
 type Tier = Database["public"]["Tables"]["accounts"]["Row"]["tier"];
 
-type SortOption = "momentum" | "traffic" | "name" | "date";
+type SortOption = "momentum" | "name" | "date";
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: "momentum", label: "Momentum" },
-  { value: "traffic", label: "Traffic" },
   { value: "name", label: "Name" },
   { value: "date", label: "Date added" },
 ];
@@ -31,8 +30,6 @@ export function CompetitorManager({
   demoMode = false,
   activeId,
   momentum,
-  traffic,
-  seoAllowed,
 }: {
   competitors: Competitor[];
   tier: Tier;
@@ -44,13 +41,6 @@ export function CompetitorManager({
   // page renders, just surfaced here too so it's visible on the page
   // people actually click into a competitor from, not only its own tab.
   momentum?: Record<string, MomentumResult>;
-  // Keyed by competitor id — just the traffic estimate, enough to sort by;
-  // the full competitor_seo record lives on the Trends page.
-  traffic?: Record<string, number | null>;
-  // Hides the "Traffic" sort option entirely for Starter, same gate the
-  // Trends page uses — sorting by a metric that's always empty for
-  // this tier would be confusing, not just unhelpful.
-  seoAllowed?: boolean;
 }) {
   const router = useRouter();
   const [competitors, setCompetitors] = useState(initialCompetitors);
@@ -72,7 +62,7 @@ export function CompetitorManager({
   // an acceptable tradeoff for not fighting hydration.
   useEffect(() => {
     const saved = localStorage.getItem(SORT_STORAGE_KEY);
-    if (saved === "momentum" || saved === "traffic" || saved === "name" || saved === "date") {
+    if (saved === "momentum" || saved === "name" || saved === "date") {
       // Syncing one-time from an external system (localStorage) on mount —
       // exactly the case the lint rule's own guidance calls out as fine.
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -100,14 +90,6 @@ export function CompetitorManager({
   const sortedCompetitors = [...competitors].sort((a, b) => {
     if (sortBy === "name") return a.name.localeCompare(b.name);
     if (sortBy === "date") return a.created_at.localeCompare(b.created_at);
-    if (sortBy === "traffic") {
-      const trafficA = traffic?.[a.id];
-      const trafficB = traffic?.[b.id];
-      if (trafficA == null && trafficB == null) return a.name.localeCompare(b.name);
-      if (trafficA == null) return 1;
-      if (trafficB == null) return -1;
-      return trafficB - trafficA;
-    }
     // momentum (default): highest score first, no-history competitors last
     const scoreA = momentum?.[a.id]?.score;
     const scoreB = momentum?.[b.id]?.score;
@@ -236,7 +218,7 @@ export function CompetitorManager({
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-muted-foreground">Sort by</span>
             <div className="flex flex-wrap gap-1">
-              {SORT_OPTIONS.filter((opt) => opt.value !== "traffic" || seoAllowed).map((opt) => (
+              {SORT_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
                   type="button"

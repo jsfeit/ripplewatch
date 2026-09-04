@@ -11,18 +11,19 @@ export const COMPETITOR_LIMIT: Record<AccountTier, number> = {
   advanced: 20,
 };
 
-// Signal sources are otherwise uniform across tiers — differentiation moved
-// to competitor count, scoring depth (Starter's teaser cadence), and
+// Signal sources are uniform across every tier — differentiation is
+// competitor count, scoring depth (Starter's teaser cadence), and
 // onboarding type instead of gating which sources are scraped at all.
 // Reviews aren't scraped yet (admin-manual only, no ToS-safe free source).
-// SEO/traffic is the one gated source: it's a Plus/Advanced upsell (see
-// pricing page copy in tiers.ts), not available on Starter — checks against
-// a stubbed data source for now (see src/lib/seo-data.ts) pending a real
-// provider account, but the tier gate is real regardless of the stub.
+// SEO/traffic tracking was removed entirely (2026-09) — traffic estimates
+// don't indicate whether a competitor actually threatens a deal, and the
+// underlying data source was never more than a stub anyway. See git history
+// for src/lib/seo-data.ts if this ever needs resurrecting behind a real
+// provider account.
 export const TIER_SIGNAL_SOURCES: Record<AccountTier, SignalType[]> = {
   starter: ["pricing", "job_posting", "news", "funding", "product_change"],
-  plus: ["pricing", "job_posting", "news", "funding", "seo", "product_change"],
-  advanced: ["pricing", "job_posting", "news", "funding", "seo", "product_change"],
+  plus: ["pricing", "job_posting", "news", "funding", "product_change"],
+  advanced: ["pricing", "job_posting", "news", "funding", "product_change"],
 };
 
 // CRM (HubSpot) read-only pull is a Plus-and-above feature — same gate
