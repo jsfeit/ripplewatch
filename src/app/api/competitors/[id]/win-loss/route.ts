@@ -38,18 +38,27 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   // Immediate payoff, same pattern as POST /api/v1/win-loss: show the
   // logging person the Momentum shift right away instead of making them
   // navigate to the dashboard to discover it happened.
-  const sixtyDaysAgo = new Date();
-  sixtyDaysAgo.setUTCDate(sixtyDaysAgo.getUTCDate() - 60);
+  // 180-day lookback (not just the 60 days the recent/prior comparison
+  // itself needs) so computeMomentum's per-competitor reliability
+  // weighting has real history to judge from — see computeReliability in
+  // momentum.ts.
+  const reliabilityLookbackStart = new Date();
+  reliabilityLookbackStart.setUTCDate(reliabilityLookbackStart.getUTCDate() - 180);
   const { data: momentumSignals } = await supabase
     .from("signals")
     .select("competitor_id, type, sentiment, occurred_on, scored, relevance_score")
     .eq("competitor_id", id)
-    .gte("occurred_on", sixtyDaysAgo.toISOString().slice(0, 10));
+    .gte("occurred_on", reliabilityLookbackStart.toISOString().slice(0, 10));
   const { data: momentumWinLoss } = await supabase
     .from("competitor_win_loss")
     .select("competitor_id, outcome, created_at")
     .eq("competitor_id", id);
-  const computed = computeMomentum(momentumSignals ?? [], momentumWinLoss ?? []);
+  const { data: momentumStateHistory } = await supabase
+    .from("competitor_state_history")
+    .select("competitor_id, metric, value, recorded_at")
+    .eq("competitor_id", id)
+    .gte("recorded_at", reliabilityLookbackStart.toISOString());
+  const computed = computeMomentum(momentumSignals ?? [], momentumWinLoss ?? [], momentumStateHistory ?? []);
 
   return NextResponse.json({
     entry: data,
