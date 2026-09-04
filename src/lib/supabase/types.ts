@@ -166,6 +166,7 @@ export interface Database {
           category: string | null;
           pricing_url: string | null;
           careers_url: string | null;
+          github_repo: string | null;
           fact_sheet_why_we_win: string | null;
           fact_sheet_why_we_lose: string | null;
           fact_sheet_generated_at: string | null;
@@ -179,6 +180,7 @@ export interface Database {
           category?: string | null;
           pricing_url?: string | null;
           careers_url?: string | null;
+          github_repo?: string | null;
           fact_sheet_why_we_win?: string | null;
           fact_sheet_why_we_lose?: string | null;
           fact_sheet_generated_at?: string | null;
@@ -443,14 +445,14 @@ export interface Database {
         Row: {
           id: string;
           competitor_id: string;
-          metric: "open_role_count" | "lowest_price";
+          metric: "open_role_count" | "lowest_price" | "github_commit_velocity";
           value: number;
           recorded_at: string;
         };
         Insert: {
           id?: string;
           competitor_id: string;
-          metric: "open_role_count" | "lowest_price";
+          metric: "open_role_count" | "lowest_price" | "github_commit_velocity";
           value: number;
           recorded_at?: string;
         };

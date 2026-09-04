@@ -15,6 +15,7 @@ import {
 import { normalizeDomain, guessPricingUrl, guessCareersUrl } from "@/lib/domain";
 import { fetchDomainTrafficMetrics } from "@/lib/seo-data";
 import { fetchProductHuntLaunches } from "@/lib/producthunt-data";
+import { fetchGithubCommitVelocity } from "@/lib/github-data";
 
 type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
 type Signal = Database["public"]["Tables"]["signals"]["Row"];
@@ -435,7 +436,7 @@ export async function checkPricingDiff(
 async function recordStateHistory(
   supabase: AdminClient,
   competitorId: string,
-  metric: "open_role_count" | "lowest_price",
+  metric: "open_role_count" | "lowest_price" | "github_commit_velocity",
   value: number
 ): Promise<void> {
   const { error } = await supabase.from("competitor_state_history").insert({
@@ -1177,7 +1178,6 @@ export async function checkSearchNews(
     if (daysSinceCheck < WEB_SEARCH_NEWS_CHECK_INTERVAL_DAYS) return [];
   }
   await writeSnapshot(supabase, competitor.id, "websearch", "checked");
-
   const headlines = await searchCompetitorNews(competitor.name, accountId);
   const inserted: Signal[] = [];
   const existingTitles = await fetchAllSignalTitles(supabase, competitor.id);
@@ -1207,4 +1207,19 @@ export async function checkSearchNews(
   }
 
   return inserted;
+}
+
+// Opt-in — only runs when the competitor has a github_repo set (see
+// migration 0056). No signal fires here, same as the pricing/hiring
+// current-state snapshots above: just a periodic state-history reading
+// for computeMomentum's magnitude comparison, since GitHub is the only
+// source of truth for its own commit history and Ripplewatch needs to
+// snapshot it over time the same way it does open_role_count/lowest_price.
+export async function checkGithubActivity(supabase: AdminClient, competitor: Competitor): Promise<void> {
+  if (!competitor.github_repo) return;
+
+  const velocity = await fetchGithubCommitVelocity(competitor.github_repo);
+  if (velocity === null) return;
+
+  await recordStateHistory(supabase, competitor.id, "github_commit_velocity", velocity);
 }

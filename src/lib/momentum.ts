@@ -31,21 +31,28 @@ const MIN_WIN_LOSS_ENTRIES = 4;
 
 // Rolls up what Ripplewatch already tracks for free — hiring velocity,
 // pricing activity, product-change activity, press/funding activity, how
-// the model's own relevance scoring is trending, and win rate — into one
-// directional number, rather than making someone eyeball six separate
-// trend chips and do the mental math themselves. Deliberately excludes
-// SEO/traffic: that source is still a stub (see seo-data.ts) and only
-// available Plus/Advanced, so folding it in would make momentum meaningless
-// for Starter accounts and wrong for everyone until real data lands.
+// the model's own relevance scoring is trending, win rate, and (opt-in)
+// GitHub commit activity — into one directional number, rather than making
+// someone eyeball seven separate trend chips and do the mental math
+// themselves. Deliberately excludes SEO/traffic: that source is still a
+// stub (see seo-data.ts) and only available Plus/Advanced, so folding it in
+// would make momentum meaningless for Starter accounts and wrong for
+// everyone until real data lands.
 const WINDOW_DAYS = 30;
 const HEATING_UP_THRESHOLD = 15;
 const COOLING_THRESHOLD = -15;
 
 // The number of components computeMomentum can ever populate — used as the
 // LOW_CONFIDENCE_THRESHOLD cutoff for the confidence flag, and as the
-// equal-weight fallback denominator when every component's reliability
-// weight comes back zero (see the score computation below).
-const TOTAL_COMPONENTS = 6;
+// equal-weight fallback denominator on the rare edge case where every
+// component's reliability weight comes back zero (see the score computation
+// below). GitHub activity is included here even though it's structurally
+// inapplicable for most competitors (no github_repo set) — that's fine:
+// computeReliability naturally gives an always-absent component zero
+// weight, which drops it out of both the numerator and denominator of the
+// real weighted-average score entirely, rather than shrinking the score the
+// way a normally-reliable-but-temporarily-missing component would.
+const TOTAL_COMPONENTS = 7;
 
 // Press/funding sentiment is weighted by recency (not a flat window
 // average) so a big story right when it breaks dominates the score, then
@@ -88,21 +95,24 @@ export type MomentumComponent = {
   weight: number;
 };
 
-// Below this many populated components (out of the 6 computeMomentum can
+// Below this many populated components (out of the 7 computeMomentum can
 // ever populate), the averaged score is one or two
 // signals doing all the work — real, but fragile enough that a UI showing
 // it should say so rather than presenting it with the same confidence as a
-// fully-populated score.
-const LOW_CONFIDENCE_THRESHOLD = 4;
+// fully-populated score. 5, not 6, since GitHub activity is opt-in and
+// structurally absent for most competitors — requiring it (alongside the
+// other 5) to reach "full" confidence would wrongly mark every competitor
+// without a github_repo as permanently low-confidence.
+const LOW_CONFIDENCE_THRESHOLD = 5;
 
 export type MomentumConfidence = "low" | "full";
 
 export type MomentumResult = {
   score: number | null;
   label: MomentumLabel;
-  // "low" when fewer than LOW_CONFIDENCE_THRESHOLD of the 6 components have
+  // "low" when fewer than LOW_CONFIDENCE_THRESHOLD of the 7 components have
   // real data — surfaced in the UI so a score built from one thin signal
-  // doesn't read with the same weight as one built from all six.
+  // doesn't read with the same weight as one built from all seven.
   confidence: MomentumConfidence;
   components: {
     hiring: MomentumComponent;
@@ -111,6 +121,7 @@ export type MomentumResult = {
     pressAndFunding: MomentumComponent;
     relevanceTrend: MomentumComponent;
     winRate: MomentumComponent;
+    productActivity: MomentumComponent;
   };
 };
 
@@ -342,6 +353,19 @@ export function computeMomentum(
     : countDelta(pricingRecentSignals, pricingPriorSignals);
 
   const productChangeScore = countDelta(productChangeRecent, productChangePrior);
+
+  // Opt-in — null (and zero-weighted, see productActivityWeight below) for
+  // every competitor without a github_repo set, since state history simply
+  // never has a "github_commit_velocity" reading for them. Always magnitude
+  // mode, unlike hiring/pricing: there's no signal-event fallback here,
+  // since GitHub itself is the only source for this and Ripplewatch never
+  // observes a discrete "commit happened" event the way it does a pricing
+  // or careers-page change.
+  const githubRecentValue = latestValueInWindow(stateHistory, "github_commit_velocity", recentStart, now);
+  const githubPriorValue = latestValueInWindow(stateHistory, "github_commit_velocity", priorStart, recentStart);
+  const githubHasData = githubRecentValue !== null && githubPriorValue !== null;
+  const productActivityScore = githubHasData ? valueDelta(githubRecentValue!, githubPriorValue!) : null;
+
   const pressScore = sentimentDelta(pressRecentSignals, pressPriorSignals, now);
   const relevanceRecentAvg = scoredRecent.length > 0 ? Math.round(avg(scoredRecent.map((s) => s.relevance_score!))) : null;
   const relevancePriorAvg = scoredPrior.length > 0 ? Math.round(avg(scoredPrior.map((s) => s.relevance_score!))) : null;
@@ -372,6 +396,9 @@ export function computeMomentum(
   );
   const winRateWeight = computeReliability(now, (start, end) =>
     winLossEntries.some((e) => inWindow(e.created_at, start, end))
+  );
+  const productActivityWeight = computeReliability(now, (start, end) =>
+    stateHistory.some((e) => e.metric === "github_commit_velocity" && inWindow(e.recorded_at, start, end))
   );
 
   const components: MomentumResult["components"] = {
@@ -442,6 +469,16 @@ export function computeMomentum(
           : `${describeWinLossMix(winLossNewer)} recently vs ${describeWinLossMix(winLossOlder)} earlier`,
       weight: winRateWeight,
     },
+    productActivity: {
+      label: "Product activity (GitHub)",
+      score: productActivityScore,
+      recentCount: githubRecentValue ?? 0,
+      priorCount: githubPriorValue ?? 0,
+      detail: !githubHasData
+        ? "no data"
+        : `${githubRecentValue} commits/4wk vs ${githubPriorValue} commits/4wk last period`,
+      weight: productActivityWeight,
+    },
   };
 
   const present = Object.values(components).filter((c): c is MomentumComponent & { score: number } => c.score !== null);
@@ -450,7 +487,7 @@ export function computeMomentum(
     return { score: null, label: "Not enough history yet", confidence, components };
   }
 
-  // Weighted average by reliability instead of a flat 1/6 each: a
+  // Weighted average by reliability instead of a flat 1/N each: a
   // component that's normally dense for this competitor still shrinks the
   // score toward zero when it's unexpectedly missing this period (its
   // weight counts in the denominator either way), but a component that's

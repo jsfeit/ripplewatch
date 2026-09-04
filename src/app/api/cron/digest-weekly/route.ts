@@ -144,6 +144,10 @@ export async function GET(request: Request) {
           productChangeDelta: momentum.components.productChange.detail,
           pressDelta: momentum.components.pressAndFunding.detail,
           winRateDelta: momentum.components.winRate.detail,
+          productActivityDelta:
+            momentum.components.productActivity.detail === "no data"
+              ? null
+              : momentum.components.productActivity.detail,
         };
       });
 

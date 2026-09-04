@@ -12,6 +12,7 @@ import {
   checkSearchNews,
   isFirstNewsCheck,
   ensureMonitoringUrls,
+  checkGithubActivity,
 } from "@/lib/scraping";
 import {
   scoreSignal,
@@ -294,6 +295,11 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
       allowedSources.includes("product_change")
         ? checkProductMessagingDiff(supabase, competitor).then((s) => (s ? [s] : []))
         : null,
+      // Opt-in per competitor (github_repo set in Settings), not tier-gated
+      // — free (GitHub's own public API), so no reason to restrict it the
+      // way SEO's paid DataForSEO calls are. No signal fires; it's a
+      // state-history snapshot only, so always resolves to [].
+      competitor.github_repo ? checkGithubActivity(supabase, competitor).then(() => []) : null,
     ].filter((p): p is Promise<Signal[]> => p !== null);
 
     const results = await Promise.allSettled(checks);
