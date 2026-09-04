@@ -424,6 +424,28 @@ export async function checkPricingDiff(
   return data;
 }
 
+// Appends one row to the append-only history table momentum's hiring/
+// pricing components read (see computeMomentum in momentum.ts) — a
+// competitor_pricing/competitor_hiring upsert alone only ever answers
+// "what's true right now," so without this there'd be no way to measure
+// how much open_role_count or lowest_price actually moved between two
+// windows, only how many discrete signal events fired. Best-effort: a
+// failure here shouldn't take down the pricing/hiring upsert it runs
+// alongside.
+async function recordStateHistory(
+  supabase: AdminClient,
+  competitorId: string,
+  metric: "open_role_count" | "lowest_price",
+  value: number
+): Promise<void> {
+  const { error } = await supabase.from("competitor_state_history").insert({
+    competitor_id: competitorId,
+    metric,
+    value,
+  });
+  if (error) console.error(`state history write failed (${metric}) for competitor ${competitorId}:`, error);
+}
+
 // Structured current-state pricing (tiers, features, billing model) — runs
 // alongside checkPricingDiff on every crawl regardless of whether anything
 // changed, since the Pricing dashboard needs the full current snapshot, not
@@ -486,6 +508,19 @@ export async function checkPricingStructure(
     },
     { onConflict: "competitor_id" }
   );
+
+  // The entry-tier price is the one number most likely to actually move and
+  // to matter competitively (a cut/hike on the cheapest paid plan), so it's
+  // what momentum's pricing component tracks — not an average across tiers,
+  // which would blur a real change with unrelated enterprise-tier noise.
+  // Skipped entirely when nothing here has a public price (custom/"contact
+  // us" pricing): there's no meaningful number to record, and writing 0
+  // would read as a real price to anything comparing values later.
+  const pricedTiers = extraction.tiers.filter((t): t is typeof t & { price: number } => t.price !== null);
+  if (pricedTiers.length > 0) {
+    const lowestPrice = Math.min(...pricedTiers.map((t) => t.price));
+    await recordStateHistory(supabase, competitor.id, "lowest_price", lowestPrice);
+  }
 }
 
 // Job postings — extracts individual listing titles and diffs the set,
@@ -547,6 +582,7 @@ export async function checkJobPostingsDiff(
     },
     { onConflict: "competitor_id" }
   );
+  await recordStateHistory(supabase, competitor.id, "open_role_count", titles.length);
 
   if (!existing) return null;
   if (existing.content_hash === newHash) return null;

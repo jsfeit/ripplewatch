@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/app/empty-state";
 import { Card, CardAvatar, CardChangedBadge } from "@/components/app/card";
 import { cn } from "@/lib/utils";
 import { timeAgo } from "@/lib/date";
-import { computeMomentum, MOMENTUM_STYLES, type MomentumResult } from "@/lib/momentum";
+import { computeMomentum, MOMENTUM_STYLES, type MomentumResult, type StateHistoryEntry } from "@/lib/momentum";
 import type { Database, SeoTrafficTrend } from "@/lib/supabase/types";
 
 type Competitor = Pick<Database["public"]["Tables"]["competitors"]["Row"], "id" | "name">;
@@ -31,6 +31,7 @@ type MomentumWinLoss = Pick<
   Database["public"]["Tables"]["competitor_win_loss"]["Row"],
   "competitor_id" | "outcome" | "created_at"
 >;
+type MomentumStateHistoryEntry = StateHistoryEntry & { competitor_id: string };
 
 const TREND_LABELS: Record<SeoTrafficTrend, string> = {
   up: "Trending up",
@@ -72,6 +73,7 @@ export function CompetitorOverview({
   competitors,
   momentumSignals,
   momentumWinLoss,
+  momentumStateHistory,
   seoAllowed,
   seo,
   seoSignals,
@@ -81,6 +83,7 @@ export function CompetitorOverview({
   competitors: Competitor[];
   momentumSignals: MomentumSignal[];
   momentumWinLoss: MomentumWinLoss[];
+  momentumStateHistory: MomentumStateHistoryEntry[];
   seoAllowed: boolean;
   seo: CompetitorSeo[];
   seoSignals: SeoSignal[];
@@ -109,13 +112,23 @@ export function CompetitorOverview({
       list.push(entry);
       winLossByCompetitor.set(entry.competitor_id, list);
     }
+    const stateHistoryByCompetitor = new Map<string, StateHistoryEntry[]>();
+    for (const entry of momentumStateHistory) {
+      const list = stateHistoryByCompetitor.get(entry.competitor_id) ?? [];
+      list.push(entry);
+      stateHistoryByCompetitor.set(entry.competitor_id, list);
+    }
     return new Map(
       competitors.map((c) => [
         c.id,
-        computeMomentum(byCompetitor.get(c.id) ?? [], winLossByCompetitor.get(c.id) ?? []),
+        computeMomentum(
+          byCompetitor.get(c.id) ?? [],
+          winLossByCompetitor.get(c.id) ?? [],
+          stateHistoryByCompetitor.get(c.id) ?? []
+        ),
       ])
     );
-  }, [competitors, momentumSignals, momentumWinLoss]);
+  }, [competitors, momentumSignals, momentumWinLoss, momentumStateHistory]);
 
   const sorted = useMemo(
     () =>

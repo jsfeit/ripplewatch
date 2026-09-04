@@ -55,18 +55,27 @@ export async function POST(request: Request) {
   // dashboard to find out it mattered.
   let momentum: { score: number | null; label: string } | null = null;
   if (tracked) {
-    const sixtyDaysAgo = new Date();
-    sixtyDaysAgo.setUTCDate(sixtyDaysAgo.getUTCDate() - 60);
+    // 180-day lookback (not just the 60 days the recent/prior comparison
+    // itself needs) so computeMomentum's per-competitor reliability
+    // weighting has real history to judge from — see computeReliability in
+    // momentum.ts.
+    const reliabilityLookbackStart = new Date();
+    reliabilityLookbackStart.setUTCDate(reliabilityLookbackStart.getUTCDate() - 180);
     const { data: momentumSignals } = await supabase
       .from("signals")
       .select("competitor_id, type, sentiment, occurred_on, scored, relevance_score")
       .eq("competitor_id", tracked.id)
-      .gte("occurred_on", sixtyDaysAgo.toISOString().slice(0, 10));
+      .gte("occurred_on", reliabilityLookbackStart.toISOString().slice(0, 10));
     const { data: momentumWinLoss } = await supabase
       .from("competitor_win_loss")
       .select("competitor_id, outcome, created_at")
       .eq("competitor_id", tracked.id);
-    const computed = computeMomentum(momentumSignals ?? [], momentumWinLoss ?? []);
+    const { data: momentumStateHistory } = await supabase
+      .from("competitor_state_history")
+      .select("competitor_id, metric, value, recorded_at")
+      .eq("competitor_id", tracked.id)
+      .gte("recorded_at", reliabilityLookbackStart.toISOString());
+    const computed = computeMomentum(momentumSignals ?? [], momentumWinLoss ?? [], momentumStateHistory ?? []);
     momentum = { score: computed.score, label: computed.label };
   }
 

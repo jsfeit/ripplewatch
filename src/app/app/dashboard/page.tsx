@@ -99,10 +99,15 @@ export default async function DashboardPage() {
     account.trends_digest_generated_at &&
     now.getTime() - new Date(account.trends_digest_generated_at).getTime() < VERDICT_STALE_MS;
 
-  const sixtyDaysAgo = new Date();
-  sixtyDaysAgo.setUTCDate(sixtyDaysAgo.getUTCDate() - 60);
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setUTCMonth(sixMonthsAgo.getUTCMonth() - 6);
+  // Wide enough to cover computeMomentum's 6 reliability-lookback buckets
+  // (180 days), not just the 60 days its own recent/prior comparison
+  // windows need — momentumSignals and stateHistory below both use this so
+  // per-competitor weighting has real history to judge reliability from,
+  // not just the same two windows the score itself is built from.
+  const reliabilityLookbackStart = new Date();
+  reliabilityLookbackStart.setUTCDate(reliabilityLookbackStart.getUTCDate() - 180);
 
   // Everything below depends only on competitorIds/accountId/seoAllowed,
   // none of it on each other — fetched as one batch of round-trips instead
@@ -116,6 +121,7 @@ export default async function DashboardPage() {
     { data: seo },
     { data: seoSignals },
     { data: momentumSignals },
+    { data: stateHistory },
     { data: activitySignals },
     { data: industryTrends },
     { data: winLossTrends },
@@ -175,7 +181,16 @@ export default async function DashboardPage() {
           .from("signals")
           .select("competitor_id, type, sentiment, occurred_on, scored, relevance_score")
           .in("competitor_id", competitorIds)
-          .gte("occurred_on", sixtyDaysAgo.toISOString().slice(0, 10))
+          .gte("occurred_on", reliabilityLookbackStart.toISOString().slice(0, 10))
+      : Promise.resolve({ data: [] }),
+    // --- Trends: momentum reliability weighting (real hiring/pricing
+    // magnitude, and how consistently each component has data) ---
+    competitorIds.length
+      ? db
+          .from("competitor_state_history")
+          .select("competitor_id, metric, value, recorded_at")
+          .in("competitor_id", competitorIds)
+          .gte("recorded_at", reliabilityLookbackStart.toISOString())
       : Promise.resolve({ data: [] }),
     competitorIds.length
       ? db
@@ -312,6 +327,7 @@ export default async function DashboardPage() {
             competitors={competitors ?? []}
             momentumSignals={momentumSignals ?? []}
             momentumWinLoss={winLossEntries ?? []}
+            momentumStateHistory={stateHistory ?? []}
             seoAllowed={seoAllowed}
             seo={seo ?? []}
             seoSignals={seoSignals ?? []}

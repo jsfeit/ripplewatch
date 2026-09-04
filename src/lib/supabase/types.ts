@@ -439,6 +439,24 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["competitor_hiring"]["Insert"]>;
         Relationships: [];
       };
+      competitor_state_history: {
+        Row: {
+          id: string;
+          competitor_id: string;
+          metric: "open_role_count" | "lowest_price";
+          value: number;
+          recorded_at: string;
+        };
+        Insert: {
+          id?: string;
+          competitor_id: string;
+          metric: "open_role_count" | "lowest_price";
+          value: number;
+          recorded_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["competitor_state_history"]["Insert"]>;
+        Relationships: [];
+      };
       competitor_pricing: {
         Row: {
           id: string;

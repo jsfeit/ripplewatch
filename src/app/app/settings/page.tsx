@@ -61,15 +61,18 @@ export default async function SettingsPage() {
 
   // Same momentum/traffic sort the competitor list already offers on its
   // own fact-sheet page (see /app/competitors/[id]) — kept for parity now
-  // that the list itself lives here.
-  const sixtyDaysAgo = new Date();
-  sixtyDaysAgo.setUTCDate(sixtyDaysAgo.getUTCDate() - 60);
+  // that the list itself lives here. 180-day lookback (not just the 60
+  // days the recent/prior comparison itself needs) so computeMomentum's
+  // per-competitor reliability weighting has real history to judge from —
+  // see computeReliability in momentum.ts.
+  const reliabilityLookbackStart = new Date();
+  reliabilityLookbackStart.setUTCDate(reliabilityLookbackStart.getUTCDate() - 180);
   const { data: momentumSignals } = competitorIds.length
     ? await db
         .from("signals")
         .select("competitor_id, type, sentiment, occurred_on, scored, relevance_score")
         .in("competitor_id", competitorIds)
-        .gte("occurred_on", sixtyDaysAgo.toISOString().slice(0, 10))
+        .gte("occurred_on", reliabilityLookbackStart.toISOString().slice(0, 10))
     : { data: [] };
   const { data: momentumWinLoss } = competitorIds.length
     ? await db
@@ -77,11 +80,19 @@ export default async function SettingsPage() {
         .select("competitor_id, outcome, created_at")
         .in("competitor_id", competitorIds)
     : { data: [] };
+  const { data: momentumStateHistory } = competitorIds.length
+    ? await db
+        .from("competitor_state_history")
+        .select("competitor_id, metric, value, recorded_at")
+        .in("competitor_id", competitorIds)
+        .gte("recorded_at", reliabilityLookbackStart.toISOString())
+    : { data: [] };
   const momentumByCompetitorId: Record<string, MomentumResult> = {};
   for (const c of competitors ?? []) {
     momentumByCompetitorId[c.id] = computeMomentum(
       (momentumSignals ?? []).filter((s) => s.competitor_id === c.id),
-      (momentumWinLoss ?? []).filter((e) => e.competitor_id === c.id)
+      (momentumWinLoss ?? []).filter((e) => e.competitor_id === c.id),
+      (momentumStateHistory ?? []).filter((e) => e.competitor_id === c.id)
     );
   }
 

@@ -7,6 +7,19 @@ type Signal = Pick<
 
 type WinLossEntry = Pick<Database["public"]["Tables"]["competitor_win_loss"]["Row"], "outcome" | "created_at">;
 
+// Real-valued state readings (open role count, entry-tier price) recorded
+// once per crawl by checkJobPostingsDiff/checkPricingStructure in
+// scraping.ts. Lets hiring/pricing measure actual magnitude of change
+// ("added 40 roles" vs "added 1") instead of just counting how many
+// discrete signal events fired — optional and defaults to empty so every
+// existing caller keeps working unchanged; hiring/pricing fall back to the
+// count-delta method below wherever it isn't passed, or hasn't accumulated
+// enough history yet.
+export type StateHistoryEntry = Pick<
+  Database["public"]["Tables"]["competitor_state_history"]["Row"],
+  "metric" | "value" | "recorded_at"
+>;
+
 // win/loss entries have no real deal-close date, only created_at (when it
 // was logged) — a bulk CSV import lands every historical row on the same
 // day, which would break a calendar-window comparison the same way an
@@ -16,23 +29,23 @@ type WinLossEntry = Pick<Database["public"]["Tables"]["competitor_win_loss"]["Ro
 // big backfill or trickled in one deal at a time via the API/email path.
 const MIN_WIN_LOSS_ENTRIES = 4;
 
-// Rolls up four things Ripplewatch already tracks for free — hiring
-// velocity, pricing activity, press/funding activity, and how the model's
-// own relevance scoring is trending — into one directional number, rather
-// than making someone eyeball four separate trend chips and do the mental
-// math themselves. Deliberately excludes SEO/traffic: that source is still
-// a stub (see seo-data.ts) and only available Plus/Advanced, so folding it
-// in would make momentum meaningless for Starter accounts and wrong for
-// everyone until real data lands.
+// Rolls up what Ripplewatch already tracks for free — hiring velocity,
+// pricing activity, product-change activity, press/funding activity, how
+// the model's own relevance scoring is trending, and win rate — into one
+// directional number, rather than making someone eyeball six separate
+// trend chips and do the mental math themselves. Deliberately excludes
+// SEO/traffic: that source is still a stub (see seo-data.ts) and only
+// available Plus/Advanced, so folding it in would make momentum meaningless
+// for Starter accounts and wrong for everyone until real data lands.
 const WINDOW_DAYS = 30;
 const HEATING_UP_THRESHOLD = 15;
 const COOLING_THRESHOLD = -15;
 
-// The number of components computeMomentum can ever populate — used to
-// shrink the final score toward zero in proportion to how many are
-// actually missing (see the score computation below), not just as the
-// LOW_CONFIDENCE_THRESHOLD cutoff for the confidence flag.
-const TOTAL_COMPONENTS = 5;
+// The number of components computeMomentum can ever populate — used as the
+// LOW_CONFIDENCE_THRESHOLD cutoff for the confidence flag, and as the
+// equal-weight fallback denominator when every component's reliability
+// weight comes back zero (see the score computation below).
+const TOTAL_COMPONENTS = 6;
 
 // Press/funding sentiment is weighted by recency (not a flat window
 // average) so a big story right when it breaks dominates the score, then
@@ -43,6 +56,15 @@ const TOTAL_COMPONENTS = 5;
 // window entirely.
 const NEWS_DECAY_HALF_LIFE_DAYS = 7;
 
+// How far back reliability weighting looks to judge how consistently each
+// component actually has real data for a given competitor — see
+// computeReliability below. 6 buckets of WINDOW_DAYS each = 180 days.
+// Callers that only pass ~60 days of signals (most of them today, see
+// StateHistoryEntry's doc comment) still work: reliability just degrades
+// gracefully to however many of the 6 buckets their input actually covers,
+// rather than requiring every caller to be rewired at once.
+const RELIABILITY_LOOKBACK_BUCKETS = 6;
+
 export type MomentumLabel = "Heating up" | "Steady" | "Cooling" | "Not enough history yet";
 
 export type MomentumComponent = {
@@ -52,33 +74,40 @@ export type MomentumComponent = {
   priorCount: number;
   // Pre-formatted so every consumer (dashboard UI, weekly digest email)
   // renders the same text without reimplementing the "what do these two
-  // numbers mean" logic per component. Hiring/pricing/press are raw
+  // numbers mean" logic per component. Most components are raw
   // signal-volume counts, so "X vs Y" reads naturally; relevanceTrend's
   // recentCount/priorCount are just how many signals got scored in each
   // window, not a measure of relevance itself, so it needs its own wording
   // (average score, not signal count) or it silently misleads.
   detail: string;
+  // How much this component actually moved the final score, 0-1 — the
+  // reliability weight described below, surfaced so the UI can show *why*
+  // one competitor's win-rate swing barely moved their score while
+  // another's did (this competitor logs win/loss consistently, that one
+  // rarely does).
+  weight: number;
 };
 
-// Below this many populated components (out of the 5 computeMomentum can
+// Below this many populated components (out of the 6 computeMomentum can
 // ever populate), the averaged score is one or two
 // signals doing all the work — real, but fragile enough that a UI showing
 // it should say so rather than presenting it with the same confidence as a
 // fully-populated score.
-const LOW_CONFIDENCE_THRESHOLD = 3;
+const LOW_CONFIDENCE_THRESHOLD = 4;
 
 export type MomentumConfidence = "low" | "full";
 
 export type MomentumResult = {
   score: number | null;
   label: MomentumLabel;
-  // "low" when fewer than LOW_CONFIDENCE_THRESHOLD of the 5 components have
+  // "low" when fewer than LOW_CONFIDENCE_THRESHOLD of the 6 components have
   // real data — surfaced in the UI so a score built from one thin signal
-  // doesn't read with the same weight as one built from all five.
+  // doesn't read with the same weight as one built from all six.
   confidence: MomentumConfidence;
   components: {
     hiring: MomentumComponent;
     pricing: MomentumComponent;
+    productChange: MomentumComponent;
     pressAndFunding: MomentumComponent;
     relevanceTrend: MomentumComponent;
     winRate: MomentumComponent;
@@ -100,7 +129,7 @@ export type MomentumResult = {
 // in the UI and was producing implausible, clustered "Heating up" labels
 // across newly-tracked competitors. relevanceTrend already had an
 // equivalent guard (both window lengths must be > 0); this brings the
-// other three components in line with it.
+// other components in line with it.
 function countDelta(recentCount: number, priorCount: number): number | null {
   if (recentCount === 0 || priorCount === 0) return null;
   const total = recentCount + priorCount;
@@ -108,9 +137,35 @@ function countDelta(recentCount: number, priorCount: number): number | null {
   return Math.max(-100, Math.min(100, raw));
 }
 
+// Same shape as countDelta but for a real-valued reading (open role count,
+// entry-tier price) instead of a signal-event count — a symmetric
+// percentage-of-magnitude change, bounded to +/-100, with the same +2
+// smoothing so a small absolute move (e.g. 1 role vs 0) doesn't swing to
+// the extreme. Zero-vs-zero (a competitor with no open roles in both
+// windows) correctly scores 0, not undefined — "no change" is exactly
+// right there, unlike countDelta's zero-baseline guard, which exists to
+// avoid mistaking sparse backfill coverage for a real spike; a state
+// reading of 0 is an actual observed value, not a data gap.
+function valueDelta(recentValue: number, priorValue: number): number {
+  const raw = (100 * (recentValue - priorValue)) / (Math.abs(recentValue) + Math.abs(priorValue) + 2);
+  return Math.max(-100, Math.min(100, raw));
+}
+
 function inWindow(occurredOn: string, start: Date, end: Date): boolean {
   const d = new Date(occurredOn);
   return d >= start && d < end;
+}
+
+// Latest reading within a window — "where do they stand right now," not an
+// average across however many times they happened to get crawled that
+// month. Returns null when the window has no reading at all, which the
+// caller treats as "not enough state history yet, fall back to counting
+// signal events."
+function latestValueInWindow(entries: StateHistoryEntry[], metric: string, start: Date, end: Date): number | null {
+  const inRange = entries
+    .filter((e) => e.metric === metric && inWindow(e.recorded_at, start, end))
+    .sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime());
+  return inRange.length > 0 ? inRange[0].value : null;
 }
 
 function sentimentWeight(sentiment: Signal["sentiment"]): number {
@@ -191,7 +246,34 @@ function describeWinLossMix(entries: WinLossEntry[]): string {
   return `${won}W-${lost}L`;
 }
 
-export function computeMomentum(signals: Signal[], winLossEntries: WinLossEntry[] = []): MomentumResult {
+// How consistently a component has had real data for THIS competitor,
+//0-1 — the basis for dynamic, per-competitor importance weighting (a
+// competitor who logs win/loss every week should have win-rate trend
+// actually move their score; one who's never had a single entry shouldn't
+// have its absence penalize them the same as a competitor who normally
+// reports it but happens to be quiet this period). Walks backward from now
+// in WINDOW_DAYS-wide buckets and checks whether `hasData` finds anything
+// in each one, so it's just "fraction of the last N periods with at least
+// one real reading" — deliberately simple over something like a decayed
+// average, since this needs to be legible if a customer asks "why did my
+// win-rate swing barely move the score."
+function computeReliability(now: Date, hasData: (start: Date, end: Date) => boolean): number {
+  let populated = 0;
+  for (let i = 0; i < RELIABILITY_LOOKBACK_BUCKETS; i++) {
+    const end = new Date(now);
+    end.setUTCDate(end.getUTCDate() - i * WINDOW_DAYS);
+    const start = new Date(end);
+    start.setUTCDate(start.getUTCDate() - WINDOW_DAYS);
+    if (hasData(start, end)) populated++;
+  }
+  return populated / RELIABILITY_LOOKBACK_BUCKETS;
+}
+
+export function computeMomentum(
+  signals: Signal[],
+  winLossEntries: WinLossEntry[] = [],
+  stateHistory: StateHistoryEntry[] = []
+): MomentumResult {
   const now = new Date();
   const recentStart = new Date(now);
   recentStart.setUTCDate(recentStart.getUTCDate() - WINDOW_DAYS);
@@ -201,11 +283,14 @@ export function computeMomentum(signals: Signal[], winLossEntries: WinLossEntry[
   const recent = signals.filter((s) => inWindow(s.occurred_on, recentStart, now));
   const prior = signals.filter((s) => inWindow(s.occurred_on, priorStart, recentStart));
 
-  const hiringRecent = recent.filter((s) => s.type === "job_posting").length;
-  const hiringPrior = prior.filter((s) => s.type === "job_posting").length;
+  const hiringRecentSignals = recent.filter((s) => s.type === "job_posting").length;
+  const hiringPriorSignals = prior.filter((s) => s.type === "job_posting").length;
 
-  const pricingRecent = recent.filter((s) => s.type === "pricing").length;
-  const pricingPrior = prior.filter((s) => s.type === "pricing").length;
+  const pricingRecentSignals = recent.filter((s) => s.type === "pricing").length;
+  const pricingPriorSignals = prior.filter((s) => s.type === "pricing").length;
+
+  const productChangeRecent = recent.filter((s) => s.type === "product_change").length;
+  const productChangePrior = prior.filter((s) => s.type === "product_change").length;
 
   const pressRecentSignals = recent.filter((s) => s.type === "news" || s.type === "funding");
   const pressPriorSignals = prior.filter((s) => s.type === "news" || s.type === "funding");
@@ -234,26 +319,93 @@ export function computeMomentum(signals: Signal[], winLossEntries: WinLossEntry[
   const countDetail = (score: number | null, recentCount: number, priorCount: number) =>
     score === null ? "no data" : `${recentCount} vs ${priorCount} last period`;
 
-  const hiringScore = countDelta(hiringRecent, hiringPrior);
-  const pricingScore = countDelta(pricingRecent, pricingPrior);
+  // Hiring/pricing prefer the real magnitude of change (open role count,
+  // entry-tier price) from state history when there's a reading in both
+  // windows; otherwise fall back to counting how many discrete signal
+  // events fired, same as before this component existed. This means a
+  // competitor tracked since before state history started accumulating
+  // keeps working exactly as it did, and switches to magnitude mode on its
+  // own the first time both windows have a real reading — no migration or
+  // backfill required.
+  const hiringRecentValue = latestValueInWindow(stateHistory, "open_role_count", recentStart, now);
+  const hiringPriorValue = latestValueInWindow(stateHistory, "open_role_count", priorStart, recentStart);
+  const hiringUsesMagnitude = hiringRecentValue !== null && hiringPriorValue !== null;
+  const hiringScore = hiringUsesMagnitude
+    ? valueDelta(hiringRecentValue!, hiringPriorValue!)
+    : countDelta(hiringRecentSignals, hiringPriorSignals);
+
+  const pricingRecentValue = latestValueInWindow(stateHistory, "lowest_price", recentStart, now);
+  const pricingPriorValue = latestValueInWindow(stateHistory, "lowest_price", priorStart, recentStart);
+  const pricingUsesMagnitude = pricingRecentValue !== null && pricingPriorValue !== null;
+  const pricingScore = pricingUsesMagnitude
+    ? valueDelta(pricingRecentValue!, pricingPriorValue!)
+    : countDelta(pricingRecentSignals, pricingPriorSignals);
+
+  const productChangeScore = countDelta(productChangeRecent, productChangePrior);
   const pressScore = sentimentDelta(pressRecentSignals, pressPriorSignals, now);
   const relevanceRecentAvg = scoredRecent.length > 0 ? Math.round(avg(scoredRecent.map((s) => s.relevance_score!))) : null;
   const relevancePriorAvg = scoredPrior.length > 0 ? Math.round(avg(scoredPrior.map((s) => s.relevance_score!))) : null;
+
+  // Reliability weight per component — see computeReliability's doc
+  // comment. Hiring/pricing check state-history presence when running in
+  // magnitude mode (that's the data actually driving their score), and
+  // signal presence otherwise, so the weight always reflects the source
+  // the score itself is built from.
+  const hiringWeight = computeReliability(now, (start, end) =>
+    hiringUsesMagnitude
+      ? stateHistory.some((e) => e.metric === "open_role_count" && inWindow(e.recorded_at, start, end))
+      : signals.some((s) => s.type === "job_posting" && inWindow(s.occurred_on, start, end))
+  );
+  const pricingWeight = computeReliability(now, (start, end) =>
+    pricingUsesMagnitude
+      ? stateHistory.some((e) => e.metric === "lowest_price" && inWindow(e.recorded_at, start, end))
+      : signals.some((s) => s.type === "pricing" && inWindow(s.occurred_on, start, end))
+  );
+  const productChangeWeight = computeReliability(now, (start, end) =>
+    signals.some((s) => s.type === "product_change" && inWindow(s.occurred_on, start, end))
+  );
+  const pressWeight = computeReliability(now, (start, end) =>
+    signals.some((s) => (s.type === "news" || s.type === "funding") && inWindow(s.occurred_on, start, end))
+  );
+  const relevanceWeight = computeReliability(now, (start, end) =>
+    signals.some((s) => s.scored && s.relevance_score !== null && inWindow(s.occurred_on, start, end))
+  );
+  const winRateWeight = computeReliability(now, (start, end) =>
+    winLossEntries.some((e) => inWindow(e.created_at, start, end))
+  );
 
   const components: MomentumResult["components"] = {
     hiring: {
       label: "Hiring",
       score: hiringScore,
-      recentCount: hiringRecent,
-      priorCount: hiringPrior,
-      detail: countDetail(hiringScore, hiringRecent, hiringPrior),
+      recentCount: hiringUsesMagnitude ? hiringRecentValue! : hiringRecentSignals,
+      priorCount: hiringUsesMagnitude ? hiringPriorValue! : hiringPriorSignals,
+      detail: hiringScore === null
+        ? "no data"
+        : hiringUsesMagnitude
+          ? `${hiringRecentValue} open roles vs ${hiringPriorValue} last period`
+          : countDetail(hiringScore, hiringRecentSignals, hiringPriorSignals),
+      weight: hiringWeight,
     },
     pricing: {
       label: "Pricing activity",
       score: pricingScore,
-      recentCount: pricingRecent,
-      priorCount: pricingPrior,
-      detail: countDetail(pricingScore, pricingRecent, pricingPrior),
+      recentCount: pricingUsesMagnitude ? pricingRecentValue! : pricingRecentSignals,
+      priorCount: pricingUsesMagnitude ? pricingPriorValue! : pricingPriorSignals,
+      detail: pricingScore === null
+        ? "no data"
+        : pricingUsesMagnitude
+          ? `entry tier $${pricingRecentValue} vs $${pricingPriorValue} last period`
+          : countDetail(pricingScore, pricingRecentSignals, pricingPriorSignals),
+      weight: pricingWeight,
+    },
+    productChange: {
+      label: "Product changes",
+      score: productChangeScore,
+      recentCount: productChangeRecent,
+      priorCount: productChangePrior,
+      detail: countDetail(productChangeScore, productChangeRecent, productChangePrior),
+      weight: productChangeWeight,
     },
     pressAndFunding: {
       label: "Press & funding",
@@ -264,6 +416,7 @@ export function computeMomentum(signals: Signal[], winLossEntries: WinLossEntry[
         pressScore === null
           ? "no data"
           : `${describeSentimentMix(pressRecentSignals)} vs ${describeSentimentMix(pressPriorSignals)} last period`,
+      weight: pressWeight,
     },
     relevanceTrend: {
       label: "Relevance trend",
@@ -274,6 +427,7 @@ export function computeMomentum(signals: Signal[], winLossEntries: WinLossEntry[
         relevanceTrendScore === null
           ? "no data"
           : `avg ${relevanceRecentAvg} vs ${relevancePriorAvg} last period`,
+      weight: relevanceWeight,
     },
     winRate: {
       label: "Win rate trend",
@@ -286,6 +440,7 @@ export function computeMomentum(signals: Signal[], winLossEntries: WinLossEntry[
             ? "no data, log a win/loss to include this"
             : `${sortedWinLoss.length} logged, need ${MIN_WIN_LOSS_ENTRIES} to include this`
           : `${describeWinLossMix(winLossNewer)} recently vs ${describeWinLossMix(winLossOlder)} earlier`,
+      weight: winRateWeight,
     },
   };
 
@@ -295,16 +450,22 @@ export function computeMomentum(signals: Signal[], winLossEntries: WinLossEntry[
     return { score: null, label: "Not enough history yet", confidence, components };
   }
 
-  // Shrunk toward zero by how many of the 5 possible components are
-  // actually missing, rather than averaging only over what's present. A
-  // single populated component (e.g. only win rate, everything else "no
-  // data") no longer swings the score to its full raw magnitude — it's
-  // divided by 5, not by 1 — so a thin score can't cross into "Heating
-  // up"/"Cooling" as easily as a well-populated one built from real
-  // agreement across several signals. Present.length === 5 (nothing
-  // missing) leaves the score identical to a plain average, since dividing
-  // by a fixed 5 and dividing by present.length are the same thing then.
-  const score = present.reduce((sum, c) => sum + c.score, 0) / TOTAL_COMPONENTS;
+  // Weighted average by reliability instead of a flat 1/6 each: a
+  // component that's normally dense for this competitor still shrinks the
+  // score toward zero when it's unexpectedly missing this period (its
+  // weight counts in the denominator either way), but a component that's
+  // always sparse for this competitor barely shrinks anything when it's
+  // absent, since it was never expected to be reliable in the first place.
+  // Falls back to a plain equal-weight average of whatever's present (the
+  // pre-weighting behavior) on the edge case where every component's
+  // reliability comes back zero — a brand-new competitor whose first-ever
+  // signals happen to land inside this call's own recent/prior windows
+  // rather than in a prior reliability bucket.
+  const totalWeight = Object.values(components).reduce((sum, c) => sum + c.weight, 0);
+  const score =
+    totalWeight > 0
+      ? present.reduce((sum, c) => sum + c.score * c.weight, 0) / totalWeight
+      : present.reduce((sum, c) => sum + c.score, 0) / TOTAL_COMPONENTS;
   const label: MomentumLabel =
     score >= HEATING_UP_THRESHOLD ? "Heating up" : score <= COOLING_THRESHOLD ? "Cooling" : "Steady";
 
