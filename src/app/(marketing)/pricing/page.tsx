@@ -6,7 +6,7 @@ import { DemoLink } from "@/components/marketing/demo-link";
 import { TIERS } from "@/lib/tiers";
 
 const description =
-  "Relevance-scored competitive intelligence starting at $69/mo. Every tier includes AI-scored alerts against your own positioning and lost-deal reasons.";
+  "Not alerts. Not data. Answers. Ripplewatch tracks hiring, pricing, press, and product activity across your competitors, starting at $69/mo. Every tier includes full scoring and the Momentum score.";
 
 export const metadata = {
   title: "Pricing",
@@ -67,8 +67,9 @@ export default function PricingPage() {
       <div className="mx-auto mt-8 max-w-2xl rounded-xl border border-border bg-secondary/40 p-8 text-center">
         <h3 className="text-lg font-semibold">Not sure which tier fits?</h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          Most self-serve teams start on Starter and move to Plus once relevance scoring proves
-          its worth on their first few alerts.
+          Most self-serve teams start on Starter and move to Plus once they&apos;re tracking more
+          than 3 competitors, or want HubSpot and API access. Every tier gets full scoring and
+          Momentum from day one.
         </p>
         <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link href="/onboarding?plan=starter&period=monthly" className={buttonVariants()}>

@@ -22,9 +22,9 @@ const geistMono = Geist_Mono({
 });
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-const TITLE = "Ripplewatch | Competitive intelligence that knows what matters to you";
+const TITLE = "Ripplewatch | Not alerts. Not data. Answers.";
 const DESCRIPTION =
-  "AI-native competitive intelligence for startup marketing teams. Not just what changed: whether it matters to you, and why.";
+  "Ripplewatch tracks hiring, pricing, press, and product activity across your competitors and tells early-stage SaaS founders which ones are becoming a real threat.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),

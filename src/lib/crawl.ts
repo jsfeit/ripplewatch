@@ -161,15 +161,6 @@ async function ensureCompanyResearch(supabase: AdminSupabase, account: Account):
   }
 }
 
-function startOfWeek(): string {
-  const now = new Date();
-  const day = now.getUTCDay();
-  const monday = new Date(now);
-  monday.setUTCDate(now.getUTCDate() - ((day + 6) % 7));
-  monday.setUTCHours(0, 0, 0, 0);
-  return monday.toISOString();
-}
-
 export type CrawlSummary = { account: string; newSignals: number; scored: number; error?: string };
 
 // The full per-account crawl: check every allowed signal source for each of
@@ -354,19 +345,6 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
     return { account: account.name, newSignals: 0, scored: 0 };
   }
 
-  // Starter is teaser-scored: at most one scored alert per week. Plus and
-  // Advanced score every new signal.
-  let alreadyScoredThisWeek = false;
-  if (account.tier === "starter") {
-    const { count } = await supabase
-      .from("signals")
-      .select("id", { count: "exact", head: true })
-      .in("competitor_id", competitorIds)
-      .eq("scored", true)
-      .gte("created_at", startOfWeek());
-    alreadyScoredThisWeek = Boolean(count && count > 0);
-  }
-
   const callMentions = CALL_INTEL_ALLOWED[tier]
     ? await buildCallMentions(
         supabase,
@@ -453,24 +431,17 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
 
   const scoredSignals: (Signal & { competitorName: string })[] = [];
 
-  if (account.tier === "starter") {
-    // Starter scores at most one signal total, so there's nothing to gain
-    // from concurrency here — stays sequential so the "already scored one
-    // this week" check can short-circuit immediately.
-    for (const signal of signalsToScore) {
-      if (alreadyScoredThisWeek || scoredSignals.length > 0) break;
-      const scored = await scoreOneSignal(signal);
-      if (scored) scoredSignals.push(scored);
-    }
-  } else {
-    // Plus/Advanced score every new signal — the backlog rescue cap (20)
-    // bounds how many that can ever be in one run, so concurrency here is
-    // both safe and the main lever on total crawl duration.
-    const SCORE_CONCURRENCY = 5;
-    const results = await mapWithConcurrency(signalsToScore, SCORE_CONCURRENCY, scoreOneSignal);
-    for (const result of results) {
-      if (result) scoredSignals.push(result);
-    }
+  // Every tier scores every new signal — tiers differ by competitor count
+  // and integrations now, not by scoring depth (2026-09 repositioning:
+  // Starter previously teaser-scored at most one signal/week, which left
+  // its Momentum score starved of real relevance-trend data; that throttle
+  // is gone). The backlog rescue cap (20) bounds how many signals can ever
+  // be in one run, so concurrency here is both safe and the main lever on
+  // total crawl duration.
+  const SCORE_CONCURRENCY = 5;
+  const results = await mapWithConcurrency(signalsToScore, SCORE_CONCURRENCY, scoreOneSignal);
+  for (const result of results) {
+    if (result) scoredSignals.push(result);
   }
 
   // Real-time push happens here, at detection time — but only for High
