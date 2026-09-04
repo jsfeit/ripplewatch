@@ -1,6 +1,5 @@
 // Buckets job-posting and pricing signals into calendar months for the
-// Industry Pulse chart — real signal data (both come from actual scraping,
-// unlike SEO/traffic which is still a placeholder source), aggregated
+// Industry Pulse chart — real signal data from actual scraping, aggregated
 // across every tracked competitor rather than per-competitor, since the
 // point is a category-level activity read that still works when any one
 // competitor is too small to generate much individual signal volume.
