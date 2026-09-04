@@ -247,6 +247,50 @@ async function fetchAtsJobs({ provider, boardToken }: AtsDetection): Promise<Ats
   }
 }
 
+// Last-resort fallback for a competitor whose own careers page 403s us
+// (bot protection — the same class of block confirmed on several real
+// domains) before we ever get HTML to scan for an embedded ATS reference.
+// detectAts above only finds a board it's *told about*, via the careers URL
+// itself or a link/iframe in that page's markup — neither works when we
+// can't fetch the page at all. Greenhouse/Lever/Ashby board tokens are
+// overwhelmingly just the company's own name, so this guesses a couple of
+// slug candidates from the domain/name and probes each provider directly.
+// A guess only counts as a hit if the API actually returns real postings —
+// an empty or 404 board is treated as a miss, not "this company has zero
+// open roles," so a wrong guess can't silently masquerade as a real reading.
+function slugCandidates(domain: string | null, name: string): string[] {
+  const candidates = new Set<string>();
+  if (domain) {
+    const bare = domain.replace(/^www\./, "").split(".")[0];
+    if (bare) candidates.add(bare.toLowerCase());
+  }
+  const fromName = name.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  if (fromName) candidates.add(fromName);
+  const hyphenatedFromName = name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-");
+  if (hyphenatedFromName) candidates.add(hyphenatedFromName);
+  return Array.from(candidates);
+}
+
+// Only the two most common startup ATSs plus Ashby — Workable/SmartRecruiters
+// board tokens are far less predictable from a company name, so guessing at
+// those specifically would mostly just add failed requests.
+const GUESSABLE_PROVIDERS: AtsProvider[] = ["greenhouse", "lever", "ashby"];
+
+async function probeAtsBySlug(domain: string | null, name: string): Promise<{ detection: AtsDetection; jobs: AtsJob[] } | null> {
+  for (const boardToken of slugCandidates(domain, name)) {
+    for (const provider of GUESSABLE_PROVIDERS) {
+      try {
+        const jobs = await fetchAtsJobs({ provider, boardToken });
+        if (jobs.length > 0) return { detection: { provider, boardToken }, jobs };
+      } catch {
+        // Wrong guess (404/empty board) — try the next provider/slug rather
+        // than treating this as a real failure worth logging.
+      }
+    }
+  }
+  return null;
+}
+
 function hashText(text: string): string {
   return createHash("sha256").update(text).digest("hex");
 }
@@ -306,20 +350,31 @@ async function writeSnapshot(
   );
 }
 
-// Wayback Machine's "available" API — free, no key required. Used only on a
-// competitor's very first pricing check below, when there's no snapshot of
-// our own yet to diff against (checkPricingDiff would otherwise just
-// silently no-op on that first run). Gives a genuinely new competitor one
-// real "here's how this changed" signal by comparing today's page against
-// whatever Wayback happened to archive ~6 months back, instead of leaving
-// pricing history blank until our second crawl ever produces a diff.
+// Wayback Machine's "available" API — free, no key required. Two uses below,
+// both parameterized off this one lookup:
+//  1. Cold start (fetchWaybackSnapshotText, ~180 days back): a genuinely new
+//     competitor gets one real "here's how this changed" signal on its very
+//     first check, by comparing today's page against an archive snapshot
+//     from ~6 months ago, instead of pricing history staying blank until our
+//     second crawl produces a diff.
+//  2. Bot-blocked pricing pages (fetchLatestWaybackSnapshotText, "now"): a
+//     competitor whose pricing page always 403s to us directly (confirmed on
+//     several real domains — same block with a real browser User-Agent) used
+//     to just permanently no-op on pricing. Falling back to the most recent
+//     archived snapshot means Gusto-style bot-blocked competitors still get
+//     periodic pricing reads instead of "not yet checked" forever. Not
+//     real-time, but Wayback recrawls popular SaaS pricing pages often
+//     enough to catch a tier/price change within weeks rather than never —
+//     and a new signup sees this history on day one instead of a blank page
+//     while we wait for our own crawls to accumulate (see PricingSource
+//     below).
 const WAYBACK_LOOKBACK_DAYS = 180;
 
-async function fetchWaybackSnapshotText(url: string): Promise<{ text: string; capturedAt: string } | null> {
-  const target = new Date();
-  target.setUTCDate(target.getUTCDate() - WAYBACK_LOOKBACK_DAYS);
-  const timestamp = target.toISOString().slice(0, 10).replace(/-/g, "");
-
+async function fetchWaybackSnapshotAt(
+  url: string,
+  timestamp: string,
+  maxAgeDays?: number
+): Promise<{ text: string; capturedAt: string } | null> {
   let availability: { archived_snapshots?: { closest?: { available: boolean; url: string; timestamp: string } } };
   try {
     const res = await fetch(
@@ -335,6 +390,15 @@ async function fetchWaybackSnapshotText(url: string): Promise<{ text: string; ca
   const snapshot = availability.archived_snapshots?.closest;
   if (!snapshot?.available || !snapshot.url) return null;
 
+  if (maxAgeDays !== undefined) {
+    // snapshot.timestamp is YYYYMMDDhhmmss.
+    const capturedAt = new Date(
+      `${snapshot.timestamp.slice(0, 4)}-${snapshot.timestamp.slice(4, 6)}-${snapshot.timestamp.slice(6, 8)}T00:00:00Z`
+    );
+    const ageDays = (Date.now() - capturedAt.getTime()) / (1000 * 60 * 60 * 24);
+    if (ageDays > maxAgeDays) return null;
+  }
+
   try {
     const text = await fetchPageText(snapshot.url);
     return { text, capturedAt: snapshot.timestamp };
@@ -346,20 +410,57 @@ async function fetchWaybackSnapshotText(url: string): Promise<{ text: string; ca
   }
 }
 
+function fetchWaybackSnapshotText(url: string): Promise<{ text: string; capturedAt: string } | null> {
+  const target = new Date();
+  target.setUTCDate(target.getUTCDate() - WAYBACK_LOOKBACK_DAYS);
+  return fetchWaybackSnapshotAt(url, target.toISOString().slice(0, 10).replace(/-/g, ""));
+}
+
+// Confirmed against a real domain (Gusto): a page that's redirected for
+// years can leave Wayback's "closest" match years stale even when asked for
+// "now" — the API only matches snapshots that captured a 200 on the exact
+// URL, and if the last one of those was in 2016, that's what comes back.
+// Presenting a decade-old price as "current" would be worse than showing
+// nothing, so anything older than this is treated as no snapshot at all.
+const MAX_USABLE_WAYBACK_AGE_DAYS = 400;
+
+function fetchLatestWaybackSnapshotText(url: string): Promise<{ text: string; capturedAt: string } | null> {
+  // Today's date as the target timestamp: the "available" API returns the
+  // closest snapshot to it, which — since nothing is archived in the future
+  // — is simply the most recent capture Wayback has.
+  const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  return fetchWaybackSnapshotAt(url, today, MAX_USABLE_WAYBACK_AGE_DAYS);
+}
+
+export type PricingPageResult = {
+  text: string;
+  // "live" when we fetched the page ourselves this run; "wayback" when the
+  // direct fetch failed (bot block, timeout, etc.) and this is the most
+  // recent Wayback Machine snapshot instead — callers should caveat any
+  // output derived from this as possibly stale, not present it as a fresh
+  // read.
+  source: "live" | "wayback";
+  capturedAt?: string;
+};
+
 // Fetches a competitor's pricing page ONCE per crawl run — checkPricingDiff
 // and checkPricingStructure both need the current page text, and
 // previously each called fetchPageText independently, doubling outbound
 // requests (and 403/bot-block risk) per competitor per crawl for no
 // reason. Callers share one in-flight promise (see runCrawlForAccount) so
-// this only runs once; null means "couldn't load," not "no pricing URL"
-// (that's checked separately by each caller).
-export async function fetchCompetitorPricingText(competitor: Competitor): Promise<string | null> {
+// this only runs once; null means "couldn't load anything at all, live or
+// archived," not "no pricing URL" (that's checked separately by each
+// caller).
+export async function fetchCompetitorPricingText(competitor: Competitor): Promise<PricingPageResult | null> {
   if (!competitor.pricing_url) return null;
   try {
-    return await fetchPageText(competitor.pricing_url);
+    const text = await fetchPageText(competitor.pricing_url);
+    return { text, source: "live" };
   } catch (err) {
-    console.error(`pricing page unreachable for ${competitor.name} (${competitor.pricing_url}):`, err);
-    return null;
+    console.error(`pricing page unreachable for ${competitor.name} (${competitor.pricing_url}), trying Wayback:`, err);
+    const archived = await fetchLatestWaybackSnapshotText(competitor.pricing_url);
+    if (!archived) return null;
+    return { text: archived.text, source: "wayback", capturedAt: archived.capturedAt };
   }
 }
 
@@ -370,16 +471,22 @@ export async function fetchCompetitorPricingText(competitor: Competitor): Promis
 export async function checkPricingDiff(
   supabase: AdminClient,
   competitor: Competitor,
-  pageText: string | null
+  page: PricingPageResult | null
 ): Promise<Signal | null> {
-  if (!competitor.pricing_url || pageText === null) return null;
+  if (!competitor.pricing_url || page === null) return null;
 
-  const newText = pageText;
+  const newText = page.text;
   const existing = await readSnapshot(supabase, competitor.id, "pricing");
   const newHash = hashText(newText);
   await writeSnapshot(supabase, competitor.id, "pricing", newText);
 
-  if (!existing) {
+  // Only worth a dedicated backfill signal when we have a genuinely live
+  // page to compare against a past one — if `page` itself is already a
+  // Wayback snapshot (the live site is blocked), there's no fresher read to
+  // diff it against right now. Just seed the snapshot silently; the very
+  // next crawl (also likely served from Wayback) will diff normally against
+  // this one, same as any other pair of snapshots.
+  if (!existing && page.source === "live") {
     const past = await fetchWaybackSnapshotText(competitor.pricing_url);
     if (!past) return null;
 
@@ -403,6 +510,11 @@ export async function checkPricingDiff(
     return data;
   }
 
+  // Nothing to diff against yet (either the genuinely-first check above, or
+  // this first read happened to come from Wayback) — snapshot's already
+  // written above, so this run's job is done.
+  if (!existing) return null;
+
   if (existing.content_hash === newHash) return null;
 
   const diff = await summarizePricingChange(existing.raw_text ?? "", newText, competitor.account_id);
@@ -414,7 +526,10 @@ export async function checkPricingDiff(
       competitor_id: competitor.id,
       type: "pricing",
       title: diff.summary,
-      summary: `Detected on ${competitor.name}'s pricing page.`,
+      summary:
+        page.source === "wayback"
+          ? `Detected on ${competitor.name}'s pricing page (via an archived snapshot — this page blocks automated requests, so we can't confirm it's current).`
+          : `Detected on ${competitor.name}'s pricing page.`,
       scored: false,
       source: "pipeline",
     })
@@ -455,25 +570,27 @@ async function recordStateHistory(
 export async function checkPricingStructure(
   supabase: AdminClient,
   competitor: Competitor,
-  pageText: string | null
+  page: PricingPageResult | null
 ): Promise<void> {
   if (!competitor.pricing_url) return;
 
-  if (pageText === null) {
+  if (page === null) {
     // Previously a silent no-op — a page that consistently 403s (bot
     // protection on the pricing page, confirmed on several real competitor
     // domains: same block with a real browser User-Agent, so not a UA-string
     // fix) left the competitor stuck showing "Not yet checked" forever, with
     // nothing in the logs to explain why. fetchCompetitorPricingText already
-    // logged the fetch failure; an honest record is written here so the UI
-    // can say "couldn't check automatically" instead of implying a check
-    // just hasn't happened yet.
+    // tries a Wayback fallback and logs the fetch failure; this only fires
+    // when even that came up empty (never archived, or archive itself
+    // unreachable) — an honest record is written here so the UI can say
+    // "couldn't check automatically" instead of implying a check just
+    // hasn't happened yet.
     await supabase.from("competitor_pricing").upsert(
       {
         competitor_id: competitor.id,
         billing_model: "unknown",
         publicly_priced: false,
-        note: "Couldn't load this pricing page automatically (it blocks automated requests): check it directly.",
+        note: "Couldn't load this pricing page automatically (it blocks automated requests) and no archived version was available: check it directly.",
         tiers: [],
         last_checked_at: new Date().toISOString(),
       },
@@ -484,7 +601,7 @@ export async function checkPricingStructure(
 
   let extraction;
   try {
-    extraction = await extractPricingStructure(pageText, competitor.account_id);
+    extraction = await extractPricingStructure(page.text, competitor.account_id);
   } catch (err) {
     // The page loaded fine — this is an Anthropic-side failure (an outage,
     // exhausted credits), not a scraping problem. Distinct from the fetch
@@ -497,12 +614,20 @@ export async function checkPricingStructure(
     return;
   }
 
+  // Archived data is the best we have for a bot-blocked page, but it isn't
+  // live — say so, rather than presenting a months-old snapshot with the
+  // same confidence as a page we just fetched ourselves.
+  const note =
+    page.source === "wayback"
+      ? `${extraction.note ? `${extraction.note} ` : ""}Based on an archived snapshot from ${page.capturedAt?.slice(0, 4)}-${page.capturedAt?.slice(4, 6)}-${page.capturedAt?.slice(6, 8)} — this page blocks automated requests, so we can't confirm it's still current.`
+      : extraction.note;
+
   await supabase.from("competitor_pricing").upsert(
     {
       competitor_id: competitor.id,
       billing_model: extraction.billingModel,
       publicly_priced: extraction.publiclyPriced,
-      note: extraction.note,
+      note,
       tiers: extraction.tiers,
       last_checked_at: new Date().toISOString(),
     },
@@ -532,7 +657,18 @@ export async function checkJobPostingsDiff(
 ): Promise<Signal | null> {
   if (!competitor.careers_url) return null;
 
-  const html = await fetchHtml(competitor.careers_url);
+  let html = "";
+  try {
+    html = await fetchHtml(competitor.careers_url);
+  } catch (err) {
+    // Previously this threw straight out of the function — Promise.allSettled
+    // in crawl.ts swallowed the rejection with no log at all, so a
+    // bot-blocked careers page (same class of block confirmed on pricing
+    // pages) left hiring stuck at "not yet checked" with nothing to explain
+    // why. Logged now, and detectAts/the slug-guess fallback below both still
+    // get a chance to find a real ATS board even with no HTML in hand.
+    console.error(`careers page unreachable for ${competitor.name} (${competitor.careers_url}):`, err);
+  }
   const detection = detectAts(competitor.careers_url, html);
 
   // ATS jobs win when detection succeeds and the API actually returns
@@ -540,14 +676,35 @@ export async function checkJobPostingsDiff(
   // falls back to the generic scrape rather than reporting zero roles as
   // if that were a real reading.
   let atsJobs: AtsJob[] = [];
+  let atsProvider: AtsProvider | null = null;
   if (detection) {
     try {
       atsJobs = await fetchAtsJobs(detection);
+      atsProvider = detection.provider;
     } catch (err) {
       console.error(`ATS API fetch failed for ${competitor.name} (${detection.provider}):`, err);
     }
   }
+
+  // Nothing found the normal way (no board referenced in the URL or page,
+  // or the page itself was unreachable) — guess a board token from the
+  // company's own name/domain and probe Greenhouse/Lever/Ashby directly.
+  if (atsJobs.length === 0) {
+    const guessed = await probeAtsBySlug(competitor.domain, competitor.name);
+    if (guessed) {
+      atsJobs = guessed.jobs;
+      atsProvider = guessed.detection.provider;
+    }
+  }
+
   const usingAts = atsJobs.length > 0;
+  if (!usingAts && !html) {
+    // Couldn't read the page directly and no ATS guess panned out either —
+    // nothing to scrape, and no honest reading to fall back to. Leave the
+    // existing competitor_hiring row alone rather than overwriting good data
+    // with a false zero.
+    return null;
+  }
 
   const titles = usingAts ? atsJobs.map((j) => j.title) : extractJobListingTitles(html);
   const joined = titles.join("\n");
@@ -577,7 +734,7 @@ export async function checkJobPostingsDiff(
       competitor_id: competitor.id,
       open_role_count: titles.length,
       department_breakdown: breakdown,
-      source: usingAts ? detection!.provider : null,
+      source: atsProvider,
       last_checked_at: new Date().toISOString(),
     },
     { onConflict: "competitor_id" }
