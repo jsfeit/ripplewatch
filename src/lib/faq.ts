@@ -11,7 +11,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "What is Ripplewatch?",
         answer:
-          "An AI-native competitive intelligence tool for startup marketing and product teams. Think of it as a continuous read on the health of market around you: it monitors the competitors you choose and scores every signal (a pricing change, a job posting, a news mention) against your own positioning, ICP, and the real reasons you've lost deals or churned customers.",
+          "Not alerts. Not data. Answers. Ripplewatch is competitive intelligence built for early-stage SaaS founders, not PMM teams: it monitors the competitors you choose and scores every signal (a pricing change, a job posting, a news mention) against your own positioning, ICP, and the real reasons you've lost deals or churned customers, then rolls it all up into a single Momentum score per competitor.",
       },
       {
         question: "How is this different from other competitive intelligence tools?",
@@ -31,7 +31,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "What is the Ask feature?",
         answer:
-          "A chat interface scoped to your own tracked competitors and business context. Instead of waiting for an alert, you can ask something like \"what has this competitor changed recently that matters to us?\" and get an answer grounded in your last 90 days of signals.",
+          "A chat interface scoped to your own tracked competitors and business context. Instead of waiting for the next update, you can ask something like \"what has this competitor changed recently that matters to us?\" and get an answer grounded in your last 90 days of signals.",
       },
       {
         question: "What is Momentum?",
@@ -118,11 +118,11 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "How do I get started?",
         answer:
-          "Sign up, then walk through a short onboarding flow: tell us your positioning, your ICP, and the competitors you want tracked. From there, alerts start showing up as soon as the first crawl runs.",
+          "Sign up, then walk through a short onboarding flow: tell us your positioning, your ICP, and the competitors you want tracked. From there, scored updates start showing up as soon as the first crawl runs.",
       },
       {
         question: "What integrations do you support?",
-        answer: "Slack for alert delivery, and HubSpot, Gong, and Zoom for extra context on scoring.",
+        answer: "Slack for delivery, and HubSpot, Gong, and Zoom for extra context on scoring.",
       },
       {
         question: "How do I contact support, and how fast do you respond?",
