@@ -480,15 +480,18 @@ export async function checkPricingDiff(
   const newHash = hashText(newText);
   await writeSnapshot(supabase, competitor.id, "pricing", newText);
 
-  // Only worth a dedicated backfill signal when we have a genuinely live
-  // page to compare against a past one — if `page` itself is already a
-  // Wayback snapshot (the live site is blocked), there's no fresher read to
-  // diff it against right now. Just seed the snapshot silently; the very
-  // next crawl (also likely served from Wayback) will diff normally against
-  // this one, same as any other pair of snapshots.
-  if (!existing && page.source === "live") {
+  // A new signup shouldn't have to wait for pricing history to accumulate —
+  // give it one backfilled "here's how this changed" signal on the very
+  // first check, whether or not the live page is even reachable. Runs once
+  // ever per competitor (gated on !existing, which flips true the moment
+  // writeSnapshot above has run once), not on every crawl.
+  if (!existing) {
     const past = await fetchWaybackSnapshotText(competitor.pricing_url);
     if (!past) return null;
+    // If today's read is itself a Wayback snapshot, don't diff it against
+    // itself — happens when the live site's block predates any archive
+    // capture recent enough to differ from the ~180-day-back lookup.
+    if (page.source === "wayback" && past.capturedAt === page.capturedAt) return null;
 
     const diff = await summarizePricingChange(past.text, newText, competitor.account_id);
     if (!diff.meaningful || !diff.summary) return null;
@@ -500,7 +503,10 @@ export async function checkPricingDiff(
         competitor_id: competitor.id,
         type: "pricing",
         title: diff.summary,
-        summary: `Detected on ${competitor.name}'s pricing page, compared against a Wayback Machine snapshot from ${capturedDate}.`,
+        summary:
+          page.source === "wayback"
+            ? `Detected across two Wayback Machine snapshots (${capturedDate} vs ${page.capturedAt?.slice(0, 4)}-${page.capturedAt?.slice(4, 6)}-${page.capturedAt?.slice(6, 8)}) — ${competitor.name}'s pricing page blocks automated requests, so we can't confirm this is fully current.`
+            : `Detected on ${competitor.name}'s pricing page, compared against a Wayback Machine snapshot from ${capturedDate}.`,
         scored: false,
         source: "backfill",
       })
@@ -509,11 +515,6 @@ export async function checkPricingDiff(
 
     return data;
   }
-
-  // Nothing to diff against yet (either the genuinely-first check above, or
-  // this first read happened to come from Wayback) — snapshot's already
-  // written above, so this run's job is done.
-  if (!existing) return null;
 
   if (existing.content_hash === newHash) return null;
 
