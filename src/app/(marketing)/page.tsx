@@ -35,8 +35,8 @@ const STEPS = [
   },
   {
     icon: Send,
-    title: "You get relevance-scored alerts",
-    body: "Every signal is pushed to you with a verdict: does this matter to your business, and why, not simply what changed.",
+    title: "You see who's actually moving",
+    body: "Every competitor gets a Momentum score — Heating up, Steady, or Cooling — synthesized from hiring, pricing, press, and product activity, not a pile of change notifications to sort through yourself.",
   },
 ];
 
@@ -53,7 +53,7 @@ const STRUCTURED_DATA = {
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   description:
-    "AI-native competitive intelligence for startup marketing teams. Scores every competitor signal against your own positioning, ICP, and lost-deal reasons: not just what changed, but whether it matters.",
+    "Not alerts. Not data. Answers. Ripplewatch tracks hiring, pricing, press, and product activity across your competitors and tells early-stage SaaS founders which ones are becoming a real threat.",
   offers: [
     { "@type": "Offer", name: "Starter", price: "69", priceCurrency: "USD" },
     { "@type": "Offer", name: "Plus", price: "149", priceCurrency: "USD" },
@@ -71,17 +71,17 @@ export default function HomePage() {
       <section className="mx-auto max-w-6xl px-6 pb-20 pt-20 sm:pt-28">
         <div className="mx-auto max-w-3xl text-center">
           <span className="inline-flex items-center rounded-full border border-border bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground">
-            AI-native competitive intelligence for startup product and marketing teams
+            Competitive intelligence for early-stage SaaS founders, not PMM teams
           </span>
           <h1 className="mt-6 text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
-            Every tool tells you what changed.
+            Not alerts. Not data.
             <br />
-            <span className="text-primary">We tell you if it matters.</span>
+            <span className="text-primary">Answers.</span>
           </h1>
           <p className="mt-6 text-lg leading-relaxed text-muted-foreground text-balance">
-            Ripplewatch scores every competitor signal against your own positioning, ICP,
-            lost-deal reasons, and churn. Your team stops drowning in alerts and starts acting
-            on the few that actually move the needle.
+            Ripplewatch tracks hiring, pricing, press, and product activity across your
+            competitors and tells you which ones are becoming a real threat — scored against
+            your own positioning, ICP, lost-deal reasons, and churn.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link href="/pricing" className={buttonVariants({ size: "lg" })}>
@@ -205,7 +205,7 @@ export default function HomePage() {
               Ask
             </span>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight">
-              Don&apos;t wait for the alert. Just ask.
+              Don&apos;t wait for the next update. Just ask.
             </h2>
             <p className="mt-3 text-muted-foreground">
               Ripplewatch isn&apos;t only a feed, it&apos;s an analyst you can question directly, scoped to
@@ -237,8 +237,8 @@ export default function HomePage() {
             Pick the tier that matches how you sell
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-center text-muted-foreground">
-            Every tier includes relevance context. Higher tiers unlock more competitors, more
-            sources, and full scoring on every signal.
+            Every tier gets full scoring and the Momentum score. Higher tiers just mean more
+            competitors tracked and more integrations.
           </p>
           <div className="mt-10">
             <PricingCards />

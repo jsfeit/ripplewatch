@@ -33,7 +33,7 @@ const STAGES = [
   {
     icon: Send,
     title: "3. You get a verdict, not a firehose",
-    body: "Scored alerts show up in Slack and email with the reasoning attached, so your team can act in seconds instead of debating whether a signal is worth a Slack thread.",
+    body: "Scored updates show up in Slack and email with the reasoning attached, and roll up into each competitor's Momentum score, so you can act in seconds instead of debating whether a signal is worth a Slack thread.",
   },
 ];
 

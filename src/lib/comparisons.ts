@@ -130,7 +130,7 @@ export const COMPARISONS: ComparisonEntry[] = [
     switchGain:
       "Findings get scored and delivered as they happen instead of batched into one weekly digest, so the one item that actually matters to a live deal doesn't have to wait for Friday's summary or get lost among the rest.",
     switchConsider:
-      "If a once-a-week cadence is genuinely enough for your team and you like having everything in one message, that simplicity is a real tradeoff against Ripplewatch's continuous, individually scored alerts.",
+      "If a once-a-week cadence is genuinely enough for your team and you like having everything in one message, that simplicity is a real tradeoff against Ripplewatch's continuous, individually scored updates.",
   },
   {
     slug: "compttr",
