@@ -12,6 +12,9 @@ import {
   isFirstNewsCheck,
   ensureMonitoringUrls,
   checkGithubActivity,
+  checkReviewSentiment,
+  checkBuzzMentions,
+  checkAdActivity,
 } from "@/lib/scraping";
 import {
   scoreSignal,
@@ -295,6 +298,13 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
       // way SEO's paid DataForSEO calls are. No signal fires; it's a
       // state-history snapshot only, so always resolves to [].
       competitor.github_repo ? checkGithubActivity(supabase, competitor).then(() => []) : null,
+      // Same "no signal, state-history only" shape as GitHub above — not
+      // tier-gated, each is either free (G2/Capterra scrape, HN/Reddit) or
+      // self-gates on a missing credential (Meta Ad Library), so there's no
+      // per-tier cost to restrict.
+      checkReviewSentiment(supabase, competitor).then(() => []),
+      checkBuzzMentions(supabase, competitor).then(() => []),
+      checkAdActivity(supabase, competitor).then(() => []),
     ].filter((p): p is Promise<Signal[]> => p !== null);
 
     const results = await Promise.allSettled(checks);

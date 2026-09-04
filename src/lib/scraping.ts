@@ -10,11 +10,16 @@ import {
   searchCompetitorNews,
   filterRelevantHeadlines,
   canonicalizeHeadlines,
+  discoverReviewUrls,
+  extractReviewStats,
+  summarizeBuzzSentiment,
   type SignalSentiment,
 } from "@/lib/anthropic";
 import { normalizeDomain, guessPricingUrl, guessCareersUrl } from "@/lib/domain";
 import { fetchProductHuntLaunches } from "@/lib/producthunt-data";
 import { fetchGithubCommitVelocity } from "@/lib/github-data";
+import { fetchBuzzMentions } from "@/lib/reddit-hn-data";
+import { fetchActiveAdCount } from "@/lib/meta-ads-data";
 
 type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
 type Signal = Database["public"]["Tables"]["signals"]["Row"];
@@ -551,7 +556,7 @@ export async function checkPricingDiff(
 async function recordStateHistory(
   supabase: AdminClient,
   competitorId: string,
-  metric: "open_role_count" | "lowest_price" | "github_commit_velocity",
+  metric: "open_role_count" | "lowest_price" | "github_commit_velocity" | "review_rating" | "ad_count" | "buzz_mentions",
   value: number
 ): Promise<void> {
   const { error } = await supabase.from("competitor_state_history").insert({
@@ -1318,4 +1323,183 @@ export async function checkGithubActivity(supabase: AdminClient, competitor: Com
   if (velocity === null) return;
 
   await recordStateHistory(supabase, competitor.id, "github_commit_velocity", velocity);
+}
+
+// --- Review site sentiment (G2/Capterra) ---------------------------------
+
+// One-time discovery, same pattern as ensureMonitoringUrls for pricing/
+// careers — G2/Capterra URLs aren't guessable from a domain, so this uses
+// a real web search (discoverReviewUrls) exactly once per competitor and
+// caches whatever it finds (including "found nothing," implicitly, by
+// simply not re-running once both fields have been attempted — see the
+// `attempted` guard below, since null/null is a legitimate outcome for a
+// competitor with no G2 or Capterra presence, not a failure to retry).
+const REVIEW_CHECK_INTERVAL_DAYS = 7;
+
+async function ensureReviewUrls(supabase: AdminClient, competitor: Competitor): Promise<Competitor> {
+  if (competitor.g2_url !== null || competitor.capterra_url !== null) return competitor;
+
+  const existing = await supabase
+    .from("competitor_reviews")
+    .select("competitor_id")
+    .eq("competitor_id", competitor.id)
+    .maybeSingle();
+  // A competitor_reviews row already existing means discovery already ran
+  // once (see checkReviewSentiment below, which always upserts one) and
+  // came up empty — don't repeat the web-search call every crawl.
+  if (existing.data) return competitor;
+
+  const { g2Url, capterraUrl } = await discoverReviewUrls(competitor.name, competitor.domain, competitor.account_id);
+  if (!g2Url && !capterraUrl) return competitor;
+
+  const { data: updated } = await supabase
+    .from("competitors")
+    .update({ g2_url: g2Url, capterra_url: capterraUrl })
+    .eq("id", competitor.id)
+    .select("*")
+    .single();
+
+  return updated ?? competitor;
+}
+
+// Structured current-state read (rating + review count per source), weekly-
+// gated like the homepage check — ratings move slowly, so a daily Claude
+// call here would mostly burn cost re-reading the same number. The rating
+// itself doubles as computeMomentum's "review_rating" magnitude metric
+// (weighted toward whichever source has more reviews when both exist,
+// since a 4.8 from 12 reviews and a 4.2 from 4,000 shouldn't count equally).
+export async function checkReviewSentiment(supabase: AdminClient, competitor: Competitor): Promise<void> {
+  const withUrls = await ensureReviewUrls(supabase, competitor);
+  if (!withUrls.g2_url && !withUrls.capterra_url) return;
+
+  const { data: existing } = await supabase
+    .from("competitor_reviews")
+    .select("last_checked_at")
+    .eq("competitor_id", withUrls.id)
+    .maybeSingle();
+  if (existing) {
+    const daysSinceCheck = (Date.now() - new Date(existing.last_checked_at).getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceCheck < REVIEW_CHECK_INTERVAL_DAYS) return;
+  }
+
+  const [g2Text, capterraText] = await Promise.all([
+    withUrls.g2_url ? fetchPageText(withUrls.g2_url).catch(() => null) : Promise.resolve(null),
+    withUrls.capterra_url ? fetchPageText(withUrls.capterra_url).catch(() => null) : Promise.resolve(null),
+  ]);
+
+  const [g2Stats, capterraStats] = await Promise.all([
+    g2Text ? extractReviewStats(g2Text, withUrls.account_id) : Promise.resolve({ rating: null, reviewCount: null }),
+    capterraText
+      ? extractReviewStats(capterraText, withUrls.account_id)
+      : Promise.resolve({ rating: null, reviewCount: null }),
+  ]);
+
+  // Both sources unreachable/unparseable this run (bot-blocked, page
+  // structure changed) — leave the existing row alone rather than
+  // overwriting good data with nulls, same stance as checkPricingStructure's
+  // Claude-failure branch.
+  if (g2Stats.rating === null && capterraStats.rating === null) return;
+
+  await supabase.from("competitor_reviews").upsert(
+    {
+      competitor_id: withUrls.id,
+      g2_rating: g2Stats.rating,
+      g2_review_count: g2Stats.reviewCount,
+      capterra_rating: capterraStats.rating,
+      capterra_review_count: capterraStats.reviewCount,
+      last_checked_at: new Date().toISOString(),
+    },
+    { onConflict: "competitor_id" }
+  );
+
+  // Review-count-weighted blend when both sources have a rating — a G2
+  // rating backed by thousands of reviews should dominate a Capterra
+  // rating backed by a handful, not average with it 50/50.
+  const weightedRatings: { rating: number; weight: number }[] = [];
+  if (g2Stats.rating !== null) weightedRatings.push({ rating: g2Stats.rating, weight: g2Stats.reviewCount ?? 1 });
+  if (capterraStats.rating !== null)
+    weightedRatings.push({ rating: capterraStats.rating, weight: capterraStats.reviewCount ?? 1 });
+  const totalWeight = weightedRatings.reduce((sum, r) => sum + r.weight, 0);
+  const blendedRating = weightedRatings.reduce((sum, r) => sum + r.rating * r.weight, 0) / totalWeight;
+
+  await recordStateHistory(supabase, withUrls.id, "review_rating", Math.round(blendedRating * 100) / 100);
+}
+
+// --- Buzz (Reddit + Hacker News mention volume) ---------------------------
+
+const BUZZ_CHECK_INTERVAL_DAYS = 7;
+
+// No signal fires here (same stance as GitHub activity) — this is a
+// magnitude-only momentum input. Mention volume feeds the "buzz_mentions"
+// state-history metric; the tone read (summarizeBuzzSentiment) is stored
+// as a short blurb on competitor_buzz for display, not part of the score
+// itself, since a handful of titles isn't enough to trust a numeric
+// sentiment delta the way press/funding's decay-weighted signal sentiment
+// is (that's built from dozens of scored, dated signals over time).
+export async function checkBuzzMentions(supabase: AdminClient, competitor: Competitor): Promise<void> {
+  const { data: existing } = await supabase
+    .from("competitor_buzz")
+    .select("last_checked_at")
+    .eq("competitor_id", competitor.id)
+    .maybeSingle();
+  if (existing) {
+    const daysSinceCheck = (Date.now() - new Date(existing.last_checked_at).getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceCheck < BUZZ_CHECK_INTERVAL_DAYS) return;
+  }
+
+  const mentions = await fetchBuzzMentions(competitor.name);
+  const sentimentSummary = await summarizeBuzzSentiment(
+    competitor.name,
+    mentions.map((m) => m.title),
+    competitor.account_id
+  );
+
+  await supabase.from("competitor_buzz").upsert(
+    {
+      competitor_id: competitor.id,
+      mention_count_30d: mentions.length,
+      sentiment_summary: sentimentSummary,
+      last_checked_at: new Date().toISOString(),
+    },
+    { onConflict: "competitor_id" }
+  );
+
+  await recordStateHistory(supabase, competitor.id, "buzz_mentions", mentions.length);
+}
+
+// --- Ad activity (Meta Ad Library) -----------------------------------------
+
+const AD_CHECK_INTERVAL_DAYS = 7;
+
+// Entirely skipped when META_AD_LIBRARY_ACCESS_TOKEN isn't configured (see
+// fetchActiveAdCount) — no crawl error, just no reading, same pattern as
+// ENABLE_WEB_SEARCH_NEWS. A small, deliberately optional part of momentum:
+// most competitors won't have this populated until that token is set up,
+// and computeReliability's per-component weighting already handles an
+// always-absent component correctly (zero weight, same treatment as
+// GitHub activity for a competitor with no repo set).
+export async function checkAdActivity(supabase: AdminClient, competitor: Competitor): Promise<void> {
+  const { data: existing } = await supabase
+    .from("competitor_ads")
+    .select("last_checked_at")
+    .eq("competitor_id", competitor.id)
+    .maybeSingle();
+  if (existing) {
+    const daysSinceCheck = (Date.now() - new Date(existing.last_checked_at).getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceCheck < AD_CHECK_INTERVAL_DAYS) return;
+  }
+
+  const result = await fetchActiveAdCount(competitor.name);
+  if (result === null) return;
+
+  await supabase.from("competitor_ads").upsert(
+    {
+      competitor_id: competitor.id,
+      active_ad_count: result.count,
+      last_checked_at: new Date().toISOString(),
+    },
+    { onConflict: "competitor_id" }
+  );
+
+  await recordStateHistory(supabase, competitor.id, "ad_count", result.count);
 }

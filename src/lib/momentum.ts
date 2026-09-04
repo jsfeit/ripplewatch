@@ -46,13 +46,14 @@ const COOLING_THRESHOLD = -15;
 // LOW_CONFIDENCE_THRESHOLD cutoff for the confidence flag, and as the
 // equal-weight fallback denominator on the rare edge case where every
 // component's reliability weight comes back zero (see the score computation
-// below). GitHub activity is included here even though it's structurally
-// inapplicable for most competitors (no github_repo set) — that's fine:
+// below). GitHub activity and ad activity are included here even though
+// they're structurally inapplicable for most competitors (no github_repo
+// set; no META_AD_LIBRARY_ACCESS_TOKEN configured) — that's fine:
 // computeReliability naturally gives an always-absent component zero
 // weight, which drops it out of both the numerator and denominator of the
 // real weighted-average score entirely, rather than shrinking the score the
 // way a normally-reliable-but-temporarily-missing component would.
-const TOTAL_COMPONENTS = 7;
+const TOTAL_COMPONENTS = 10;
 
 // Press/funding sentiment is weighted by recency (not a flat window
 // average) so a big story right when it breaks dominates the score, then
@@ -95,24 +96,25 @@ export type MomentumComponent = {
   weight: number;
 };
 
-// Below this many populated components (out of the 7 computeMomentum can
+// Below this many populated components (out of the 10 computeMomentum can
 // ever populate), the averaged score is one or two
 // signals doing all the work — real, but fragile enough that a UI showing
 // it should say so rather than presenting it with the same confidence as a
-// fully-populated score. 5, not 6, since GitHub activity is opt-in and
-// structurally absent for most competitors — requiring it (alongside the
-// other 5) to reach "full" confidence would wrongly mark every competitor
-// without a github_repo as permanently low-confidence.
-const LOW_CONFIDENCE_THRESHOLD = 5;
+// fully-populated score. 7, not 8, since GitHub activity and ad activity
+// are opt-in/credential-gated and structurally absent for most competitors
+// — requiring them (alongside the other 8) to reach "full" confidence would
+// wrongly mark every competitor without a github_repo or a configured Meta
+// token as permanently low-confidence.
+const LOW_CONFIDENCE_THRESHOLD = 7;
 
 export type MomentumConfidence = "low" | "full";
 
 export type MomentumResult = {
   score: number | null;
   label: MomentumLabel;
-  // "low" when fewer than LOW_CONFIDENCE_THRESHOLD of the 7 components have
+  // "low" when fewer than LOW_CONFIDENCE_THRESHOLD of the 10 components have
   // real data — surfaced in the UI so a score built from one thin signal
-  // doesn't read with the same weight as one built from all seven.
+  // doesn't read with the same weight as one built from all ten.
   confidence: MomentumConfidence;
   components: {
     hiring: MomentumComponent;
@@ -122,6 +124,9 @@ export type MomentumResult = {
     relevanceTrend: MomentumComponent;
     winRate: MomentumComponent;
     productActivity: MomentumComponent;
+    reviewSentiment: MomentumComponent;
+    buzz: MomentumComponent;
+    adActivity: MomentumComponent;
   };
 };
 
@@ -366,6 +371,37 @@ export function computeMomentum(
   const githubHasData = githubRecentValue !== null && githubPriorValue !== null;
   const productActivityScore = githubHasData ? valueDelta(githubRecentValue!, githubPriorValue!) : null;
 
+  // Review rating (G2/Capterra, review-count-weighted blend — see
+  // checkReviewSentiment in scraping.ts) — always magnitude mode, same
+  // reasoning as GitHub above: there's no discrete "signal event" for a
+  // rating moving from 4.3 to 4.5, just a periodic reading to compare.
+  const reviewRecentValue = latestValueInWindow(stateHistory, "review_rating", recentStart, now);
+  const reviewPriorValue = latestValueInWindow(stateHistory, "review_rating", priorStart, recentStart);
+  const reviewHasData = reviewRecentValue !== null && reviewPriorValue !== null;
+  const reviewSentimentScore = reviewHasData ? valueDelta(reviewRecentValue!, reviewPriorValue!) : null;
+
+  // Buzz (Reddit + Hacker News mention volume, see checkBuzzMentions) —
+  // magnitude mode on raw mention count, same shape as hiring/pricing when
+  // they're in magnitude mode. Whether that buzz is positive or negative
+  // isn't part of this score (see summarizeBuzzSentiment's separate text
+  // blurb) — this component answers "is there more or less of it," not
+  // "is it good," matching what "increases in social media discussion"
+  // actually asks for.
+  const buzzRecentValue = latestValueInWindow(stateHistory, "buzz_mentions", recentStart, now);
+  const buzzPriorValue = latestValueInWindow(stateHistory, "buzz_mentions", priorStart, recentStart);
+  const buzzHasData = buzzRecentValue !== null && buzzPriorValue !== null;
+  const buzzScore = buzzHasData ? valueDelta(buzzRecentValue!, buzzPriorValue!) : null;
+
+  // Ad activity (Meta Ad Library active-ad count, see checkAdActivity) —
+  // opt-in the same way GitHub is: null for every competitor until
+  // META_AD_LIBRARY_ACCESS_TOKEN is configured, and computeReliability
+  // below correctly zero-weights it until then rather than dragging the
+  // score down.
+  const adRecentValue = latestValueInWindow(stateHistory, "ad_count", recentStart, now);
+  const adPriorValue = latestValueInWindow(stateHistory, "ad_count", priorStart, recentStart);
+  const adHasData = adRecentValue !== null && adPriorValue !== null;
+  const adActivityScore = adHasData ? valueDelta(adRecentValue!, adPriorValue!) : null;
+
   const pressScore = sentimentDelta(pressRecentSignals, pressPriorSignals, now);
   const relevanceRecentAvg = scoredRecent.length > 0 ? Math.round(avg(scoredRecent.map((s) => s.relevance_score!))) : null;
   const relevancePriorAvg = scoredPrior.length > 0 ? Math.round(avg(scoredPrior.map((s) => s.relevance_score!))) : null;
@@ -399,6 +435,15 @@ export function computeMomentum(
   );
   const productActivityWeight = computeReliability(now, (start, end) =>
     stateHistory.some((e) => e.metric === "github_commit_velocity" && inWindow(e.recorded_at, start, end))
+  );
+  const reviewSentimentWeight = computeReliability(now, (start, end) =>
+    stateHistory.some((e) => e.metric === "review_rating" && inWindow(e.recorded_at, start, end))
+  );
+  const buzzWeight = computeReliability(now, (start, end) =>
+    stateHistory.some((e) => e.metric === "buzz_mentions" && inWindow(e.recorded_at, start, end))
+  );
+  const adActivityWeight = computeReliability(now, (start, end) =>
+    stateHistory.some((e) => e.metric === "ad_count" && inWindow(e.recorded_at, start, end))
   );
 
   const components: MomentumResult["components"] = {
@@ -478,6 +523,30 @@ export function computeMomentum(
         ? "no data"
         : `${githubRecentValue} commits/4wk vs ${githubPriorValue} commits/4wk last period`,
       weight: productActivityWeight,
+    },
+    reviewSentiment: {
+      label: "Review sentiment (G2/Capterra)",
+      score: reviewSentimentScore,
+      recentCount: reviewRecentValue ?? 0,
+      priorCount: reviewPriorValue ?? 0,
+      detail: !reviewHasData ? "no data" : `${reviewRecentValue}★ vs ${reviewPriorValue}★ last period`,
+      weight: reviewSentimentWeight,
+    },
+    buzz: {
+      label: "Buzz (Reddit/Hacker News)",
+      score: buzzScore,
+      recentCount: buzzRecentValue ?? 0,
+      priorCount: buzzPriorValue ?? 0,
+      detail: !buzzHasData ? "no data" : `${buzzRecentValue} mentions vs ${buzzPriorValue} last period`,
+      weight: buzzWeight,
+    },
+    adActivity: {
+      label: "Ad activity (Meta)",
+      score: adActivityScore,
+      recentCount: adRecentValue ?? 0,
+      priorCount: adPriorValue ?? 0,
+      detail: !adHasData ? "no data" : `${adRecentValue} active ads vs ${adPriorValue} last period`,
+      weight: adActivityWeight,
     },
   };
 
