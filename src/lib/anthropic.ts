@@ -1802,3 +1802,152 @@ Write the takeaway.`;
     return null;
   }
 }
+
+// --- Review site sentiment (G2/Capterra) ---------------------------------
+
+const REVIEW_URL_DISCOVERY_SYSTEM_PROMPT = `You use web search to find a specific company's review pages on G2 and Capterra. Respond with strict JSON only, no markdown:
+{"g2Url": "<full https URL to their G2 reviews page, or null if none found>", "capterraUrl": "<full https URL to their Capterra reviews page, or null if none found>"}
+
+Only return a URL you're confident actually belongs to this company (matching name and product) — null is much better than a wrong guess.`;
+
+const REVIEW_URL_DISCOVERY_SCHEMA = {
+  type: "object",
+  properties: {
+    g2Url: { anyOf: [{ type: "string" }, { type: "null" }] },
+    capterraUrl: { anyOf: [{ type: "string" }, { type: "null" }] },
+  },
+  required: ["g2Url", "capterraUrl"],
+  additionalProperties: false,
+} as const;
+
+// One-time lookup per competitor (see ensureReviewUrls in scraping.ts,
+// which caches the result the same way discoverCompetitorUrls's
+// pricing/careers guesses get cached) — G2/Capterra URLs aren't guessable
+// from a domain the way /pricing or /careers are, so this is the one place
+// in the review-tracking pipeline that needs a real web search instead of a
+// direct fetch.
+export async function discoverReviewUrls(
+  competitorName: string,
+  domain: string | null,
+  accountId: string | null
+): Promise<{ g2Url: string | null; capterraUrl: string | null }> {
+  const message = await createMessage({
+    model: "claude-sonnet-5",
+    max_tokens: 4096,
+    system: cachedSystemPrompt(REVIEW_URL_DISCOVERY_SYSTEM_PROMPT),
+    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 2 }],
+    output_config: { format: { type: "json_schema", schema: REVIEW_URL_DISCOVERY_SCHEMA } },
+    messages: [
+      {
+        role: "user",
+        content: `Find the G2 and Capterra review pages for "${competitorName}"${domain ? ` (${domain})` : ""}.`,
+      },
+    ],
+  });
+  recordLlmUsage(accountId, "discoverReviewUrls", message.model, message.usage);
+
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  try {
+    const parsed = JSON.parse(text);
+    return {
+      g2Url: typeof parsed.g2Url === "string" && parsed.g2Url.trim() ? parsed.g2Url.trim() : null,
+      capterraUrl: typeof parsed.capterraUrl === "string" && parsed.capterraUrl.trim() ? parsed.capterraUrl.trim() : null,
+    };
+  } catch {
+    return { g2Url: null, capterraUrl: null };
+  }
+}
+
+export type ReviewStats = { rating: number | null; reviewCount: number | null };
+
+const REVIEW_STATS_SYSTEM_PROMPT = `You read the text of a review-site page (G2 or Capterra) for one company and extract its current aggregate rating and review count. Respond with strict JSON only, no markdown:
+{"rating": <number 0-5, or null if not visible>, "reviewCount": <integer, or null if not visible>}`;
+
+const REVIEW_STATS_SCHEMA = {
+  type: "object",
+  properties: {
+    rating: { anyOf: [{ type: "number" }, { type: "null" }] },
+    reviewCount: { anyOf: [{ type: "integer" }, { type: "null" }] },
+  },
+  required: ["rating", "reviewCount"],
+  additionalProperties: false,
+} as const;
+
+// Same shape as extractPricingStructure — a small, cheap structured read of
+// whatever review-page text was fetched. The star rating itself IS the
+// sentiment signal here (no separate free-text sentiment call needed): a
+// 4.6 vs a 3.9 already says how customers feel, and its trend over time is
+// exactly the kind of magnitude computeMomentum already knows how to track
+// (see the "review_rating" state-history metric).
+export async function extractReviewStats(pageText: string, accountId: string | null): Promise<ReviewStats> {
+  const message = await createMessage({
+    model: "claude-sonnet-5",
+    max_tokens: 200,
+    system: cachedSystemPrompt(REVIEW_STATS_SYSTEM_PROMPT),
+    output_config: { format: { type: "json_schema", schema: REVIEW_STATS_SCHEMA } },
+    messages: [{ role: "user", content: `Review page text:\n${pageText.slice(0, 6000)}` }],
+  });
+  recordLlmUsage(accountId, "extractReviewStats", message.model, message.usage);
+
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  try {
+    const parsed = JSON.parse(text);
+    return {
+      rating: typeof parsed.rating === "number" ? parsed.rating : null,
+      reviewCount: typeof parsed.reviewCount === "number" ? parsed.reviewCount : null,
+    };
+  } catch {
+    return { rating: null, reviewCount: null };
+  }
+}
+
+// --- Buzz (Reddit + Hacker News mention) sentiment -----------------------
+
+const BUZZ_SENTIMENT_SYSTEM_PROMPT = `You read a list of recent Reddit and Hacker News post/comment titles mentioning one company and write a one-sentence read on the overall tone — genuinely mixed/negative reactions should read as such, not softened. Respond with strict JSON only, no markdown:
+{"summary": "<one plain sentence, e.g. 'Mostly positive — users highlight ease of setup, though a few complain about pricing.'>"}
+
+If the titles don't give enough to judge tone (too few, all neutral factual mentions), respond {"summary": null}.`;
+
+const BUZZ_SENTIMENT_SCHEMA = {
+  type: "object",
+  properties: { summary: { anyOf: [{ type: "string" }, { type: "null" }] } },
+  required: ["summary"],
+  additionalProperties: false,
+} as const;
+
+// Cheap, no web search needed — the titles/snippets are already fetched by
+// fetchBuzzMentions (reddit-hn-data.ts) via each platform's own free public
+// API; this just reads them for tone. Mention volume itself (the magnitude
+// momentum actually scores on) doesn't need an LLM call at all.
+export async function summarizeBuzzSentiment(
+  competitorName: string,
+  titles: string[],
+  accountId: string | null
+): Promise<string | null> {
+  if (titles.length === 0) return null;
+
+  const message = await createMessage({
+    model: "claude-sonnet-5",
+    max_tokens: 200,
+    system: cachedSystemPrompt(BUZZ_SENTIMENT_SYSTEM_PROMPT),
+    output_config: { format: { type: "json_schema", schema: BUZZ_SENTIMENT_SCHEMA } },
+    messages: [
+      {
+        role: "user",
+        content: `Company: ${competitorName}\n\nRecent Reddit/Hacker News titles mentioning them:\n${titles
+          .slice(0, 40)
+          .map((t) => `- ${t}`)
+          .join("\n")}`,
+      },
+    ],
+  });
+  recordLlmUsage(accountId, "summarizeBuzzSentiment", message.model, message.usage);
+
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  try {
+    const parsed = JSON.parse(text);
+    return typeof parsed.summary === "string" && parsed.summary.trim() ? parsed.summary.trim() : null;
+  } catch {
+    return null;
+  }
+}

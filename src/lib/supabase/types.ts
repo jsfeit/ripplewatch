@@ -167,6 +167,8 @@ export interface Database {
           pricing_url: string | null;
           careers_url: string | null;
           github_repo: string | null;
+          g2_url: string | null;
+          capterra_url: string | null;
           fact_sheet_why_we_win: string | null;
           fact_sheet_why_we_lose: string | null;
           fact_sheet_generated_at: string | null;
@@ -181,6 +183,8 @@ export interface Database {
           pricing_url?: string | null;
           careers_url?: string | null;
           github_repo?: string | null;
+          g2_url?: string | null;
+          capterra_url?: string | null;
           fact_sheet_why_we_win?: string | null;
           fact_sheet_why_we_lose?: string | null;
           fact_sheet_generated_at?: string | null;
@@ -441,18 +445,92 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["competitor_hiring"]["Insert"]>;
         Relationships: [];
       };
+      competitor_reviews: {
+        Row: {
+          id: string;
+          competitor_id: string;
+          g2_rating: number | null;
+          g2_review_count: number | null;
+          capterra_rating: number | null;
+          capterra_review_count: number | null;
+          last_checked_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          competitor_id: string;
+          g2_rating?: number | null;
+          g2_review_count?: number | null;
+          capterra_rating?: number | null;
+          capterra_review_count?: number | null;
+          last_checked_at?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["competitor_reviews"]["Insert"]>;
+        Relationships: [];
+      };
+      competitor_ads: {
+        Row: {
+          id: string;
+          competitor_id: string;
+          active_ad_count: number;
+          last_checked_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          competitor_id: string;
+          active_ad_count: number;
+          last_checked_at?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["competitor_ads"]["Insert"]>;
+        Relationships: [];
+      };
+      competitor_buzz: {
+        Row: {
+          id: string;
+          competitor_id: string;
+          mention_count_30d: number;
+          sentiment_summary: string | null;
+          last_checked_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          competitor_id: string;
+          mention_count_30d: number;
+          sentiment_summary?: string | null;
+          last_checked_at?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["competitor_buzz"]["Insert"]>;
+        Relationships: [];
+      };
       competitor_state_history: {
         Row: {
           id: string;
           competitor_id: string;
-          metric: "open_role_count" | "lowest_price" | "github_commit_velocity";
+          metric:
+            | "open_role_count"
+            | "lowest_price"
+            | "github_commit_velocity"
+            | "review_rating"
+            | "ad_count"
+            | "buzz_mentions";
           value: number;
           recorded_at: string;
         };
         Insert: {
           id?: string;
           competitor_id: string;
-          metric: "open_role_count" | "lowest_price" | "github_commit_velocity";
+          metric:
+            | "open_role_count"
+            | "lowest_price"
+            | "github_commit_velocity"
+            | "review_rating"
+            | "ad_count"
+            | "buzz_mentions";
           value: number;
           recorded_at?: string;
         };
