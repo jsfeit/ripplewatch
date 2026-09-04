@@ -1728,6 +1728,12 @@ export type MomentumDigestInput = {
   productChangeDelta: string;
   pressDelta: string;
   winRateDelta: string;
+  // Omitted from the prompt line entirely when null (see momentumText
+  // below) rather than always appending "GitHub activity: no data" — it's
+  // opt-in and genuinely inapplicable for most competitors (no github_repo
+  // set), so including it unconditionally would read as noise for every
+  // account that never uses it.
+  productActivityDelta: string | null;
 };
 
 // Distinct from generateDigestVerdict above: that one synthesizes what
@@ -1738,7 +1744,7 @@ export type MomentumDigestInput = {
 // specifically — the same kind of "here's what it means," not "here's the
 // data" takeaway the weekly verdict already models, just for the
 // Trends/momentum view instead of the News feed.
-const MOMENTUM_DIGEST_SYSTEM_PROMPT = `You write a short takeaway summarizing competitive momentum data for one company. You're given each tracked competitor's momentum score (a directional index built from recent hiring/pricing/product-change/press activity vs. the prior period, plus how the account's own win/loss record against that competitor is trending) and label (Heating up / Steady / Cooling / Not enough history yet).
+const MOMENTUM_DIGEST_SYSTEM_PROMPT = `You write a short takeaway summarizing competitive momentum data for one company. You're given each tracked competitor's momentum score (a directional index built from recent hiring/pricing/product-change/press activity vs. the prior period, how the account's own win/loss record against that competitor is trending, and — for open-source competitors only, so it's absent for most — GitHub commit activity) and label (Heating up / Steady / Cooling / Not enough history yet).
 
 Write ONE short takeaway (1-3 sentences) naming which competitor(s) are moving and on what dimension specifically (e.g. "X is hiring aggressively" not just "X has high momentum") — not a recap of every competitor's score. If everything is steady or there's too little data to say anything real, say that plainly rather than manufacturing a trend. Never invent a fact not present in the given data.
 
@@ -1767,7 +1773,7 @@ export async function generateMomentumDigest(
   const momentumText = withHistory
     .map(
       (m) =>
-        `${m.competitorName}: ${m.label}${m.score !== null ? ` (${m.score > 0 ? "+" : ""}${m.score})` : ""} — hiring ${m.hiringDelta}, pricing activity ${m.pricingDelta}, product changes ${m.productChangeDelta}, press/funding ${m.pressDelta}, win rate ${m.winRateDelta}`
+        `${m.competitorName}: ${m.label}${m.score !== null ? ` (${m.score > 0 ? "+" : ""}${m.score})` : ""} — hiring ${m.hiringDelta}, pricing activity ${m.pricingDelta}, product changes ${m.productChangeDelta}, press/funding ${m.pressDelta}, win rate ${m.winRateDelta}${m.productActivityDelta ? `, GitHub activity ${m.productActivityDelta}` : ""}`
     )
     .join("\n");
 

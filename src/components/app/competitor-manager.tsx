@@ -62,6 +62,7 @@ export function CompetitorManager({
   const [editName, setEditName] = useState("");
   const [editDomain, setEditDomain] = useState("");
   const [editCategory, setEditCategory] = useState("");
+  const [editGithubRepo, setEditGithubRepo] = useState("");
   const [saving, setSaving] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>("momentum");
 
@@ -152,15 +153,22 @@ export function CompetitorManager({
     setEditName(c.name);
     setEditDomain(c.domain ?? "");
     setEditCategory(c.category ?? "");
+    setEditGithubRepo(c.github_repo ?? "");
   }
 
   async function handleSaveEdit(id: string) {
     if (!editName.trim()) return;
     setSaving(true);
+    setError("");
     const res = await fetch(`/api/competitors/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: editName, domain: editDomain, category: editCategory }),
+      body: JSON.stringify({
+        name: editName,
+        domain: editDomain,
+        category: editCategory,
+        github_repo: editGithubRepo,
+      }),
     });
     const data = await res.json();
     setSaving(false);
@@ -168,6 +176,8 @@ export function CompetitorManager({
       setCompetitors((prev) => prev.map((c) => (c.id === id ? data.competitor : c)));
       setEditingId(null);
       router.refresh();
+    } else {
+      setError(data.error ?? "Couldn't save changes.");
     }
   }
 
@@ -285,6 +295,11 @@ export function CompetitorManager({
                     value={editCategory}
                     onChange={(e) => setEditCategory(e.target.value)}
                     placeholder="Category, e.g. Accounting/ERP software for SMBs"
+                  />
+                  <Input
+                    value={editGithubRepo}
+                    onChange={(e) => setEditGithubRepo(e.target.value)}
+                    placeholder="GitHub repo (open-source competitors only), e.g. owner/repo"
                   />
                 </div>
                 <div className="flex gap-1">

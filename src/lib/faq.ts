@@ -36,7 +36,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "What is Momentum?",
         answer:
-          "A single directional score (Heating up, Steady, or Cooling) for each competitor, built from five things we already track: hiring velocity, pricing activity, press/funding coverage weighted by whether it's actually good or bad news for them, how our own relevance scoring is trending, and your win/loss record against them. It's meant to answer \"is this competitor getting more or less dangerous\" at a glance, without you having to read four separate trend charts.",
+          "A single directional score (Heating up, Steady, or Cooling) for each competitor, built from what we already track: hiring velocity, pricing activity, product and feature changes, press and funding coverage weighted by whether it's actually good or bad news for them, how our own relevance scoring is trending, and your win/loss record against them, plus GitHub commit activity if you're tracking an open-source competitor and add their repo. Each input carries more or less weight depending on how consistently we've actually had real data for that specific competitor, so one stale signal can't swing the score the way a well-populated one can. It's meant to answer \"is this competitor getting more or less dangerous\" at a glance, without you having to read six separate trend charts.",
       },
       {
         question: "How do I get win/loss data into Ripplewatch?",
