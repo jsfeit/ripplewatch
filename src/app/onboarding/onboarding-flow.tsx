@@ -681,7 +681,7 @@ export function OnboardingFlow({
                     has to log in to Ripplewatch to know what changed.
                   </p>
                 </div>
-                <IntegrationPreviewCard name="Slack" description="Deliver scored alerts straight to a channel" />
+                <IntegrationPreviewCard name="Slack" description="Deliver scored updates straight to a channel" />
               </div>
 
               {hasSalesCrm && (
@@ -747,8 +747,8 @@ export function OnboardingFlow({
           {step === 3 && (
             <div className="space-y-5">
               <p className="text-sm text-muted-foreground">
-                Here&apos;s a live sample of the kind of alert you&apos;ll get, updating as you filled in
-                your context. Real signals will replace this once monitoring is live.
+                Here&apos;s a live sample of the kind of scored update you&apos;ll get, updating as you
+                filled in your context. Real signals will replace this once monitoring is live.
               </p>
               <div
                 key={previewAlert.headline + previewAlert.reasoning}
@@ -756,7 +756,7 @@ export function OnboardingFlow({
               >
                 <div className="flex items-center gap-2 text-xs font-semibold text-primary">
                   <Sparkles className="size-3.5" />
-                  Scored alert preview
+                  Scored preview
                 </div>
                 <p className="mt-3 text-sm font-medium">{previewAlert.headline}</p>
                 <div className="mt-3 rounded-md border border-primary/20 bg-accent/60 p-3">
@@ -775,8 +775,8 @@ export function OnboardingFlow({
               </div>
               {!initiallySignedIn ? (
                 <p className="text-sm font-medium text-primary">
-                  Like what you see? This is just a one-alert teaser; sign up to start real monitoring
-                  and get this on every signal, not just a sample.
+                  Like what you see? This is just a one-signal preview; sign up to start real
+                  monitoring and get this on every signal, not just a sample.
                 </p>
               ) : null}
             </div>

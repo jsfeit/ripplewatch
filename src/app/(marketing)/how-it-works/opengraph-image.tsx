@@ -4,7 +4,7 @@ export { size, contentType };
 
 export default function Image() {
   return renderOgImage(
-    "From raw signal to relevance verdict",
-    "See how a competitor change gets scored against your positioning, ICP, and real lost-deal reasons."
+    "From raw signal to a Momentum score",
+    "Not alerts. Not data. Answers. See how a competitor change gets scored, then rolled into one directional score."
   );
 }

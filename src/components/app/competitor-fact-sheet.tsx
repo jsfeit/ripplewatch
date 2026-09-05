@@ -253,7 +253,7 @@ export function CompetitorFactSheet({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not save.");
       setChurnReason("");
-      setChurnMessage("Logged. This account-wide context feeds every fact sheet and alert scoring.");
+      setChurnMessage("Logged. This account-wide context feeds every fact sheet and signal scoring.");
     } catch (err) {
       setChurnMessage(err instanceof Error ? err.message : "Could not save.");
     } finally {
@@ -450,7 +450,7 @@ export function CompetitorFactSheet({
           <p className="text-xs font-semibold text-muted-foreground">Customer churn</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Account-wide, not specific to {competitorName}: churn reasons rarely name one competitor the way a
-            lost sales deal does. Feeds every fact sheet and alert scoring the same way lost-deal reasons do for
+            lost sales deal does. Feeds every fact sheet and signal scoring the same way lost-deal reasons do for
             sales-led accounts.
           </p>
           <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-primary/25 bg-primary/[0.04] p-3">

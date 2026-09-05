@@ -38,7 +38,7 @@ const STEPS: DriveStep[] = [
     element: '[data-tour="ask-bubble"]',
     popover: {
       title: "Ask anything",
-      description: "Don't wait for an alert. Ask about a competitor, a trend, or what's changed, right here.",
+      description: "Don't wait for the next update. Ask about a competitor, a trend, or what's changed, right here.",
       side: "left",
     },
   },

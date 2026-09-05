@@ -32,7 +32,7 @@ export async function GET() {
   <channel>
     <title>Ripplewatch Blog</title>
     <link>${APP_URL}/blog</link>
-    <description>Notes on competitive intelligence, win/loss analysis, and building a relevance-first alerting system.</description>
+    <description>Notes on competitive intelligence, win/loss analysis, and building a Momentum score that actually means something.</description>
 ${items}
   </channel>
 </rss>`;

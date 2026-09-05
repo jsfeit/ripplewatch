@@ -136,7 +136,7 @@ export function SignalDialog({
               checked={values.scored}
               onCheckedChange={(v) => update("scored", Boolean(v))}
             />
-            <span className="text-sm font-medium">Scored (relevance-scored alert)</span>
+            <span className="text-sm font-medium">Scored (relevance-scored signal)</span>
           </label>
 
           {values.scored ? (

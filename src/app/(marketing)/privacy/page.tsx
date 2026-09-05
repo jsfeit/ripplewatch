@@ -28,7 +28,7 @@ export default function PrivacyPage() {
           <li><strong>Business context</strong> you give us during onboarding and in Settings: your positioning, ideal customer profile, and the reasons deals were lost or customers churned. This context is what powers relevance scoring (see Section 3).</li>
           <li><strong>The competitors you choose to track</strong>, and any documents you upload to help us understand your business.</li>
           <li><strong>Billing information</strong>, handled entirely by our payment processor, Stripe. We never see or store your full card number.</li>
-          <li><strong>Integration data, only if you connect it</strong>: your Slack workspace (to deliver alerts), HubSpot CRM notes on closed-lost deals, and Gong/Zoom call transcripts (scanned only for competitor mentions). You can disconnect any of these at any time in Settings, which stops further access.</li>
+          <li><strong>Integration data, only if you connect it</strong>: your Slack workspace (to deliver scored updates), HubSpot CRM notes on closed-lost deals, and Gong/Zoom call transcripts (scanned only for competitor mentions). You can disconnect any of these at any time in Settings, which stops further access.</li>
           <li><strong>Basic usage data</strong>: pages visited and actions taken within the app, used only to operate and troubleshoot the product. We do not run third-party advertising trackers, and we do not sell your personal information.</li>
         </ul>
       </section>
@@ -38,7 +38,7 @@ export default function PrivacyPage() {
         <p>We use the information above to:</p>
         <ul>
           <li>Operate the core product: monitor the competitors you track and score signals against your business context.</li>
-          <li>Deliver alerts by email and Slack, and respond to questions you ask through the Ask feature.</li>
+          <li>Deliver scored updates by email and Slack, and respond to questions you ask through the Ask feature.</li>
           <li>Process payments and manage your subscription.</li>
           <li>Provide customer support and respond to your requests.</li>
           <li>Maintain the security and reliability of the service.</li>
@@ -77,7 +77,7 @@ export default function PrivacyPage() {
           <li><strong>Supabase</strong>: database, authentication, and file storage.</li>
           <li><strong>Stripe</strong>: payment processing.</li>
           <li><strong>Anthropic</strong>: AI processing (relevance scoring, suggestions, Ask).</li>
-          <li><strong>Resend</strong>: transactional email delivery (alerts, invites).</li>
+          <li><strong>Resend</strong>: transactional email delivery (scored updates, invites).</li>
           <li><strong>Sentry</strong>: error tracking, so we can catch and fix problems.</li>
           <li><strong>Slack, HubSpot, Gong, Zoom</strong>: only if and when you connect them yourself.</li>
         </ul>
