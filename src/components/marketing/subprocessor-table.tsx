@@ -10,12 +10,12 @@ export const CORE_SUBPROCESSORS: Subprocessor[] = [
   { name: "Supabase", purpose: "Database, authentication, file storage", data: "Account data, business context, uploaded documents", location: "United States" },
   { name: "Stripe", purpose: "Payment processing", data: "Billing details; we never see your full card number", location: "United States" },
   { name: "Anthropic", purpose: "AI processing (relevance scoring, suggestions, Ask)", data: "Business context and competitor signal text, sent per-request", location: "United States" },
-  { name: "Resend", purpose: "Transactional email delivery", data: "Email address, alert and digest content", location: "United States" },
+  { name: "Resend", purpose: "Transactional email delivery", data: "Email address, scored-update and digest content", location: "United States" },
   { name: "Sentry", purpose: "Error tracking", data: "Technical error and request metadata, no card numbers or passwords", location: "United States" },
 ];
 
 export const OPTIONAL_SUBPROCESSORS: Subprocessor[] = [
-  { name: "Slack", purpose: "Alert delivery, only if you connect it", data: "Alert content posted to your chosen channel", location: "United States" },
+  { name: "Slack", purpose: "Update delivery, only if you connect it", data: "Scored-update content posted to your chosen channel", location: "United States" },
   { name: "HubSpot", purpose: "CRM context, only if you connect it", data: "Closed-lost deal reasons (read-only)", location: "United States" },
   { name: "Gong", purpose: "Call intelligence, only if you connect it", data: "Competitor mentions scanned from call transcripts", location: "United States" },
   { name: "Zoom", purpose: "Call intelligence, only if you connect it", data: "Competitor mentions scanned from call transcripts", location: "United States" },

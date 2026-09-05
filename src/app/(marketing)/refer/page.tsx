@@ -75,8 +75,8 @@ export default async function ReferPage({
           <Users className="size-5 text-primary" />
           <h2 className="mt-3 text-sm font-semibold">Set up in minutes</h2>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Tell us your positioning and who you compete with. Alerts start showing up as soon as the
-            first crawl runs.
+            Tell us your positioning and who you compete with. Scored updates start showing up as
+            soon as the first crawl runs.
           </p>
         </div>
       </div>

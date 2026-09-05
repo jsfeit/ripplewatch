@@ -201,7 +201,7 @@ export function SettingsView({
             <CardHeader>
               <h2 className="font-medium">Team</h2>
               <p className="text-sm text-muted-foreground">
-                Invite co-workers to your workspace; everyone shares the same competitors and alerts.
+                Invite co-workers to your workspace; everyone shares the same competitors and updates.
               </p>
             </CardHeader>
             <CardContent>
@@ -215,12 +215,12 @@ export function SettingsView({
         <Card>
           <CardHeader>
             <h2 className="font-medium">Delivery</h2>
-            <p className="text-sm text-muted-foreground">Where scored alerts get sent.</p>
+            <p className="text-sm text-muted-foreground">Where scored updates get sent.</p>
           </CardHeader>
           <CardContent className="space-y-3">
             <IntegrationConnector
               name="Slack"
-              description="Deliver scored alerts to a channel"
+              description="Deliver scored updates to a channel"
               connected={demoConnected("slack")}
               connectHref="/api/integrations/slack/connect"
               provider="slack"
@@ -470,7 +470,7 @@ export function SettingsView({
                         {topScored.scored ? (
                           <>
                             <Sparkles className="size-3.5 text-primary" />
-                            {topScored.relevance_level} relevance alert on {competitorName}
+                            {topScored.relevance_level} relevance update on {competitorName}
                           </>
                         ) : (
                           `Raw signal on ${competitorName}`

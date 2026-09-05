@@ -82,7 +82,6 @@ export default async function DashboardPage() {
   // Defaults to "seen" (never auto-fires) on any ambiguity: impersonating,
   // the migration not applied yet, or an unexpected query error.
   const hasSeenTour = impersonation ? true : (profileTour?.has_seen_product_tour ?? true);
-  const tier = account?.tier ?? "starter";
   const competitorIds = (competitors ?? []).map((c) => c.id);
 
   const now = new Date();
@@ -392,14 +391,13 @@ export default async function DashboardPage() {
       <section id="news" className="mt-10 scroll-mt-20">
         <h2 className="text-sm font-semibold">News</h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          Signals across every tracked competitor. Scored alerts include the reasoning behind the verdict.
+          Signals across every tracked competitor. Scored updates include the reasoning behind the verdict.
         </p>
         <div className="mt-4">
           <DashboardFeed
             competitors={competitors ?? []}
             signals={signals ?? []}
             evalLabelBySignalId={evalLabelBySignalId}
-            tier={tier}
             previewContext={{
               companyName: account?.name ?? "",
               positioning: account?.positioning ?? "",

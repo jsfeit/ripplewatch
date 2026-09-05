@@ -49,14 +49,6 @@ export function AlertCard({
   competitorName,
   competitorInitial,
   avatar,
-  // "tier" (default): this account's plan caps how much gets scored (the
-  // Starter teaser), so an unscored signal here is unscored on purpose —
-  // matches the marketing site's mock examples, which don't have a real
-  // account/tier behind them. "pending": the account's plan scores
-  // everything, this signal just hasn't been picked up by a crawl yet (or,
-  // rarely, hit a scoring error) — the tier-upsell copy would be actively
-  // wrong here, so it gets different messaging.
-  unscoredReason = "tier",
 }: {
   signal: AlertCardSignal;
   competitorName: string;
@@ -65,7 +57,6 @@ export function AlertCard({
   // marketing site to brand a scored example as "Ripplewatch's read" rather
   // than the competitor's own icon.
   avatar?: React.ReactNode;
-  unscoredReason?: "tier" | "pending";
 }) {
   const titleLink = signal.url ? (
     <a
@@ -165,9 +156,7 @@ export function AlertCard({
           )}
           <p className="text-sm text-muted-foreground">{signal.summary}</p>
           <div className="rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground">
-            {unscoredReason === "tier"
-              ? "No relevance score on this tier; upgrade to see why this would (or wouldn't) matter to you."
-              : "Scoring in progress, check back after the next crawl."}
+            Scoring in progress, check back after the next crawl.
           </div>
         </>
       )}

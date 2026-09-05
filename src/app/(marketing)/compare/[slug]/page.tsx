@@ -97,7 +97,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
         <h1 className="mt-6 text-4xl font-semibold tracking-tight text-balance">
           {entry.name} tells you what changed.
           <br />
-          <span className="text-primary">We tell you if it matters to you.</span>
+          <span className="text-primary">We tell you if {entry.name} is becoming a real threat.</span>
         </h1>
         <p className="mt-4 text-muted-foreground">{entry.tagline}</p>
       </div>

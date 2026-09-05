@@ -8,7 +8,7 @@ import { formatDate } from "@/lib/date";
 // publish/edit/delete so admin changes don't wait out the cache window.
 export const revalidate = 300;
 
-const description = "Notes on competitive intelligence, win/loss analysis, and building a relevance-first alerting system.";
+const description = "Notes on competitive intelligence, win/loss analysis, and building a Momentum score that actually means something.";
 
 export const metadata = {
   title: "Blog",

@@ -67,13 +67,11 @@ export function DashboardFeed({
   competitors,
   signals,
   previewContext,
-  tier,
   evalLabelBySignalId,
 }: {
   competitors: Competitor[];
   signals: Signal[];
   previewContext: Omit<PreviewInputs, "competitorName">;
-  tier: Database["public"]["Tables"]["accounts"]["Row"]["tier"];
   evalLabelBySignalId: Record<string, "correct" | "incorrect">;
 }) {
   const [filter, setFilter] = useState<string | "all">("all");
@@ -192,7 +190,6 @@ export function DashboardFeed({
             }}
             competitorName={competitor.name}
             competitorInitial={competitor.name.charAt(0).toUpperCase()}
-            unscoredReason={tier === "starter" ? "tier" : "pending"}
           />
         ))}
 
