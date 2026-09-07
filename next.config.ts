@@ -20,8 +20,13 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     // /waitlist was removed once signup went fully self-serve — this keeps
-    // old ad clicks, bookmarks, and backlinks from 404ing.
-    return [{ source: "/waitlist", destination: "/pricing", permanent: true }];
+    // old ad clicks, bookmarks, and backlinks from 404ing. Absolute
+    // destination (not a relative "/pricing") so a request that arrives via
+    // the apex domain (ripplewatch.ai, which itself 308s to www at the
+    // Vercel domain level) resolves straight to the final www URL in this
+    // one hop, instead of landing on /pricing under whichever host the
+    // request happened to be on at that point in the chain.
+    return [{ source: "/waitlist", destination: "https://www.ripplewatch.ai/pricing", permanent: true }];
   },
 };
 
