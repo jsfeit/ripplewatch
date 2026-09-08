@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendDigestEmail, type DigestSignal } from "@/lib/resend";
-import { generateDigestVerdict, generateMomentumDigest, type VerdictSignal, type MomentumDigestInput } from "@/lib/anthropic";
-import { computeMomentum } from "@/lib/momentum";
+import { generateWeeklyAccountIntelligence } from "@/lib/digest";
 import { mapWithConcurrency } from "@/lib/crawl";
 import type { Database } from "@/lib/supabase/types";
 
@@ -22,14 +21,13 @@ const ACCOUNT_CONCURRENCY = 5;
 // relevance in the first place; without it, every account still gets a
 // daily flood, just relabeled.
 //
-// Also computes a separate weekly "verdict" — a rollup of the week's actual
-// High/Medium activity (already emailed daily, so re-sending isn't the
-// point), stored once on the account and reused by both this email's intro
-// and the News dashboard banner. Deliberately independent of the low-
-// priority query/early-return above: a quiet week for leftover noise
-// shouldn't skip the rollup of what was actually a busy week for real
-// signals, and vice versa.
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+// Also computes (via generateWeeklyAccountIntelligence) a separate weekly
+// "verdict" — a rollup of the week's actual High/Medium activity (already
+// emailed daily, so re-sending isn't the point), stored once on the
+// account and reused by both this email's intro and the News dashboard
+// banner. Deliberately independent of the low-priority query/early-return
+// above: a quiet week for leftover noise shouldn't skip the rollup of what
+// was actually a busy week for real signals, and vice versa.
 
 // Threshold for the win/loss nudge riding along on this email — see below.
 const WIN_LOSS_STALE_DAYS = 30;
@@ -58,109 +56,17 @@ export async function GET(request: Request) {
     const competitorIds = (competitors ?? []).map((c) => c.id);
     if (competitorIds.length === 0) return null;
 
-    const sevenDaysAgo = new Date(Date.now() - SEVEN_DAYS_MS).toISOString();
-    const { data: weekSignals } = await supabase
-      .from("signals")
-      .select("*")
-      .in("competitor_id", competitorIds)
-      .in("relevance_level", ["High", "Medium"])
-      .gte("created_at", sevenDaysAgo)
-      .neq("source", "backfill");
+    // Shared with the weekly Slack digest cron — see generateWeeklyAccountIntelligence
+    // for why this regenerates rather than reading back a cached value.
+    const { verdict } = await generateWeeklyAccountIntelligence(supabase, account, competitors ?? []);
 
-    let verdict: string | null = null;
-    if (weekSignals && weekSignals.length > 0) {
-      try {
-        const verdictSignals: VerdictSignal[] = weekSignals.map((s) => ({
-          competitorName: competitors?.find((c) => c.id === s.competitor_id)?.name ?? "Unknown",
-          title: s.title,
-          relevanceLevel: s.relevance_level ?? "Medium",
-          relevanceReasoning: s.relevance_reasoning,
-        }));
-        verdict = await generateDigestVerdict(
-          {
-            companyName: account.name,
-            positioning: account.positioning,
-            icp: account.icp,
-            lostDealNotes: account.lost_deal_notes,
-            churnNotes: account.churn_notes,
-            companyResearch: account.company_research,
-          },
-          verdictSignals,
-          account.id
-        );
-        if (verdict) {
-          await supabase
-            .from("accounts")
-            .update({ weekly_verdict: verdict, weekly_verdict_generated_at: new Date().toISOString() })
-            .eq("id", account.id);
-        }
-      } catch (err) {
-        console.error(`weekly verdict generation failed for ${account.name}:`, err);
-      }
-    }
-
-    // Fetched once, shared by the momentum digest below and the win/loss
-    // staleness nudge further down — both need to know what's logged for
-    // this account's competitors.
+    // Only needed here for the win/loss staleness nudge below — the
+    // momentum computation that also used to read this now lives inside
+    // generateWeeklyAccountIntelligence.
     const { data: accountWinLoss } = await supabase
       .from("competitor_win_loss")
       .select("competitor_id, outcome, created_at")
       .in("competitor_id", competitorIds);
-
-    // Separate from the verdict above: that one synthesizes scored NEWS
-    // signals, this one reads momentum itself (hiring/pricing/press deltas,
-    // same computeMomentum already used by the Trends dashboard and
-    // /api/v1/momentum) and names which competitors are actually moving —
-    // shown at the top of the Dashboard's Trends section, not in the email.
-    try {
-      // 180-day lookback (not just the 60 days the recent/prior comparison
-      // itself needs) so computeMomentum's per-competitor reliability
-      // weighting has real history to judge from — see computeReliability
-      // in momentum.ts.
-      const reliabilityLookbackStart = new Date();
-      reliabilityLookbackStart.setUTCDate(reliabilityLookbackStart.getUTCDate() - 180);
-      const { data: momentumSignals } = await supabase
-        .from("signals")
-        .select("competitor_id, type, sentiment, occurred_on, scored, relevance_score")
-        .in("competitor_id", competitorIds)
-        .gte("occurred_on", reliabilityLookbackStart.toISOString().slice(0, 10));
-      const { data: momentumStateHistory } = await supabase
-        .from("competitor_state_history")
-        .select("competitor_id, metric, value, recorded_at")
-        .in("competitor_id", competitorIds)
-        .gte("recorded_at", reliabilityLookbackStart.toISOString());
-
-      const momentumInputs: MomentumDigestInput[] = (competitors ?? []).map((c) => {
-        const forCompetitor = (momentumSignals ?? []).filter((s) => s.competitor_id === c.id);
-        const winLossForCompetitor = (accountWinLoss ?? []).filter((e) => e.competitor_id === c.id);
-        const stateHistoryForCompetitor = (momentumStateHistory ?? []).filter((e) => e.competitor_id === c.id);
-        const momentum = computeMomentum(forCompetitor, winLossForCompetitor, stateHistoryForCompetitor);
-        return {
-          competitorName: c.name,
-          score: momentum.score,
-          label: momentum.label,
-          hiringDelta: momentum.components.hiring.detail,
-          pricingDelta: momentum.components.pricing.detail,
-          productChangeDelta: momentum.components.productChange.detail,
-          pressDelta: momentum.components.pressAndFunding.detail,
-          winRateDelta: momentum.components.winRate.detail,
-          productActivityDelta:
-            momentum.components.productActivity.detail === "no data"
-              ? null
-              : momentum.components.productActivity.detail,
-        };
-      });
-
-      const trendsDigest = await generateMomentumDigest(account.name, momentumInputs, account.id);
-      if (trendsDigest) {
-        await supabase
-          .from("accounts")
-          .update({ trends_digest: trendsDigest, trends_digest_generated_at: new Date().toISOString() })
-          .eq("id", account.id);
-      }
-    } catch (err) {
-      console.error(`trends digest generation failed for ${account.name}:`, err);
-    }
 
     const { data: signals } = await supabase
       .from("signals")

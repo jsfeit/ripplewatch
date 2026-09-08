@@ -98,6 +98,10 @@ export interface Database {
           weekly_verdict_generated_at: string | null;
           trends_digest: string | null;
           trends_digest_generated_at: string | null;
+          timezone: string;
+          slack_digest_day: number;
+          slack_digest_hour: number;
+          slack_digest_sent_at: string | null;
           referral_code: string | null;
           referred_by_account_id: string | null;
           referral_reward_coupon_id: string | null;
@@ -130,6 +134,10 @@ export interface Database {
           weekly_verdict_generated_at?: string | null;
           trends_digest?: string | null;
           trends_digest_generated_at?: string | null;
+          timezone?: string;
+          slack_digest_day?: number;
+          slack_digest_hour?: number;
+          slack_digest_sent_at?: string | null;
           referral_code?: string | null;
           referred_by_account_id?: string | null;
           referral_reward_coupon_id?: string | null;

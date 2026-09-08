@@ -7,6 +7,11 @@ import * as Sentry from "@sentry/nextjs";
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
 
+  // Without this, a local `next dev` with .env.local's DSN set reports
+  // straight into the real production Sentry project — every error during
+  // routine local development pages the team the same as a live incident.
+  enabled: process.env.NODE_ENV === "production",
+
   // Add optional integrations for additional features
   integrations: [Sentry.replayIntegration()],
 

@@ -472,6 +472,7 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
           url: signal.url,
           reasoning: signal.relevance_reasoning ?? "",
           relevanceLevel: signal.relevance_level ?? "",
+          type: signal.type,
         });
         await supabase.from("signals").update({ slack_sent_at: new Date().toISOString() }).eq("id", signal.id);
       }
