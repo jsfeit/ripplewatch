@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { IntegrationConnector } from "@/components/app/integration-connector";
+import { SlackDigestSchedule } from "@/components/app/slack-digest-schedule";
 import { TeamManager } from "@/components/app/team-manager";
 import { ApiKeysManager } from "@/components/app/api-keys-manager";
 import { WinLossEmailAddress } from "@/components/app/win-loss-email-address";
@@ -226,6 +227,13 @@ export function SettingsView({
               provider="slack"
               disconnectAction={disconnectIntegrationAction}
             />
+            {demoConnected("slack") ? (
+              <SlackDigestSchedule
+                initialTimezone={account.timezone}
+                initialDay={account.slack_digest_day}
+                initialHour={account.slack_digest_hour}
+              />
+            ) : null}
             <IntegrationConnector
               name="Email"
               description={demoMode ? "Digests delivered to your email" : `Digests delivered to ${account.contact_email ?? "your signup email"}`}
