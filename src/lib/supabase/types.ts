@@ -174,6 +174,10 @@ export interface Database {
           category: string | null;
           pricing_url: string | null;
           careers_url: string | null;
+          pricing_fetch_failures: number;
+          pricing_last_failed_at: string | null;
+          careers_fetch_failures: number;
+          careers_last_failed_at: string | null;
           github_repo: string | null;
           g2_url: string | null;
           capterra_url: string | null;
@@ -190,6 +194,10 @@ export interface Database {
           category?: string | null;
           pricing_url?: string | null;
           careers_url?: string | null;
+          pricing_fetch_failures?: number;
+          pricing_last_failed_at?: string | null;
+          careers_fetch_failures?: number;
+          careers_last_failed_at?: string | null;
           github_repo?: string | null;
           g2_url?: string | null;
           capterra_url?: string | null;
@@ -677,6 +685,30 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["affiliate_applications"]["Insert"]>;
+        Relationships: [];
+      };
+      feedback_submissions: {
+        Row: {
+          id: string;
+          account_id: string | null;
+          submitted_by: string | null;
+          submitted_by_email: string | null;
+          category: "bug" | "idea" | "general";
+          message: string;
+          page_path: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_id?: string | null;
+          submitted_by?: string | null;
+          submitted_by_email?: string | null;
+          category?: "bug" | "idea" | "general";
+          message: string;
+          page_path?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["feedback_submissions"]["Insert"]>;
         Relationships: [];
       };
       email_campaigns: {

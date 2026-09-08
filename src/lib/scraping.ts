@@ -42,7 +42,8 @@ async function fetchHtml(url: string): Promise<string> {
 // guess (guessPricingUrl/guessCareersUrl) whenever the homepage fetch fails
 // or nothing matches — never leaves a competitor with no URL at all.
 const PRICING_LINK_PATTERN = /\bpricing\b|\bplans?\b/i;
-const CAREERS_LINK_PATTERN = /\bcareers?\b|\bjobs?\b|\bhiring\b|join[- ]us/i;
+const CAREERS_LINK_PATTERN =
+  /\bcareers?\b|\bjobs?\b|\bhiring\b|join[- ]us|open\s+(?:roles?|positions?)|join\s+(?:the|our)\s+team/i;
 const DISCOVERY_TIMEOUT_MS = 6_000;
 
 export async function discoverCompetitorUrls(
@@ -122,6 +123,61 @@ export async function ensureMonitoringUrls(supabase: AdminClient, competitor: Co
   return updated ?? competitor;
 }
 
+// A stored URL that fails a few crawls in a row is usually a sign the
+// competitor moved or redesigned their site, not a transient blip — after
+// URL_FAILURE_REDISCOVER_THRESHOLD consecutive misses, this re-runs the
+// same homepage-link discovery used when the URL was first empty
+// (discoverCompetitorUrls above) and adopts whatever it finds, but only if
+// that's actually different from what's already stored — re-adopting the
+// same bad URL would just reset the counter without fixing anything, and
+// then fail the same way again next crawl. A single success at any point
+// resets the counter to zero rather than requiring N consecutive good
+// crawls to "recover."
+const URL_FAILURE_REDISCOVER_THRESHOLD = 3;
+
+type CompetitorPatch = Database["public"]["Tables"]["competitors"]["Update"];
+
+async function trackUrlHealth(
+  supabase: AdminClient,
+  competitor: Competitor,
+  kind: "pricing" | "careers",
+  success: boolean
+): Promise<void> {
+  const currentFailures = (kind === "pricing" ? competitor.pricing_fetch_failures : competitor.careers_fetch_failures) ?? 0;
+
+  if (success) {
+    if (currentFailures > 0) {
+      const patch: CompetitorPatch =
+        kind === "pricing" ? { pricing_fetch_failures: 0 } : { careers_fetch_failures: 0 };
+      await supabase.from("competitors").update(patch).eq("id", competitor.id);
+    }
+    return;
+  }
+
+  const nextCount = currentFailures + 1;
+  const patch: CompetitorPatch =
+    kind === "pricing"
+      ? { pricing_fetch_failures: nextCount, pricing_last_failed_at: new Date().toISOString() }
+      : { careers_fetch_failures: nextCount, careers_last_failed_at: new Date().toISOString() };
+
+  if (nextCount >= URL_FAILURE_REDISCOVER_THRESHOLD && competitor.domain) {
+    const rediscovered = await discoverCompetitorUrls(competitor.domain);
+    const currentUrl = kind === "pricing" ? competitor.pricing_url : competitor.careers_url;
+    const candidate = kind === "pricing" ? rediscovered.pricingUrl : rediscovered.careersUrl;
+    if (candidate && candidate !== currentUrl) {
+      if (kind === "pricing") {
+        patch.pricing_url = candidate;
+        patch.pricing_fetch_failures = 0;
+      } else {
+        patch.careers_url = candidate;
+        patch.careers_fetch_failures = 0;
+      }
+    }
+  }
+
+  await supabase.from("competitors").update(patch).eq("id", competitor.id);
+}
+
 async function fetchPageText(url: string): Promise<string> {
   const html = await fetchHtml(url);
   const $ = cheerio.load(html);
@@ -162,19 +218,46 @@ function extractJobListingTitles(html: string): string[] {
 // theory match more than one pattern (e.g. quoting a competitor's board
 // URL in body copy), but that's rare enough not to guard against.
 export type AtsJob = { title: string; department: string | null };
-type AtsProvider = "greenhouse" | "lever" | "ashby" | "workable" | "smartrecruiters";
-type AtsDetection = { provider: AtsProvider; boardToken: string };
+type TokenAtsProvider = "greenhouse" | "lever" | "ashby" | "workable" | "smartrecruiters" | "icims";
+type AtsProvider = TokenAtsProvider | "workday";
+type AtsDetection =
+  | { provider: TokenAtsProvider; boardToken: string }
+  // Workday has no single board token — a career site is identified by
+  // three parts (tenant, data-center "pod" like wd1/wd3/wd5, and a site
+  // name), none of which are guessable from a company name the way a
+  // Greenhouse/Lever/Ashby token is (see probeAtsBySlug below, which
+  // deliberately excludes Workday for this reason).
+  | { provider: "workday"; tenant: string; pod: string; site: string };
 
-const ATS_PATTERNS: { provider: AtsProvider; regex: RegExp }[] = [
+const ATS_PATTERNS: { provider: TokenAtsProvider; regex: RegExp }[] = [
   { provider: "greenhouse", regex: /(?:boards|job-boards)\.greenhouse\.io\/([a-zA-Z0-9-]+)/ },
   { provider: "lever", regex: /jobs\.lever\.co\/([a-zA-Z0-9-]+)/ },
   { provider: "ashby", regex: /jobs\.ashbyhq\.com\/([a-zA-Z0-9-]+)/ },
   { provider: "workable", regex: /apply\.workable\.com\/([a-zA-Z0-9-]+)/ },
   { provider: "smartrecruiters", regex: /careers\.smartrecruiters\.com\/([a-zA-Z0-9-]+)/ },
+  // Matches both the `<company>.icims.com` hosted form and a vanity domain
+  // that embeds a link back to it (e.g. jobs.acme.com proxying icims.com
+  // underneath still leaves an icims.com reference somewhere in the HTML).
+  { provider: "icims", regex: /([a-zA-Z0-9-]+)\.icims\.com/ },
 ];
+
+// Workday career-site URLs look like
+// https://{tenant}.{pod}.myworkdayjobs.com/{locale}/{site}/... — the locale
+// segment is optional and, when present, is a short language code
+// (en-US, fr-FR) rather than the site name itself, so it has to be told
+// apart from the real site segment instead of always taking "the first
+// path segment."
+const WORKDAY_PATTERN = /([a-zA-Z0-9-]+)\.(wd\d+)\.myworkdayjobs\.com\/([a-zA-Z0-9_-]+)(?:\/([a-zA-Z0-9_-]+))?/;
+const LOCALE_SEGMENT_PATTERN = /^[a-z]{2}(-[A-Z]{2})?$/;
 
 function detectAts(careersUrl: string, html: string): AtsDetection | null {
   for (const haystack of [careersUrl, html]) {
+    const workdayMatch = haystack.match(WORKDAY_PATTERN);
+    if (workdayMatch) {
+      const [, tenant, pod, firstSegment, secondSegment] = workdayMatch;
+      const site = secondSegment && LOCALE_SEGMENT_PATTERN.test(firstSegment) ? secondSegment : firstSegment;
+      return { provider: "workday", tenant, pod, site };
+    }
     for (const { provider, regex } of ATS_PATTERNS) {
       const match = haystack.match(regex);
       if (match) return { provider, boardToken: match[1] };
@@ -183,10 +266,95 @@ function detectAts(careersUrl: string, html: string): AtsDetection | null {
   return null;
 }
 
-async function fetchJson(url: string): Promise<unknown> {
-  const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+async function fetchJson(url: string, init?: RequestInit): Promise<unknown> {
+  const res = await fetch(url, { ...init, signal: AbortSignal.timeout(15_000) });
   if (!res.ok) throw new Error(`ATS API fetch failed (${res.status}): ${url}`);
   return res.json();
+}
+
+// Workday's own career-site frontend calls this same endpoint to render
+// its search page — undocumented, but a stable, consistent shape across
+// every Workday tenant (unlike iCIMS below), confirmed by multiple
+// independent write-ups of the same pattern. One page at a time; capped at
+// WORKDAY_MAX_JOBS total so one very large employer can't turn a single
+// crawl into dozens of paginated requests.
+const WORKDAY_PAGE_SIZE = 20;
+const WORKDAY_MAX_JOBS = 200;
+
+async function fetchWorkdayJobs(tenant: string, pod: string, site: string): Promise<AtsJob[]> {
+  const jobs: AtsJob[] = [];
+  let offset = 0;
+  let total = Infinity;
+  while (offset < total && offset < WORKDAY_MAX_JOBS) {
+    const data = (await fetchJson(`https://${tenant}.${pod}.myworkdayjobs.com/wday/cxs/${tenant}/${site}/jobs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json", "Accept-Language": "en-US" },
+      body: JSON.stringify({ appliedFacets: {}, limit: WORKDAY_PAGE_SIZE, offset, searchText: "" }),
+    })) as { total?: number; jobPostings?: { title: string }[] };
+
+    const batch = data.jobPostings ?? [];
+    // Workday's basic listing response has no department/team field the
+    // way Greenhouse or Ashby do — categorizeTitle in checkJobPostingsDiff
+    // fills the gap the same way it already does for Workable/Ashby
+    // postings that omit one.
+    jobs.push(...batch.map((j) => ({ title: j.title, department: null })));
+    total = typeof data.total === "number" ? data.total : jobs.length;
+    if (batch.length === 0) break;
+    offset += batch.length;
+  }
+  return jobs;
+}
+
+// iCIMS, unlike every other provider here, has no documented or verified
+// public API — its real feed requires an OAuth partner agreement, and the
+// endpoint career sites use internally to render their own search page is
+// undocumented, changes shape across iCIMS product modules, and isn't
+// confirmed to work the same way for any two tenants. This tries the two
+// paths most commonly cited as that internal surface and duck-types
+// whatever comes back (looks for an array of objects with a string title-
+// like field) rather than assuming one fixed schema, since there's no
+// verified contract to code against. Expected to work for some real
+// tenants and not others; a failure or unrecognizable shape is treated as
+// a miss like any other ATS error, falling back to the generic scrape.
+const ICIMS_TITLE_FIELDS = ["title", "jobTitle", "postingTitle", "requisitionTitle"];
+
+function extractIcimsJobs(payload: unknown): AtsJob[] | null {
+  const candidateArray = Array.isArray(payload)
+    ? payload
+    : payload && typeof payload === "object"
+      ? (Object.values(payload as Record<string, unknown>).find((v) => Array.isArray(v)) as unknown[] | undefined)
+      : undefined;
+  if (!Array.isArray(candidateArray) || candidateArray.length === 0) return null;
+
+  const jobs: AtsJob[] = [];
+  for (const entry of candidateArray) {
+    if (!entry || typeof entry !== "object") continue;
+    const record = entry as Record<string, unknown>;
+    const titleField = ICIMS_TITLE_FIELDS.find((f) => typeof record[f] === "string");
+    if (!titleField) continue;
+    const department = typeof record.department === "string" ? record.department : null;
+    jobs.push({ title: record[titleField] as string, department });
+  }
+  return jobs.length > 0 ? jobs : null;
+}
+
+async function fetchIcimsJobs(subdomain: string): Promise<AtsJob[]> {
+  const candidatePaths = [
+    `https://${subdomain}.icims.com/jobs/intelliservices`,
+    `https://${subdomain}.icims.com/api/jobs`,
+  ];
+  for (const url of candidatePaths) {
+    try {
+      const payload = await fetchJson(url, { headers: { Accept: "application/json" } });
+      const jobs = extractIcimsJobs(payload);
+      if (jobs) return jobs;
+    } catch {
+      // Wrong path, non-JSON response, or this tenant's iCIMS module
+      // doesn't expose it this way — try the next candidate rather than
+      // failing the whole probe on the first miss.
+    }
+  }
+  return [];
 }
 
 // One fetcher per provider, each mapped to the same {title, department}
@@ -195,8 +363,14 @@ async function fetchJson(url: string): Promise<unknown> {
 // that gets normalized away. Any parse failure (a schema change on their
 // end, an empty/private board) falls back to the generic scrape rather
 // than taking the whole crawl down — see the try/catch in checkJobPostingsDiff.
-async function fetchAtsJobs({ provider, boardToken }: AtsDetection): Promise<AtsJob[]> {
+async function fetchAtsJobs(detection: AtsDetection): Promise<AtsJob[]> {
+  if (detection.provider === "workday") {
+    return fetchWorkdayJobs(detection.tenant, detection.pod, detection.site);
+  }
+  const { provider, boardToken } = detection;
   switch (provider) {
+    case "icims":
+      return fetchIcimsJobs(boardToken);
     case "greenhouse": {
       // The plain jobs list never includes a department (confirmed against
       // several real boards) — department membership is only exposed via a
@@ -279,7 +453,7 @@ function slugCandidates(domain: string | null, name: string): string[] {
 // Only the two most common startup ATSs plus Ashby — Workable/SmartRecruiters
 // board tokens are far less predictable from a company name, so guessing at
 // those specifically would mostly just add failed requests.
-const GUESSABLE_PROVIDERS: AtsProvider[] = ["greenhouse", "lever", "ashby"];
+const GUESSABLE_PROVIDERS: TokenAtsProvider[] = ["greenhouse", "lever", "ashby"];
 
 async function probeAtsBySlug(domain: string | null, name: string): Promise<{ detection: AtsDetection; jobs: AtsJob[] } | null> {
   for (const boardToken of slugCandidates(domain, name)) {
@@ -478,7 +652,13 @@ export async function checkPricingDiff(
   competitor: Competitor,
   page: PricingPageResult | null
 ): Promise<Signal | null> {
-  if (!competitor.pricing_url || page === null) return null;
+  if (!competitor.pricing_url) return null;
+  // "Live" specifically, not "we got a page at all" — a Wayback fallback
+  // means the stored URL is still failing on the live web even though
+  // fetchCompetitorPricingText found a way to produce something to diff,
+  // so it still counts as a miss for re-discovery purposes.
+  await trackUrlHealth(supabase, competitor, "pricing", page !== null && page.source === "live");
+  if (page === null) return null;
 
   const newText = page.text;
   const existing = await readSnapshot(supabase, competitor.id, "pricing");
@@ -664,8 +844,10 @@ export async function checkJobPostingsDiff(
   if (!competitor.careers_url) return null;
 
   let html = "";
+  let fetchedLive = false;
   try {
     html = await fetchHtml(competitor.careers_url);
+    fetchedLive = true;
   } catch (err) {
     // Previously this threw straight out of the function — Promise.allSettled
     // in crawl.ts swallowed the rejection with no log at all, so a
@@ -675,6 +857,10 @@ export async function checkJobPostingsDiff(
     // get a chance to find a real ATS board even with no HTML in hand.
     console.error(`careers page unreachable for ${competitor.name} (${competitor.careers_url}):`, err);
   }
+  // Tracked on the raw page fetch specifically, not on whether a signal
+  // ultimately came out of this crawl — an ATS guess panning out shouldn't
+  // mask that the stored careers_url itself is dead and worth re-discovering.
+  await trackUrlHealth(supabase, competitor, "careers", fetchedLive);
   const detection = detectAts(competitor.careers_url, html);
 
   // ATS jobs win when detection succeeds and the API actually returns
