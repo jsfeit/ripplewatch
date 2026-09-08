@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveAccountContext } from "@/lib/impersonation";
 import { computeMomentum, type MomentumResult } from "@/lib/momentum";
 import { SettingsView } from "./settings-view";
+import { FeedbackButton } from "@/components/app/feedback-button";
 
 export const metadata = { title: "Settings" };
 export const dynamic = "force-dynamic";
@@ -112,11 +113,14 @@ export default async function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-10 sm:py-10">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Manage your tracked competitors, integrations, your team, and your plan.
-        </p>
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage your tracked competitors, integrations, your team, and your plan.
+          </p>
+        </div>
+        <FeedbackButton />
       </div>
       <SettingsView
         account={account}

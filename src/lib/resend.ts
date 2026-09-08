@@ -495,6 +495,43 @@ export async function sendAffiliateApplicationEmail(
   if (result.error) throw new Error(result.error.message);
 }
 
+const FEEDBACK_CATEGORY_LABEL: Record<"bug" | "idea" | "general", string> = {
+  bug: "🐛 Bug report",
+  idea: "💡 Feature idea",
+  general: "💬 General feedback",
+};
+
+// Same shape as sendAffiliateApplicationEmail: one immediate notification,
+// no in-app inbox or ticket queue on either end — the whole point is that
+// this reaches a person directly rather than sitting in a dashboard.
+export async function sendFeedbackEmail(
+  to: string[],
+  details: {
+    category: "bug" | "idea" | "general";
+    message: string;
+    accountName: string | null;
+    submittedByEmail: string | null;
+    pagePath: string | null;
+  }
+) {
+  if (!isResendConfigured() || to.length === 0) return;
+
+  const result = await getResend().emails.send({
+    from: getAlertsFromEmail(),
+    to,
+    subject: `${FEEDBACK_CATEGORY_LABEL[details.category]} from ${details.accountName ?? "a Ripplewatch user"}`,
+    html: `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;">
+      <p style="margin:0 0 8px;"><strong>${FEEDBACK_CATEGORY_LABEL[details.category]}</strong></p>
+      <p style="margin:0 0 12px;color:#3a3a3a;font-size:14px;">
+        From <strong>${details.accountName ?? "unknown account"}</strong>${details.submittedByEmail ? ` (${details.submittedByEmail})` : ""}
+      </p>
+      <p style="margin:0;color:#3a3a3a;font-size:14px;line-height:1.6;white-space:pre-wrap;">${details.message}</p>
+      ${details.pagePath ? `<p style="color:#888;font-size:12px;margin-top:20px;">Sent from ${details.pagePath}</p>` : ""}
+    </div>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
 // Fires from the checkout.session.completed webhook handler when the new
 // account was referred — confirms the 2 free months and names who sent
 // them, so the discount doesn't read as unexplained.

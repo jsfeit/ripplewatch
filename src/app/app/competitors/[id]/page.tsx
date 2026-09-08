@@ -149,6 +149,10 @@ export default async function CompetitorDetailPage({
             domain={competitor.domain}
             initialPricingUrl={competitor.pricing_url}
             initialCareersUrl={competitor.careers_url}
+            pricingFetchFailures={competitor.pricing_fetch_failures}
+            pricingLastFailedAt={competitor.pricing_last_failed_at}
+            careersFetchFailures={competitor.careers_fetch_failures}
+            careersLastFailedAt={competitor.careers_last_failed_at}
           />
         </div>
       </div>
