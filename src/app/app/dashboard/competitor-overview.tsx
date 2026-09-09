@@ -61,7 +61,11 @@ export function CompetitorOverview({
       byCompetitor.set(signal.competitor_id, list);
     }
     const winLossByCompetitor = new Map<string, MomentumWinLoss[]>();
+    // Unattributed entries (no competitor identified) can't fairly move
+    // any one competitor's own win-rate component — see
+    // churn-correlation.ts for where they're surfaced instead.
     for (const entry of momentumWinLoss) {
+      if (!entry.competitor_id) continue;
       const list = winLossByCompetitor.get(entry.competitor_id) ?? [];
       list.push(entry);
       winLossByCompetitor.set(entry.competitor_id, list);

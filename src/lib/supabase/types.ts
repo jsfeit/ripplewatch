@@ -13,7 +13,7 @@ export type IntegrationProvider = "slack" | "email" | "hubspot" | "salesforce" |
 export type ProfileRole = "member" | "admin";
 export type BillingModel = "subscription" | "per_seat" | "usage_based" | "custom" | "unknown";
 export type SuggestedCompetitorStatus = "pending" | "dismissed" | "added";
-export type WinLossOutcome = "won" | "lost";
+export type WinLossOutcome = "won" | "lost" | "churned";
 
 export type PricingTier = {
   name: string;
@@ -212,7 +212,10 @@ export interface Database {
       competitor_win_loss: {
         Row: {
           id: string;
-          competitor_id: string;
+          account_id: string;
+          // Nullable: most losses and nearly all B2C churn never name who
+          // the customer picked instead — see 0061_win_loss_unattributed_and_churn.
+          competitor_id: string | null;
           outcome: WinLossOutcome;
           reason: string | null;
           created_by: string | null;
@@ -220,7 +223,8 @@ export interface Database {
         };
         Insert: {
           id?: string;
-          competitor_id: string;
+          account_id: string;
+          competitor_id?: string | null;
           outcome: WinLossOutcome;
           reason?: string | null;
           created_by?: string | null;

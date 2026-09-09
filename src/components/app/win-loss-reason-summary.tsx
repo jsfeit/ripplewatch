@@ -33,20 +33,19 @@ export function WinLossReasonSummary({
   const [showAllEntries, setShowAllEntries] = useState(false);
 
   const reasonGroups = useMemo(() => {
-    const groups = new Map<string, { reason: string; wonCount: number; lostCount: number }>();
+    const groups = new Map<string, { reason: string; wonCount: number; lostCount: number; churnedCount: number }>();
     for (const e of entries) {
       const key = e.reason ? e.reason.trim().toLowerCase() : "__no_reason__";
-      const existing = groups.get(key);
-      if (existing) {
-        if (e.outcome === "won") existing.wonCount++;
-        else existing.lostCount++;
-      } else {
-        groups.set(key, {
-          reason: e.reason?.trim() || "No reason given",
-          wonCount: e.outcome === "won" ? 1 : 0,
-          lostCount: e.outcome === "lost" ? 1 : 0,
-        });
-      }
+      const existing = groups.get(key) ?? {
+        reason: e.reason?.trim() || "No reason given",
+        wonCount: 0,
+        lostCount: 0,
+        churnedCount: 0,
+      };
+      if (e.outcome === "won") existing.wonCount++;
+      else if (e.outcome === "churned") existing.churnedCount++;
+      else existing.lostCount++;
+      groups.set(key, existing);
     }
     return Array.from(groups.values());
   }, [entries]);
@@ -62,13 +61,20 @@ export function WinLossReasonSummary({
     () => reasonGroups.filter((g) => g.lostCount > 0).sort((a, b) => b.lostCount - a.lostCount).slice(0, TOP_N),
     [reasonGroups]
   );
+  const churnReasons = useMemo(
+    () => reasonGroups.filter((g) => g.churnedCount > 0).sort((a, b) => b.churnedCount - a.churnedCount).slice(0, TOP_N),
+    [reasonGroups]
+  );
   const winReasonsTotal = reasonGroups.filter((g) => g.wonCount > 0).length;
   const lossReasonsTotal = reasonGroups.filter((g) => g.lostCount > 0).length;
+  const churnReasonsTotal = reasonGroups.filter((g) => g.churnedCount > 0).length;
   const maxWinCount = Math.max(1, ...winReasons.map((g) => g.wonCount));
   const maxLossCount = Math.max(1, ...lossReasons.map((g) => g.lostCount));
+  const maxChurnCount = Math.max(1, ...churnReasons.map((g) => g.churnedCount));
 
   const wonTotal = entries.filter((e) => e.outcome === "won").length;
-  const lostTotal = entries.length - wonTotal;
+  const churnedTotal = entries.filter((e) => e.outcome === "churned").length;
+  const lostTotal = entries.length - wonTotal - churnedTotal;
 
   if (entries.length === 0) return null;
 
@@ -76,10 +82,17 @@ export function WinLossReasonSummary({
     <div>
       <p className="text-[11px] text-muted-foreground">
         <span className="font-semibold text-primary">{wonTotal} won</span> ·{" "}
-        <span className="font-semibold text-amber-600 dark:text-amber-400">{lostTotal} lost</span> {subjectLabel}
+        <span className="font-semibold text-amber-600 dark:text-amber-400">{lostTotal} lost</span>
+        {churnedTotal > 0 ? (
+          <>
+            {" "}
+            · <span className="font-semibold text-rose-600 dark:text-rose-400">{churnedTotal} churned</span>
+          </>
+        ) : null}{" "}
+        {subjectLabel}
       </p>
 
-      <div className="mt-3 grid gap-4 sm:grid-cols-2">
+      <div className={cn("mt-3 grid gap-4", churnReasonsTotal > 0 ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
         <div>
           <p className="flex items-center gap-1.5 text-xs font-semibold text-primary">
             <ThumbsUp className="size-3.5" />
@@ -130,6 +143,33 @@ export function WinLossReasonSummary({
             <p className="mt-2 text-[11px] text-muted-foreground">+{lossReasonsTotal - TOP_N} more</p>
           ) : null}
         </div>
+        {churnReasonsTotal > 0 ? (
+          <div>
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400">
+              <ThumbsDown className="size-3.5" />
+              Top reasons customers churn
+            </p>
+            <ul className="mt-2 space-y-2">
+              {churnReasons.map((g) => (
+                <li key={g.reason}>
+                  <div className="flex items-baseline justify-between gap-2 text-xs">
+                    <span className="text-foreground">{g.reason}</span>
+                    <span className="shrink-0 font-semibold text-rose-600 dark:text-rose-400">{g.churnedCount}</span>
+                  </div>
+                  <div className="mt-1 h-1 overflow-hidden rounded-full bg-rose-500/10">
+                    <div
+                      className="h-full rounded-full bg-rose-500"
+                      style={{ width: `${(g.churnedCount / maxChurnCount) * 100}%` }}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {churnReasonsTotal > TOP_N ? (
+              <p className="mt-2 text-[11px] text-muted-foreground">+{churnReasonsTotal - TOP_N} more</p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <button
@@ -150,10 +190,12 @@ export function WinLossReasonSummary({
                   "mt-0.5 shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold",
                   e.outcome === "won"
                     ? "border-primary/30 bg-primary/10 text-primary"
-                    : "border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                    : e.outcome === "churned"
+                      ? "border-rose-500/30 bg-rose-500/15 text-rose-700 dark:text-rose-400"
+                      : "border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-400"
                 )}
               >
-                {e.outcome === "won" ? "Won" : "Lost"}
+                {e.outcome === "won" ? "Won" : e.outcome === "churned" ? "Churned" : "Lost"}
               </span>
               <span className={cn("flex-1", e.reason ? "text-foreground" : "italic text-muted-foreground")}>
                 {e.reason ?? "No reason given"}

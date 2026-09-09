@@ -59,8 +59,10 @@ export async function POST() {
     if (!row.reason) continue;
     entries.push({
       reason: row.reason,
-      outcome: row.outcome,
-      competitorName: competitorNameById.get(row.competitor_id) ?? null,
+      // "churned" folds into "lost" here — same as the churn_notes blob
+      // below, this endpoint only ever distinguishes won/lost for themes.
+      outcome: row.outcome === "churned" ? "lost" : row.outcome,
+      competitorName: row.competitor_id ? (competitorNameById.get(row.competitor_id) ?? null) : null,
     });
   }
   for (const reason of splitNotes(account?.lost_deal_notes ?? null)) {

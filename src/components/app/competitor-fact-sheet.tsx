@@ -236,19 +236,23 @@ export function CompetitorFactSheet({
     await fetch(`/api/competitors/${competitorId}/win-loss/${id}`, { method: "DELETE" }).catch(() => {});
   }
 
-  // Account-wide, not competitor-scoped (see /api/accounts/churn) — this
-  // page is just the nearest natural place a PLG account is already
+  // Account-wide, not competitor-scoped (see /api/accounts/win-loss) —
+  // this page is just the nearest natural place a PLG account is already
   // looking at evidence-gathering UI, same reasoning as the general lost/
-  // won notes already surfaced here.
+  // won notes already surfaced here. Deliberately no competitor picker
+  // here (unlike the main Win/loss page): churn logged from one
+  // competitor's own fact sheet page staying unattributed by default keeps
+  // this page's original framing — a customer who cancels rarely names
+  // who they switched to.
   async function addChurnReason() {
     if (!churnReason.trim()) return;
     setSavingChurn(true);
     setChurnMessage(null);
     try {
-      const res = await fetch("/api/accounts/churn", {
+      const res = await fetch("/api/accounts/win-loss", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason: churnReason.trim() }),
+        body: JSON.stringify({ competitorId: null, outcome: "churned", reason: churnReason.trim() }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not save.");

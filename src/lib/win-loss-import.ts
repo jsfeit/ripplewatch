@@ -29,10 +29,14 @@ export type ApplyResult = {
 //   by how often they came up) so a competitor the account is actually
 //   losing/winning against, but isn't tracking yet, surfaces as a
 //   suggestion instead of vanishing.
-// - "general" entries (no identifiable competitor, but a real reason) roll
-//   into the account's lost_deal_notes (scoring already reads this) or
-//   won_deal_notes (every fact sheet reads this as general, not-tied-to-
-//   one-competitor supporting evidence — see generateFactSheet).
+// - "general" entries (no identifiable competitor, but a real reason) now
+//   insert into competitor_win_loss too, with competitor_id null (see
+//   0061_win_loss_unattributed_and_churn) so they get a real date and can
+//   feed the unattributed-attrition correlation in churn-correlation.ts —
+//   AND still roll into the account's lost_deal_notes/won_deal_notes text
+//   blob, since scoring prompts (crawl.ts, generateFactSheet) read that as
+//   narrative context, not aggregate stats, and this keeps that path
+//   working unchanged.
 //
 // Every bucket tracks its own "already had this" count, not just tracked —
 // re-running the same file (or one that overlaps a prior import) should
@@ -87,7 +91,7 @@ export async function applyExtractedWinLossEntries(
     if (toInsert.length > 0) {
       const { error } = await supabase
         .from("competitor_win_loss")
-        .insert(toInsert.map((m) => ({ ...m, created_by: userId })));
+        .insert(toInsert.map((m) => ({ ...m, account_id: accountId, created_by: userId })));
       if (!error) imported = toInsert.length;
     }
   }
@@ -151,7 +155,18 @@ export async function applyExtractedWinLossEntries(
         combined = combined.slice(combined.length - DEAL_NOTES_MAX_CHARS);
       }
       const { error } = await supabase.from("accounts").update({ lost_deal_notes: combined }).eq("id", accountId);
-      if (!error) generalReasonsAdded = newReasons.length;
+      if (!error) {
+        generalReasonsAdded = newReasons.length;
+        await supabase.from("competitor_win_loss").insert(
+          newReasons.map((reason) => ({
+            account_id: accountId,
+            competitor_id: null,
+            outcome: "lost" as const,
+            reason,
+            created_by: userId,
+          }))
+        );
+      }
     }
   }
 
@@ -175,7 +190,18 @@ export async function applyExtractedWinLossEntries(
         combined = combined.slice(combined.length - DEAL_NOTES_MAX_CHARS);
       }
       const { error } = await supabase.from("accounts").update({ won_deal_notes: combined }).eq("id", accountId);
-      if (!error) generalWonReasonsAdded = newReasons.length;
+      if (!error) {
+        generalWonReasonsAdded = newReasons.length;
+        await supabase.from("competitor_win_loss").insert(
+          newReasons.map((reason) => ({
+            account_id: accountId,
+            competitor_id: null,
+            outcome: "won" as const,
+            reason,
+            created_by: userId,
+          }))
+        );
+      }
     }
   }
 

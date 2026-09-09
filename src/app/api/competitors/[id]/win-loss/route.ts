@@ -16,18 +16,23 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const body = await request.json().catch(() => null);
   const outcome = body?.outcome as WinLossOutcome | undefined;
   const reason = typeof body?.reason === "string" ? body.reason.trim() : "";
-  if (outcome !== "won" && outcome !== "lost") {
-    return NextResponse.json({ error: "outcome must be 'won' or 'lost'." }, { status: 400 });
+  if (outcome !== "won" && outcome !== "lost" && outcome !== "churned") {
+    return NextResponse.json({ error: "outcome must be \"won\", \"lost\", or \"churned\"." }, { status: 400 });
   }
   if (!reason) {
     return NextResponse.json({ error: "A reason is required." }, { status: 400 });
+  }
+
+  const { data: profile } = await supabase.from("profiles").select("account_id").eq("id", user.id).single();
+  if (!profile?.account_id) {
+    return NextResponse.json({ error: "No account." }, { status: 400 });
   }
 
   // RLS scopes the insert to competitors belonging to the caller's own
   // account — no explicit ownership check needed beyond being signed in.
   const { data, error } = await supabase
     .from("competitor_win_loss")
-    .insert({ competitor_id: id, outcome, reason, created_by: user.id })
+    .insert({ account_id: profile.account_id, competitor_id: id, outcome, reason, created_by: user.id })
     .select("*")
     .single();
 
