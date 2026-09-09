@@ -747,8 +747,8 @@ export function OnboardingFlow({
           {step === 3 && (
             <div className="space-y-5">
               <p className="text-sm text-muted-foreground">
-                Here&apos;s a live sample of the kind of scored update you&apos;ll get, updating as you
-                filled in your context. Real signals will replace this once monitoring is live.
+                Here&apos;s a live sample of the scored update you&apos;ll actually get. It updates as you fill
+                in your context below, and real signals take over once monitoring is live.
               </p>
               <div
                 key={previewAlert.headline + previewAlert.reasoning}
@@ -775,8 +775,8 @@ export function OnboardingFlow({
               </div>
               {!initiallySignedIn ? (
                 <p className="text-sm font-medium text-primary">
-                  Like what you see? This is just a one-signal preview; sign up to start real
-                  monitoring and get this on every signal, not just a sample.
+                  Like what you see? That was one signal. Sign up and every signal gets this treatment,
+                  not just a sample.
                 </p>
               ) : null}
             </div>

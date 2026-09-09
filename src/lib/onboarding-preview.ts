@@ -33,11 +33,11 @@ export function generatePreviewAlert(inputs: PreviewInputs): PreviewAlert {
 
   const headline = `${competitorName} quietly cut their entry-tier price this week`;
 
-  const reasoning = `You told us ${
+  const reasoning = `${competitorName} moving on price matters here because you told us ${
     inputs.lossReason.trim() ? `a recent lost deal came down to "${lossReason}"` : `you're still filling in why deals slip`
-  }. ${competitorName} moving on price is the kind of change that matters for ${icp || FALLBACK.icp} evaluating ${
+  }. That's why it's scored High for ${icp || FALLBACK.icp} weighing ${
     positioning || FALLBACK.positioning
-  } against them: that's why this one is scored High, while a generic tool would just show you the price change with no read on whether it's worth your attention.`;
+  }, not just flagged as "something changed" the way a generic tool would.`;
 
   return { competitorName, headline, reasoning };
 }

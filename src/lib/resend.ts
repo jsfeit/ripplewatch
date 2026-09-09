@@ -354,20 +354,20 @@ export async function sendWelcomeEmail(to: string, companyName: string, appUrl: 
   const result = await getResend().emails.send({
     from: getFromEmail(),
     to,
-    subject: "Welcome to Ripplewatch: here's how to get value this week",
+    subject: "Welcome to Ripplewatch, here's how to get value this week",
     html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
       <h2 style="margin:0 0 12px;">You're set up, ${companyName}.</h2>
       <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
-        Your dashboard has a sample scored alert right now; that's a placeholder built from your own
-        positioning and competitors, not a real signal yet. Real ones start showing up once the next
-        scheduled crawl runs.
+        That sample alert on your dashboard right now isn't real. It's built from your own positioning
+        and competitors so you can see the shape of things before real signals start coming in on the
+        next scheduled crawl.
       </p>
       <p style="color:#3a3a3a;font-size:14px;line-height:1.6;"><strong>Three things worth doing this week:</strong></p>
       <ol style="color:#3a3a3a;font-size:14px;line-height:1.7;padding-left:20px;">
-        <li>Connect Slack so alerts land where your team already works, instead of waiting on email.</li>
-        <li>Add any remaining competitors you're tracking: the more context, the sharper the scoring.</li>
-        <li>Try Ask: it's scoped to your own competitors and business context, so you can ask something
-          like "what's changed with our top competitor recently?" instead of waiting for an alert.</li>
+        <li>Connect Slack, so alerts land where your team already works instead of sitting in an inbox.</li>
+        <li>Add whatever competitors you haven't gotten to yet. More context means sharper scoring.</li>
+        <li>Try Ask. It's scoped to your own competitors and business, so you can just ask something like
+          "what's changed with our top competitor recently?" instead of waiting around for an alert.</li>
       </ol>
       <a href="${appUrl}/app/dashboard" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#0f5f56;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">
         Go to your dashboard
