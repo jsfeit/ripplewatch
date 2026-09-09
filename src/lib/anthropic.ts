@@ -283,6 +283,52 @@ export async function summarizeProductChange(
   }
 }
 
+// Same "meaningful, not cosmetic" bar as PRODUCT_DIFF_SYSTEM_PROMPT above,
+// applied to two screenshots instead of two text snapshots — this is what
+// catches a redesign, a new hero image, or a layout change that doesn't
+// touch the extracted text at all (and so the homepage text-hash check
+// would miss entirely).
+const VISUAL_DIFF_SYSTEM_PROMPT = `You are shown two screenshots of the same competitor webpage, taken about a week apart: BEFORE, then AFTER. Identify whether the page visually changed in a way that reflects a real product, design, or positioning decision. Ignore cosmetic noise: rotating hero images/testimonials, different cached ad content, a cookie banner present in one and not the other, minor color/spacing differences from re-rendering, a different logged-out promo banner. Only flag a real change: a redesign of the layout or navigation, a new hero image or product screenshot showing a different product, a rebrand (new logo/colors applied site-wide), or new prominent visual content (a new section, a new featured integration/partner logo).
+
+Respond with strict JSON only, no markdown, matching this shape exactly:
+{"meaningful": true | false, "summary": "<one sentence, specific, e.g. 'Redesigned the hero section around a new AI-assistant product screenshot'>"}
+
+If nothing meaningful changed, respond {"meaningful": false, "summary": ""}.`;
+
+export async function compareScreenshots(
+  beforePng: Buffer,
+  afterPng: Buffer,
+  accountId: string | null
+): Promise<DiffSummary> {
+  const message = await createMessage({
+    model: "claude-sonnet-5",
+    max_tokens: 200,
+    system: cachedSystemPrompt(VISUAL_DIFF_SYSTEM_PROMPT),
+    output_config: { format: { type: "json_schema", schema: DIFF_SCHEMA } },
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "BEFORE:" },
+          { type: "image", source: { type: "base64", media_type: "image/png", data: beforePng.toString("base64") } },
+          { type: "text", text: "AFTER:" },
+          { type: "image", source: { type: "base64", media_type: "image/png", data: afterPng.toString("base64") } },
+          { type: "text", text: "What changed?" },
+        ],
+      },
+    ],
+  });
+  recordLlmUsage(accountId, "compareScreenshots", message.model, message.usage);
+
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  try {
+    const parsed = JSON.parse(text);
+    return { meaningful: Boolean(parsed.meaningful), summary: String(parsed.summary ?? "") };
+  } catch (err) {
+    throw new Error(`Could not parse visual diff summary response: ${text}`, { cause: err });
+  }
+}
+
 export type PricingExtraction = {
   billingModel: BillingModel;
   publiclyPriced: boolean;

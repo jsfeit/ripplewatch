@@ -6,6 +6,9 @@ import {
   checkJobPostingsDiff,
   checkProductHuntLaunches,
   checkProductMessagingDiff,
+  checkChangelogDiff,
+  checkBlogDiff,
+  checkVisualChange,
   checkNews,
   checkFunding,
   checkSearchNews,
@@ -29,7 +32,15 @@ import { fetchRecentGongTranscripts } from "@/lib/gong";
 import { fetchRecentZoomTranscripts } from "@/lib/zoom";
 import { fetchClosedLostDealNotes } from "@/lib/hubspot";
 import { fetchRecentIntercomChurnNotes } from "@/lib/intercom";
-import { TIER_SIGNAL_SOURCES, CALL_INTEL_ALLOWED, CRM_ALLOWED, INTERCOM_ALLOWED, effectiveTier, competitorCap } from "@/lib/tier-limits";
+import {
+  TIER_SIGNAL_SOURCES,
+  CALL_INTEL_ALLOWED,
+  CRM_ALLOWED,
+  INTERCOM_ALLOWED,
+  VISUAL_DIFF_ALLOWED,
+  effectiveTier,
+  competitorCap,
+} from "@/lib/tier-limits";
 import type { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/types";
 
@@ -283,6 +294,23 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
       // cost the way SEO/traffic has.
       allowedSources.includes("product_change")
         ? checkProductMessagingDiff(supabase, competitor).then((s) => (s ? [s] : []))
+        : null,
+      // Same free scrape-and-hash shape as the homepage check above, just a
+      // changelog/blog URL instead — no separate tier gate, piggybacks on
+      // the same "product_change" source.
+      allowedSources.includes("product_change")
+        ? checkChangelogDiff(supabase, competitor).then((s) => (s ? [s] : []))
+        : null,
+      allowedSources.includes("product_change")
+        ? checkBlogDiff(supabase, competitor).then((s) => (s ? [s] : []))
+        : null,
+      // Real visual diffing (screenshot + Claude vision comparison) is a
+      // paid API call, unlike everything else in this array — gated to
+      // Plus/Advanced (VISUAL_DIFF_ALLOWED) rather than uniform across
+      // tiers. Also self-gates on SCREENSHOTONE_ACCESS_KEY being unset (see
+      // checkVisualChange), so this is a no-op today until that's added.
+      VISUAL_DIFF_ALLOWED[tier]
+        ? checkVisualChange(supabase, competitor).then((s) => (s ? [s] : []))
         : null,
       // Opt-in per competitor (github_repo set in Settings), not tier-gated
       // — free (GitHub's own public API), so no reason to restrict it the
