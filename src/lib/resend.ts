@@ -475,16 +475,17 @@ export async function sendPaymentReceivedEmail(
 // this is the user personally following up.
 export async function sendAffiliateApplicationEmail(
   to: string[],
-  details: { name: string; email: string; whyGoodFit: string; channels: string }
+  details: { name: string; email: string; whyGoodFit: string; channels: string; program: "affiliate" | "creator" }
 ) {
   if (!isResendConfigured() || to.length === 0) return;
 
+  const programLabel = details.program === "creator" ? "creator program (/creators)" : "affiliate program";
   const result = await getResend().emails.send({
     from: getAlertsFromEmail(),
     to,
-    subject: `🤝 New affiliate application: ${details.name}`,
+    subject: `🤝 New ${details.program} application: ${details.name}`,
     html: `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;">
-      <p style="margin:0 0 8px;"><strong>${details.name}</strong> (${details.email}) applied to the affiliate program.</p>
+      <p style="margin:0 0 8px;"><strong>${details.name}</strong> (${details.email}) applied to the ${programLabel}.</p>
       <p style="margin:12px 0 4px;color:#888;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Why they'd be a good fit</p>
       <p style="margin:0;color:#3a3a3a;font-size:14px;line-height:1.5;">${details.whyGoodFit}</p>
       <p style="margin:12px 0 4px;color:#888;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Channels</p>

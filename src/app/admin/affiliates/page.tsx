@@ -43,6 +43,7 @@ export default async function AdminAffiliatesPage() {
                 <TableHead>#</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Program</TableHead>
                 <TableHead>Why good fit</TableHead>
                 <TableHead>Channels</TableHead>
                 <TableHead>Date</TableHead>
@@ -55,6 +56,9 @@ export default async function AdminAffiliatesPage() {
                   <TableCell className="text-muted-foreground tabular-nums">#{applicationNumbers.get(a.id)}</TableCell>
                   <TableCell className="font-medium">{a.name}</TableCell>
                   <TableCell className="text-muted-foreground">{a.email}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {a.program === "creator" ? "Creator" : "Affiliate"}
+                  </TableCell>
                   <TableCell className="max-w-xs text-muted-foreground">{a.why_good_fit}</TableCell>
                   <TableCell className="max-w-xs text-muted-foreground">{a.channels}</TableCell>
                   <TableCell className="text-muted-foreground">
@@ -67,7 +71,7 @@ export default async function AdminAffiliatesPage() {
               ))}
               {applications?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
                     No applications yet.
                   </TableCell>
                 </TableRow>
