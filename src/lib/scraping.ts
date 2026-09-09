@@ -6,6 +6,7 @@ import type { Database } from "@/lib/supabase/types";
 import {
   summarizePricingChange,
   summarizeProductChange,
+  compareScreenshots,
   extractPricingStructure,
   searchCompetitorNews,
   filterRelevantHeadlines,
@@ -20,6 +21,7 @@ import { fetchProductHuntLaunches } from "@/lib/producthunt-data";
 import { fetchGithubCommitVelocity } from "@/lib/github-data";
 import { fetchBuzzMentions } from "@/lib/reddit-hn-data";
 import { fetchActiveAdCount } from "@/lib/meta-ads-data";
+import { captureScreenshot } from "@/lib/screenshot";
 
 type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
 type Signal = Database["public"]["Tables"]["signals"]["Row"];
@@ -44,6 +46,12 @@ async function fetchHtml(url: string): Promise<string> {
 const PRICING_LINK_PATTERN = /\bpricing\b|\bplans?\b/i;
 const CAREERS_LINK_PATTERN =
   /\bcareers?\b|\bjobs?\b|\bhiring\b|join[- ]us|open\s+(?:roles?|positions?)|join\s+(?:the|our)\s+team/i;
+// Used by checkChangelogDiff/checkBlogDiff below, not discoverCompetitorUrls
+// — unlike pricing/careers, most competitors don't have either page, so
+// there's no guessed-URL fallback the way guessPricingUrl/guessCareersUrl
+// provide; a homepage link is either found or the check just no-ops.
+const CHANGELOG_LINK_PATTERN = /\bchangelog\b|\brelease\s*notes?\b|\bwhat'?s\s*new\b|\bupdates?\s*log\b/i;
+const BLOG_LINK_PATTERN = /\bblog\b/i;
 const DISCOVERY_TIMEOUT_MS = 6_000;
 
 export async function discoverCompetitorUrls(
@@ -499,7 +507,7 @@ function categorizeTitle(title: string): string {
   return "Other";
 }
 
-type SnapshotKind = "pricing" | "jobs" | "producthunt" | "websearch" | "homepage";
+type SnapshotKind = "pricing" | "jobs" | "producthunt" | "websearch" | "homepage" | "changelog" | "blog";
 
 async function readSnapshot(supabase: AdminClient, competitorId: string, kind: SnapshotKind) {
   const { data } = await supabase
@@ -515,7 +523,11 @@ async function writeSnapshot(
   supabase: AdminClient,
   competitorId: string,
   kind: SnapshotKind,
-  text: string
+  text: string,
+  // Only changelog/blog set this (the homepage link they were found at) —
+  // stored so the next check goes straight there instead of re-scanning
+  // the homepage every week.
+  sourceUrl?: string | null
 ) {
   await supabase.from("page_snapshots").upsert(
     {
@@ -524,6 +536,7 @@ async function writeSnapshot(
       content_hash: hashText(text),
       raw_text: text.slice(0, 20_000),
       captured_at: new Date().toISOString(),
+      ...(sourceUrl !== undefined ? { source_url: sourceUrl } : {}),
     },
     { onConflict: "competitor_id,kind" }
   );
@@ -1020,6 +1033,122 @@ export async function checkProductMessagingDiff(supabase: AdminClient, competito
     .single();
 
   return data;
+}
+
+// Scans a competitor's homepage links for a changelog/blog-shaped href, the
+// same heuristic discoverCompetitorUrls uses for pricing/careers. Returns
+// null (not a fallback guess) when nothing matches — most competitors don't
+// have either page, so guessing a URL here would mostly generate 404s.
+async function findHomepageLink(homepageUrl: string, pattern: RegExp): Promise<string | null> {
+  let html: string;
+  let baseUrl: string;
+  try {
+    const res = await fetch(homepageUrl, {
+      headers: { "User-Agent": "RipplewatchBot/1.0 (+https://ripplewatch.ai)" },
+      signal: AbortSignal.timeout(DISCOVERY_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+    html = await res.text();
+    baseUrl = res.url;
+  } catch {
+    return null;
+  }
+
+  const $ = cheerio.load(html);
+  let found: string | null = null;
+  $("a[href]").each((_, el) => {
+    if (found) return false;
+    const href = $(el).attr("href");
+    if (!href) return;
+    const haystack = `${$(el).text()} ${href}`.toLowerCase();
+    if (pattern.test(haystack)) {
+      try {
+        found = new URL(href, baseUrl).toString();
+      } catch {
+        // malformed href — skip
+      }
+    }
+  });
+  return found;
+}
+
+// Shared by checkChangelogDiff/checkBlogDiff: same hash-then-LLM-diff shape
+// as checkProductMessagingDiff above, plus a URL-resolution step first —
+// the source_url found (or not) on a prior run is cached on the snapshot
+// row so most weeks skip straight to fetching it instead of re-scanning the
+// homepage. A competitor with no matching page just keeps writing an empty
+// snapshot on the same weekly cadence (self-heals if one shows up later),
+// rather than being scanned every single crawl forever.
+async function checkContentPageDiff(
+  supabase: AdminClient,
+  competitor: Competitor,
+  kind: "changelog" | "blog",
+  pattern: RegExp,
+  label: string
+): Promise<Signal | null> {
+  const clean = normalizeDomain(competitor.domain ?? "");
+  if (!clean) return null;
+  const homepageUrl = `https://${clean}`;
+
+  const existing = await readSnapshot(supabase, competitor.id, kind);
+  if (existing) {
+    const daysSinceCheck = (Date.now() - new Date(existing.captured_at).getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceCheck < HOMEPAGE_CHECK_INTERVAL_DAYS) return null;
+  }
+
+  const pageUrl = existing?.source_url ?? (await findHomepageLink(homepageUrl, pattern));
+  if (!pageUrl) {
+    // Nothing found (or found before and this run just re-confirms it's
+    // still not there) — write an empty snapshot so the weekly gate above
+    // applies next time, without claiming a page exists.
+    await writeSnapshot(supabase, competitor.id, kind, "", null);
+    return null;
+  }
+
+  let newText: string;
+  try {
+    newText = await fetchPageText(pageUrl);
+  } catch (err) {
+    console.error(`${label} unreachable for ${competitor.name} (${pageUrl}):`, err);
+    // The cached link may be stale (page moved/removed) — drop it so next
+    // week re-discovers from the homepage instead of retrying a dead URL
+    // forever, same self-healing shape as ensureMonitoringUrls.
+    await writeSnapshot(supabase, competitor.id, kind, "", null);
+    return null;
+  }
+
+  const newHash = hashText(newText);
+  await writeSnapshot(supabase, competitor.id, kind, newText, pageUrl);
+
+  if (!existing || !existing.source_url) return null;
+  if (existing.content_hash === newHash) return null;
+
+  const diff = await summarizeProductChange(existing.raw_text ?? "", newText, competitor.account_id);
+  if (!diff.meaningful || !diff.summary) return null;
+
+  const { data } = await supabase
+    .from("signals")
+    .insert({
+      competitor_id: competitor.id,
+      type: "product_change",
+      title: diff.summary,
+      summary: `Detected on ${competitor.name}'s ${label}.`,
+      url: pageUrl,
+      scored: false,
+      source: "pipeline",
+    })
+    .select("*")
+    .single();
+
+  return data;
+}
+
+export async function checkChangelogDiff(supabase: AdminClient, competitor: Competitor): Promise<Signal | null> {
+  return checkContentPageDiff(supabase, competitor, "changelog", CHANGELOG_LINK_PATTERN, "changelog");
+}
+
+export async function checkBlogDiff(supabase: AdminClient, competitor: Competitor): Promise<Signal | null> {
+  return checkContentPageDiff(supabase, competitor, "blog", BLOG_LINK_PATTERN, "blog");
 }
 
 // Product Hunt launches — free API (once a real token replaces the stub, see
@@ -1688,4 +1817,82 @@ export async function checkAdActivity(supabase: AdminClient, competitor: Competi
   );
 
   await recordStateHistory(supabase, competitor.id, "ad_count", result.count);
+}
+
+const VISUAL_CHECK_INTERVAL_DAYS = 7;
+const SCREENSHOT_BUCKET = "competitor-screenshots";
+
+// Entirely skipped when SCREENSHOTONE_ACCESS_KEY isn't configured (see
+// captureScreenshot) — same dormant-until-configured pattern as
+// checkAdActivity above. Gated to Plus/Advanced in crawl.ts
+// (VISUAL_DIFF_ALLOWED) since unlike everything else here this is a paid
+// API call per competitor per week, not free scraping.
+//
+// Only one screenshot is ever kept per competitor (competitor_screenshots
+// is a rolling baseline, not a gallery): each run captures a new one,
+// compares it against whatever was stored last week via Claude vision, then
+// overwrites storage with the new one regardless of whether anything
+// changed — so the next comparison is always "this week vs. last week," not
+// "this week vs. whenever it last happened to change."
+export async function checkVisualChange(supabase: AdminClient, competitor: Competitor): Promise<Signal | null> {
+  const clean = normalizeDomain(competitor.domain ?? "");
+  if (!clean) return null;
+  const homepageUrl = `https://${clean}`;
+
+  const { data: existing } = await supabase
+    .from("competitor_screenshots")
+    .select("storage_path, captured_at")
+    .eq("competitor_id", competitor.id)
+    .maybeSingle();
+  if (existing) {
+    const daysSinceCheck = (Date.now() - new Date(existing.captured_at).getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceCheck < VISUAL_CHECK_INTERVAL_DAYS) return null;
+  }
+
+  const newScreenshot = await captureScreenshot(homepageUrl);
+  if (!newScreenshot) return null;
+
+  let signal: Signal | null = null;
+
+  if (existing) {
+    const { data: previousBlob, error: downloadError } = await supabase.storage
+      .from(SCREENSHOT_BUCKET)
+      .download(existing.storage_path);
+
+    if (!downloadError && previousBlob) {
+      const previousBuffer = Buffer.from(await previousBlob.arrayBuffer());
+      try {
+        const diff = await compareScreenshots(previousBuffer, newScreenshot, competitor.account_id);
+        if (diff.meaningful && diff.summary) {
+          const { data } = await supabase
+            .from("signals")
+            .insert({
+              competitor_id: competitor.id,
+              type: "product_change",
+              title: diff.summary,
+              summary: `Detected via visual comparison of ${competitor.name}'s homepage.`,
+              url: homepageUrl,
+              scored: false,
+              source: "pipeline",
+            })
+            .select("*")
+            .single();
+          signal = data;
+        }
+      } catch (err) {
+        console.error(`compareScreenshots failed for ${competitor.name}:`, err);
+      }
+    }
+  }
+
+  const storagePath = `${competitor.id}.png`;
+  await supabase.storage
+    .from(SCREENSHOT_BUCKET)
+    .upload(storagePath, newScreenshot, { contentType: "image/png", upsert: true });
+  await supabase.from("competitor_screenshots").upsert(
+    { competitor_id: competitor.id, storage_path: storagePath, captured_at: new Date().toISOString() },
+    { onConflict: "competitor_id" }
+  );
+
+  return signal;
 }

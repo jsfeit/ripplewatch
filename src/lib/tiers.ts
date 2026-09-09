@@ -21,6 +21,7 @@ export type Tier = {
   gong?: string;
   intercom?: string;
   apiAccess?: string;
+  visualDiff?: string;
   seats: string;
   cta: string;
   highlight?: boolean;
@@ -66,6 +67,7 @@ export const TIERS: Tier[] = [
     delivery: "Slack + email",
     crm: "HubSpot (read-only pull)",
     apiAccess: "Read-only API access",
+    visualDiff: "Visual change detection",
     seats: "Up to 10 seats",
     cta: "Start with Plus",
     highlight: true,
@@ -89,6 +91,7 @@ export const TIERS: Tier[] = [
     gong: "Gong (coming soon)",
     intercom: "Intercom (coming soon)",
     apiAccess: "Read-only API access",
+    visualDiff: "Visual change detection",
     seats: "Unlimited",
     cta: "Start with Advanced",
   },

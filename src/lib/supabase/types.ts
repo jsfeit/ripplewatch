@@ -403,20 +403,42 @@ export interface Database {
         Row: {
           id: string;
           competitor_id: string;
-          kind: "pricing" | "jobs" | "producthunt" | "websearch" | "homepage";
+          kind: "pricing" | "jobs" | "producthunt" | "websearch" | "homepage" | "changelog" | "blog";
           content_hash: string;
           raw_text: string | null;
+          // Only set for changelog/blog kinds — the homepage link they were
+          // discovered at, cached so most weeks skip re-scanning the
+          // homepage. Null for pricing/jobs/homepage (URL is derived from
+          // the competitor's own pricing_url/careers_url/domain instead).
+          source_url: string | null;
           captured_at: string;
         };
         Insert: {
           id?: string;
           competitor_id: string;
-          kind: "pricing" | "jobs" | "producthunt" | "websearch" | "homepage";
+          kind: "pricing" | "jobs" | "producthunt" | "websearch" | "homepage" | "changelog" | "blog";
           content_hash: string;
           raw_text?: string | null;
+          source_url?: string | null;
           captured_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["page_snapshots"]["Insert"]>;
+        Relationships: [];
+      };
+      competitor_screenshots: {
+        Row: {
+          id: string;
+          competitor_id: string;
+          storage_path: string;
+          captured_at: string;
+        };
+        Insert: {
+          id?: string;
+          competitor_id: string;
+          storage_path: string;
+          captured_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["competitor_screenshots"]["Insert"]>;
         Relationships: [];
       };
       competitor_seo: {

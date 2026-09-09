@@ -72,6 +72,16 @@ export const API_ACCESS_ALLOWED: Record<AccountTier, boolean> = {
   advanced: true,
 };
 
+// Visual diffing (checkVisualChange in scraping.ts) calls a paid screenshot
+// API per competitor per week — unlike everything else in scraping.ts,
+// which is free scraping, this has a real per-account cost, so it's gated
+// the same shape as CRM/API access above rather than uniform across tiers.
+export const VISUAL_DIFF_ALLOWED: Record<AccountTier, boolean> = {
+  starter: false,
+  plus: true,
+  advanced: true,
+};
+
 export function competitorLimitLabel(tier: AccountTier): string {
   const limit = COMPETITOR_LIMIT[tier];
   return limit === Infinity ? "unlimited" : String(limit);
