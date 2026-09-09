@@ -87,6 +87,12 @@ export type ScoringContext = {
   icp: string | null;
   lostDealNotes: string | null;
   churnNotes: string | null;
+  // Directional-only: recent unattributed losses/churn (no competitor
+  // identified) correlated against tracked competitors' pricing/product
+  // moves in the same window — see churn-correlation.ts. Null when there's
+  // nothing worth saying yet (too little unattributed activity, or no
+  // competitor changes in the same window).
+  unattributedActivity?: string | null;
   callInsights?: string | null;
   // Cached web-search research on the account's own company (see
   // researchCompanyContext) — fills gaps when positioning/ICP alone is too
@@ -402,7 +408,7 @@ export function buildScoringUserPrompt(context: ScoringContext, signal: SignalTo
 Positioning (self-reported): ${context.positioning ?? "(not provided)"}
 ICP: ${context.icp ?? "(not provided)"}
 ${context.companyResearch ? `Public market research on this company: ${context.companyResearch}\n` : ""}Known lost-deal reasons: ${context.lostDealNotes ?? "(none provided)"}
-Known churn reasons: ${context.churnNotes ?? "(none provided)"}
+Known churn reasons: ${context.churnNotes ?? "(none provided)"}${context.unattributedActivity ? `\nUnattributed loss/churn activity: ${context.unattributedActivity}` : ""}
 ${context.callInsights ? `Recent sales call mentions of competitors: ${context.callInsights}\n` : ""}
 
 Competitor: ${signal.competitorName}
@@ -1250,7 +1256,7 @@ Search for current market/category-level trends relevant to this business.`;
   }
 }
 
-export type FactSheetWinLossEntry = { outcome: "won" | "lost"; reason: string | null };
+export type FactSheetWinLossEntry = { outcome: "won" | "lost" | "churned"; reason: string | null };
 export type FactSheetSignal = { title: string; reasoning: string | null; score: number | null; occurredOn: string };
 export type FactSheetResult = { whyWeWin: string[]; whyWeLose: string[] };
 
@@ -1300,7 +1306,11 @@ export async function generateFactSheet(
   generalWonNotes: string | null
 ): Promise<FactSheetResult> {
   const wins = winLossEntries.filter((e) => e.outcome === "won");
-  const losses = winLossEntries.filter((e) => e.outcome === "lost");
+  // A churned customer is a loss for this competitor's fact sheet the same
+  // way a lost deal is, whether the churn was explicitly attributed to
+  // this competitor or logged from this competitor's own page (see
+  // competitor-fact-sheet.tsx's addChurnReason).
+  const losses = winLossEntries.filter((e) => e.outcome === "lost" || e.outcome === "churned");
 
   const userPrompt = `Company: ${companyName}${positioning ? `\nSelf-reported positioning: ${positioning}` : ""}${companyResearch ? `\nResearched market position: ${companyResearch}` : ""}
 
@@ -1660,7 +1670,7 @@ export type VerdictSignal = {
 // the picture" is a real verdict, not a failure to produce one.
 const DIGEST_VERDICT_SYSTEM_PROMPT = `You write a short verdict summarizing a batch of already-scored competitive intelligence signals for one company, using their own business context.
 
-You will be given the company's positioning, ICP, known lost-deal/churn reasons, cached public research on the company, and a list of signals — each already scored High or Medium relevance with its own one-line reasoning.
+You will be given the company's positioning, ICP, known lost-deal/churn reasons (sometimes including unattributed activity that coincides with a competitor's pricing or product moves, never a confirmed cause), cached public research on the company, and a list of signals — each already scored High or Medium relevance with its own one-line reasoning.
 
 Write ONE short paragraph (2-4 sentences) synthesizing what this batch means TOGETHER, not a recap of each item. Roll multiple related signals into a single takeaway when they point the same direction (e.g. two competitors both shipping AI features this week is a trend, not two separate facts). Ground the verdict in the company's own positioning/ICP/lost-deal context the same way each individual signal was scored, not generic competitive commentary. If the batch is genuinely mixed or minor, say that plainly rather than inventing urgency — a quiet or ambiguous week is a legitimate, honest verdict.
 
@@ -1693,7 +1703,7 @@ export async function generateDigestVerdict(
 Positioning (self-reported): ${context.positioning ?? "(not provided)"}
 ICP: ${context.icp ?? "(not provided)"}
 ${context.companyResearch ? `Public market research on this company: ${context.companyResearch}\n` : ""}Known lost-deal reasons: ${context.lostDealNotes ?? "(none provided)"}
-Known churn reasons: ${context.churnNotes ?? "(none provided)"}
+Known churn reasons: ${context.churnNotes ?? "(none provided)"}${context.unattributedActivity ? `\nUnattributed loss/churn activity: ${context.unattributedActivity}` : ""}
 
 Signals in this batch:
 ${signalsText}

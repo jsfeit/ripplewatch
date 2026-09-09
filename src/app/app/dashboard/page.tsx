@@ -12,6 +12,7 @@ import { HiringBoard } from "../hiring/hiring-board";
 import { WinLossPageClient } from "../win-loss/win-loss-page-client";
 import { AutoProductTour } from "@/components/app/product-tour";
 import { PurchaseTracker } from "@/components/app/purchase-tracker";
+import { buildUnattributedAttritionContext } from "@/lib/churn-correlation";
 import type { Database } from "@/lib/supabase/types";
 
 type Signal = Database["public"]["Tables"]["signals"]["Row"];
@@ -122,6 +123,7 @@ export default async function DashboardPage() {
     { data: industryTrends },
     { data: winLossTrends },
     { data: winLossEntries },
+    { data: unattributedWinLossEntries },
     { data: hubspotIntegration },
   ] = await Promise.all([
     // --- News ---
@@ -205,6 +207,13 @@ export default async function DashboardPage() {
           .in("competitor_id", competitorIds)
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: [] }),
+    // --- Win/loss log: unattributed (no competitor identified) ---
+    db
+      .from("competitor_win_loss")
+      .select("id, outcome, reason, created_at")
+      .is("competitor_id", null)
+      .eq("account_id", accountId)
+      .order("created_at", { ascending: false }),
     db
       .from("integrations")
       .select("connected")
@@ -242,9 +251,32 @@ export default async function DashboardPage() {
 
   // Headline number for the Win/loss section header — the one thing worth
   // knowing without opening the full log below.
-  const wonCount = (winLossEntries ?? []).filter((e) => e.outcome === "won").length;
-  const lostCount = (winLossEntries ?? []).filter((e) => e.outcome === "lost").length;
+  // The query below already filters .in("competitor_id", competitorIds),
+  // so every row here has one in practice — narrowed explicitly since the
+  // generated Row type now allows null (see 0061_win_loss_unattributed_and_churn).
+  const attributedWinLossEntries = (winLossEntries ?? []).filter(
+    (e): e is typeof e & { competitor_id: string } => e.competitor_id !== null
+  );
+  const wonCount = attributedWinLossEntries.filter((e) => e.outcome === "won").length;
+  const lostCount = attributedWinLossEntries.filter((e) => e.outcome === "lost").length;
   const winRatePercent = wonCount + lostCount > 0 ? Math.round((wonCount / (wonCount + lostCount)) * 100) : null;
+
+  // Directional-only: do recent unattributed losses/churn coincide with a
+  // tracked competitor cutting pricing or shipping something new? Never a
+  // claimed cause, just timing — see churn-correlation.ts.
+  const competitorNameById = Object.fromEntries((competitors ?? []).map((c) => [c.id, c.name]));
+  const recentCompetitorChanges = (signals ?? [])
+    .filter((s) => s.type === "pricing" || s.type === "product_change")
+    .map((s) => ({
+      competitorName: competitorNameById[s.competitor_id] ?? "A tracked competitor",
+      type: s.type,
+      title: s.title,
+      occurred_on: s.occurred_on,
+    }));
+  const unattributedCorrelationNote = buildUnattributedAttritionContext(
+    unattributedWinLossEntries ?? [],
+    recentCompetitorChanges
+  );
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-10 sm:py-10">
@@ -337,7 +369,9 @@ export default async function DashboardPage() {
         <div className="mt-4">
           <WinLossPageClient
             competitors={(competitors ?? []).map((c) => ({ id: c.id, name: c.name }))}
-            initialEntries={winLossEntries ?? []}
+            initialEntries={attributedWinLossEntries}
+            initialUnattributedEntries={unattributedWinLossEntries ?? []}
+            correlationNote={unattributedCorrelationNote}
             hubspotConnected={Boolean(hubspotIntegration)}
             showWinLoss={Boolean(account?.has_sales_crm) || !account?.has_plg}
             showChurn={Boolean(account?.has_plg)}

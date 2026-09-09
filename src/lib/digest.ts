@@ -1,6 +1,7 @@
 import "server-only";
 import { generateDigestVerdict, generateMomentumDigest, type VerdictSignal, type MomentumDigestInput } from "@/lib/anthropic";
 import { computeMomentum } from "@/lib/momentum";
+import { buildUnattributedAttritionContext } from "@/lib/churn-correlation";
 import type { Database } from "@/lib/supabase/types";
 import type { createAdminClient } from "@/lib/supabase/admin";
 
@@ -50,6 +51,28 @@ export async function generateWeeklyAccountIntelligence(
         relevanceLevel: s.relevance_level ?? "Medium",
         relevanceReasoning: s.relevance_reasoning,
       }));
+
+      // Directional-only context: recent unattributed losses/churn (no
+      // competitor identified) correlated against this week's pricing/
+      // product signals — see churn-correlation.ts. A tiny extra query,
+      // scoped to this account, only run when there's a verdict to write.
+      const fourteenDaysAgo = new Date(Date.now() - 2 * SEVEN_DAYS_MS).toISOString();
+      const { data: unattributedEntries } = await supabase
+        .from("competitor_win_loss")
+        .select("outcome, created_at")
+        .is("competitor_id", null)
+        .eq("account_id", account.id)
+        .gte("created_at", fourteenDaysAgo);
+      const competitorChanges = weekSignals
+        .filter((s) => s.type === "pricing" || s.type === "product_change")
+        .map((s) => ({
+          competitorName: competitors.find((c) => c.id === s.competitor_id)?.name ?? "A tracked competitor",
+          type: s.type,
+          title: s.title,
+          occurred_on: s.occurred_on,
+        }));
+      const unattributedActivity = buildUnattributedAttritionContext(unattributedEntries ?? [], competitorChanges);
+
       verdict = await generateDigestVerdict(
         {
           companyName: account.name,
@@ -57,6 +80,7 @@ export async function generateWeeklyAccountIntelligence(
           icp: account.icp,
           lostDealNotes: account.lost_deal_notes,
           churnNotes: account.churn_notes,
+          unattributedActivity,
           companyResearch: account.company_research,
         },
         verdictSignals,

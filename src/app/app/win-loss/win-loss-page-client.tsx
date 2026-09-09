@@ -16,6 +16,12 @@ import type { WinLossOutcome } from "@/lib/supabase/types";
 type Competitor = { id: string; name: string };
 type AccountEntry = WinLossEntry & { competitor_id: string };
 
+// Sentinel for "don't know who we lost to / where they churned to" — a
+// real competitor_id is a uuid, so this can't collide with one. Kept as a
+// plain string (not null) because Base UI's Select needs a non-empty value
+// for every item.
+const UNKNOWN_COMPETITOR = "unknown";
+
 type ImportResponse = {
   totalExtracted: number;
   imported: number;
@@ -45,10 +51,10 @@ function formatImportMessage(source: string, data: ImportResponse): string {
 
   parts.push(`imported ${data.imported} win/loss ${data.imported === 1 ? "entry" : "entries"}${data.skipped > 0 ? ` (${data.skipped} already logged)` : ""}.`);
   if (data.generalReasonsAdded > 0 || data.generalReasonsSkipped > 0) {
-    parts.push(`Added ${data.generalReasonsAdded} general lost-deal reason${data.generalReasonsAdded === 1 ? "" : "s"} to account context${generalSkippedNote}.`);
+    parts.push(`Added ${data.generalReasonsAdded} unattributed lost-deal reason${data.generalReasonsAdded === 1 ? "" : "s"}${generalSkippedNote}.`);
   }
   if (data.generalWonReasonsAdded > 0 || data.generalWonReasonsSkipped > 0) {
-    parts.push(`Added ${data.generalWonReasonsAdded} general win reason${data.generalWonReasonsAdded === 1 ? "" : "s"} to account context${generalWonSkippedNote}.`);
+    parts.push(`Added ${data.generalWonReasonsAdded} unattributed win reason${data.generalWonReasonsAdded === 1 ? "" : "s"}${generalWonSkippedNote}.`);
   }
   if (data.suggestedCompetitors.length > 0 || data.untrackedAlreadySuggested > 0) {
     const suggestedPart =
@@ -66,20 +72,60 @@ function formatImportMessage(source: string, data: ImportResponse): string {
   return `${parts[0]}. ${parts.slice(1).join(" ")}`.trim();
 }
 
+function CompetitorPicker({
+  competitors,
+  value,
+  onChange,
+  placeholder,
+}: {
+  competitors: Competitor[];
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+}) {
+  const label = value === UNKNOWN_COMPETITOR ? "Not sure / no competitor" : competitors.find((c) => c.id === value)?.name;
+  return (
+    <Select value={value} onValueChange={(v) => v && onChange(v)}>
+      <SelectTrigger className="w-full">
+        <SelectValue placeholder={placeholder}>{() => label}</SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        {competitors.map((c) => (
+          <SelectItem key={c.id} value={c.id}>
+            {c.name}
+          </SelectItem>
+        ))}
+        <SelectItem value={UNKNOWN_COMPETITOR}>Not sure / no competitor</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+}
+
 export function WinLossPageClient({
   competitors,
   initialEntries,
+  initialUnattributedEntries,
+  correlationNote,
   hubspotConnected,
   showWinLoss,
   showChurn,
 }: {
   competitors: Competitor[];
   initialEntries: AccountEntry[];
+  // Entries with no competitor identified (competitor_id null) — most lost
+  // deals and nearly all B2C churn, per 0061_win_loss_unattributed_and_churn.
+  // Still real, dated data: just not attributable to one competitor.
+  initialUnattributedEntries: WinLossEntry[];
+  // Server-computed (churn-correlation.ts): whether recent unattributed
+  // losses/churn coincide with a tracked competitor's pricing/product
+  // moves. Null when there's nothing worth saying yet.
+  correlationNote: string | null;
   hubspotConnected: boolean;
   showWinLoss: boolean;
   showChurn: boolean;
 }) {
   const [entries, setEntries] = useState(initialEntries);
+  const [unattributedEntries, setUnattributedEntries] = useState(initialUnattributedEntries);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -87,12 +133,13 @@ export function WinLossPageClient({
   const [importMessage, setImportMessage] = useState<string | null>(null);
 
   const [formOpen, setFormOpen] = useState(false);
-  const [selectedCompetitorId, setSelectedCompetitorId] = useState(competitors[0]?.id ?? "");
+  const [selectedCompetitorId, setSelectedCompetitorId] = useState(competitors[0]?.id ?? UNKNOWN_COMPETITOR);
   const [outcome, setOutcome] = useState<WinLossOutcome>("lost");
   const [reason, setReason] = useState("");
   const [savingEntry, setSavingEntry] = useState(false);
   const [momentumMessage, setMomentumMessage] = useState<string | null>(null);
 
+  const [churnCompetitorId, setChurnCompetitorId] = useState(UNKNOWN_COMPETITOR);
   const [churnReason, setChurnReason] = useState("");
   const [savingChurn, setSavingChurn] = useState(false);
   const [churnMessage, setChurnMessage] = useState<string | null>(null);
@@ -100,14 +147,21 @@ export function WinLossPageClient({
   const competitorIds = useMemo(() => competitors.map((c) => c.id), [competitors]);
 
   async function refetchEntries() {
-    if (competitorIds.length === 0) return;
     const supabase = createClient();
-    const { data } = await supabase
+    if (competitorIds.length > 0) {
+      const { data } = await supabase
+        .from("competitor_win_loss")
+        .select("id, competitor_id, outcome, reason, created_at")
+        .in("competitor_id", competitorIds)
+        .order("created_at", { ascending: false });
+      if (data) setEntries(data as AccountEntry[]);
+    }
+    const { data: unattributed } = await supabase
       .from("competitor_win_loss")
-      .select("id, competitor_id, outcome, reason, created_at")
-      .in("competitor_id", competitorIds)
+      .select("id, outcome, reason, created_at")
+      .is("competitor_id", null)
       .order("created_at", { ascending: false });
-    if (data) setEntries(data);
+    if (unattributed) setUnattributedEntries(unattributed);
   }
 
   async function handleCsvFile(file: File) {
@@ -149,32 +203,41 @@ export function WinLossPageClient({
   }
 
   async function addEntry() {
-    if (!reason.trim() || !selectedCompetitorId) return;
+    if (!reason.trim()) return;
     setSavingEntry(true);
     setMomentumMessage(null);
+    const competitorId = selectedCompetitorId === UNKNOWN_COMPETITOR ? null : selectedCompetitorId;
     try {
-      const res = await fetch(`/api/competitors/${selectedCompetitorId}/win-loss`, {
+      const res = await fetch("/api/accounts/win-loss", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ outcome, reason: reason.trim() }),
+        body: JSON.stringify({ competitorId, outcome, reason: reason.trim() }),
       });
       if (!res.ok) throw new Error();
       const data = await res.json();
-      setEntries((prev) => [{ ...data.entry, competitor_id: selectedCompetitorId }, ...prev]);
+      if (competitorId) {
+        setEntries((prev) => [{ ...data.entry, competitor_id: competitorId }, ...prev]);
+      } else {
+        setUnattributedEntries((prev) => [data.entry, ...prev]);
+      }
       setReason("");
       setFormOpen(false);
 
-      // Immediate payoff: show the Momentum shift right here instead of
-      // making them navigate to the dashboard to discover it happened.
-      const competitorName = competitors.find((c) => c.id === selectedCompetitorId)?.name ?? "This competitor";
-      if (data.momentum?.score !== null && data.momentum?.score !== undefined) {
-        const sign = data.momentum.score > 0 ? "+" : "";
-        const confidenceNote = data.momentum.confidence === "low" ? " (still based on limited data)" : "";
-        setMomentumMessage(
-          `Momentum updated: ${competitorName} is now ${sign}${data.momentum.score} ${data.momentum.label}${confidenceNote}.`
-        );
+      if (!competitorId) {
+        setMomentumMessage("Logged without a competitor. It still counts, and now feeds the unattributed trend below.");
       } else {
-        setMomentumMessage(`Logged. Add a few more for ${competitorName} to start showing a Momentum win-rate trend.`);
+        // Immediate payoff: show the Momentum shift right here instead of
+        // making them navigate to the dashboard to discover it happened.
+        const competitorName = competitors.find((c) => c.id === competitorId)?.name ?? "This competitor";
+        if (data.momentum?.score !== null && data.momentum?.score !== undefined) {
+          const sign = data.momentum.score > 0 ? "+" : "";
+          const confidenceNote = data.momentum.confidence === "low" ? " (still based on limited data)" : "";
+          setMomentumMessage(
+            `Momentum updated: ${competitorName} is now ${sign}${data.momentum.score} ${data.momentum.label}${confidenceNote}.`
+          );
+        } else {
+          setMomentumMessage(`Logged. Add a few more for ${competitorName} to start showing a Momentum win-rate trend.`);
+        }
       }
     } catch {
       // Left in the form so nothing typed is lost; the button just stops spinning.
@@ -187,16 +250,22 @@ export function WinLossPageClient({
     if (!churnReason.trim()) return;
     setSavingChurn(true);
     setChurnMessage(null);
+    const competitorId = churnCompetitorId === UNKNOWN_COMPETITOR ? null : churnCompetitorId;
     try {
-      const res = await fetch("/api/accounts/churn", {
+      const res = await fetch("/api/accounts/win-loss", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason: churnReason.trim() }),
+        body: JSON.stringify({ competitorId, outcome: "churned", reason: churnReason.trim() }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not save.");
+      if (competitorId) {
+        setEntries((prev) => [{ ...data.entry, competitor_id: competitorId }, ...prev]);
+      } else {
+        setUnattributedEntries((prev) => [data.entry, ...prev]);
+      }
       setChurnReason("");
-      setChurnMessage("Logged. This account-wide context feeds every fact sheet and alert scoring.");
+      setChurnMessage("Logged. Feeds every fact sheet and alert scoring, whether or not a competitor was named.");
     } catch (err) {
       setChurnMessage(err instanceof Error ? err.message : "Could not save.");
     } finally {
@@ -278,18 +347,16 @@ export function WinLossPageClient({
 
           {formOpen ? (
             <div className="mt-3 space-y-2 rounded-md border border-border p-3">
-              <Select value={selectedCompetitorId} onValueChange={(v) => v && setSelectedCompetitorId(v)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Which competitor?" />
-                </SelectTrigger>
-                <SelectContent>
-                  {competitors.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Don&rsquo;t know who won or lost the deal? That&rsquo;s normal, pick &ldquo;Not sure&rdquo; below, it
+                still counts.
+              </p>
+              <CompetitorPicker
+                competitors={competitors}
+                value={selectedCompetitorId}
+                onChange={setSelectedCompetitorId}
+                placeholder="Which competitor?"
+              />
               <div className="flex gap-1.5">
                 <Button
                   type="button"
@@ -322,11 +389,7 @@ export function WinLossPageClient({
                 <Button variant="ghost" size="sm" onClick={() => setFormOpen(false)}>
                   Cancel
                 </Button>
-                <Button
-                  size="sm"
-                  onClick={addEntry}
-                  disabled={savingEntry || !reason.trim() || !selectedCompetitorId}
-                >
+                <Button size="sm" onClick={addEntry} disabled={savingEntry || !reason.trim()}>
                   {savingEntry ? <Loader2 className="size-3.5 animate-spin" /> : null}
                   Save
                 </Button>
@@ -334,14 +397,14 @@ export function WinLossPageClient({
             </div>
           ) : null}
 
-          {entries.length === 0 ? (
+          {entries.length === 0 && unattributedEntries.length === 0 ? (
             <p className="mt-3 text-sm text-muted-foreground">
               No wins or losses logged yet. Upload a CSV, sync HubSpot, or log one manually above: the more you
               log, the sharper every fact sheet gets.
             </p>
           ) : (
             <div className="mt-4 border-t border-border pt-4">
-              <WinLossReasonSummary entries={entries} subjectLabel="across all competitors" />
+              <WinLossReasonSummary entries={[...entries, ...unattributedEntries]} subjectLabel="across all competitors" />
             </div>
           )}
         </Panel>
@@ -351,16 +414,23 @@ export function WinLossPageClient({
         <Panel className="p-5">
           <h2 className="text-sm font-semibold">Customer churn</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Account-wide, not tied to one competitor: churn reasons rarely name who a customer switched to the
-            way a lost sales deal does. Feeds every fact sheet and alert scoring the same way lost-deal reasons
-            do for sales-led accounts.
+            Rarely names who a customer switched to the way a lost sales deal does, so a competitor is optional here.
+            Feeds every fact sheet and alert scoring the same way lost-deal reasons do for sales-led accounts.
           </p>
           <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-primary/25 bg-primary/[0.04] p-3">
             <Plus className="mt-0.5 size-4 shrink-0 text-primary" />
             <div className="w-full space-y-2">
               <p className="text-xs font-medium text-foreground">Log a churn reason</p>
+              {competitors.length > 0 ? (
+                <CompetitorPicker
+                  competitors={competitors}
+                  value={churnCompetitorId}
+                  onChange={setChurnCompetitorId}
+                  placeholder="Switched to a competitor? (optional)"
+                />
+              ) : null}
               <Textarea
-                placeholder="e.g. Churned after 2 months, said RivalSense's onboarding was easier to get started with"
+                placeholder="e.g. Churned after 2 months, said onboarding was easier somewhere else"
                 value={churnReason}
                 onChange={(e) => setChurnReason(e.target.value)}
                 rows={2}
@@ -377,6 +447,22 @@ export function WinLossPageClient({
         </Panel>
       ) : null}
 
+      {unattributedEntries.length > 0 ? (
+        <Panel className="p-5">
+          <h2 className="text-sm font-semibold">Unattributed activity</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {unattributedEntries.length} logged {unattributedEntries.length === 1 ? "entry" : "entries"} with no
+            competitor identified, most deals lost and most churn never name who won instead. This still counts
+            toward the reasons above; it just can&rsquo;t move one specific competitor&rsquo;s Momentum score.
+          </p>
+          {correlationNote ? (
+            <p className="mt-3 rounded-md border border-amber-500/25 bg-amber-500/[0.06] px-2.5 py-1.5 text-xs text-foreground">
+              {correlationNote}
+            </p>
+          ) : null}
+        </Panel>
+      ) : null}
+
       {entries.length > 0 ? (
         <div>
           <h2 className="text-sm font-semibold">By competitor</h2>
@@ -384,7 +470,8 @@ export function WinLossPageClient({
             {competitors.map((c) => {
               const list = byCompetitor.get(c.id) ?? [];
               const won = list.filter((e) => e.outcome === "won").length;
-              const lost = list.length - won;
+              const lost = list.filter((e) => e.outcome === "lost").length;
+              const churned = list.length - won - lost;
               return (
                 <Link
                   key={c.id}
@@ -401,6 +488,12 @@ export function WinLossPageClient({
                         <>
                           <span className="font-semibold text-primary">{won} won</span> ·{" "}
                           <span className="font-semibold text-amber-600 dark:text-amber-400">{lost} lost</span>
+                          {churned > 0 ? (
+                            <>
+                              {" "}
+                              · <span className="font-semibold text-rose-600 dark:text-rose-400">{churned} churned</span>
+                            </>
+                          ) : null}
                         </>
                       )
                     }
