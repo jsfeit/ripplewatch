@@ -30,7 +30,7 @@ const STEPS: DriveStep[] = [
     popover: {
       title: "Every signal gets a verdict",
       description:
-        "Not just what changed, but whether it matters to you: scored against your own positioning and lost-deal reasons, not a generic severity scale.",
+        "Scored against your own positioning and lost-deal reasons, not a generic severity scale. That's the difference between knowing something changed and knowing it matters.",
       side: "top",
     },
   },
