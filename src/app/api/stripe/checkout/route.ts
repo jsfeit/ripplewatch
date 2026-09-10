@@ -59,9 +59,13 @@ export async function POST(request: Request) {
 
   const { data: account } = await supabase
     .from("accounts")
-    .select("stripe_customer_id, referred_by_account_id")
+    .select("stripe_customer_id, referred_by_account_id, demo_mode")
     .eq("id", profile.account_id)
     .single();
+
+  if (account?.demo_mode) {
+    return NextResponse.json({ error: "Billing is disabled for demo accounts." }, { status: 403 });
+  }
 
   const origin = new URL(request.url).origin;
 

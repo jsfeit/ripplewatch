@@ -18,6 +18,7 @@ export async function POST(request: Request) {
   const email = typeof body?.email === "string" ? body.email.trim() : "";
   const whyGoodFit = typeof body?.whyGoodFit === "string" ? body.whyGoodFit.trim() : "";
   const channels = typeof body?.channels === "string" ? body.channels.trim() : "";
+  const program = body?.program === "creator" ? "creator" : "affiliate";
 
   if (!name || !whyGoodFit || !channels) {
     return NextResponse.json({ error: "Name, why you'd be a good fit, and your channels are required." }, { status: 400 });
@@ -32,6 +33,7 @@ export async function POST(request: Request) {
     email,
     why_good_fit: whyGoodFit,
     channels,
+    program,
   });
 
   if (error) {
@@ -39,7 +41,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Something went wrong. Try again." }, { status: 500 });
   }
 
-  sendAffiliateApplicationEmail([NOTIFY_EMAIL], { name, email, whyGoodFit, channels }).catch((err) =>
+  sendAffiliateApplicationEmail([NOTIFY_EMAIL], { name, email, whyGoodFit, channels, program }).catch((err) =>
     console.error("affiliate application notification email failed:", err)
   );
 

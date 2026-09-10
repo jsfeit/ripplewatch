@@ -7,7 +7,18 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
-export function AffiliateApplicationForm() {
+export function AffiliateApplicationForm({
+  program = "affiliate",
+  whyGoodFitPlaceholder = "e.g. I write about competitive intelligence and sales enablement for a newsletter of 8,000 B2B marketers.",
+  channelsPlaceholder = "e.g. Newsletter, YouTube channel, a comparison/review site, an agency roster...",
+}: {
+  // Which landing page this form is embedded on — tags the application so
+  // Admin > Affiliates can tell the /affiliates and /creators pools apart;
+  // same table, same review process either way.
+  program?: "affiliate" | "creator";
+  whyGoodFitPlaceholder?: string;
+  channelsPlaceholder?: string;
+}) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [whyGoodFit, setWhyGoodFit] = useState("");
@@ -23,7 +34,7 @@ export function AffiliateApplicationForm() {
       const res = await fetch("/api/affiliates/apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, whyGoodFit, channels }),
+        body: JSON.stringify({ name, email, whyGoodFit, channels, program }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -73,7 +84,7 @@ export function AffiliateApplicationForm() {
           rows={3}
           value={whyGoodFit}
           onChange={(e) => setWhyGoodFit(e.target.value)}
-          placeholder="e.g. I write about competitive intelligence and sales enablement for a newsletter of 8,000 B2B marketers."
+          placeholder={whyGoodFitPlaceholder}
         />
       </div>
       <div className="space-y-2">
@@ -84,7 +95,7 @@ export function AffiliateApplicationForm() {
           rows={3}
           value={channels}
           onChange={(e) => setChannels(e.target.value)}
-          placeholder="e.g. Newsletter, YouTube channel, a comparison/review site, an agency roster..."
+          placeholder={channelsPlaceholder}
         />
       </div>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}

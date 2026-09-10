@@ -87,11 +87,13 @@ export function competitorLimitLabel(tier: AccountTier): string {
   return limit === Infinity ? "unlimited" : String(limit);
 }
 
-// White-label demo accounts (accounts.demo_mode) get the full Advanced
-// feature set — including integrations that are normally gated below
-// Advanced — plus an uncapped competitor count beyond what even Advanced
-// allows, so a demo can show a long, real list of tracked and suggested
-// competitors without hitting an upgrade prompt.
+// Demo accounts (accounts.demo_mode) get the full Advanced feature set —
+// including integrations that are normally gated below Advanced — plus an
+// uncapped competitor count beyond what even Advanced allows, so a demo
+// shows the whole product with nothing held back. The only thing demo
+// mode actually restricts is billing (see the Stripe API routes), and a
+// red banner in the app shell (DemoBanner) makes that plain rather than
+// leaving it a silent, undiscoverable rule.
 export function effectiveTier(tier: AccountTier, demoMode: boolean): AccountTier {
   return demoMode ? "advanced" : tier;
 }

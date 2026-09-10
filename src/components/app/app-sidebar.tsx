@@ -26,7 +26,7 @@ const TIER_LABELS: Record<string, string> = {
   advanced: "Advanced",
 };
 
-export function AppSidebar({ tier, demoMode = false }: { tier: string; demoMode?: boolean }) {
+export function AppSidebar({ tier }: { tier: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -51,12 +51,10 @@ export function AppSidebar({ tier, demoMode = false }: { tier: string; demoMode?
     <>
       <div className="flex h-14 shrink-0 items-center justify-between border-b border-sidebar-border bg-sidebar px-4 lg:hidden">
         <Link href="/app/dashboard" className="flex items-center gap-2 font-semibold tracking-tight">
-          {demoMode ? null : (
-            <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm shadow-primary/30">
-              <Waves className="size-3.5" />
-            </span>
-          )}
-          {demoMode ? "Competitive Intelligence" : "Ripplewatch"}
+          <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm shadow-primary/30">
+            <Waves className="size-3.5" />
+          </span>
+          Ripplewatch
         </Link>
         <Button
           variant="ghost"
@@ -85,12 +83,10 @@ export function AppSidebar({ tier, demoMode = false }: { tier: string; demoMode?
       >
         <div className="flex h-16 items-center justify-between gap-2.5 border-b border-sidebar-border px-5 font-semibold tracking-tight">
           <span className="flex items-center gap-2.5">
-            {demoMode ? null : (
-              <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm shadow-primary/30">
-                <Waves className="size-4" />
-              </span>
-            )}
-            {demoMode ? "Competitive Intelligence" : "Ripplewatch"}
+            <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm shadow-primary/30">
+              <Waves className="size-4" />
+            </span>
+            Ripplewatch
           </span>
           <Button
             variant="ghost"
@@ -131,15 +127,13 @@ export function AppSidebar({ tier, demoMode = false }: { tier: string; demoMode?
           })}
         </nav>
         <div className="border-t border-sidebar-border p-4">
-          {demoMode ? null : (
-            <div className="flex items-center justify-between rounded-lg border border-sidebar-border bg-sidebar-accent/40 px-3 py-2.5">
-              <span className="text-xs font-medium text-sidebar-foreground/60">Plan</span>
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-sidebar-foreground">
-                <span className={cn("size-1.5 rounded-full", TIER_DOT[tier] ?? TIER_DOT.starter)} />
-                {TIER_LABELS[tier] ?? tier}
-              </span>
-            </div>
-          )}
+          <div className="flex items-center justify-between rounded-lg border border-sidebar-border bg-sidebar-accent/40 px-3 py-2.5">
+            <span className="text-xs font-medium text-sidebar-foreground/60">Plan</span>
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-sidebar-foreground">
+              <span className={cn("size-1.5 rounded-full", TIER_DOT[tier] ?? TIER_DOT.starter)} />
+              {TIER_LABELS[tier] ?? tier}
+            </span>
+          </div>
           <Button
             variant="ghost"
             size="sm"

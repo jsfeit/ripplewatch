@@ -25,9 +25,13 @@ export async function POST(request: Request) {
 
   const { data: account } = await supabase
     .from("accounts")
-    .select("stripe_customer_id")
+    .select("stripe_customer_id, demo_mode")
     .eq("id", profile.account_id)
     .single();
+
+  if (account?.demo_mode) {
+    return NextResponse.json({ error: "Billing is disabled for demo accounts." }, { status: 403 });
+  }
 
   if (!account?.stripe_customer_id) {
     return NextResponse.json(

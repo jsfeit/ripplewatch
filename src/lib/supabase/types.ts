@@ -699,6 +699,10 @@ export interface Database {
           why_good_fit: string;
           channels: string;
           status: "pending" | "contacted" | "approved" | "rejected";
+          // Which landing page the application came from — /affiliates
+          // (general) or /creators (newsletter/YouTube/X creator pitch).
+          // Same table, same downstream process either way.
+          program: "affiliate" | "creator";
           created_at: string;
         };
         Insert: {
@@ -708,6 +712,7 @@ export interface Database {
           why_good_fit: string;
           channels: string;
           status?: "pending" | "contacted" | "approved" | "rejected";
+          program?: "affiliate" | "creator";
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["affiliate_applications"]["Insert"]>;

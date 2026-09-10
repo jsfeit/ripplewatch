@@ -25,10 +25,10 @@ export default function AffiliatesPage() {
       <div className="mt-10 grid gap-4 sm:grid-cols-3">
         <div className="rounded-xl border border-border bg-secondary/30 p-5">
           <DollarSign className="size-5 text-primary" />
-          <h2 className="mt-3 text-sm font-semibold">Generous recurring commissions</h2>
+          <h2 className="mt-3 text-sm font-semibold">45% recurring for 6 months</h2>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Earn on every subscription you send our way, for as long as they stay a customer, not a one-time
-            payout. Exact rates depend on your channel and reach; we&apos;ll work those out with you directly.
+            Earn 45% of every subscription you send our way, every month, for 6 months, not a one-time payout.
+            Tracked automatically; paid out on schedule.
           </p>
         </div>
         <div className="rounded-xl border border-border bg-secondary/30 p-5">
