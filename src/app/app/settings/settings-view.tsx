@@ -41,7 +41,6 @@ type ApiKey = Pick<
 type Referral = Pick<Database["public"]["Tables"]["referrals"]["Row"], "id" | "referred_at" | "qualified_at">;
 
 const KNOWN_TABS = ["competitors", "integrations", "team", "plan", "referrals", "digest", "developer", "appearance"] as const;
-const DEMO_HIDDEN_TABS = ["team", "plan", "referrals", "developer", "appearance"] as const;
 
 export function SettingsView({
   account,
@@ -74,13 +73,11 @@ export function SettingsView({
 
   const currentTier = TIERS.find((t) => t.id === account.tier) ?? TIERS[0];
   const isConnected = (provider: string) => integrations.some((i) => i.provider === provider && i.connected);
+  // demo_mode accounts get the exact same app as any real account (full
+  // Advanced-tier access, see effectiveTier below) — the only restriction
+  // is billing, blocked server-side in the Stripe routes and reflected in
+  // the Plan tab UI below. No tabs are hidden and no data is faked.
   const demoMode = account.demo_mode;
-  // In demo mode, every integration reads as available-to-connect and none
-  // read as already connected — a real connected provider (or the account's
-  // real contact email on the Email row) would otherwise leak into the
-  // white-labeled session.
-  const demoConnected = (provider: string) => !demoMode && isConnected(provider);
-  const tabHidden = (tab: string) => demoMode && (DEMO_HIDDEN_TABS as readonly string[]).includes(tab);
   const gatingTier = effectiveTier(account.tier, demoMode);
 
   // Lets a direct/bookmarked link to /app/settings#referrals (or the older
@@ -99,7 +96,7 @@ export function SettingsView({
     // both keep working rather than picking one and breaking the other.
     const hashTab = window.location.hash.slice(1);
     const queryTab = new URLSearchParams(window.location.search).get("tab");
-    const tab = [hashTab, queryTab].find((t) => t && (KNOWN_TABS as readonly string[]).includes(t) && !tabHidden(t));
+    const tab = [hashTab, queryTab].find((t) => t && (KNOWN_TABS as readonly string[]).includes(t));
     if (tab) {
       // Syncing one-time from an external system (the URL) on mount —
       // the case the rule's own guidance calls out as fine.
@@ -178,12 +175,12 @@ export function SettingsView({
       <TabsList>
         <TabsTrigger value="competitors">Competitors</TabsTrigger>
         <TabsTrigger value="integrations">Integrations</TabsTrigger>
-        {tabHidden("team") ? null : <TabsTrigger value="team">Team</TabsTrigger>}
-        {tabHidden("plan") ? null : <TabsTrigger value="plan">Plan</TabsTrigger>}
-        {tabHidden("referrals") ? null : <TabsTrigger value="referrals">Referrals</TabsTrigger>}
+        <TabsTrigger value="team">Team</TabsTrigger>
+        <TabsTrigger value="plan">Plan</TabsTrigger>
+        <TabsTrigger value="referrals">Referrals</TabsTrigger>
         <TabsTrigger value="digest">Digest preview</TabsTrigger>
-        {tabHidden("developer") ? null : <TabsTrigger value="developer">Developer</TabsTrigger>}
-        {tabHidden("appearance") ? null : <TabsTrigger value="appearance">Appearance</TabsTrigger>}
+        <TabsTrigger value="developer">Developer</TabsTrigger>
+        <TabsTrigger value="appearance">Appearance</TabsTrigger>
       </TabsList>
 
       <TabsContent value="competitors" className="mt-6 space-y-6">
@@ -196,21 +193,19 @@ export function SettingsView({
         />
       </TabsContent>
 
-      {tabHidden("team") ? null : (
-        <TabsContent value="team" className="mt-6">
-          <Card>
-            <CardHeader>
-              <h2 className="font-medium">Team</h2>
-              <p className="text-sm text-muted-foreground">
-                Invite co-workers to your workspace; everyone shares the same competitors and updates.
-              </p>
-            </CardHeader>
-            <CardContent>
-              <TeamManager tier={account.tier} currentUserId={currentUserId} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      )}
+      <TabsContent value="team" className="mt-6">
+        <Card>
+          <CardHeader>
+            <h2 className="font-medium">Team</h2>
+            <p className="text-sm text-muted-foreground">
+              Invite co-workers to your workspace; everyone shares the same competitors and updates.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <TeamManager tier={account.tier} currentUserId={currentUserId} />
+          </CardContent>
+        </Card>
+      </TabsContent>
 
       <TabsContent value="integrations" className="mt-6 space-y-6">
         <Card>
@@ -222,12 +217,12 @@ export function SettingsView({
             <IntegrationConnector
               name="Slack"
               description="Deliver scored updates to a channel"
-              connected={demoConnected("slack")}
+              connected={isConnected("slack")}
               connectHref="/api/integrations/slack/connect"
               provider="slack"
               disconnectAction={disconnectIntegrationAction}
             />
-            {demoConnected("slack") ? (
+            {isConnected("slack") ? (
               <SlackDigestSchedule
                 initialTimezone={account.timezone}
                 initialDay={account.slack_digest_day}
@@ -236,8 +231,8 @@ export function SettingsView({
             ) : null}
             <IntegrationConnector
               name="Email"
-              description={demoMode ? "Digests delivered to your email" : `Digests delivered to ${account.contact_email ?? "your signup email"}`}
-              connected={demoMode ? false : Boolean(account.contact_email)}
+              description={`Digests delivered to ${account.contact_email ?? "your signup email"}`}
+              connected={Boolean(account.contact_email)}
               connectHref="#"
               provider="email"
             />
@@ -259,7 +254,7 @@ export function SettingsView({
                   ? "Read-only pull of closed-lost deal reasons"
                   : "Read-only pull of closed-lost deal reasons, Plus and above"
               }
-              connected={demoConnected("hubspot")}
+              connected={isConnected("hubspot")}
               connectHref="/api/integrations/hubspot/connect"
               provider="hubspot"
               disconnectAction={disconnectIntegrationAction}
@@ -273,7 +268,7 @@ export function SettingsView({
                   ? "Read-only pull of churn and cancellation reasons"
                   : "Read-only pull of churn and cancellation reasons, Advanced only"
               }
-              connected={demoConnected("intercom")}
+              connected={isConnected("intercom")}
               connectHref="/api/integrations/intercom/connect"
               provider="intercom"
               disconnectAction={disconnectIntegrationAction}
@@ -306,7 +301,7 @@ export function SettingsView({
                   ? "Pull competitor mentions from recorded meeting transcripts"
                   : "Pull competitor mentions from recorded meeting transcripts, Advanced only"
               }
-              connected={demoConnected("zoom")}
+              connected={isConnected("zoom")}
               connectHref="/api/integrations/zoom/connect"
               provider="zoom"
               disconnectAction={disconnectIntegrationAction}
@@ -317,7 +312,6 @@ export function SettingsView({
         </Card>
       </TabsContent>
 
-      {tabHidden("plan") ? null : (
       <TabsContent value="plan" className="mt-6">
         <Card>
           <CardHeader>
@@ -331,6 +325,12 @@ export function SettingsView({
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
+            {demoMode ? (
+              <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                <p>Billing is disabled on this demo account. Everything else works exactly like a real one.</p>
+              </div>
+            ) : null}
             {account.subscription_status && !["active", "trialing"].includes(account.subscription_status) ? (
               <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0" />
@@ -359,7 +359,7 @@ export function SettingsView({
               </ul>
             </div>
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
-            {!account.stripe_customer_id ? (
+            {!demoMode && !account.stripe_customer_id ? (
               <BillingPeriodToggle
                 period={billingPeriod}
                 onChange={setBillingPeriod}
@@ -367,22 +367,24 @@ export function SettingsView({
               />
             ) : null}
             <div className="flex flex-wrap gap-2">
-              {TIERS.filter((t) => t.id !== account.tier).map((t) => {
-                const isUpgrade = TIERS.findIndex((x) => x.id === t.id) > TIERS.findIndex((x) => x.id === account.tier);
-                return (
-                  <Button
-                    key={t.id}
-                    type="button"
-                    variant={isUpgrade ? "default" : "outline"}
-                    onClick={() => handleUpgrade(t.id)}
-                    disabled={billingLoading !== null}
-                  >
-                    {billingLoading === t.id ? <Loader2 className="size-4 animate-spin" /> : null}
-                    {isUpgrade ? "Upgrade to" : "Downgrade to"} {t.name}
-                  </Button>
-                );
-              })}
-              {account.stripe_customer_id ? (
+              {demoMode
+                ? null
+                : TIERS.filter((t) => t.id !== account.tier).map((t) => {
+                    const isUpgrade = TIERS.findIndex((x) => x.id === t.id) > TIERS.findIndex((x) => x.id === account.tier);
+                    return (
+                      <Button
+                        key={t.id}
+                        type="button"
+                        variant={isUpgrade ? "default" : "outline"}
+                        onClick={() => handleUpgrade(t.id)}
+                        disabled={billingLoading !== null}
+                      >
+                        {billingLoading === t.id ? <Loader2 className="size-4 animate-spin" /> : null}
+                        {isUpgrade ? "Upgrade to" : "Downgrade to"} {t.name}
+                      </Button>
+                    );
+                  })}
+              {!demoMode && account.stripe_customer_id ? (
                 <Button
                   type="button"
                   variant="ghost"
@@ -421,9 +423,7 @@ export function SettingsView({
           </Card>
         ) : null}
       </TabsContent>
-      )}
 
-      {tabHidden("referrals") ? null : (
       <TabsContent value="referrals" className="mt-6">
         {account.status === "active" ? (
           <Card>
@@ -442,7 +442,6 @@ export function SettingsView({
           </Card>
         )}
       </TabsContent>
-      )}
 
       <TabsContent value="digest" className="mt-6 space-y-6">
         {recentSignals.length === 0 ? (
@@ -466,12 +465,10 @@ export function SettingsView({
                   <CardContent>
                     <div className="rounded-lg border border-border bg-[#1a1d21] p-4 font-sans text-sm text-white">
                       <div className="flex items-center gap-2 font-semibold">
-                        {demoMode ? null : (
-                          <span className="flex size-6 items-center justify-center rounded bg-primary text-[10px] text-primary-foreground">
-                            R
-                          </span>
-                        )}
-                        {demoMode ? "Competitive Intelligence" : "Ripplewatch"}
+                        <span className="flex size-6 items-center justify-center rounded bg-primary text-[10px] text-primary-foreground">
+                          R
+                        </span>
+                        Ripplewatch
                         <span className="text-xs font-normal text-white/50">APP</span>
                       </div>
                       <p className="mt-2 flex items-center gap-1 font-medium">
@@ -487,7 +484,7 @@ export function SettingsView({
                       <p className="mt-1 text-white/80">
                         {topScored.scored ? topScored.relevance_reasoning : topScored.title}
                       </p>
-                      <p className="mt-2 text-xs text-white/50">{demoMode ? "View details →" : "View in Ripplewatch →"}</p>
+                      <p className="mt-2 text-xs text-white/50">View in Ripplewatch →</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -532,7 +529,6 @@ export function SettingsView({
         )}
       </TabsContent>
 
-      {tabHidden("developer") ? null : (
       <TabsContent value="developer" className="mt-6">
         <Card>
           <CardHeader>
@@ -575,10 +571,8 @@ export function SettingsView({
           </Card>
         )}
       </TabsContent>
-      )}
 
-      {tabHidden("appearance") ? null : (
-        <TabsContent value="appearance" className="mt-6">
+      <TabsContent value="appearance" className="mt-6">
           <Card>
             <CardHeader>
               <h2 className="font-medium">Appearance</h2>
@@ -604,7 +598,6 @@ export function SettingsView({
             </CardContent>
           </Card>
         </TabsContent>
-      )}
       </Tabs>
     </>
   );
