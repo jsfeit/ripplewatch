@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
-import { Sparkles, TrendingUp, Scale } from "lucide-react";
+import { Sparkles, TrendingUp, Scale, Globe2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { resolveAccountContext } from "@/lib/impersonation";
 import { bucketMonthlyActivity } from "@/lib/monthly-activity";
 import { DashboardFeed } from "./dashboard-feed";
 import { CompetitorOverview } from "./competitor-overview";
-import { IndustryPulse } from "../trends/industry-pulse";
+import { IndustryPulseCard, CategoryActivityCard } from "../trends/industry-pulse";
 import { TrendsBoard } from "../trends/trends-board";
 import { PricingBoard } from "../pricing/pricing-board";
 import { HiringBoard } from "../hiring/hiring-board";
@@ -23,13 +23,15 @@ type Signal = Database["public"]["Tables"]["signals"]["Row"];
 // trust — regenerating next successful cron run brings it back.
 const VERDICT_STALE_MS = 8 * 24 * 60 * 60 * 1000;
 
-// Ordered synthesis-first, raw-data-last: Momentum is the most differentiated
-// feature (per-competitor synthesis), so it leads; Trends is aggregate
-// synthesis one level up, right behind it; Win/loss (per-outcome synthesis)
-// follows; Pricing/Hiring are reference data; News is the rawest, most
-// granular feed, so it trails instead of competing with the synthesized
-// sections for attention.
+// Ordered synthesis-first, raw-data-last: Industry pulse is the widest lens
+// (the market, not just tracked competitors) so it leads and frames
+// everything below it; Momentum is the most differentiated per-competitor
+// synthesis; Trends is aggregate synthesis over the account's own
+// competitors; Win/loss (per-outcome synthesis) follows; Pricing/Hiring are
+// reference data; News is the rawest, most granular feed, so it trails
+// instead of competing with the synthesized sections for attention.
 const SECTIONS = [
+  { id: "industry-pulse", label: "Industry pulse" },
   { id: "overview", label: "Momentum" },
   { id: "win-loss", label: "Win/loss" },
   { id: "trends", label: "Trends" },
@@ -327,7 +329,25 @@ export default async function DashboardPage() {
         </div>
       ) : null}
 
-      <section id="overview" className="scroll-mt-20">
+      <section id="industry-pulse" className="scroll-mt-20">
+        <div className="flex items-center gap-2">
+          <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+            <Globe2 className="size-3.5" />
+          </span>
+          <h2 className="text-sm font-semibold">Industry pulse</h2>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          The wider market, from earnings calls, research, and category news, not just your tracked competitors.
+        </p>
+        <div className="mt-4">
+          <IndustryPulseCard
+            trends={industryTrends?.trends ?? []}
+            trendsGeneratedAt={industryTrends?.generated_at ?? null}
+          />
+        </div>
+      </section>
+
+      <section id="overview" className="mt-10 scroll-mt-20">
         <div className="flex items-center gap-2">
           <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
             <TrendingUp className="size-3.5" />
@@ -382,15 +402,11 @@ export default async function DashboardPage() {
       <section id="trends" className="mt-10 scroll-mt-20">
         <h2 className="text-sm font-semibold">Trends</h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          The wider industry pulse, category-level activity, and recurring themes across every logged win/loss
-          reason. Per-competitor momentum is above, in Momentum.
+          Category-level activity and recurring themes across every logged win/loss reason, scoped to your own
+          tracked competitors. The wider market is above, in Industry pulse.
         </p>
         <div className="mt-4">
-          <IndustryPulse
-            monthlyActivity={monthlyActivity}
-            trends={industryTrends?.trends ?? []}
-            trendsGeneratedAt={industryTrends?.generated_at ?? null}
-          />
+          <CategoryActivityCard monthlyActivity={monthlyActivity} />
         </div>
         <div className="mt-6">
           <TrendsBoard
