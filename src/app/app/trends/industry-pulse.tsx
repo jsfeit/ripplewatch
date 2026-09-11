@@ -10,6 +10,73 @@ import { timeAgo } from "@/lib/date";
 import type { MonthlyActivityBucket } from "@/lib/monthly-activity";
 import type { IndustryTrendItem } from "@/lib/supabase/types";
 
+// Its own top-level dashboard section now (see dashboard/page.tsx), leading
+// the page: this is the one section that isn't scoped to the account's own
+// tracked competitors, so it sets context for everything below it rather
+// than getting buried as a sub-card under Trends. The page-level heading
+// there already names the section, so this card renders just the list,
+// no repeated title.
+export function IndustryPulseCard({
+  trends,
+  trendsGeneratedAt,
+}: {
+  trends: IndustryTrendItem[];
+  trendsGeneratedAt: string | null;
+}) {
+  if (trends.length === 0) {
+    return (
+      <EmptyState
+        icon={Globe2}
+        title="No industry pulse yet"
+        description="Generates on your first crawl and monthly after that, scoped to your positioning and ICP; check back soon."
+      />
+    );
+  }
+
+  return (
+    <Card>
+      {trendsGeneratedAt ? (
+        <div className="flex justify-end">
+          <span className="text-[10.5px] text-muted-foreground">Updated {timeAgo(trendsGeneratedAt)}</span>
+        </div>
+      ) : null}
+      <ul className="space-y-3">
+        {trends.map((t) => (
+          <li key={t.title} className="border-b border-dashed border-border pb-3 last:border-b-0 last:pb-0">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                {t.category}
+              </Badge>
+              {t.relatedCompetitors.map((name) => (
+                <span
+                  key={name}
+                  className="flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+                >
+                  <span className={cn("size-1.5 rounded-full", avatarDotColor(name))} />
+                  {name}
+                </span>
+              ))}
+            </div>
+            <p className="mt-1.5 text-sm font-medium">{t.title}</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t.description}</p>
+            {t.source ? (
+              <a
+                href={t.source.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1.5 inline-flex items-center gap-1 text-[10.5px] font-medium text-primary hover:underline"
+              >
+                {t.source.name}
+                <ExternalLink className="size-2.5" />
+              </a>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
 // Below this, 6 months of combined hiring+pricing activity across every
 // tracked competitor is thin enough that the chart reads as "broken," not
 // "quiet" — collapsed by default in that case so it doesn't compete with
@@ -17,104 +84,38 @@ import type { IndustryTrendItem } from "@/lib/supabase/types";
 // always one click away either way; this only sets the default.
 const MEANINGFUL_ACTIVITY_THRESHOLD = 6;
 
-export function IndustryPulse({
-  monthlyActivity,
-  trends,
-  trendsGeneratedAt,
-}: {
-  monthlyActivity: MonthlyActivityBucket[];
-  trends: IndustryTrendItem[];
-  trendsGeneratedAt: string | null;
-}) {
+// Stays under Trends (unlike IndustryPulseCard above): this is aggregate
+// activity across the account's own tracked competitors, not the wider
+// market, so it belongs with the rest of the competitor-scoped synthesis.
+export function CategoryActivityCard({ monthlyActivity }: { monthlyActivity: MonthlyActivityBucket[] }) {
   const totalActivity = monthlyActivity.reduce((sum, m) => sum + m.hiring + m.pricing, 0);
   const hasActivity = totalActivity > 0;
   const [chartExpanded, setChartExpanded] = useState(totalActivity >= MEANINGFUL_ACTIVITY_THRESHOLD);
 
-  if (!hasActivity && trends.length === 0) {
-    return (
-      <EmptyState
-        icon={Globe2}
-        title="No industry activity yet"
-        description="Hiring/pricing activity across your competitors, plus a monthly industry pulse pulled from earnings calls, research, and category news, will show up here once there's data to work with."
-      />
-    );
-  }
+  if (!hasActivity) return null;
 
   return (
-    <div className="space-y-4">
-      <Card className="border-primary/25 bg-primary/[0.03]">
+    <Card>
+      <button
+        type="button"
+        onClick={() => setChartExpanded((e) => !e)}
+        className="flex w-full items-center justify-between text-left"
+      >
         <CardHead
-          avatar={<CardAvatar icon={<Globe2 className="size-4" />} />}
-          title="Industry pulse"
-          eyebrow="From earnings calls, research, and category news, not just your tracked competitors."
-          meta={trendsGeneratedAt ? <span className="text-[10.5px] text-muted-foreground">Updated {timeAgo(trendsGeneratedAt)}</span> : null}
+          avatar={<CardAvatar icon={<BarChart3 className="size-4" />} />}
+          title="Category activity, last 6 months"
+          eyebrow="Hiring and pricing changes across every tracked competitor combined."
+          className="flex-1"
         />
-        {trends.length === 0 ? (
-          <p className="text-xs text-muted-foreground">
-            Generates on your first crawl and monthly after that, scoped to your positioning and ICP; check back
-            soon.
-          </p>
-        ) : (
-          <ul className="space-y-3">
-            {trends.map((t) => (
-              <li key={t.title} className="border-b border-dashed border-border pb-3 last:border-b-0 last:pb-0">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                    {t.category}
-                  </Badge>
-                  {t.relatedCompetitors.map((name) => (
-                    <span
-                      key={name}
-                      className="flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
-                    >
-                      <span className={cn("size-1.5 rounded-full", avatarDotColor(name))} />
-                      {name}
-                    </span>
-                  ))}
-                </div>
-                <p className="mt-1.5 text-sm font-medium">{t.title}</p>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t.description}</p>
-                {t.source ? (
-                  <a
-                    href={t.source.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-1.5 inline-flex items-center gap-1 text-[10.5px] font-medium text-primary hover:underline"
-                  >
-                    {t.source.name}
-                    <ExternalLink className="size-2.5" />
-                  </a>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-
-      {hasActivity ? (
-        <Card>
-          <button
-            type="button"
-            onClick={() => setChartExpanded((e) => !e)}
-            className="flex w-full items-center justify-between text-left"
-          >
-            <CardHead
-              avatar={<CardAvatar icon={<BarChart3 className="size-4" />} />}
-              title="Category activity, last 6 months"
-              eyebrow="Hiring and pricing changes across every tracked competitor combined."
-              className="flex-1"
-            />
-            <ChevronDown
-              className={cn(
-                "size-4 shrink-0 text-muted-foreground transition-transform",
-                chartExpanded && "rotate-180"
-              )}
-            />
-          </button>
-          {chartExpanded ? <ActivityChart data={monthlyActivity} /> : null}
-        </Card>
-      ) : null}
-    </div>
+        <ChevronDown
+          className={cn(
+            "size-4 shrink-0 text-muted-foreground transition-transform",
+            chartExpanded && "rotate-180"
+          )}
+        />
+      </button>
+      {chartExpanded ? <ActivityChart data={monthlyActivity} /> : null}
+    </Card>
   );
 }
 
