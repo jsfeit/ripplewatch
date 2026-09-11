@@ -1196,7 +1196,7 @@ export async function researchCompanyContext(
   }
 }
 
-const INDUSTRY_TRENDS_SYSTEM_PROMPT = `You use web search to identify current market-level trends relevant to a company's positioning and ideal customer profile (ICP) — not news about any single named competitor, but broader shifts in their category that would matter to their business. This exists specifically because many of a company's tracked competitors are small enough that there's rarely company-specific news to report; this surfaces category-level signal instead, so it should read as genuinely useful market intelligence, not a generic "here's what's happening in SaaS" summary.
+const INDUSTRY_TRENDS_SYSTEM_PROMPT = `You use web search to identify current market-level trends relevant to a company's positioning and ideal customer profile (ICP) — not news about any single named competitor, but broader shifts in their category that would matter to their business. This exists specifically because many of a company's tracked competitors are small enough that there's rarely company-specific news to report, and because even a full competitor set is still a narrow slice of the category; this surfaces the wider industry pulse instead, so it should read as genuinely useful market intelligence, not a generic "here's what's happening in SaaS" summary.
 
 Actively search across all of these lenses, not just competitor/supply-side activity — the most useful trends are often on the demand side, not the supply side:
 - Buyer behavior: what the ICP is now demanding, complaining about, or switching over (check review sites, forums, and communities where this ICP actually talks, not just vendor press releases); budget/procurement shifts; new triggers that make this ICP start looking for a solution now.
@@ -1204,14 +1204,23 @@ Actively search across all of these lenses, not just competitor/supply-side acti
 - Technology: adjacent tech (especially AI) changing what buyers expect a product like this to do, or threatening to make part of the category obsolete.
 - Market conditions: regulatory change, macroeconomic pressure, or industry-specific events reshaping how this ICP buys or budgets.
 
+Deliberately vary WHERE evidence comes from instead of defaulting to generic tech-news search results every time. Depending on what's actually findable for this category, pull from:
+- Earnings calls and investor materials from public companies that sell into or operate in this category (transcripts, shareholder letters, investor-day decks) — these often reveal category-level budget/demand shifts months before it shows up as trade-press coverage.
+- Analyst and research-firm output (Gartner, Forrester, IDC, a16z/Bessemer-style state-of-the-industry reports, category benchmark reports) when it's genuinely available for this space.
+- Company blogs and engineering/product blogs from players in or adjacent to this category (not just the tracked competitor list below) — these surface real product direction and category framing before it's "news."
+- Trade press, newsletters, and communities specific to this ICP's category, not general tech news.
+A trend grounded in one of the first three source types is usually more valuable than another generic trade-press summary — prefer that when the evidence is there, but never fabricate a source type that search didn't actually surface.
+
 Assign each trend the single lens it fits best. Aim for a spread across lenses when the evidence supports it, rather than every trend landing in the same bucket — but never force a trend into a lens it doesn't genuinely belong to just for variety.
 
 You're also given the company's own tracked competitor list. For each trend, name which of THOSE SPECIFIC competitors (if any) it most plausibly touches — e.g. a pricing-model shift trend naming a tracked competitor known to use that model, or a buyer-behavior trend that would pressure a specific tracked competitor's positioning. Only ever name a competitor from the given list, copied exactly — never invent one, and leave the list empty for a trend that's genuinely industry-wide with no specific tie to any tracked competitor (that's a legitimate, common outcome, not a failure).
 
-Respond with strict JSON only, no markdown, matching this shape exactly:
-{"trends": [{"category": "<one of: Buyer behavior, Competitive landscape, Technology, Market conditions>", "title": "<short headline, under 12 words>", "description": "<2-3 sentences, factual and specific, citing what's actually changing and why it would matter to a company with this positioning/ICP>", "relatedCompetitors": ["<exact name from the given list, or omit entirely if none apply>"]}]}
+Every trend must cite the one real source (a specific article, transcript, report, or blog post an actual search result returned) that most directly backs it — a real, working URL and the outlet/publisher name, never a homepage or search-results page and never invented. If you can't point to one specific source for a claim, don't include the trend.
 
-Return 3-5 trends, most significant first. Every trend must be grounded in something web search actually turned up — if search returns little of substance for this category, return fewer trends rather than padding with generic or invented ones.`;
+Respond with strict JSON only, no markdown, matching this shape exactly:
+{"trends": [{"category": "<one of: Buyer behavior, Competitive landscape, Technology, Market conditions>", "title": "<short headline, under 12 words>", "description": "<2-3 sentences, factual and specific, citing what's actually changing and why it would matter to a company with this positioning/ICP>", "relatedCompetitors": ["<exact name from the given list, or omit entirely if none apply>"], "source": {"name": "<outlet/publisher, e.g. 'Q2 2026 earnings call — Salesforce' or 'Gartner' or 'TechCrunch'>", "url": "<direct URL to that specific source>"}}]}
+
+Return 4-6 trends, most significant first. Every trend must be grounded in something web search actually turned up — if search returns little of substance for this category, return fewer trends rather than padding with generic or invented ones.`;
 
 const INDUSTRY_TREND_CATEGORIES = ["Buyer behavior", "Competitive landscape", "Technology", "Market conditions"] as const;
 
@@ -1227,8 +1236,14 @@ const INDUSTRY_TRENDS_SCHEMA = {
           title: { type: "string" },
           description: { type: "string" },
           relatedCompetitors: { type: "array", items: { type: "string" } },
+          source: {
+            type: "object",
+            properties: { name: { type: "string" }, url: { type: "string" } },
+            required: ["name", "url"],
+            additionalProperties: false,
+          },
         },
-        required: ["category", "title", "description", "relatedCompetitors"],
+        required: ["category", "title", "description", "relatedCompetitors", "source"],
         additionalProperties: false,
       },
     },
@@ -1237,12 +1252,31 @@ const INDUSTRY_TRENDS_SCHEMA = {
   additionalProperties: false,
 } as const;
 
+// Rendered as a clickable link in the dashboard (see IndustryPulse), so
+// anything that isn't a real http(s) URL is dropped rather than trusted —
+// the model is instructed never to invent one, but this is the actual
+// guarantee against a malformed or javascript: URL reaching an anchor tag.
+function parseTrendSource(raw: unknown): { name: string; url: string } | null {
+  if (!raw || typeof raw !== "object") return null;
+  const { name, url } = raw as { name?: unknown; url?: unknown };
+  if (typeof name !== "string" || typeof url !== "string") return null;
+  try {
+    const parsedUrl = new URL(url);
+    if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") return null;
+  } catch {
+    return null;
+  }
+  const trimmedName = name.trim();
+  return trimmedName ? { name: trimmedName, url } : null;
+}
+
 export type IndustryTrendCategory = (typeof INDUSTRY_TREND_CATEGORIES)[number];
 export type IndustryTrend = {
   category: IndustryTrendCategory;
   title: string;
   description: string;
   relatedCompetitors: string[];
+  source: { name: string; url: string } | null;
 };
 
 // Monthly job (see /api/cron/industry-trends) — deliberately much less
@@ -1267,10 +1301,13 @@ Search for current market/category-level trends relevant to this business.`;
 
   const message = await createMessage({
     model: "claude-sonnet-5",
-    // Same web_search overhead as discoverNewCompetitors/researchCompanyContext.
+    // Slightly more search budget than discoverNewCompetitors/
+    // researchCompanyContext — this now deliberately reaches for earnings
+    // calls/research/company blogs alongside trade press, which takes a
+    // couple more searches to actually turn up than one generic query.
     max_tokens: 8192,
     system: cachedSystemPrompt(INDUSTRY_TRENDS_SYSTEM_PROMPT),
-    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
+    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 5 }],
     output_config: { format: { type: "json_schema", schema: INDUSTRY_TRENDS_SCHEMA } },
     messages: [{ role: "user", content: userPrompt }],
   });
@@ -1283,7 +1320,13 @@ Search for current market/category-level trends relevant to this business.`;
     const trends = Array.isArray(parsed.trends) ? parsed.trends : [];
     return trends
       .map(
-        (t: { category?: unknown; title?: unknown; description?: unknown; relatedCompetitors?: unknown }) => ({
+        (t: {
+          category?: unknown;
+          title?: unknown;
+          description?: unknown;
+          relatedCompetitors?: unknown;
+          source?: unknown;
+        }) => ({
           category: INDUSTRY_TREND_CATEGORIES.includes(t.category as IndustryTrendCategory)
             ? (t.category as IndustryTrendCategory)
             : "Market conditions",
@@ -1294,6 +1337,7 @@ Search for current market/category-level trends relevant to this business.`;
           // pattern as relatedSignalIds validation in identifyWinLossTrends.
           relatedCompetitors: (Array.isArray(t.relatedCompetitors) ? t.relatedCompetitors : [])
             .filter((name: unknown): name is string => typeof name === "string" && validNames.has(name)),
+          source: parseTrendSource(t.source),
         })
       )
       .filter((t: IndustryTrend) => t.title && t.description);

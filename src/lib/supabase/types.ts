@@ -34,6 +34,7 @@ export type IndustryTrendItem = {
   title: string;
   description: string;
   relatedCompetitors: string[];
+  source: { name: string; url: string } | null;
 };
 
 export interface Database {

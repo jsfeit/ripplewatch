@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Globe2, ChevronDown, TrendingUp, BarChart3 } from "lucide-react";
+import { Globe2, ChevronDown, BarChart3, ExternalLink } from "lucide-react";
 import { EmptyState } from "@/components/app/empty-state";
 import { Card, CardAvatar, CardHead } from "@/components/app/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,17 +35,18 @@ export function IndustryPulse({
       <EmptyState
         icon={Globe2}
         title="No industry activity yet"
-        description="Hiring/pricing activity across your competitors, plus a monthly market-trends summary, will show up here once there's data to work with."
+        description="Hiring/pricing activity across your competitors, plus a monthly industry pulse pulled from earnings calls, research, and category news, will show up here once there's data to work with."
       />
     );
   }
 
   return (
     <div className="space-y-4">
-      <Card>
+      <Card className="border-primary/25 bg-primary/[0.03]">
         <CardHead
-          avatar={<CardAvatar icon={<TrendingUp className="size-4" />} />}
-          title="Market trends"
+          avatar={<CardAvatar icon={<Globe2 className="size-4" />} />}
+          title="Industry pulse"
+          eyebrow="From earnings calls, research, and category news, not just your tracked competitors."
           meta={trendsGeneratedAt ? <span className="text-[10.5px] text-muted-foreground">Updated {timeAgo(trendsGeneratedAt)}</span> : null}
         />
         {trends.length === 0 ? (
@@ -73,6 +74,17 @@ export function IndustryPulse({
                 </div>
                 <p className="mt-1.5 text-sm font-medium">{t.title}</p>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t.description}</p>
+                {t.source ? (
+                  <a
+                    href={t.source.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1.5 inline-flex items-center gap-1 text-[10.5px] font-medium text-primary hover:underline"
+                  >
+                    {t.source.name}
+                    <ExternalLink className="size-2.5" />
+                  </a>
+                ) : null}
               </li>
             ))}
           </ul>
