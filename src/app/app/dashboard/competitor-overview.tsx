@@ -2,11 +2,17 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ArrowUpRight, TrendingUp } from "lucide-react";
+import { ChevronDown, ArrowUpRight, TrendingUp, Flame } from "lucide-react";
 import { EmptyState } from "@/components/app/empty-state";
 import { Card, CardAvatar } from "@/components/app/card";
 import { cn } from "@/lib/utils";
-import { computeMomentum, MOMENTUM_STYLES, type MomentumResult, type StateHistoryEntry } from "@/lib/momentum";
+import {
+  computeMomentum,
+  MOMENTUM_STYLES,
+  type MomentumComponent,
+  type MomentumResult,
+  type StateHistoryEntry,
+} from "@/lib/momentum";
 import type { Database } from "@/lib/supabase/types";
 
 type Competitor = Pick<Database["public"]["Tables"]["competitors"]["Row"], "id" | "name">;
@@ -29,6 +35,24 @@ function pricingSummary(record: CompetitorPricing | undefined): string {
   if (numericTiers.length === 0) return "No public pricing";
   const cheapest = numericTiers.reduce((min, t) => (t.price < min.price ? t : min));
   return `From $${cheapest.price}${cheapest.price_period ? `/${cheapest.price_period}` : ""}`;
+}
+
+// Weight * |score|, not just |score| — a component with a big raw swing but
+// low reliability weight (e.g. one stale signal) shouldn't outrank a
+// smaller but well-supported one. This is what lets a row say "why" at a
+// glance instead of making someone expand it to find out.
+function topDriver(momentum: MomentumResult): MomentumComponent | null {
+  let best: MomentumComponent | null = null;
+  let bestMagnitude = 0;
+  for (const component of Object.values(momentum.components)) {
+    if (component.score === null) continue;
+    const magnitude = Math.abs(component.score) * component.weight;
+    if (magnitude > bestMagnitude) {
+      bestMagnitude = magnitude;
+      best = component;
+    }
+  }
+  return best;
 }
 
 // Everything that used to be scattered across the Trends momentum cards
@@ -105,6 +129,21 @@ export function CompetitorOverview({
   const heatingUpCount = sorted.filter((c) => momentumByCompetitor.get(c.id)?.label === "Heating up").length;
   const coolingCount = sorted.filter((c) => momentumByCompetitor.get(c.id)?.label === "Cooling").length;
 
+  // The single answer to "what should I look at first," named directly
+  // instead of asking someone to scan a sorted list of pills — "Heating up"
+  // (a real direction change) over just the highest absolute score, since a
+  // competitor going from quiet to active is usually more worth attention
+  // right now than one sitting at a high but stable score. Capped at 2 so
+  // this stays a pointer, not a second copy of the list below it.
+  const focusCompetitors = useMemo(
+    () =>
+      sorted
+        .filter((c) => momentumByCompetitor.get(c.id)?.label === "Heating up")
+        .slice(0, 2)
+        .map((c) => ({ competitor: c, momentum: momentumByCompetitor.get(c.id)! })),
+    [sorted, momentumByCompetitor]
+  );
+
   if (competitors.length === 0) {
     return (
       <EmptyState
@@ -117,6 +156,26 @@ export function CompetitorOverview({
 
   return (
     <div>
+      {focusCompetitors.length > 0 ? (
+        <div className="mb-3 flex items-start gap-2.5 rounded-lg border border-primary/25 bg-primary/[0.04] p-3">
+          <Flame className="mt-0.5 size-4 shrink-0 text-primary" />
+          <p className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">Focus here first: </span>
+            {focusCompetitors.map(({ competitor, momentum }, i) => {
+              const driver = topDriver(momentum);
+              return (
+                <span key={competitor.id}>
+                  {i > 0 ? "; " : ""}
+                  <span className="font-medium text-foreground">{competitor.name}</span> is heating up
+                  {driver ? `, driven by ${driver.label.toLowerCase()} (${driver.detail})` : ""}
+                </span>
+              );
+            })}
+            .
+          </p>
+        </div>
+      ) : null}
+
       {/* Expanded by default — Momentum leads the dashboard now, so the
           full per-competitor list is the point of the section rather than
           something to reveal after a click. Still collapsible for anyone
@@ -206,6 +265,10 @@ function CompetitorRow({
 }) {
   const [expanded, setExpanded] = useState(false);
   const hasMomentumData = momentum.score !== null;
+  // Named here so the collapsed row already answers "why," instead of
+  // making someone expand every row just to find the one component that
+  // actually moved the score.
+  const driver = hasMomentumData ? topDriver(momentum) : null;
 
   return (
     <Card>
@@ -232,35 +295,40 @@ function CompetitorRow({
         <div className="flex shrink-0 items-center gap-3 sm:gap-4">
           <span className="text-xs text-muted-foreground">{pricingSummary(pricingRecord)}</span>
           <MomentumMeter score={momentum.score} />
-          <button
-            type="button"
-            onClick={() => hasMomentumData && setExpanded((e) => !e)}
-            disabled={!hasMomentumData}
-            className={cn(
-              "flex items-center gap-1.5 rounded-full px-2.5 py-1",
-              MOMENTUM_STYLES[momentum.label],
-              hasMomentumData && "cursor-pointer"
-            )}
-          >
-            {hasMomentumData ? (
-              <span className="text-xs font-bold tabular-nums">
-                {momentum.score! > 0 ? "+" : ""}
-                {momentum.score}
-              </span>
+          <div className="flex flex-col items-end gap-0.5">
+            <button
+              type="button"
+              onClick={() => hasMomentumData && setExpanded((e) => !e)}
+              disabled={!hasMomentumData}
+              className={cn(
+                "flex items-center gap-1.5 rounded-full px-2.5 py-1",
+                MOMENTUM_STYLES[momentum.label],
+                hasMomentumData && "cursor-pointer"
+              )}
+            >
+              {hasMomentumData ? (
+                <span className="text-xs font-bold tabular-nums">
+                  {momentum.score! > 0 ? "+" : ""}
+                  {momentum.score}
+                </span>
+              ) : null}
+              <span className="text-xs font-semibold whitespace-nowrap">{momentum.label}</span>
+              {hasMomentumData && momentum.confidence === "low" ? (
+                <span
+                  className="text-[10px] font-medium whitespace-nowrap opacity-70"
+                  title="Based on limited data. This score may shift as more signals and win/loss data come in."
+                >
+                  (limited data)
+                </span>
+              ) : null}
+              {hasMomentumData ? (
+                <ChevronDown className={cn("size-3.5 transition-transform", expanded && "rotate-180")} />
+              ) : null}
+            </button>
+            {driver ? (
+              <span className="text-[10px] whitespace-nowrap text-muted-foreground">{driver.label}</span>
             ) : null}
-            <span className="text-xs font-semibold whitespace-nowrap">{momentum.label}</span>
-            {hasMomentumData && momentum.confidence === "low" ? (
-              <span
-                className="text-[10px] font-medium whitespace-nowrap opacity-70"
-                title="Based on limited data. This score may shift as more signals and win/loss data come in."
-              >
-                (limited data)
-              </span>
-            ) : null}
-            {hasMomentumData ? (
-              <ChevronDown className={cn("size-3.5 transition-transform", expanded && "rotate-180")} />
-            ) : null}
-          </button>
+          </div>
         </div>
       </div>
 
