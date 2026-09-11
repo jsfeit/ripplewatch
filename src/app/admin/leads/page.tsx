@@ -10,6 +10,8 @@ export const dynamic = "force-dynamic";
 const CAPTURE_POINT_LABELS: Record<string, string> = {
   onboarding: "Onboarding",
   quiz: "Quiz",
+  blog: "Blog",
+  snapshot: "Competitor snapshot",
 };
 
 export default async function AdminLeadsPage() {
@@ -28,9 +30,9 @@ export default async function AdminLeadsPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight">Leads</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {leads?.length ?? 0} email{leads?.length === 1 ? "" : "s"} captured across onboarding&apos;s first step
-          and the competitive-intel quiz, before payment or account creation. Use this list to retarget anyone
-          who didn&apos;t finish signing up.
+          {leads?.length ?? 0} email{leads?.length === 1 ? "" : "s"} captured across onboarding&apos;s first step,
+          the competitive-intel quiz, the blog, and the competitor snapshot tool, before payment or account
+          creation. Use this list to retarget anyone who didn&apos;t finish signing up.
         </p>
       </div>
 
