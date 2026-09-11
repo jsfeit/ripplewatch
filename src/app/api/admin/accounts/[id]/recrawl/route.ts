@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { runCrawlForAccount } from "@/lib/crawl";
+import { enqueueCrawlForAccount } from "@/lib/crawl";
 
-export const maxDuration = 300; // Same budget as the scheduled cron — a full account crawl can take a while
-
-// Manual single-account trigger for support/testing use — runs the exact
-// same checks as the scheduled crawl cron, just scoped to one account
-// instead of looping every account in the database. Lets support seed real
-// signals for a test/demo account without waiting for the schedule or
-// touching any other customer's data or Slack channel.
+// Manual single-account trigger for support/testing use — queues the exact
+// same per-competitor jobs the scheduled crawl cron does, just scoped to
+// one account instead of every account in the database. Enqueueing is
+// pure DB writes, so this returns almost immediately; the actual checks
+// run shortly after via /api/cron/crawl-worker, same as any other crawl.
+// This used to run every competitor's checks synchronously and return the
+// result in one response — moved to the same queue as the cron because
+// that shape had no ceiling protecting it from Vercel's 300s timeout: an
+// account with enough competitors, or a few bot-protected domains, could
+// (and did) time out the whole request with nothing saved as "in
+// progress." See migration 0065 for the full reasoning.
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
@@ -19,6 +23,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Account not found." }, { status: 404 });
   }
 
-  const summary = await runCrawlForAccount(supabase, account);
+  const summary = await enqueueCrawlForAccount(supabase, account);
   return NextResponse.json({ ok: true, summary });
 }

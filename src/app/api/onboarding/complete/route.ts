@@ -4,15 +4,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWelcomeEmail } from "@/lib/resend";
 import { discoverCompetitorUrls } from "@/lib/scraping";
 import { suggestCompetitorCategories, researchCompanyContext } from "@/lib/anthropic";
-import { runCrawlForAccount } from "@/lib/crawl";
+import { enqueueCrawlForAccount } from "@/lib/crawl";
 import { COMPETITOR_LIMIT } from "@/lib/tier-limits";
 
 type CompetitorInput = { name: string; domain: string };
-
-// Same budget the scheduled cron gives a full account crawl (see
-// src/app/api/cron/crawl/route.ts) — the initial backfill triggered below
-// runs inside this same invocation via after(), so it needs the same room.
-export const maxDuration = 300;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -199,21 +194,24 @@ export async function POST(request: Request) {
     )
     .catch((err) => console.error("company research failed:", err));
 
-  // Backfills the account immediately instead of leaving it to wait for the
-  // next scheduled cron run (up to ~24h away) — a brand-new account with
-  // zero signals is the worst possible first impression. Runs via after()
-  // rather than a bare unawaited promise so Vercel keeps the function alive
-  // until it actually finishes, not just until the response above is sent.
-  // Waits on the research call first (best-effort) so the very first crawl's
+  // Queues the account's backfill crawl immediately instead of leaving it
+  // to wait for the next scheduled cron run (up to ~24h away) — a
+  // brand-new account with zero signals is the worst possible first
+  // impression. Enqueueing is just a couple of DB writes, so this used to
+  // run the actual crawl synchronously via after() (which keeps the
+  // function alive past the response) — now it only creates the jobs;
+  // /api/cron/crawl-worker (running every couple minutes) picks them up
+  // shortly after, same as any other crawl. See migration 0065. Waits on
+  // the research call first (best-effort) so the very first crawl's
   // relevance scoring already has company context instead of racing it.
   after(async () => {
     await researchPromise.catch(() => {});
     try {
       const admin = createAdminClient();
       const { data: account } = await admin.from("accounts").select("*").eq("id", accountId).single();
-      if (account) await runCrawlForAccount(admin, account);
+      if (account) await enqueueCrawlForAccount(admin, account);
     } catch (err) {
-      console.error("initial backfill crawl failed:", err);
+      console.error("initial backfill crawl enqueue failed:", err);
     }
   });
 

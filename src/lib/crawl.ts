@@ -42,7 +42,7 @@ import {
   competitorCap,
 } from "@/lib/tier-limits";
 import type { createAdminClient } from "@/lib/supabase/admin";
-import type { Database } from "@/lib/supabase/types";
+import type { Database, SignalType } from "@/lib/supabase/types";
 
 type AdminSupabase = ReturnType<typeof createAdminClient>;
 type Account = Database["public"]["Tables"]["accounts"]["Row"];
@@ -173,201 +173,334 @@ async function ensureCompanyResearch(supabase: AdminSupabase, account: Account):
 }
 
 export type CrawlSummary = { account: string; newSignals: number; scored: number; error?: string };
+export type EnqueueSummary = { account: string; queued: number };
 
-// The full per-account crawl: check every allowed signal source for each of
-// the account's tracked competitors, score whatever's new, and push High
-// relevance to Slack. Shared between the scheduled cron (loops every
-// account) and the admin single-account recrawl route — same logic either
-// way, just a different set of accounts to iterate.
-export async function runCrawlForAccount(supabase: AdminSupabase, account: Account): Promise<CrawlSummary> {
+type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
+
+// Creates one crawl_jobs row per competitor this account actively monitors
+// — nothing else. See migration 0065 for the full reasoning: the old
+// shape ran every competitor for an account (or every account for the
+// whole cron) inside a single request bounded by Vercel's 300s timeout, a
+// ceiling that scales with total competitor/account count and no amount
+// of concurrency tuning removes. Enqueueing is pure DB writes, so it stays
+// fast regardless of how many competitors or accounts exist; the actual
+// work happens later, one small job at a time, via processCrawlJobBatch
+// (see /api/cron/crawl-worker).
+export async function enqueueCrawlForAccount(supabase: AdminSupabase, account: Account): Promise<EnqueueSummary> {
   const { data: allCompetitors } = await supabase
     .from("competitors")
-    .select("*")
+    .select("id")
     .eq("account_id", account.id)
     .order("created_at", { ascending: true });
 
-  // If the account has more competitors than its current tier allows (e.g.
-  // downgraded after adding them under a higher tier), only the
-  // earliest-added ones up to the limit stay actively monitored — matches
-  // what Settings displays as "Not monitored" for the rest. A demo_mode
-  // account is uncapped (see tier-limits.ts) so every tracked competitor
-  // actually gets crawled.
-  const tier = effectiveTier(account.tier, account.demo_mode);
+  // Same cap logic as before: only the earliest-added competitors up to
+  // the account's tier limit stay actively monitored (uncapped for
+  // demo_mode — see tier-limits.ts).
   const competitors = (allCompetitors ?? []).slice(0, competitorCap(account.tier, account.demo_mode));
 
-  const allowedSources = TIER_SIGNAL_SOURCES[tier];
+  if (competitors.length === 0) {
+    return { account: account.name, queued: 0 };
+  }
 
-  // Competitors run concurrently (bounded — see mapWithConcurrency), not one
-  // at a time: each one can now make several sequential LLM calls (news
-  // check, funding check, each with its own relevance + dedup pass), and a
-  // plain sequential loop across every tracked competitor was what pushed a
-  // 9-competitor recrawl past Vercel's 300s timeout. Concurrency is safe
-  // across different competitors — the only sequencing requirement (news
-  // before funding, for dedup) is within a single competitor's own checks,
-  // preserved below.
-  const COMPETITOR_CONCURRENCY = 4;
-  const perCompetitorSignals = await mapWithConcurrency(competitors, COMPETITOR_CONCURRENCY, async (rawCompetitor) => {
-    const found: Signal[] = [];
+  const { data: run, error: runError } = await supabase
+    .from("crawl_runs")
+    .insert({ account_id: account.id, total_jobs: competitors.length })
+    .select("id")
+    .single();
 
-    // Backfills pricing_url/careers_url for a competitor that was added
-    // without a domain (so the URL-guessing at add-time never ran) — a
-    // no-op for the common case where both are already set. Without this,
-    // checkPricingDiff/checkPricingStructure/checkJobPostingsDiff below all
-    // just silently no-op forever, showing as permanently "Not yet checked."
-    const competitor =
-      allowedSources.includes("pricing") || allowedSources.includes("job_posting")
-        ? await ensureMonitoringUrls(supabase, rawCompetitor)
-        : rawCompetitor;
+  if (runError || !run) {
+    console.error(`failed to create crawl run for ${account.name}:`, runError);
+    return { account: account.name, queued: 0 };
+  }
 
-    // Computed once per competitor, before checkNews/checkFunding run
-    // sequentially below — both need to agree on whether this is the
-    // competitor's first-ever news/funding check (backfill vs. ongoing), and
-    // letting each query it independently mid-flight is a race: whichever
-    // inserts first makes the other see a nonzero count and wrongly
-    // conclude it's no longer the first check.
-    const isFirstCheck =
-      allowedSources.includes("news") || allowedSources.includes("funding")
-        ? await isFirstNewsCheck(supabase, competitor.id)
-        : false;
+  const { error: jobsError } = await supabase
+    .from("crawl_jobs")
+    .insert(competitors.map((c) => ({ run_id: run.id, account_id: account.id, competitor_id: c.id })));
 
-    // checkNews and checkFunding run sequentially, not alongside the other
-    // checks below — each one's same-story dedup (see
-    // filterHeadlinesForCompetitor in scraping.ts) compares against this
-    // competitor's recent signals, and running them in parallel would mean
-    // checkFunding can't see what checkNews just inserted (and vice versa),
-    // letting the same event slip through as two separate signals.
-    //
-    // Both call into Anthropic (headline relevance filtering, dedup) with no
-    // guard of their own — previously an outage there (e.g. exhausted API
-    // credits) threw uncaught straight out of this function, killing the
-    // entire account's recrawl on whichever competitor happened to run
-    // first instead of just skipping that one check for that one
-    // competitor. Caught here the same way the checks[] array below already
-    // is via Promise.allSettled.
-    if (allowedSources.includes("news")) {
-      try {
-        found.push(...(await checkNews(supabase, competitor, isFirstCheck)));
-      } catch (err) {
-        console.error(`checkNews failed for ${competitor.name}:`, err);
-      }
+  if (jobsError) {
+    console.error(`failed to enqueue crawl jobs for ${account.name}:`, jobsError);
+    return { account: account.name, queued: 0 };
+  }
+
+  return { account: account.name, queued: competitors.length };
+}
+
+export type CompetitorCrawlOptions = {
+  allowedSources: SignalType[];
+  visualDiffAllowed: boolean;
+  accountId: string;
+};
+
+// Everything one competitor's crawl actually does — every signal source
+// check that used to run inline inside the old full-account loop, now the
+// unit of work behind a single crawl_jobs row. Takes only what it needs
+// (which sources/visual-diff this account's tier allows, plus the account
+// id for checkSearchNews) rather than a whole Account, so a worker
+// processing jobs from many different accounts in one batch doesn't need
+// to refetch anything beyond that.
+export async function crawlOneCompetitor(
+  supabase: AdminSupabase,
+  rawCompetitor: Competitor,
+  { allowedSources, visualDiffAllowed, accountId }: CompetitorCrawlOptions
+): Promise<Signal[]> {
+  const found: Signal[] = [];
+
+  // Backfills pricing_url/careers_url for a competitor that was added
+  // without a domain (so the URL-guessing at add-time never ran) — a
+  // no-op for the common case where both are already set. Without this,
+  // checkPricingDiff/checkPricingStructure/checkJobPostingsDiff below all
+  // just silently no-op forever, showing as permanently "Not yet checked."
+  const competitor =
+    allowedSources.includes("pricing") || allowedSources.includes("job_posting")
+      ? await ensureMonitoringUrls(supabase, rawCompetitor)
+      : rawCompetitor;
+
+  // Computed once per competitor, before checkNews/checkFunding run
+  // sequentially below — both need to agree on whether this is the
+  // competitor's first-ever news/funding check (backfill vs. ongoing), and
+  // letting each query it independently mid-flight is a race: whichever
+  // inserts first makes the other see a nonzero count and wrongly
+  // conclude it's no longer the first check.
+  const isFirstCheck =
+    allowedSources.includes("news") || allowedSources.includes("funding")
+      ? await isFirstNewsCheck(supabase, competitor.id)
+      : false;
+
+  // checkNews and checkFunding run sequentially, not alongside the other
+  // checks below — each one's same-story dedup (see
+  // filterHeadlinesForCompetitor in scraping.ts) compares against this
+  // competitor's recent signals, and running them in parallel would mean
+  // checkFunding can't see what checkNews just inserted (and vice versa),
+  // letting the same event slip through as two separate signals.
+  //
+  // Both call into Anthropic (headline relevance filtering, dedup) with no
+  // guard of their own — previously an outage there (e.g. exhausted API
+  // credits) threw uncaught straight out of this function, killing the
+  // entire account's recrawl on whichever competitor happened to run
+  // first instead of just skipping that one check for that one
+  // competitor. Caught here the same way the checks[] array below already
+  // is via Promise.allSettled.
+  if (allowedSources.includes("news")) {
+    try {
+      found.push(...(await checkNews(supabase, competitor, isFirstCheck)));
+    } catch (err) {
+      console.error(`checkNews failed for ${competitor.name}:`, err);
     }
-    if (allowedSources.includes("funding")) {
-      try {
-        found.push(...(await checkFunding(supabase, competitor, isFirstCheck)));
-      } catch (err) {
-        console.error(`checkFunding failed for ${competitor.name}:`, err);
-      }
+  }
+  if (allowedSources.includes("funding")) {
+    try {
+      found.push(...(await checkFunding(supabase, competitor, isFirstCheck)));
+    } catch (err) {
+      console.error(`checkFunding failed for ${competitor.name}:`, err);
+    }
+  }
+
+  // Fetched once and shared between checkPricingDiff and
+  // checkPricingStructure below (both need the current page text) rather
+  // than each independently fetching the same URL — a plain promise, not
+  // an awaited value, so it still runs concurrently with the other checks
+  // in the array below instead of blocking ahead of them.
+  const pricingPageTextPromise = allowedSources.includes("pricing")
+    ? fetchCompetitorPricingText(competitor)
+    : Promise.resolve(null);
+
+  // Pricing/jobs surface at most one signal per run (a diff against the
+  // last snapshot) — normalized to arrays here so both shapes flatten into
+  // `found` the same way as the sequential checks above.
+  const checks = [
+    allowedSources.includes("pricing")
+      ? pricingPageTextPromise.then((text) => checkPricingDiff(supabase, competitor, text)).then((s) => (s ? [s] : []))
+      : null,
+    allowedSources.includes("job_posting")
+      ? checkJobPostingsDiff(supabase, competitor).then((s) => (s ? [s] : []))
+      : null,
+    // Free API (stubbed pending a real token — see producthunt-data.ts);
+    // own weekly gate lives inside checkProductHuntLaunches. Piggybacks on
+    // the "news" tier gate rather than a new TIER_SIGNAL_SOURCES entry
+    // since it inserts plain "news"-type signals.
+    allowedSources.includes("news") ? checkProductHuntLaunches(supabase, competitor) : null,
+    // Supplements the free RSS news check above with Claude web search —
+    // off by default (real per-search cost, not modeled against tier
+    // pricing yet). Enable per the web-search-news-decision checklist item.
+    allowedSources.includes("news") && process.env.ENABLE_WEB_SEARCH_NEWS === "true"
+      ? checkSearchNews(supabase, competitor, accountId)
+      : null,
+    // Free (just a homepage fetch + a hash-gated LLM call), so allowed on
+    // every tier same as pricing/jobs above — no per-query third-party
+    // cost the way SEO/traffic has.
+    allowedSources.includes("product_change")
+      ? checkProductMessagingDiff(supabase, competitor).then((s) => (s ? [s] : []))
+      : null,
+    // Same free scrape-and-hash shape as the homepage check above, just a
+    // changelog/blog URL instead — no separate tier gate, piggybacks on
+    // the same "product_change" source.
+    allowedSources.includes("product_change")
+      ? checkChangelogDiff(supabase, competitor).then((s) => (s ? [s] : []))
+      : null,
+    allowedSources.includes("product_change")
+      ? checkBlogDiff(supabase, competitor).then((s) => (s ? [s] : []))
+      : null,
+    // Real visual diffing (screenshot + Claude vision comparison) is a
+    // paid API call, unlike everything else in this array — gated to
+    // Plus/Advanced (VISUAL_DIFF_ALLOWED) rather than uniform across
+    // tiers. Also self-gates on SCREENSHOTONE_ACCESS_KEY being unset (see
+    // checkVisualChange), so this is a no-op today until that's added.
+    visualDiffAllowed ? checkVisualChange(supabase, competitor).then((s) => (s ? [s] : [])) : null,
+    // Opt-in per competitor (github_repo set in Settings), not tier-gated
+    // — free (GitHub's own public API), so no reason to restrict it the
+    // way SEO's paid DataForSEO calls are. No signal fires; it's a
+    // state-history snapshot only, so always resolves to [].
+    competitor.github_repo ? checkGithubActivity(supabase, competitor).then(() => []) : null,
+    // Same "no signal, state-history only" shape as GitHub above — not
+    // tier-gated, each is either free (G2/Capterra scrape, HN/Reddit) or
+    // self-gates on a missing credential (Meta Ad Library), so there's no
+    // per-tier cost to restrict.
+    checkReviewSentiment(supabase, competitor).then(() => []),
+    checkBuzzMentions(supabase, competitor).then(() => []),
+    checkAdActivity(supabase, competitor).then(() => []),
+  ].filter((p): p is Promise<Signal[]> => p !== null);
+
+  const results = await Promise.allSettled(checks);
+  for (const result of results) {
+    if (result.status === "fulfilled") found.push(...result.value);
+  }
+
+  // Refreshes the Pricing dashboard's current-state snapshot every run,
+  // independent of whether a diff signal fired — runs before returning so
+  // it's never skipped.
+  if (allowedSources.includes("pricing")) {
+    const pricingPageText = await pricingPageTextPromise;
+    await checkPricingStructure(supabase, competitor, pricingPageText).catch((err) =>
+      console.error(`pricing structure extraction failed for ${competitor.name}:`, err)
+    );
+  }
+
+  return found;
+}
+
+const WORKER_BATCH_SIZE = 24;
+// Each job is one competitor's checks now, not a whole account's — much
+// lighter than the old per-account fan-out, so a higher bound than the
+// previous COMPETITOR_CONCURRENCY (4) is safe.
+const JOB_CONCURRENCY = 8;
+
+export type WorkerBatchSummary = { processed: number; done: number; error: number };
+
+// Claims and processes one bounded batch of pending crawl_jobs — called by
+// /api/cron/crawl-worker on a short interval (every couple minutes) so
+// however many jobs exist, there's just more ticks, never a single
+// invocation whose duration scales with total competitor/account count. A
+// slow or blocked competitor only fails its own job, not every other
+// competitor queued behind it the way one slow one used to inside a
+// shared per-account invocation.
+export async function processCrawlJobBatch(supabase: AdminSupabase): Promise<WorkerBatchSummary> {
+  const { data: jobs, error } = await supabase.rpc("claim_crawl_jobs", { batch_size: WORKER_BATCH_SIZE });
+  if (error) {
+    console.error("failed to claim crawl jobs:", error);
+    return { processed: 0, done: 0, error: 0 };
+  }
+  if (!jobs || jobs.length === 0) return { processed: 0, done: 0, error: 0 };
+
+  // Batched fetches instead of one query per job — several jobs in a batch
+  // commonly belong to the same account (or, for a small account, are
+  // literally every competitor it has).
+  const accountIds = Array.from(new Set(jobs.map((j) => j.account_id)));
+  const { data: accounts } = await supabase.from("accounts").select("*").in("id", accountIds);
+  const accountById = new Map((accounts ?? []).map((a) => [a.id, a]));
+
+  const competitorIds = jobs.map((j) => j.competitor_id);
+  const { data: competitors } = await supabase.from("competitors").select("*").in("id", competitorIds);
+  const competitorById = new Map((competitors ?? []).map((c) => [c.id, c]));
+
+  let done = 0;
+  let errorCount = 0;
+
+  await mapWithConcurrency(jobs, JOB_CONCURRENCY, async (job) => {
+    const account = accountById.get(job.account_id);
+    const rawCompetitor = competitorById.get(job.competitor_id);
+
+    if (!account || !rawCompetitor) {
+      await supabase
+        .from("crawl_jobs")
+        .update({
+          status: "error",
+          error: "account or competitor no longer exists",
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", job.id);
+      errorCount++;
+      return;
     }
 
-    // Fetched once and shared between checkPricingDiff and
-    // checkPricingStructure below (both need the current page text) rather
-    // than each independently fetching the same URL — a plain promise, not
-    // an awaited value, so it still runs concurrently with the other checks
-    // in the array below instead of blocking ahead of them.
-    const pricingPageTextPromise = allowedSources.includes("pricing")
-      ? fetchCompetitorPricingText(competitor)
-      : Promise.resolve(null);
-
-    // Pricing/jobs surface at most one signal per run (a diff against the
-    // last snapshot) — normalized to arrays here so both shapes flatten into
-    // `found` the same way as the sequential checks above.
-    const checks = [
-      allowedSources.includes("pricing")
-        ? pricingPageTextPromise.then((text) => checkPricingDiff(supabase, competitor, text)).then((s) => (s ? [s] : []))
-        : null,
-      allowedSources.includes("job_posting")
-        ? checkJobPostingsDiff(supabase, competitor).then((s) => (s ? [s] : []))
-        : null,
-      // Free API (stubbed pending a real token — see producthunt-data.ts);
-      // own weekly gate lives inside checkProductHuntLaunches. Piggybacks on
-      // the "news" tier gate rather than a new TIER_SIGNAL_SOURCES entry
-      // since it inserts plain "news"-type signals.
-      allowedSources.includes("news") ? checkProductHuntLaunches(supabase, competitor) : null,
-      // Supplements the free RSS news check above with Claude web search —
-      // off by default (real per-search cost, not modeled against tier
-      // pricing yet). Enable per the web-search-news-decision checklist item.
-      allowedSources.includes("news") && process.env.ENABLE_WEB_SEARCH_NEWS === "true"
-        ? checkSearchNews(supabase, competitor, account.id)
-        : null,
-      // Free (just a homepage fetch + a hash-gated LLM call), so allowed on
-      // every tier same as pricing/jobs above — no per-query third-party
-      // cost the way SEO/traffic has.
-      allowedSources.includes("product_change")
-        ? checkProductMessagingDiff(supabase, competitor).then((s) => (s ? [s] : []))
-        : null,
-      // Same free scrape-and-hash shape as the homepage check above, just a
-      // changelog/blog URL instead — no separate tier gate, piggybacks on
-      // the same "product_change" source.
-      allowedSources.includes("product_change")
-        ? checkChangelogDiff(supabase, competitor).then((s) => (s ? [s] : []))
-        : null,
-      allowedSources.includes("product_change")
-        ? checkBlogDiff(supabase, competitor).then((s) => (s ? [s] : []))
-        : null,
-      // Real visual diffing (screenshot + Claude vision comparison) is a
-      // paid API call, unlike everything else in this array — gated to
-      // Plus/Advanced (VISUAL_DIFF_ALLOWED) rather than uniform across
-      // tiers. Also self-gates on SCREENSHOTONE_ACCESS_KEY being unset (see
-      // checkVisualChange), so this is a no-op today until that's added.
-      VISUAL_DIFF_ALLOWED[tier]
-        ? checkVisualChange(supabase, competitor).then((s) => (s ? [s] : []))
-        : null,
-      // Opt-in per competitor (github_repo set in Settings), not tier-gated
-      // — free (GitHub's own public API), so no reason to restrict it the
-      // way SEO's paid DataForSEO calls are. No signal fires; it's a
-      // state-history snapshot only, so always resolves to [].
-      competitor.github_repo ? checkGithubActivity(supabase, competitor).then(() => []) : null,
-      // Same "no signal, state-history only" shape as GitHub above — not
-      // tier-gated, each is either free (G2/Capterra scrape, HN/Reddit) or
-      // self-gates on a missing credential (Meta Ad Library), so there's no
-      // per-tier cost to restrict.
-      checkReviewSentiment(supabase, competitor).then(() => []),
-      checkBuzzMentions(supabase, competitor).then(() => []),
-      checkAdActivity(supabase, competitor).then(() => []),
-    ].filter((p): p is Promise<Signal[]> => p !== null);
-
-    const results = await Promise.allSettled(checks);
-    for (const result of results) {
-      if (result.status === "fulfilled") found.push(...result.value);
+    const tier = effectiveTier(account.tier, account.demo_mode);
+    try {
+      await crawlOneCompetitor(supabase, rawCompetitor, {
+        allowedSources: TIER_SIGNAL_SOURCES[tier],
+        visualDiffAllowed: VISUAL_DIFF_ALLOWED[tier],
+        accountId: account.id,
+      });
+      await supabase
+        .from("crawl_jobs")
+        .update({ status: "done", completed_at: new Date().toISOString() })
+        .eq("id", job.id);
+      done++;
+    } catch (err) {
+      console.error(`crawl job failed for competitor ${rawCompetitor.name}:`, err);
+      await supabase
+        .from("crawl_jobs")
+        .update({
+          status: "error",
+          error: err instanceof Error ? err.message : String(err),
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", job.id);
+      errorCount++;
     }
-
-    // Refreshes the Pricing dashboard's current-state snapshot every run,
-    // independent of whether a diff signal fired — runs before the
-    // no-new-signals early-return below so it isn't skipped.
-    if (allowedSources.includes("pricing")) {
-      const pricingPageText = await pricingPageTextPromise;
-      await checkPricingStructure(supabase, competitor, pricingPageText).catch((err) =>
-        console.error(`pricing structure extraction failed for ${competitor.name}:`, err)
-      );
-    }
-
-    return found;
   });
 
-  const newSignals: Signal[] = perCompetitorSignals.flat();
+  return { processed: jobs.length, done, error: errorCount };
+}
 
+// Bounds how many signals one scoring pass will ever score, same reasoning
+// as the old STALE_RESCUE_LIMIT: an unbounded pass risks the finalize
+// function itself running long, and anything left over just gets picked up
+// next time this account's signals are unscored. Set higher than the old
+// rescue-only cap (20) since this is now the primary scoring path, not a
+// rare backfill catcher — a normal day's signals should fully clear in one
+// pass.
+const SIGNALS_TO_SCORE_LIMIT = 60;
+const SCORE_CONCURRENCY = 5;
+
+// Scores every currently-unscored signal for one account's tracked
+// competitors — the second half of what runCrawlForAccount used to do in
+// one breath, now its own step so it runs once per finished crawl_run
+// (see finalizeCompletedRuns) rather than once per worker tick. CRM/call-
+// transcript pulls here (buildCallMentions/buildHubspotNotes/
+// buildIntercomNotes) hit real third-party APIs, so this should run once a
+// day per account, the same cadence the old full-account crawl had.
+async function scoreAccountSignals(supabase: AdminSupabase, account: Account): Promise<CrawlSummary> {
+  const tier = effectiveTier(account.tier, account.demo_mode);
+  const { data: allCompetitors } = await supabase
+    .from("competitors")
+    .select("id, name")
+    .eq("account_id", account.id)
+    .order("created_at", { ascending: true });
+  const competitors = (allCompetitors ?? []).slice(0, competitorCap(account.tier, account.demo_mode));
   const competitorIds = competitors.map((c) => c.id);
 
-  // Leftover unscored signals from a previous run that got cut short (e.g. a
-  // Vercel timeout mid-crawl) — checkNews/checkFunding only insert headlines
-  // they haven't already seen by title, so a signal left at scored:false
-  // after an interrupted run would otherwise never be revisited. Folded into
-  // this run's scoring pass so nothing stays permanently stuck as "Raw".
-  // Capped and oldest-first: an unbounded rescue would retry the whole
-  // backlog on every run, which is exactly the runaway-duration failure
-  // mode that produced this backlog in the first place. Any excess just
-  // gets picked up a few signals at a time over subsequent runs instead.
-  const STALE_RESCUE_LIMIT = 20;
-  const { data: staleUnscored } = await supabase
+  if (competitorIds.length === 0) {
+    return { account: account.name, newSignals: 0, scored: 0 };
+  }
+
+  const { data: unscored } = await supabase
     .from("signals")
     .select("*")
     .in("competitor_id", competitorIds)
     .eq("scored", false)
-    .not("id", "in", `(${[...newSignals.map((s) => s.id), "00000000-0000-0000-0000-000000000000"].join(",")})`)
     .order("created_at", { ascending: true })
-    .limit(STALE_RESCUE_LIMIT);
+    .limit(SIGNALS_TO_SCORE_LIMIT);
 
-  const signalsToScore: Signal[] = [...newSignals, ...(staleUnscored ?? [])];
+  const signalsToScore: Signal[] = unscored ?? [];
 
   if (signalsToScore.length === 0) {
     return { account: account.name, newSignals: 0, scored: 0 };
@@ -459,20 +592,17 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
 
   const scoredSignals: (Signal & { competitorName: string })[] = [];
 
-  // Every tier scores every new signal — tiers differ by competitor count
-  // and integrations now, not by scoring depth (2026-09 repositioning:
-  // Starter previously teaser-scored at most one signal/week, which left
-  // its Momentum score starved of real relevance-trend data; that throttle
-  // is gone). The backlog rescue cap (20) bounds how many signals can ever
-  // be in one run, so concurrency here is both safe and the main lever on
-  // total crawl duration.
-  const SCORE_CONCURRENCY = 5;
+  // Every tier scores every unscored signal — tiers differ by competitor
+  // count and integrations now, not by scoring depth (2026-09
+  // repositioning: Starter previously teaser-scored at most one
+  // signal/week, which left its Momentum score starved of real
+  // relevance-trend data; that throttle is gone).
   const results = await mapWithConcurrency(signalsToScore, SCORE_CONCURRENCY, scoreOneSignal);
   for (const result of results) {
     if (result) scoredSignals.push(result);
   }
 
-  // Real-time push happens here, at detection time — but only for High
+  // Real-time push happens here, at scoring time — but only for High
   // relevance, and only to Slack. Medium/Low (and unscored raw signals) are
   // deliberately left alone: they're picked up by the daily and weekly
   // digest crons instead, keyed off relevance_level so a signal is never
@@ -507,5 +637,62 @@ export async function runCrawlForAccount(supabase: AdminSupabase, account: Accou
     }
   }
 
-  return { account: account.name, newSignals: newSignals.length, scored: scoredSignals.length };
+  return { account: account.name, newSignals: signalsToScore.length, scored: scoredSignals.length };
+}
+
+// How many completed-but-unscored runs to finalize per worker tick — same
+// bounded-batch reasoning as WORKER_BATCH_SIZE above; any run past this
+// count just gets picked up next tick instead of risking this function's
+// own duration.
+const FINALIZE_BATCH_SIZE = 20;
+
+// Scores an account once every job in its crawl_run has finished (done or
+// error) — called by the worker after each batch. A run still in progress
+// is simply skipped and re-checked next tick, so this is self-healing if
+// a run straddles more ticks than expected (a slow batch, a brief backlog)
+// rather than scoring an account's signals before its crawl actually
+// finished.
+export async function finalizeCompletedRuns(supabase: AdminSupabase): Promise<CrawlSummary[]> {
+  const { data: candidateRuns } = await supabase
+    .from("crawl_runs")
+    .select("*")
+    .is("scored_at", null)
+    .order("created_at", { ascending: true })
+    .limit(FINALIZE_BATCH_SIZE);
+
+  if (!candidateRuns || candidateRuns.length === 0) return [];
+
+  const summaries: CrawlSummary[] = [];
+
+  for (const run of candidateRuns) {
+    const { count: unfinished } = await supabase
+      .from("crawl_jobs")
+      .select("id", { count: "exact", head: true })
+      .eq("run_id", run.id)
+      .in("status", ["pending", "running"]);
+
+    if (unfinished && unfinished > 0) continue; // still in progress — try again next tick
+
+    const { data: account } = await supabase.from("accounts").select("*").eq("id", run.account_id).single();
+    if (!account) {
+      await supabase.from("crawl_runs").update({ scored_at: new Date().toISOString() }).eq("id", run.id);
+      continue;
+    }
+
+    try {
+      summaries.push(await scoreAccountSignals(supabase, account));
+    } catch (err) {
+      console.error(`finalize/scoring failed for account ${account.name}:`, err);
+      summaries.push({
+        account: account.name,
+        newSignals: 0,
+        scored: 0,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      await supabase.from("crawl_runs").update({ scored_at: new Date().toISOString() }).eq("id", run.id);
+    }
+  }
+
+  return summaries;
 }
