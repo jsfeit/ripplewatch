@@ -229,10 +229,15 @@ export function AccountAdminView({
     const res = await fetch(`/api/admin/accounts/${account.id}/recrawl`, { method: "POST" });
     const data = await res.json().catch(() => null);
     setRecrawling(false);
+    // Queued, not run synchronously — see the recrawl route's own comment.
+    // A background worker (every couple minutes) does the actual checks,
+    // so this just confirms the jobs were created, not that they're done.
     setRecrawlResult(
       res.ok
-        ? `${data.summary.newSignals} new, ${data.summary.scored} scored`
-        : data?.error ?? "Recrawl failed."
+        ? data.summary.queued > 0
+          ? `Queued ${data.summary.queued} competitor${data.summary.queued === 1 ? "" : "s"} — check back in a minute or two.`
+          : "No competitors to crawl."
+        : (data?.error ?? "Failed to queue recrawl.")
     );
   }
 

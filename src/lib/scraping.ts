@@ -639,7 +639,7 @@ export type PricingPageResult = {
 // and checkPricingStructure both need the current page text, and
 // previously each called fetchPageText independently, doubling outbound
 // requests (and 403/bot-block risk) per competitor per crawl for no
-// reason. Callers share one in-flight promise (see runCrawlForAccount) so
+// reason. Callers share one in-flight promise (see crawlOneCompetitor) so
 // this only runs once; null means "couldn't load anything at all, live or
 // archived," not "no pricing URL" (that's checked separately by each
 // caller).
@@ -1302,7 +1302,7 @@ async function fetchAllSignalTitles(supabase: AdminClient, competitorId: string)
 //
 // Callers (checkNews, checkFunding) run concurrently for the same
 // competitor in a single crawl — this must be computed ONCE up front (see
-// runCrawlForAccount in crawl.ts) and passed to both, not called
+// crawlOneCompetitor in crawl.ts) and passed to both, not called
 // independently by each. Two concurrent callers each checking "is the count
 // still zero?" right before their own insert is a classic
 // check-then-act race: whichever inserts first makes the other see a

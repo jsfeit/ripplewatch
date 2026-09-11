@@ -280,6 +280,50 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["industry_trends"]["Insert"]>;
         Relationships: [];
       };
+      crawl_runs: {
+        Row: {
+          id: string;
+          account_id: string;
+          total_jobs: number;
+          created_at: string;
+          scored_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          account_id: string;
+          total_jobs: number;
+          created_at?: string;
+          scored_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["crawl_runs"]["Insert"]>;
+        Relationships: [];
+      };
+      crawl_jobs: {
+        Row: {
+          id: string;
+          run_id: string;
+          account_id: string;
+          competitor_id: string;
+          status: "pending" | "running" | "done" | "error";
+          error: string | null;
+          created_at: string;
+          started_at: string | null;
+          completed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          run_id: string;
+          account_id: string;
+          competitor_id: string;
+          status?: "pending" | "running" | "done" | "error";
+          error?: string | null;
+          created_at?: string;
+          started_at?: string | null;
+          completed_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["crawl_jobs"]["Insert"]>;
+        Relationships: [];
+      };
       api_keys: {
         Row: {
           id: string;
@@ -929,6 +973,11 @@ export interface Database {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      claim_crawl_jobs: {
+        Args: { batch_size: number };
+        Returns: Database["public"]["Tables"]["crawl_jobs"]["Row"][];
+      };
+    };
   };
 }

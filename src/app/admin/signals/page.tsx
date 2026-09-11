@@ -80,11 +80,11 @@ export default async function AdminSignalsPage() {
       supabase.from("competitors").select("id, name, account_id"),
       supabase.from("accounts").select("id, name, tier"),
       supabase.from("signal_eval_labels").select("signal_id, label"),
-      // Every crawl now rescues its own account's backlog (see
-      // runCrawlForAccount in crawl.ts), so this should normally read
-      // empty — a nonzero count here means something is scoring-failing
-      // faster than the crawl's rescue can keep up, worth a look rather
-      // than relying on someone noticing bad-looking dashboard data.
+      // Every finished crawl_run scores its own account's backlog (see
+      // finalizeCompletedRuns/scoreAccountSignals in crawl.ts), so this
+      // should normally read empty — a nonzero count here means something
+      // is scoring-failing faster than that pass can keep up, worth a look
+      // rather than relying on someone noticing bad-looking dashboard data.
       // Starter is excluded: its unscored backlog is the teaser design,
       // not a failure.
       supabase.from("signals").select("id, competitor_id").eq("scored", false).lt("created_at", oneDayAgo),
