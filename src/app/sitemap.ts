@@ -20,6 +20,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/compare", priority: 0.7, changeFrequency: "monthly" },
     { path: "/alternatives", priority: 0.7, changeFrequency: "monthly" },
     { path: "/competitive-intelligence-quiz", priority: 0.6, changeFrequency: "monthly" },
+    { path: "/competitor-snapshot", priority: 0.6, changeFrequency: "monthly" },
     { path: "/privacy", priority: 0.3, changeFrequency: "yearly" },
     { path: "/terms", priority: 0.3, changeFrequency: "yearly" },
     ...COMPARISONS.map((c) => ({

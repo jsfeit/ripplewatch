@@ -186,7 +186,7 @@ async function trackUrlHealth(
   await supabase.from("competitors").update(patch).eq("id", competitor.id);
 }
 
-async function fetchPageText(url: string): Promise<string> {
+export async function fetchPageText(url: string): Promise<string> {
   const html = await fetchHtml(url);
   const $ = cheerio.load(html);
   $("script, style, noscript").remove();

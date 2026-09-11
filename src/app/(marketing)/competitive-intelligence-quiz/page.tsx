@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CompetitiveIntelQuiz } from "@/components/marketing/competitive-intel-quiz";
 import { DemoLink } from "@/components/marketing/demo-link";
 import { TIERS } from "@/lib/quiz-tiers";
@@ -39,11 +40,17 @@ export default function CompetitiveIntelligenceQuizPage() {
             <div key={tier.name}>
               <dt className="font-medium text-foreground">{tier.name}</dt>
               <dd className="mt-1 leading-relaxed text-muted-foreground">{tier.summary}</dd>
-              <dd className="mt-2 text-sm leading-relaxed text-muted-foreground">{tier.nextStep}</dd>
             </div>
           ))}
         </dl>
       </div>
+      <p className="mt-10 text-center text-sm text-muted-foreground">
+        Want proof, not a self-assessment?{" "}
+        <Link href="/competitor-snapshot" className="font-medium text-primary hover:underline">
+          Get a live snapshot of one real competitor
+        </Link>
+        .
+      </p>
     </div>
   );
 }
