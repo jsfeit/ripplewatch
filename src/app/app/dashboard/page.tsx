@@ -382,8 +382,8 @@ export default async function DashboardPage() {
       <section id="trends" className="mt-10 scroll-mt-20">
         <h2 className="text-sm font-semibold">Trends</h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          Category-level activity and recurring themes across every logged win/loss reason. Per-competitor
-          momentum is above, in Momentum.
+          The wider industry pulse, category-level activity, and recurring themes across every logged win/loss
+          reason. Per-competitor momentum is above, in Momentum.
         </p>
         <div className="mt-4">
           <IndustryPulse
