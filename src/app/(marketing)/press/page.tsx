@@ -17,7 +17,7 @@ export default function PressPage() {
       <div className="mt-10 flex flex-wrap items-center gap-6">
         <a href="https://postyourstartup.co/startup/ripplewatch?ref=badge" target="_blank" rel="noopener noreferrer">
           <img
-            src="https://postyourstartup.co/api/badge/ripplewatch?theme=light"
+            src="https://postyourstartup.co/api/badge/ripplewatch?theme=neutral"
             alt="Featured on PostYourStartup"
             width={212}
             height={55}
