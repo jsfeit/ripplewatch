@@ -23,6 +23,14 @@ export default function PressPage() {
             height={55}
           />
         </a>
+        <a
+          href="https://www.producthunt.com/products/ripplewatch"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex h-[55px] items-center rounded-lg border border-border px-4 text-sm font-medium text-foreground hover:border-primary/40"
+        >
+          Ripplewatch on Product Hunt
+        </a>
       </div>
     </div>
   );
