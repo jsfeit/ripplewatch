@@ -24,6 +24,13 @@ export async function POST(request: Request) {
   const capturePoint = typeof body?.capturePoint === "string" && VALID_CAPTURE_POINTS.has(body.capturePoint)
     ? body.capturePoint
     : null;
+  // Free-form per-capture-point context (quiz score/tier/weakest area today)
+  // — this only ever holds a handful of short fields, so anything past a
+  // generous size cap is a malformed/abusive payload rather than legitimate
+  // data, and is dropped outright rather than silently truncated (truncating
+  // JSON text produces invalid JSON, not a smaller valid object).
+  const isPlainMetadata = body?.metadata && typeof body.metadata === "object" && !Array.isArray(body.metadata);
+  const metadata = isPlainMetadata && JSON.stringify(body.metadata).length <= 4000 ? body.metadata : null;
 
   const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   if (!isValid) {
@@ -38,6 +45,7 @@ export async function POST(request: Request) {
     utm_medium: utmMedium || null,
     utm_campaign: utmCampaign || null,
     capture_point: capturePoint,
+    metadata,
   });
 
   // Unique violation on email — this email was already captured (e.g. a

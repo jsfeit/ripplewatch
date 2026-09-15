@@ -124,6 +124,13 @@ export function CompetitorSnapshotTool() {
             </Link>
             <DemoLink variant="button" />
           </div>
+          <p className="text-xs text-muted-foreground">
+            Not sure this is even your biggest gap?{" "}
+            <Link href="/competitive-intelligence-quiz" className="font-medium text-primary hover:underline">
+              Take the 5-question maturity quiz
+            </Link>
+            .
+          </p>
         </div>
 
         <button

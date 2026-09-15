@@ -236,7 +236,12 @@ export function CompetitiveIntelQuiz() {
       const res = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), capturePoint: "quiz", ...utm }),
+        body: JSON.stringify({
+          email: email.trim(),
+          capturePoint: "quiz",
+          metadata: { score, tier: tier.name, weakestTopic },
+          ...utm,
+        }),
       });
       if (!res.ok) {
         setReportStatus("error");
@@ -346,6 +351,13 @@ export function CompetitiveIntelQuiz() {
               </Link>
               <DemoLink variant="button" />
             </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Want to see it, not just read about it?{" "}
+              <Link href="/competitor-snapshot" className="font-medium text-primary hover:underline">
+                Get a live snapshot of one real competitor
+              </Link>
+              .
+            </p>
           </div>
         ) : (
           <form
