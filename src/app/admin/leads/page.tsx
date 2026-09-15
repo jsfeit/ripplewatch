@@ -14,6 +14,26 @@ const CAPTURE_POINT_LABELS: Record<string, string> = {
   snapshot: "Competitor snapshot",
 };
 
+// Same context each capture point already sends via metadata (see
+// /api/leads and /api/snapshot) — rendered here so a lead is more than a
+// bare email to whoever's triaging this list. Anything not covered by these
+// two shapes (a future capture point, or metadata missing entirely) just
+// shows "–" rather than a raw JSON dump.
+function leadDetails(capturePoint: string | null, metadata: Record<string, unknown> | null): string {
+  if (!metadata) return "–";
+  if (capturePoint === "quiz" && typeof metadata.tier === "string") {
+    const score = typeof metadata.score === "number" ? `${metadata.score}/15` : null;
+    const weakest = typeof metadata.weakestTopic === "string" ? metadata.weakestTopic : null;
+    return [metadata.tier, score, weakest ? `weak: ${weakest}` : null].filter(Boolean).join(" · ");
+  }
+  if (capturePoint === "snapshot" && typeof metadata.domain === "string") {
+    const tier = metadata.pricingCheapestTier as { price?: number; price_period?: string | null } | null;
+    const price = tier?.price != null ? `from $${tier.price}${tier.price_period ? `/${tier.price_period}` : ""}` : null;
+    return [metadata.domain, price].filter(Boolean).join(" · ");
+  }
+  return "–";
+}
+
 export default async function AdminLeadsPage() {
   const configured = isSupabaseConfigured();
   const { data: leads, error } = configured
@@ -51,6 +71,7 @@ export default async function AdminLeadsPage() {
                 <TableHead>Email</TableHead>
                 <TableHead>Company</TableHead>
                 <TableHead>Captured via</TableHead>
+                <TableHead>Details</TableHead>
                 <TableHead>UTM source</TableHead>
                 <TableHead>Date</TableHead>
               </TableRow>
@@ -64,6 +85,7 @@ export default async function AdminLeadsPage() {
                   <TableCell className="text-muted-foreground">
                     {l.capture_point ? (CAPTURE_POINT_LABELS[l.capture_point] ?? l.capture_point) : "–"}
                   </TableCell>
+                  <TableCell className="text-muted-foreground">{leadDetails(l.capture_point, l.metadata)}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {l.utm_source
                       ? [l.utm_source, l.utm_medium, l.utm_campaign].filter(Boolean).join(" / ")
@@ -76,7 +98,7 @@ export default async function AdminLeadsPage() {
               ))}
               {leads?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
                     No leads yet.
                   </TableCell>
                 </TableRow>

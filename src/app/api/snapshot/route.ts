@@ -72,21 +72,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Enter a real competitor domain, e.g. acme.com." }, { status: 400 });
   }
 
-  // Lead is captured regardless of whether the live fetch below succeeds —
-  // some sites block automated requests, and that's still a real visitor
-  // worth having, not a wasted submission.
-  const supabase = createAdminClient();
-  const { error: leadError } = await supabase.from("leads").insert({
-    email,
-    utm_source: utmSource || null,
-    utm_medium: utmMedium || null,
-    utm_campaign: utmCampaign || null,
-    capture_point: "snapshot",
-  });
-  if (leadError && leadError.code !== "23505") {
-    console.error("snapshot lead insert failed:", leadError);
-  }
-
   const homepageUrl = `https://${domain}`;
   const title = await fetchTitle(homepageUrl);
 
@@ -101,6 +86,30 @@ export async function POST(request: Request) {
     } catch (err) {
       console.error(`snapshot pricing fetch failed for ${domain}:`, err);
     }
+  }
+
+  // Captured regardless of whether the live fetch above succeeded — some
+  // sites block automated requests, and that's still a real visitor worth
+  // having, not a wasted submission. Which domain they checked (and what we
+  // found) is what turns this into a lead worth prioritizing rather than a
+  // bare email — a rep can open with "saw you were looking at Notion's
+  // pricing" instead of cold.
+  const supabase = createAdminClient();
+  const { error: leadError } = await supabase.from("leads").insert({
+    email,
+    utm_source: utmSource || null,
+    utm_medium: utmMedium || null,
+    utm_campaign: utmCampaign || null,
+    capture_point: "snapshot",
+    metadata: {
+      domain,
+      title,
+      pricingBillingModel: pricing?.billingModel ?? null,
+      pricingCheapestTier: pricing?.tiers.find((t) => t.price !== null) ?? null,
+    },
+  });
+  if (leadError && leadError.code !== "23505") {
+    console.error("snapshot lead insert failed:", leadError);
   }
 
   return NextResponse.json({
