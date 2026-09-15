@@ -4,13 +4,17 @@
 
 import * as Sentry from "@sentry/nextjs";
 
-// Replay's recording code is a real chunk of client JS on its own, fetched
-// the moment replayIntegration() is added — worth paying on /app and
-// /admin, where a session replay actually helps debug a paying customer's
-// real problem, but not on marketing pages, where every anonymous visitor
-// would otherwise pay that weight for a debugging tool aimed at customers,
-// not prospects. Read once at module init (this file only runs in the
-// browser), not per-navigation — a fresh page load re-evaluates it anyway.
+// Replay's recording engine (rrweb) is a real chunk of client JS on its
+// own — but referencing Sentry.replayIntegration() off this already-
+// statically-imported namespace bundles that code into the main chunk
+// regardless of any runtime condition around the call, since the bundler
+// resolves the reference at build time, not the branch around it. A
+// dynamic import() is what actually makes the bundler split Replay into
+// its own chunk, fetched only when this branch runs — worth paying on
+// /app and /admin, where a session replay helps debug a paying
+// customer's real problem, but not on marketing pages, where every
+// anonymous visitor would otherwise download a debugging tool aimed at
+// customers, not prospects, whether or not it ever activates.
 const isAppRoute =
   typeof window !== "undefined" &&
   (window.location.pathname.startsWith("/app") || window.location.pathname.startsWith("/admin"));
@@ -23,8 +27,9 @@ Sentry.init({
   // routine local development pages the team the same as a live incident.
   enabled: process.env.NODE_ENV === "production",
 
-  // Add optional integrations for additional features
-  integrations: isAppRoute ? [Sentry.replayIntegration()] : [],
+  // No replay here — added below, after init, only on /app and /admin, so
+  // its code is never even requested on marketing pages.
+  integrations: [],
 
   // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
   tracesSampleRate: 1,
@@ -46,5 +51,14 @@ Sentry.init({
     // httpBodies: [],
   },
 });
+
+// Dynamic import, not the statically-imported `Sentry` above — this is
+// what actually puts Replay's recording engine in its own chunk, fetched
+// only when this branch runs instead of bundled into every page.
+if (isAppRoute) {
+  import("@sentry/nextjs").then(({ replayIntegration }) => {
+    Sentry.addIntegration(replayIntegration());
+  });
+}
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
