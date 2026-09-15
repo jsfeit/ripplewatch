@@ -27,42 +27,41 @@ export default async function CompetitorDetailPage({
   const { accountId, db } = await resolveAccountContext(supabase, user.id);
   if (!accountId) redirect("/onboarding");
 
-  const { data: account } = await db
-    .from("accounts")
-    .select("name, tier, has_sales_crm, has_plg")
-    .eq("id", accountId)
-    .single();
+  // account/competitors/suggestions/hubspotIntegration only need accountId,
+  // and winLoss only needs the route's id — none of the five depend on each
+  // other, so they no longer pay their round-trip latency one at a time.
+  const [
+    { data: account },
+    { data: competitors },
+    { data: suggestions },
+    { data: winLoss },
+    { data: hubspotIntegration },
+  ] = await Promise.all([
+    db.from("accounts").select("name, tier, has_sales_crm, has_plg").eq("id", accountId).single(),
+    db.from("competitors").select("*").eq("account_id", accountId).order("created_at", { ascending: true }),
+    db
+      .from("suggested_competitors")
+      .select("*")
+      .eq("account_id", accountId)
+      .eq("status", "pending")
+      .order("discovered_at", { ascending: false }),
+    db
+      .from("competitor_win_loss")
+      .select("id, outcome, reason, created_at")
+      .eq("competitor_id", id)
+      .order("created_at", { ascending: false }),
+    db
+      .from("integrations")
+      .select("connected")
+      .eq("account_id", accountId)
+      .eq("provider", "hubspot")
+      .eq("connected", true)
+      .maybeSingle(),
+  ]);
   if (!account) redirect("/onboarding");
-
-  const { data: competitors } = await db
-    .from("competitors")
-    .select("*")
-    .eq("account_id", accountId)
-    .order("created_at", { ascending: true });
 
   const competitor = (competitors ?? []).find((c) => c.id === id);
   if (!competitor) notFound();
-
-  const { data: suggestions } = await db
-    .from("suggested_competitors")
-    .select("*")
-    .eq("account_id", accountId)
-    .eq("status", "pending")
-    .order("discovered_at", { ascending: false });
-
-  const { data: winLoss } = await db
-    .from("competitor_win_loss")
-    .select("id, outcome, reason, created_at")
-    .eq("competitor_id", id)
-    .order("created_at", { ascending: false });
-
-  const { data: hubspotIntegration } = await db
-    .from("integrations")
-    .select("connected")
-    .eq("account_id", accountId)
-    .eq("provider", "hubspot")
-    .eq("connected", true)
-    .maybeSingle();
 
   // Same computeMomentum used on Trends, surfaced here too so it's
   // visible on the page people actually click into a competitor from.
@@ -73,23 +72,21 @@ export default async function CompetitorDetailPage({
   const competitorIds = (competitors ?? []).map((c) => c.id);
   const reliabilityLookbackStart = new Date();
   reliabilityLookbackStart.setUTCDate(reliabilityLookbackStart.getUTCDate() - 180);
-  const { data: momentumSignals } = competitorIds.length
-    ? await db
-        .from("signals")
-        .select("competitor_id, type, sentiment, occurred_on, scored, relevance_score")
-        .in("competitor_id", competitorIds)
-        .gte("occurred_on", reliabilityLookbackStart.toISOString().slice(0, 10))
-    : { data: [] };
-  const { data: momentumWinLoss } = competitorIds.length
-    ? await db.from("competitor_win_loss").select("competitor_id, outcome, created_at").in("competitor_id", competitorIds)
-    : { data: [] };
-  const { data: momentumStateHistory } = competitorIds.length
-    ? await db
-        .from("competitor_state_history")
-        .select("competitor_id, metric, value, recorded_at")
-        .in("competitor_id", competitorIds)
-        .gte("recorded_at", reliabilityLookbackStart.toISOString())
-    : { data: [] };
+  const [{ data: momentumSignals }, { data: momentumWinLoss }, { data: momentumStateHistory }] = competitorIds.length
+    ? await Promise.all([
+        db
+          .from("signals")
+          .select("competitor_id, type, sentiment, occurred_on, scored, relevance_score")
+          .in("competitor_id", competitorIds)
+          .gte("occurred_on", reliabilityLookbackStart.toISOString().slice(0, 10)),
+        db.from("competitor_win_loss").select("competitor_id, outcome, created_at").in("competitor_id", competitorIds),
+        db
+          .from("competitor_state_history")
+          .select("competitor_id, metric, value, recorded_at")
+          .in("competitor_id", competitorIds)
+          .gte("recorded_at", reliabilityLookbackStart.toISOString()),
+      ])
+    : [{ data: [] }, { data: [] }, { data: [] }];
   const momentumByCompetitorId: Record<string, MomentumResult> = {};
   for (const c of competitors ?? []) {
     momentumByCompetitorId[c.id] = computeMomentum(

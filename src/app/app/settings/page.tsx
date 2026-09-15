@@ -24,40 +24,44 @@ export default async function SettingsPage() {
   const { accountId, db } = await resolveAccountContext(supabase, user.id);
   if (!accountId) redirect("/onboarding");
 
-  const { data: account } = await db
-    .from("accounts")
-    .select("*")
-    .eq("id", accountId)
-    .single();
+  // account/competitors/integrations/suggestions/apiKeys/referrals only
+  // depend on accountId, not on each other — previously fetched one at a
+  // time, which meant paying every round trip's latency in serial on every
+  // Settings page load. Batched the same way dashboard/page.tsx already
+  // does, since Supabase has no way to bundle unrelated table reads into
+  // one request itself.
+  const [
+    { data: account },
+    { data: competitors },
+    { data: integrations },
+    { data: suggestions },
+    { data: apiKeys },
+    { data: referrals },
+  ] = await Promise.all([
+    db.from("accounts").select("*").eq("id", accountId).single(),
+    db.from("competitors").select("*").eq("account_id", accountId).order("created_at", { ascending: true }),
+    db.from("integrations").select("*").eq("account_id", accountId),
+    db
+      .from("suggested_competitors")
+      .select("*")
+      .eq("account_id", accountId)
+      .eq("status", "pending")
+      .order("discovered_at", { ascending: false }),
+    // Never selects key_hash — the plaintext key is shown once at creation
+    // and this list only ever needs the prefix/metadata to render.
+    db
+      .from("api_keys")
+      .select("id, name, key_prefix, last_used_at, revoked_at, created_at")
+      .eq("account_id", accountId)
+      .is("revoked_at", null)
+      .order("created_at", { ascending: false }),
+    db
+      .from("referrals")
+      .select("id, referred_account_id, referred_at, qualified_at")
+      .eq("referrer_account_id", accountId)
+      .order("referred_at", { ascending: false }),
+  ]);
   if (!account) redirect("/onboarding");
-
-  const { data: competitors } = await db
-    .from("competitors")
-    .select("*")
-    .eq("account_id", accountId)
-    .order("created_at", { ascending: true });
-
-  const { data: integrations } = await db
-    .from("integrations")
-    .select("*")
-    .eq("account_id", accountId);
-
-  const competitorIds = (competitors ?? []).map((c) => c.id);
-  const { data: recentSignals } = competitorIds.length
-    ? await db
-        .from("signals")
-        .select("*")
-        .in("competitor_id", competitorIds)
-        .order("occurred_on", { ascending: false })
-        .limit(10)
-    : { data: [] };
-
-  const { data: suggestions } = await db
-    .from("suggested_competitors")
-    .select("*")
-    .eq("account_id", accountId)
-    .eq("status", "pending")
-    .order("discovered_at", { ascending: false });
 
   // Same momentum sort the competitor list already offers on its own
   // fact-sheet page (see /app/competitors/[id]) — kept for parity now that
@@ -65,28 +69,35 @@ export default async function SettingsPage() {
   // days the recent/prior comparison itself needs) so computeMomentum's
   // per-competitor reliability weighting has real history to judge from —
   // see computeReliability in momentum.ts.
+  const competitorIds = (competitors ?? []).map((c) => c.id);
   const reliabilityLookbackStart = new Date();
   reliabilityLookbackStart.setUTCDate(reliabilityLookbackStart.getUTCDate() - 180);
-  const { data: momentumSignals } = competitorIds.length
-    ? await db
-        .from("signals")
-        .select("competitor_id, type, sentiment, occurred_on, scored, relevance_score")
-        .in("competitor_id", competitorIds)
-        .gte("occurred_on", reliabilityLookbackStart.toISOString().slice(0, 10))
-    : { data: [] };
-  const { data: momentumWinLoss } = competitorIds.length
-    ? await db
-        .from("competitor_win_loss")
-        .select("competitor_id, outcome, created_at")
-        .in("competitor_id", competitorIds)
-    : { data: [] };
-  const { data: momentumStateHistory } = competitorIds.length
-    ? await db
-        .from("competitor_state_history")
-        .select("competitor_id, metric, value, recorded_at")
-        .in("competitor_id", competitorIds)
-        .gte("recorded_at", reliabilityLookbackStart.toISOString())
-    : { data: [] };
+  const [
+    { data: recentSignals },
+    { data: momentumSignals },
+    { data: momentumWinLoss },
+    { data: momentumStateHistory },
+  ] = competitorIds.length
+    ? await Promise.all([
+        db
+          .from("signals")
+          .select("*")
+          .in("competitor_id", competitorIds)
+          .order("occurred_on", { ascending: false })
+          .limit(10),
+        db
+          .from("signals")
+          .select("competitor_id, type, sentiment, occurred_on, scored, relevance_score")
+          .in("competitor_id", competitorIds)
+          .gte("occurred_on", reliabilityLookbackStart.toISOString().slice(0, 10)),
+        db.from("competitor_win_loss").select("competitor_id, outcome, created_at").in("competitor_id", competitorIds),
+        db
+          .from("competitor_state_history")
+          .select("competitor_id, metric, value, recorded_at")
+          .in("competitor_id", competitorIds)
+          .gte("recorded_at", reliabilityLookbackStart.toISOString()),
+      ])
+    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
   const momentumByCompetitorId: Record<string, MomentumResult> = {};
   for (const c of competitors ?? []) {
     momentumByCompetitorId[c.id] = computeMomentum(
@@ -95,21 +106,6 @@ export default async function SettingsPage() {
       (momentumStateHistory ?? []).filter((e) => e.competitor_id === c.id)
     );
   }
-
-  // Never selects key_hash — the plaintext key is shown once at creation
-  // and this list only ever needs the prefix/metadata to render.
-  const { data: apiKeys } = await db
-    .from("api_keys")
-    .select("id, name, key_prefix, last_used_at, revoked_at, created_at")
-    .eq("account_id", accountId)
-    .is("revoked_at", null)
-    .order("created_at", { ascending: false });
-
-  const { data: referrals } = await db
-    .from("referrals")
-    .select("id, referred_account_id, referred_at, qualified_at")
-    .eq("referrer_account_id", accountId)
-    .order("referred_at", { ascending: false });
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-10 sm:py-10">
