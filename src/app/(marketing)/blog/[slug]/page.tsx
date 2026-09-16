@@ -241,7 +241,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         <span>{readingTime(post.body)} min read</span>
       </div>
 
-      <BlogVisual kind={visualKindForSlug(post.slug)} className="mt-10 aspect-[21/9] rounded-2xl border border-border" />
+      <BlogVisual slug={post.slug} kind={visualKindForSlug(post.slug)} className="mt-10 aspect-[21/9] rounded-2xl border border-border" />
 
       <div className="mt-10 space-y-1 text-[15px] leading-relaxed text-muted-foreground">
         {post.body.map((block, i) => (
@@ -280,7 +280,7 @@ async function RelatedPosts({ current }: { current: PostEntry }) {
         {sameKindFirst.map((post) => (
           <Link key={post.slug} href={`/blog/${post.slug}`} className="group block">
             <Panel className="flex h-full flex-col overflow-hidden transition-colors group-hover:border-primary/40">
-              <BlogVisual kind={visualKindForSlug(post.slug)} className="aspect-[16/10]" />
+              <BlogVisual slug={post.slug} kind={visualKindForSlug(post.slug)} className="aspect-[16/10]" />
               <div className="flex flex-1 flex-col p-4">
                 <h3 className="text-sm font-medium tracking-tight text-balance group-hover:text-primary">
                   {post.title}
