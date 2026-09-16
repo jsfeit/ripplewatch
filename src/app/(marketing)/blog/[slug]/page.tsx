@@ -2,11 +2,14 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { getPost, type PostBlock } from "@/lib/posts";
+import { ArrowLeft, ArrowUpRight } from "lucide-react";
+import { getAllPosts, getPost, readingTime, type PostBlock, type PostEntry } from "@/lib/posts";
 import { formatDate } from "@/lib/date";
 import { QuizCta } from "@/components/marketing/quiz-cta";
 import { EmailCaptureForm } from "@/components/marketing/email-capture-form";
+import { Panel } from "@/components/ui/panel";
+import { BlogVisual, blogVisualLabel, visualKindForSlug } from "@/components/marketing/blog-visual";
+import { avatarColor } from "@/lib/utils";
 
 // Same caching rationale as the blog index — see that file.
 export const revalidate = 300;
@@ -80,11 +83,15 @@ function renderInlineText(text: string) {
 
 function Block({ block, index }: { block: PostBlock; index: number }) {
   if (block.type === "h2") {
-    return <h2 className="mt-8 text-lg font-semibold tracking-tight text-foreground">{block.text}</h2>;
+    return (
+      <h2 className="mt-10 border-l-2 border-primary/40 pl-4 text-xl font-semibold tracking-tight text-foreground">
+        {block.text}
+      </h2>
+    );
   }
   if (block.type === "ul") {
     return (
-      <ul className="mt-3 list-disc space-y-1.5 pl-5 text-muted-foreground">
+      <ul className="mt-3 list-disc space-y-2 pl-5 marker:text-primary/50">
         {block.items.map((item, i) => (
           <li key={i}>{renderInlineText(item)}</li>
         ))}
@@ -92,7 +99,7 @@ function Block({ block, index }: { block: PostBlock; index: number }) {
     );
   }
   return (
-    <p className={index === 0 ? "text-muted-foreground" : "mt-3 text-muted-foreground"}>
+    <p className={index === 0 ? "text-lg leading-relaxed text-foreground" : "mt-4"}>
       {renderInlineText(block.text)}
     </p>
   );
@@ -214,16 +221,29 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         <ArrowLeft className="size-3.5" />
         Blog
       </Link>
-      <p className="mt-6 text-xs text-muted-foreground">
-        {formatDate(post.publishedAt)} · By{" "}
-        <Link href="/about" className="hover:text-foreground">
+
+      <span className="mt-6 inline-flex items-center rounded-full border border-border bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground">
+        {blogVisualLabel(visualKindForSlug(post.slug))}
+      </span>
+      <h1 className="mt-4 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">{post.title}</h1>
+      <p className="mt-3 text-lg leading-relaxed text-muted-foreground">{post.description}</p>
+
+      <div className="mt-6 flex items-center gap-3 text-sm text-muted-foreground">
+        <Link href="/about" className="flex items-center gap-2 hover:text-foreground">
+          <span className={`flex size-6 items-center justify-center rounded-full text-[11px] font-semibold ${avatarColor("Jeremy Feit")}`}>
+            JF
+          </span>
           Jeremy Feit
         </Link>
-      </p>
-      <h1 className="mt-1 text-3xl font-semibold tracking-tight text-balance">{post.title}</h1>
-      <p className="mt-3 text-muted-foreground">{post.description}</p>
+        <span aria-hidden="true">·</span>
+        <span>{formatDate(post.publishedAt)}</span>
+        <span aria-hidden="true">·</span>
+        <span>{readingTime(post.body)} min read</span>
+      </div>
 
-      <div className="mt-10 space-y-1 text-[15px] leading-relaxed">
+      <BlogVisual kind={visualKindForSlug(post.slug)} className="mt-10 aspect-[21/9] rounded-2xl border border-border" />
+
+      <div className="mt-10 space-y-1 text-[15px] leading-relaxed text-muted-foreground">
         {post.body.map((block, i) => (
           <Block key={i} block={block} index={i} />
         ))}
@@ -236,6 +256,44 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       <div className="mt-8">
         <QuizCta />
       </div>
+
+      <RelatedPosts current={post} />
     </article>
+  );
+}
+
+async function RelatedPosts({ current }: { current: PostEntry }) {
+  const posts = await getAllPosts();
+  const currentKind = visualKindForSlug(current.slug);
+  const others = posts.filter((p) => p.slug !== current.slug);
+  const sameKindFirst = [
+    ...others.filter((p) => visualKindForSlug(p.slug) === currentKind),
+    ...others.filter((p) => visualKindForSlug(p.slug) !== currentKind),
+  ].slice(0, 3);
+
+  if (sameKindFirst.length === 0) return null;
+
+  return (
+    <div className="mt-16 border-t border-border pt-12">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">More from the blog</h2>
+      <div className="mt-5 grid gap-5 sm:grid-cols-3">
+        {sameKindFirst.map((post) => (
+          <Link key={post.slug} href={`/blog/${post.slug}`} className="group block">
+            <Panel className="flex h-full flex-col overflow-hidden transition-colors group-hover:border-primary/40">
+              <BlogVisual kind={visualKindForSlug(post.slug)} className="aspect-[16/10]" />
+              <div className="flex flex-1 flex-col p-4">
+                <h3 className="text-sm font-medium tracking-tight text-balance group-hover:text-primary">
+                  {post.title}
+                </h3>
+                <span className="mt-auto flex items-center gap-1 pt-3 text-xs text-muted-foreground/70 group-hover:text-primary">
+                  Read
+                  <ArrowUpRight className="size-3" />
+                </span>
+              </div>
+            </Panel>
+          </Link>
+        ))}
+      </div>
+    </div>
   );
 }
