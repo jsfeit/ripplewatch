@@ -48,6 +48,16 @@ export async function getPost(slug: string): Promise<PostEntry | undefined> {
   return data ? rowToPost(data) : undefined;
 }
 
+// Rough reading time from the body's word count — good enough for a
+// meta-line estimate, not meant to be precise.
+export function readingTime(body: PostBlock[]): number {
+  const words = body.reduce((sum, block) => {
+    if (block.type === "ul") return sum + block.items.join(" ").split(/\s+/).filter(Boolean).length;
+    return sum + block.text.split(/\s+/).filter(Boolean).length;
+  }, 0);
+  return Math.max(1, Math.round(words / 200));
+}
+
 // --- Markdown-lite <-> blocks, for the admin textarea editor ---------
 // Deliberately not real markdown: just enough structure (## heading, -
 // list items, blank-line-separated paragraphs) to be easy to type and to
