@@ -186,7 +186,8 @@ export default function MarketResearchPage() {
         <p className="mt-3 max-w-2xl leading-relaxed text-muted-foreground">
           What each tool actually tracks, compiled from public pricing and product pages.
         </p>
-        <div className="mt-6 overflow-x-auto rounded-xl border border-border">
+        <p className="mt-4 text-xs text-muted-foreground sm:hidden">Swipe to see the full table →</p>
+        <div className="mt-2 overflow-x-auto rounded-xl border border-border sm:mt-6">
           <table className="w-full min-w-[640px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-border bg-secondary/40 text-left">

@@ -292,7 +292,7 @@ function CompetitorRow({
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-3 sm:gap-4">
+        <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 sm:gap-x-4">
           <span className="text-xs text-muted-foreground">{pricingSummary(pricingRecord)}</span>
           <MomentumMeter score={momentum.score} />
           <div className="flex flex-col items-end gap-0.5">
@@ -326,7 +326,7 @@ function CompetitorRow({
               ) : null}
             </button>
             {driver ? (
-              <span className="text-[10px] whitespace-nowrap text-muted-foreground">{driver.label}</span>
+              <span className="max-w-[180px] text-right text-[10px] text-muted-foreground">{driver.label}</span>
             ) : null}
           </div>
         </div>

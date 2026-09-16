@@ -172,16 +172,24 @@ export function SettingsView({
         period={checkoutModal?.period ?? "monthly"}
       />
       <Tabs value={activeTab} onValueChange={selectTab}>
-      <TabsList>
-        <TabsTrigger value="competitors">Competitors</TabsTrigger>
-        <TabsTrigger value="integrations">Integrations</TabsTrigger>
-        <TabsTrigger value="team">Team</TabsTrigger>
-        <TabsTrigger value="plan">Plan</TabsTrigger>
-        <TabsTrigger value="referrals">Referrals</TabsTrigger>
-        <TabsTrigger value="digest">Digest preview</TabsTrigger>
-        <TabsTrigger value="developer">Developer</TabsTrigger>
-        <TabsTrigger value="appearance">Appearance</TabsTrigger>
-      </TabsList>
+      {/* Eight tabs run well past 375px — a plain w-fit TabsList has no
+          wrap or scroll of its own, so without this it either forces the
+          page wider than the viewport or silently clips under the app
+          shell's overflow-x-hidden. A horizontal scroller keeps the same
+          look on desktop (content narrower than the container) while
+          staying reachable on mobile. */}
+      <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:overflow-visible sm:px-0">
+        <TabsList>
+          <TabsTrigger value="competitors">Competitors</TabsTrigger>
+          <TabsTrigger value="integrations">Integrations</TabsTrigger>
+          <TabsTrigger value="team">Team</TabsTrigger>
+          <TabsTrigger value="plan">Plan</TabsTrigger>
+          <TabsTrigger value="referrals">Referrals</TabsTrigger>
+          <TabsTrigger value="digest">Digest preview</TabsTrigger>
+          <TabsTrigger value="developer">Developer</TabsTrigger>
+          <TabsTrigger value="appearance">Appearance</TabsTrigger>
+        </TabsList>
+      </div>
 
       <TabsContent value="competitors" className="mt-6 space-y-6">
         <SuggestedCompetitorsPanel suggestions={suggestions} />
