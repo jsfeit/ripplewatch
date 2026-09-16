@@ -11,40 +11,100 @@ function LinkedinIcon({ className }: { className?: string }) {
   );
 }
 
+const COLUMNS = [
+  {
+    title: "Product",
+    links: [
+      { href: "/how-it-works", label: "How it works" },
+      { href: "/pricing", label: "Pricing" },
+      { href: "/onboarding", label: "Live demo" },
+      { href: DEMO_URL, label: "Book a demo", external: true },
+      { href: "/competitor-snapshot", label: "Competitor Snapshot" },
+      { href: "/competitive-intelligence-quiz", label: "CI Quiz" },
+    ],
+  },
+  {
+    title: "Resources",
+    links: [
+      { href: "/state-of-competitive-intelligence", label: "Research" },
+      { href: "/blog", label: "Blog" },
+      { href: "/compare", label: "Compare" },
+      { href: "/alternatives", label: "Alternatives" },
+      { href: "/faq", label: "FAQ" },
+    ],
+  },
+  {
+    title: "Company",
+    links: [
+      { href: "/about", label: "About" },
+      { href: "/press", label: "Press" },
+      { href: "/careers", label: "Careers" },
+      { href: "/affiliates", label: "Affiliates" },
+      { href: "/creators", label: "For creators" },
+      { href: "/refer", label: "Refer a friend" },
+    ],
+  },
+  {
+    title: "Legal",
+    links: [
+      { href: "/privacy", label: "Privacy" },
+      { href: "/terms", label: "Terms" },
+      { href: "/terms#subprocessors", label: "Subprocessors" },
+    ],
+  },
+];
+
 export function SiteFooter() {
   return (
     <footer className="border-t border-border/70">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-10 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-          <Waves className="size-4" />
-          Ripplewatch
+      <div className="mx-auto max-w-6xl px-6 py-14">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.3fr_repeat(4,1fr)]">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Waves className="size-4" />
+              Ripplewatch
+            </div>
+            <p className="max-w-[22ch] text-sm text-muted-foreground">
+              Competitive intelligence for early-stage SaaS founders.
+            </p>
+            <Link
+              href="/login"
+              className="inline-flex w-fit items-center rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+            >
+              Sign in
+            </Link>
+          </div>
+
+          {COLUMNS.map((column) => (
+            <div key={column.title}>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {column.title}
+              </h3>
+              <ul className="mt-4 flex flex-col gap-3">
+                {column.links.map((link) => (
+                  <li key={link.label}>
+                    {link.external ? (
+                      <a
+                        href={link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-muted-foreground hover:text-foreground"
+                      >
+                        {link.label}
+                      </a>
+                    ) : (
+                      <Link href={link.href} className="text-sm text-muted-foreground hover:text-foreground">
+                        {link.label}
+                      </Link>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
-        <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
-          <Link href="/about" className="hover:text-foreground">About</Link>
-          <Link href="/how-it-works" className="hover:text-foreground">How it works</Link>
-          <Link href="/pricing" className="hover:text-foreground">Pricing</Link>
-          <Link href="/onboarding" className="hover:text-foreground">Live demo</Link>
-          <a href={DEMO_URL} target="_blank" rel="noopener noreferrer" className="hover:text-foreground">
-            Book a demo
-          </a>
-          <Link href="/state-of-competitive-intelligence" className="hover:text-foreground">Research</Link>
-          <Link href="/blog" className="hover:text-foreground">Blog</Link>
-          <Link href="/compare" className="hover:text-foreground">Compare</Link>
-          <Link href="/alternatives" className="hover:text-foreground">Alternatives</Link>
-          <Link href="/competitive-intelligence-quiz" className="hover:text-foreground">CI Quiz</Link>
-          <Link href="/competitor-snapshot" className="hover:text-foreground">Competitor Snapshot</Link>
-          <Link href="/faq" className="hover:text-foreground">FAQ</Link>
-          <Link href="/press" className="hover:text-foreground">Press</Link>
-          <Link href="/careers" className="hover:text-foreground">Careers</Link>
-          <Link href="/affiliates" className="hover:text-foreground">Affiliates</Link>
-          <Link href="/creators" className="hover:text-foreground">For creators</Link>
-          <Link href="/refer" className="hover:text-foreground">Refer a friend</Link>
-          <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
-          <Link href="/terms" className="hover:text-foreground">Terms</Link>
-          <Link href="/terms#subprocessors" className="hover:text-foreground">Subprocessors</Link>
-          <Link href="/login" className="hover:text-foreground">Sign in</Link>
-        </nav>
-        <div className="flex items-center gap-4">
+
+        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border/70 pt-8 sm:flex-row">
           <p className="text-xs text-muted-foreground">© 2026 Ripplewatch. ripplewatch.ai</p>
           <a
             href="https://www.linkedin.com/company/ripplewatch/"

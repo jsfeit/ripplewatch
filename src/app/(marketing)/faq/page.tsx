@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { FAQ_CATEGORIES } from "@/lib/faq";
-import { FaqAccordion } from "./faq-accordion";
+import { FaqBrowser } from "./faq-browser";
 
 const description =
   "Answers on pricing and cancellation, how Ripplewatch's relevance scoring works, data security, and getting started.";
@@ -42,13 +42,18 @@ export default function FaqPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA) }}
       />
       <div className="text-center">
-        <h1 className="text-3xl font-semibold tracking-tight">Frequently asked questions</h1>
-        <p className="mt-3 text-muted-foreground">{description}</p>
+        <span className="inline-flex items-center rounded-full border border-border bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground">
+          FAQ
+        </span>
+        <h1 className="mt-6 text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
+          Frequently asked questions
+        </h1>
+        <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-muted-foreground">{description}</p>
       </div>
 
-      <FaqAccordion categories={FAQ_CATEGORIES} />
+      <FaqBrowser categories={FAQ_CATEGORIES} />
 
-      <div className="mt-16 text-center">
+      <div className="mt-16 border-t border-border pt-16 text-center">
         <p className="text-sm text-muted-foreground">Still have a question?</p>
         <div className="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <a href="mailto:hello@ripplewatch.ai" className={buttonVariants({ variant: "outline" })}>
