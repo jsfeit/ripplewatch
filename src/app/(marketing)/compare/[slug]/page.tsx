@@ -136,6 +136,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
 
       <div className="mt-16">
         <h2 className="text-lg font-medium">Ripplewatch vs. {entry.name} at a glance</h2>
+        <p className="mt-1 text-xs text-muted-foreground sm:hidden">Swipe to see the full table →</p>
         <div className="mt-4 overflow-x-auto rounded-2xl border border-border">
           <table className="w-full min-w-[520px] border-collapse text-sm">
             <thead>

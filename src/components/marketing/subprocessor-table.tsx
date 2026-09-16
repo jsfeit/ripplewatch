@@ -23,27 +23,30 @@ export const OPTIONAL_SUBPROCESSORS: Subprocessor[] = [
 
 export function SubprocessorTable({ rows }: { rows: Subprocessor[] }) {
   return (
-    <div className="mt-3 overflow-x-auto rounded-lg border border-border">
-      <table className="w-full text-left text-sm">
-        <thead>
-          <tr className="border-b border-border bg-secondary/40 text-xs text-muted-foreground">
-            <th className="px-4 py-2.5 font-medium">Subprocessor</th>
-            <th className="px-4 py-2.5 font-medium">Purpose</th>
-            <th className="px-4 py-2.5 font-medium">Data processed</th>
-            <th className="px-4 py-2.5 font-medium">Location</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.name} className="border-b border-border last:border-0">
-              <td className="px-4 py-2.5 font-medium">{row.name}</td>
-              <td className="px-4 py-2.5 text-muted-foreground">{row.purpose}</td>
-              <td className="px-4 py-2.5 text-muted-foreground">{row.data}</td>
-              <td className="px-4 py-2.5 text-muted-foreground">{row.location}</td>
+    <div className="mt-3">
+      <p className="mb-1.5 text-xs text-muted-foreground sm:hidden">Swipe to see the full table →</p>
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-border bg-secondary/40 text-xs text-muted-foreground">
+              <th className="px-4 py-2.5 font-medium">Subprocessor</th>
+              <th className="px-4 py-2.5 font-medium">Purpose</th>
+              <th className="px-4 py-2.5 font-medium">Data processed</th>
+              <th className="px-4 py-2.5 font-medium">Location</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.name} className="border-b border-border last:border-0">
+                <td className="px-4 py-2.5 font-medium">{row.name}</td>
+                <td className="px-4 py-2.5 text-muted-foreground">{row.purpose}</td>
+                <td className="px-4 py-2.5 text-muted-foreground">{row.data}</td>
+                <td className="px-4 py-2.5 text-muted-foreground">{row.location}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
