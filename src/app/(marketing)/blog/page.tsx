@@ -53,7 +53,7 @@ export default async function BlogIndexPage() {
           {featured && (
             <Link href={`/blog/${featured.slug}`} className="group mt-14 block">
               <Panel className="grid overflow-hidden transition-colors group-hover:border-primary/40 sm:grid-cols-2">
-                <BlogVisual kind={visualKindForSlug(featured.slug)} className="aspect-[16/10] sm:aspect-auto" />
+                <BlogVisual slug={featured.slug} kind={visualKindForSlug(featured.slug)} className="aspect-[16/10] sm:aspect-auto" />
                 <div className="flex flex-col justify-center p-8 sm:p-10">
                   <div className="flex items-center gap-3 text-xs font-medium text-muted-foreground">
                     <span>Latest</span>
@@ -79,7 +79,7 @@ export default async function BlogIndexPage() {
               return (
                 <Link key={post.slug} href={`/blog/${post.slug}`} className="group block h-full">
                   <Panel className="flex h-full flex-col overflow-hidden transition-colors group-hover:border-primary/40">
-                    <BlogVisual kind={kind} className="aspect-[16/10]" />
+                    <BlogVisual slug={post.slug} kind={kind} className="aspect-[16/10]" />
                     <div className="flex flex-1 flex-col p-5">
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         <span>{formatDate(post.publishedAt)}</span>
