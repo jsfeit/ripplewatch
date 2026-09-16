@@ -1,4 +1,4 @@
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Rocket } from "lucide-react";
 import { Panel } from "@/components/ui/panel";
 import { cn } from "@/lib/utils";
 
@@ -120,6 +120,12 @@ const FEATURED = [
 
 const ELSEWHERE = [
   {
+    href: "https://postyourstartup.co/startup/ripplewatch?ref=badge",
+    label: "PostYourStartup",
+    sublabel: "View listing",
+    mark: <Rocket className="size-5 text-primary" />,
+  },
+  {
     href: "https://www.linkedin.com/company/ripplewatch/",
     label: "LinkedIn",
     sublabel: "Follow the company page",
@@ -153,20 +159,6 @@ export default function PressPage() {
       </section>
 
       <section className="mx-auto max-w-4xl px-6 py-16">
-        <a
-          href="https://postyourstartup.co/startup/ripplewatch?ref=badge"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mb-10 flex justify-center"
-        >
-          <img
-            src="https://postyourstartup.co/api/badge/ripplewatch?theme=neutral"
-            alt="Featured on PostYourStartup"
-            width={212}
-            height={55}
-          />
-        </a>
-
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Featured on</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {FEATURED.map((item) => (
@@ -177,7 +169,7 @@ export default function PressPage() {
         <h2 className="mt-12 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Find us elsewhere
         </h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {ELSEWHERE.map((item) => (
             <PressLink key={item.label} {...item} />
           ))}
