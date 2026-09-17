@@ -606,7 +606,8 @@ export interface Database {
             | "github_commit_velocity"
             | "review_rating"
             | "ad_count"
-            | "buzz_mentions";
+            | "buzz_mentions"
+            | "call_mention_count";
           value: number;
           recorded_at: string;
         };
@@ -619,7 +620,8 @@ export interface Database {
             | "github_commit_velocity"
             | "review_rating"
             | "ad_count"
-            | "buzz_mentions";
+            | "buzz_mentions"
+            | "call_mention_count";
           value: number;
           recorded_at?: string;
         };

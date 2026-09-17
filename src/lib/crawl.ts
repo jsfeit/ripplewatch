@@ -18,6 +18,7 @@ import {
   checkReviewSentiment,
   checkBuzzMentions,
   checkAdActivity,
+  recordStateHistory,
 } from "@/lib/scraping";
 import {
   scoreSignal,
@@ -513,6 +514,20 @@ async function scoreAccountSignals(supabase: AdminSupabase, account: Account): P
         competitors.map((c) => c.name)
       )
     : [];
+
+  // Promotes call-mention volume into its own momentum input (see
+  // callMentions component in momentum.ts), not just narrative context on
+  // individual signals below. Recorded per competitor even when this run's
+  // mention count is 0, same as buzz/review/ad — a real zero is a real
+  // reading, distinct from "no history yet" (see computeReliability).
+  // recordStateHistory is already best-effort (logs and swallows its own
+  // write errors), so a failure here can't block signal scoring below.
+  if (CALL_INTEL_ALLOWED[tier]) {
+    for (const competitor of competitors) {
+      const count = callMentions.filter((m) => m.competitor.toLowerCase() === competitor.name.toLowerCase()).length;
+      await recordStateHistory(supabase, competitor.id, "call_mention_count", count);
+    }
+  }
 
   const hubspotNotes = CRM_ALLOWED[tier] ? await buildHubspotNotes(supabase, account.id) : null;
   const lostDealNotes = [account.lost_deal_notes, hubspotNotes].filter(Boolean).join(" ") || null;
