@@ -1,4 +1,5 @@
 import "server-only";
+import * as Sentry from "@sentry/nextjs";
 import {
   fetchCompetitorPricingText,
   checkPricingDiff,
@@ -384,7 +385,7 @@ const WORKER_BATCH_SIZE = 24;
 // previous COMPETITOR_CONCURRENCY (4) is safe.
 const JOB_CONCURRENCY = 8;
 
-export type WorkerBatchSummary = { processed: number; done: number; error: number };
+export type WorkerBatchSummary = { processed: number; done: number; error: number; claimFailed?: boolean };
 
 // Claims and processes one bounded batch of pending crawl_jobs — called by
 // /api/cron/crawl-worker on a short interval (every couple minutes) so
@@ -397,7 +398,17 @@ export async function processCrawlJobBatch(supabase: AdminSupabase): Promise<Wor
   const { data: jobs, error } = await supabase.rpc("claim_crawl_jobs", { batch_size: WORKER_BATCH_SIZE });
   if (error) {
     console.error("failed to claim crawl jobs:", error);
-    return { processed: 0, done: 0, error: 0 };
+    // This tick returns a clean, successful-looking result below (by
+    // design — a transient claim failure shouldn't fail the whole cron
+    // response and risk the platform treating it as a crash), which means
+    // it would otherwise never reach Sentry. A one-off failure here is
+    // noise; a sustained run of them is exactly the kind of thing that
+    // should page someone instead of only showing up if someone happens to
+    // go read Vercel's logs — see the 842-timeout stretch on 2026-09-11.
+    Sentry.captureException(new Error(`failed to claim crawl jobs: ${error.message}`), {
+      tags: { job: "crawl-worker" },
+    });
+    return { processed: 0, done: 0, error: 0, claimFailed: true };
   }
   if (!jobs || jobs.length === 0) return { processed: 0, done: 0, error: 0 };
 
