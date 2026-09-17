@@ -11,7 +11,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "What is Ripplewatch?",
         answer:
-          "Not alerts. Not data. Answers. Ripplewatch is competitive intelligence built for early-stage SaaS founders, not PMM teams: it monitors the competitors you choose and scores every signal (a pricing change, a job posting, a news mention) against your own positioning, ICP, and the real reasons you've lost deals or churned customers, then rolls it all up into a single Momentum score per competitor.",
+          "Not alerts. Not data. Answers. Ripplewatch is competitive intelligence built for small tech companies, not a fractional hire: it monitors the competitors you choose and scores every signal (a pricing change, a job posting, a news mention) against your own positioning, ICP, and the real reasons you've lost deals or churned customers, then rolls it all up into a single Momentum score per competitor.",
       },
       {
         question: "How is this different from other competitive intelligence tools?",

@@ -55,7 +55,7 @@ export default function OpengraphImage() {
           <div style={{ display: "flex", color: "#0d7d6f" }}>We tell you if it matters.</div>
         </div>
         <div style={{ display: "flex", marginTop: 40, fontSize: 26, color: "#66756e" }}>
-          AI-native competitive intelligence for startup product and marketing teams
+          Competitive intelligence for small tech companies, not a fractional hire
         </div>
       </div>
     ),
