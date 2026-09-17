@@ -65,7 +65,7 @@ export function SiteFooter() {
               Ripplewatch
             </div>
             <p className="max-w-[22ch] text-sm text-muted-foreground">
-              Competitive intelligence for early-stage SaaS founders.
+              Competitive intelligence for small tech companies.
             </p>
             <Link
               href="/login"

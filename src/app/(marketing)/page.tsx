@@ -53,7 +53,7 @@ const STRUCTURED_DATA = {
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   description:
-    "Not alerts. Not data. Answers. Ripplewatch tracks hiring, pricing, press, and product activity across your competitors and tells early-stage SaaS founders which ones are becoming a real threat.",
+    "Not alerts. Not data. Answers. Ripplewatch tracks hiring, pricing, press, and product activity across your competitors and tells small tech companies which ones are becoming a real threat.",
   offers: [
     { "@type": "Offer", name: "Starter", price: "69", priceCurrency: "USD" },
     { "@type": "Offer", name: "Plus", price: "149", priceCurrency: "USD" },
@@ -71,7 +71,7 @@ export default function HomePage() {
       <section className="mx-auto max-w-6xl px-6 pb-20 pt-20 sm:pt-28">
         <div className="mx-auto max-w-3xl text-center">
           <span className="inline-flex items-center rounded-full border border-border bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground">
-            Competitive intelligence for early-stage SaaS founders, not PMM teams
+            Built for small tech companies, not a fractional hire
           </span>
           <h1 className="mt-6 text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
             Not alerts. Not data.
