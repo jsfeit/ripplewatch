@@ -371,7 +371,8 @@ function ResearchBlock({ result }: { result: SnapshotResult }) {
       <p>
         {result.domain}{" "}
         blocked our direct check, so this comes from a search of public web pages instead of a live
-        read. It may be incomplete or out of date.
+        read. It may be incomplete or out of date, and any prices shown can be third-party estimates rather than the
+        company&apos;s own published numbers.
       </p>
       {research.pricingSummary ? (
         <p>
