@@ -757,11 +757,20 @@ export async function checkPricingDiff(
 // how much open_role_count or lowest_price actually moved between two
 // windows, only how many discrete signal events fired. Best-effort: a
 // failure here shouldn't take down the pricing/hiring upsert it runs
-// alongside.
-async function recordStateHistory(
+// alongside. Exported so crawl.ts can record call_mention_count directly —
+// that check doesn't live in this file (buildCallMentions is account-wide,
+// not per-competitor like everything else that writes state history here).
+export async function recordStateHistory(
   supabase: AdminClient,
   competitorId: string,
-  metric: "open_role_count" | "lowest_price" | "github_commit_velocity" | "review_rating" | "ad_count" | "buzz_mentions",
+  metric:
+    | "open_role_count"
+    | "lowest_price"
+    | "github_commit_velocity"
+    | "review_rating"
+    | "ad_count"
+    | "buzz_mentions"
+    | "call_mention_count",
   value: number
 ): Promise<void> {
   const { error } = await supabase.from("competitor_state_history").insert({

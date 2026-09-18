@@ -46,14 +46,15 @@ const COOLING_THRESHOLD = -15;
 // LOW_CONFIDENCE_THRESHOLD cutoff for the confidence flag, and as the
 // equal-weight fallback denominator on the rare edge case where every
 // component's reliability weight comes back zero (see the score computation
-// below). GitHub activity and ad activity are included here even though
-// they're structurally inapplicable for most competitors (no github_repo
-// set; no META_AD_LIBRARY_ACCESS_TOKEN configured) — that's fine:
+// below). GitHub activity, ad activity, and call mentions are included here
+// even though they're structurally inapplicable for most competitors/
+// accounts (no github_repo set; no META_AD_LIBRARY_ACCESS_TOKEN configured;
+// no Gong/Zoom connected on a Call Intelligence-allowed tier) — that's fine:
 // computeReliability naturally gives an always-absent component zero
 // weight, which drops it out of both the numerator and denominator of the
 // real weighted-average score entirely, rather than shrinking the score the
 // way a normally-reliable-but-temporarily-missing component would.
-const TOTAL_COMPONENTS = 10;
+const TOTAL_COMPONENTS = 11;
 
 // Press/funding sentiment is weighted by recency (not a flat window
 // average) so a big story right when it breaks dominates the score, then
@@ -96,15 +97,16 @@ export type MomentumComponent = {
   weight: number;
 };
 
-// Below this many populated components (out of the 10 computeMomentum can
+// Below this many populated components (out of the 11 computeMomentum can
 // ever populate), the averaged score is one or two
 // signals doing all the work — real, but fragile enough that a UI showing
 // it should say so rather than presenting it with the same confidence as a
-// fully-populated score. 7, not 8, since GitHub activity and ad activity
-// are opt-in/credential-gated and structurally absent for most competitors
-// — requiring them (alongside the other 8) to reach "full" confidence would
-// wrongly mark every competitor without a github_repo or a configured Meta
-// token as permanently low-confidence.
+// fully-populated score. 7, not 8, since GitHub activity, ad activity, and
+// call mentions are opt-in/credential-gated and structurally absent for
+// most competitors/accounts — requiring them (alongside the other 8) to
+// reach "full" confidence would wrongly mark every competitor without a
+// github_repo, a configured Meta token, or a connected Gong/Zoom as
+// permanently low-confidence.
 const LOW_CONFIDENCE_THRESHOLD = 7;
 
 export type MomentumConfidence = "low" | "full";
@@ -127,6 +129,7 @@ export type MomentumResult = {
     reviewSentiment: MomentumComponent;
     buzz: MomentumComponent;
     adActivity: MomentumComponent;
+    callMentions: MomentumComponent;
   };
 };
 
@@ -402,6 +405,20 @@ export function computeMomentum(
   const adHasData = adRecentValue !== null && adPriorValue !== null;
   const adActivityScore = adHasData ? valueDelta(adRecentValue!, adPriorValue!) : null;
 
+  // Call mentions (Gong/Zoom, see buildCallMentions in crawl.ts) — same
+  // magnitude-mode shape as buzz above: how many sales calls mentioned this
+  // competitor, trending up or down between the two windows. Opt-in the
+  // same way GitHub/ad activity are: null (and zero-weighted, see
+  // callMentionsWeight below) for every account without a connected Gong or
+  // Zoom integration on a Call Intelligence-allowed tier, since state
+  // history simply never has a "call_mention_count" reading for them.
+  const callMentionsRecentValue = latestValueInWindow(stateHistory, "call_mention_count", recentStart, now);
+  const callMentionsPriorValue = latestValueInWindow(stateHistory, "call_mention_count", priorStart, recentStart);
+  const callMentionsHasData = callMentionsRecentValue !== null && callMentionsPriorValue !== null;
+  const callMentionsScore = callMentionsHasData
+    ? valueDelta(callMentionsRecentValue!, callMentionsPriorValue!)
+    : null;
+
   const pressScore = sentimentDelta(pressRecentSignals, pressPriorSignals, now);
   const relevanceRecentAvg = scoredRecent.length > 0 ? Math.round(avg(scoredRecent.map((s) => s.relevance_score!))) : null;
   const relevancePriorAvg = scoredPrior.length > 0 ? Math.round(avg(scoredPrior.map((s) => s.relevance_score!))) : null;
@@ -444,6 +461,9 @@ export function computeMomentum(
   );
   const adActivityWeight = computeReliability(now, (start, end) =>
     stateHistory.some((e) => e.metric === "ad_count" && inWindow(e.recorded_at, start, end))
+  );
+  const callMentionsWeight = computeReliability(now, (start, end) =>
+    stateHistory.some((e) => e.metric === "call_mention_count" && inWindow(e.recorded_at, start, end))
   );
 
   const components: MomentumResult["components"] = {
@@ -547,6 +567,16 @@ export function computeMomentum(
       priorCount: adPriorValue ?? 0,
       detail: !adHasData ? "no data" : `${adRecentValue} active ads vs ${adPriorValue} last period`,
       weight: adActivityWeight,
+    },
+    callMentions: {
+      label: "Call mentions (Gong/Zoom)",
+      score: callMentionsScore,
+      recentCount: callMentionsRecentValue ?? 0,
+      priorCount: callMentionsPriorValue ?? 0,
+      detail: !callMentionsHasData
+        ? "no data"
+        : `${callMentionsRecentValue} calls vs ${callMentionsPriorValue} last period`,
+      weight: callMentionsWeight,
     },
   };
 
