@@ -518,9 +518,13 @@ export function scoringRequestParams(context: ScoringContext, signal: SignalToSc
     model: "claude-sonnet-5" as const,
     // 300 was occasionally too tight for a 1-3 sentence reasoning string,
     // truncating mid-string and producing invalid JSON (silently dropping
-    // the signal — see crawl.ts's per-signal catch). Headroom, not a bump
-    // for the score field itself (that's a single number).
-    max_tokens: 600,
+    // the signal — see crawl.ts's per-signal catch). 600 still cut off
+    // several long-reasoning signals in production (4 failed parses on
+    // 2026-09-11, each spending the full call for nothing), so this has real
+    // headroom now. Headroom, not a bump for the score field itself (that's
+    // a single number); max_tokens only caps output, it isn't billed unless
+    // used.
+    max_tokens: 1200,
     system: cachedSystemPrompt(SYSTEM_PROMPT),
     output_config: { format: { type: "json_schema" as const, schema: SCORE_SIGNAL_SCHEMA } },
     messages: [{ role: "user" as const, content: buildScoringUserPrompt(context, signal) }],
@@ -833,7 +837,11 @@ Suggest likely competitors.`;
 
   const message = await createMessage({
     model: "claude-sonnet-5",
-    max_tokens: 500,
+    // 500 truncated a real onboarding response mid-list (2026-09-17: eight
+    // competitors with categories, cut off inside a string, unparseable), so
+    // the visitor got no suggestions at all. Same headroom-not-spend
+    // reasoning as scoringRequestParams.
+    max_tokens: 1500,
     system: cachedSystemPrompt(SUGGEST_COMPETITORS_SYSTEM_PROMPT),
     output_config: { format: { type: "json_schema", schema: SUGGEST_COMPETITORS_SCHEMA } },
     messages: [{ role: "user", content: userPrompt }],

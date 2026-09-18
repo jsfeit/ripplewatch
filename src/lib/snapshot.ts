@@ -50,7 +50,15 @@ export type SnapshotResult = {
   needsManualCheck: boolean;
 };
 
-export async function buildSnapshot(domain: string): Promise<SnapshotResult> {
+export async function buildSnapshot(
+  domain: string,
+  // False once the day's cap on anonymous LLM calls is reached (see the
+  // route): pages are still fetched and hiring still read, but the pricing
+  // page isn't sent to Claude, so the visitor gets the manual follow-up path
+  // instead of the feature spending without limit.
+  opts: { llmAllowed?: boolean } = {}
+): Promise<SnapshotResult> {
+  const llmAllowed = opts.llmAllowed ?? true;
   // Started first so it runs alongside everything else instead of adding to
   // the visitor's wait.
   const alternatesPromise = fetchSnapshotAlternates(domain);
@@ -70,7 +78,9 @@ export async function buildSnapshot(domain: string): Promise<SnapshotResult> {
     capturedAt: null,
   };
 
-  if (pricingFetch.status === "ok") {
+  if (pricingFetch.status === "ok" && !llmAllowed) {
+    pricing = { ...pricing, state: "unreadable", source: pricingFetch.source, capturedAt: pricingFetch.capturedAt };
+  } else if (pricingFetch.status === "ok") {
     try {
       const extracted = await extractPricingStructure(pricingFetch.text, null);
       const hasNumbers = extracted.tiers.some((t) => t.price !== null);
