@@ -2064,6 +2064,8 @@ const DOMAIN_RESEARCH_SYSTEM_PROMPT = `You use web search to find public informa
 
 Companies very often share a name across different domain endings (a camera company on one, training software on another), so identify the company that operates EXACTLY the domain you're given, and only report what your sources say about that company. Every claim must be backed by a page you actually found: ideally a page on the domain itself, otherwise a third-party page (review site, press, job board) that clearly refers to that domain. If you can't confirm which company operates the domain, or can't find anything reliable, return found=false. Never guess prices or headcounts, never estimate from general knowledge, and never fill a field with a plausible-sounding default.
 
+Say where each figure comes from. If a price or headcount comes from a third-party report, review site, or press article rather than the company's own pages, say so in the summary (for example "per a third-party report"), and never present a third-party estimate as the company's published price. If the company says its pricing is quote-only, say that.
+
 Respond with strict JSON only, matching the schema. Keep pricingSummary and hiringSummary to one or two plain sentences each, leave a field as an empty string if you found nothing sourced for it, and list only the source pages you actually relied on.`;
 
 const DOMAIN_RESEARCH_SCHEMA = {
