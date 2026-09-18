@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { processCrawlJobBatch, finalizeCompletedRuns } from "@/lib/crawl";
 
@@ -21,10 +22,32 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = createAdminClient();
+  // Sentry's automatic Vercel Cron Monitor instrumentation (next.config.ts,
+  // automaticVercelMonitors) doesn't cover App Router route handlers yet,
+  // so this cron had zero monitoring: a claim failure was swallowed to a
+  // plain console.error (see processCrawlJobBatch) and only ever showed up
+  // if someone went looking at raw logs — which is exactly what happened
+  // for ~2.5 days of near-total failure on 2026-09-11–14. withMonitor
+  // check-ins here mean Sentry's own Crons dashboard now tracks this job's
+  // liveness and can alert when it goes quiet or starts failing, instead of
+  // that only being discoverable after the fact.
+  const result = await Sentry.withMonitor(
+    "crawl-worker",
+    async () => {
+      const supabase = createAdminClient();
+      const batch = await processCrawlJobBatch(supabase);
+      const finalized = await finalizeCompletedRuns(supabase);
+      // processCrawlJobBatch swallows a claim failure into a normal-looking
+      // empty result (see its own comment) so this tick's cron response
+      // doesn't itself count as a crash — surface it here instead, so the
+      // check-in this wraps still registers as a failure.
+      if (batch.claimFailed) {
+        throw new Error("crawl-worker: failed to claim crawl jobs");
+      }
+      return { batch, finalized };
+    },
+    { schedule: { type: "crontab", value: "*/2 * * * *" }, checkinMargin: 2, maxRuntime: 5 }
+  );
 
-  const batch = await processCrawlJobBatch(supabase);
-  const finalized = await finalizeCompletedRuns(supabase);
-
-  return NextResponse.json({ ok: true, batch, finalized });
+  return NextResponse.json({ ok: true, ...result });
 }
