@@ -8,6 +8,17 @@ import type { Database } from "@/lib/supabase/types";
 type LeadUpdate = Database["public"]["Tables"]["leads"]["Update"];
 import { getBannerCampaign } from "@/lib/promo-campaign";
 
+// Reserved documentation/test domains (RFC 2606). Resend rejects sends to
+// them outright, so a QA lead created with one (example.com etc.) used to
+// fail and get retried on every daily run forever, filling the error logs.
+// There's nothing to deliver to, so they're skipped rather than retried.
+const RESERVED_EMAIL_DOMAIN = /(^|\.)(example\.(com|net|org)|test|invalid|localhost|example)$/i;
+
+function isUndeliverableTestAddress(email: string): boolean {
+  const domain = email.split("@")[1] ?? "";
+  return RESERVED_EMAIL_DOMAIN.test(domain);
+}
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 const STEP_1_AFTER_MS = DAY_MS; // 1 day after capture
 const STEP_2_AFTER_MS = 4 * DAY_MS; // 4 days after capture
@@ -64,6 +75,7 @@ export async function GET(request: Request) {
 
   for (const lead of leads) {
     if (existingEmails.has(lead.email.toLowerCase())) continue;
+    if (isUndeliverableTestAddress(lead.email)) continue;
 
     const ageMs = now - new Date(lead.created_at).getTime();
 

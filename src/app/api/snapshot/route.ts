@@ -4,6 +4,7 @@ import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { normalizeDomain, DOMAIN_PATTERN, isBlockedHost } from "@/lib/domain";
 import { buildSnapshot, recordSnapshotLead, toLookup } from "@/lib/snapshot";
 import { sendSnapshotManualCheckAlertEmail } from "@/lib/resend";
+import { countUnattributedLlmCalls } from "@/lib/usage";
 
 // Homepage + pricing (live, then archived) + hiring board all run in
 // parallel with their own time caps (see the snapshot fetchers in
@@ -11,6 +12,14 @@ import { sendSnapshotManualCheckAlertEmail } from "@/lib/resend";
 // under this. Explicit because a slow or uncooperative third-party site
 // could otherwise eat into it.
 export const maxDuration = 60;
+
+// Global ceiling on how many anonymous snapshot lookups may call Claude per
+// rolling 24 hours, across every visitor. The per-IP limit below is in-memory
+// and per server instance, so on its own it doesn't stop a script that
+// rotates IPs; this does. ~2 cents a lookup, so the cap bounds worst-case
+// public spend at a few dollars a day. Past it the tool still fetches pages
+// and reads hiring, and falls back to the manual follow-up path for pricing.
+const SNAPSHOT_DAILY_LLM_CAP = 300;
 
 const VALID_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -35,7 +44,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Enter a real competitor domain, e.g. acme.com." }, { status: 400 });
   }
 
-  const result = await buildSnapshot(domain);
+  const usedToday = await countUnattributedLlmCalls("extractPricingStructure", 24);
+  const llmAllowed = usedToday === null || usedToday < SNAPSHOT_DAILY_LLM_CAP;
+  if (!llmAllowed) console.warn(`snapshot LLM cap (${SNAPSHOT_DAILY_LLM_CAP}/24h) reached, skipping pricing extraction`);
+
+  const result = await buildSnapshot(domain, { llmAllowed });
 
   // Recorded whether or not we found anything (see recordSnapshotLead).
   // Awaited, not fire-and-forget: on a serverless function the work can be
