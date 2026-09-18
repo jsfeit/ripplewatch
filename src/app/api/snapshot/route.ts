@@ -8,10 +8,12 @@ import { countUnattributedLlmCalls } from "@/lib/usage";
 
 // Homepage + pricing (live, then archived) + hiring board all run in
 // parallel with their own time caps (see the snapshot fetchers in
-// scraping.ts), plus one LLM extraction call, so the worst case lands well
-// under this. Explicit because a slow or uncooperative third-party site
-// could otherwise eat into it.
-export const maxDuration = 60;
+// scraping.ts), plus one LLM extraction call. When a site can't be read at
+// all, a web-search research step (capped at 50s in buildSnapshot) runs after
+// that, so the worst case is roughly 35s of fetching plus 50s of research.
+// Explicit because a slow or uncooperative third-party site could otherwise
+// eat into it.
+export const maxDuration = 120;
 
 // Global ceiling on how many anonymous snapshot lookups may call Claude per
 // rolling 24 hours, across every visitor. The per-IP limit below is in-memory
@@ -20,6 +22,11 @@ export const maxDuration = 60;
 // public spend at a few dollars a day. Past it the tool still fetches pages
 // and reads hiring, and falls back to the manual follow-up path for pricing.
 const SNAPSHOT_DAILY_LLM_CAP = 300;
+
+// Web research (search fee plus tokens) costs more per call than the pricing
+// extraction and only runs for sites we couldn't read, so it has its own,
+// lower ceiling.
+const SNAPSHOT_DAILY_RESEARCH_CAP = 100;
 
 const VALID_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -48,7 +55,11 @@ export async function POST(request: Request) {
   const llmAllowed = usedToday === null || usedToday < SNAPSHOT_DAILY_LLM_CAP;
   if (!llmAllowed) console.warn(`snapshot LLM cap (${SNAPSHOT_DAILY_LLM_CAP}/24h) reached, skipping pricing extraction`);
 
-  const result = await buildSnapshot(domain, { llmAllowed });
+  const researchUsed = await countUnattributedLlmCalls("researchDomainPublicly", 24);
+  const researchAllowed = researchUsed === null || researchUsed < SNAPSHOT_DAILY_RESEARCH_CAP;
+  if (!researchAllowed) console.warn(`snapshot research cap (${SNAPSHOT_DAILY_RESEARCH_CAP}/24h) reached, skipping web research`);
+
+  const result = await buildSnapshot(domain, { llmAllowed, researchAllowed });
 
   // Recorded whether or not we found anything (see recordSnapshotLead).
   // Awaited, not fire-and-forget: on a serverless function the work can be
@@ -68,7 +79,7 @@ export async function POST(request: Request) {
       .map((e) => e.trim())
       .filter(Boolean);
     try {
-      await sendSnapshotManualCheckAlertEmail(adminEmails, { email, domain });
+      await sendSnapshotManualCheckAlertEmail(adminEmails, { email, domain, reachability: result.reachability });
     } catch (err) {
       console.error("snapshot manual-check alert failed:", err);
     }

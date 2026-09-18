@@ -444,18 +444,47 @@ function escapeHtml(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-export async function sendSnapshotManualCheckAlertEmail(to: string[], details: { email: string; domain: string }) {
+const REACHABILITY_EXPLANATIONS: Record<string, string> = {
+  blocked: "the site blocks automated requests",
+  unreachable: "the site didn't load for us (down, slow, or no working HTTPS)",
+  ok: "we reached the site but couldn't find a readable pricing page or job board",
+};
+
+export async function sendSnapshotManualCheckAlertEmail(
+  to: string[],
+  details: { email: string; domain: string; reachability: string }
+) {
   if (!isResendConfigured() || to.length === 0) return;
 
   const email = escapeHtml(details.email);
   const domain = escapeHtml(details.domain);
+  const why = REACHABILITY_EXPLANATIONS[details.reachability] ?? REACHABILITY_EXPLANATIONS.ok;
+
+  // A pre-filled reply from your own inbox: one click, edit the two blanks,
+  // send. Deliberately not sent by us, so it goes out as you.
+  const draft = [
+    "Hi,",
+    "",
+    `Sorry the Ripplewatch snapshot couldn't read ${details.domain} on its own. Here's what I found by looking myself:`,
+    "",
+    "Pricing: ",
+    "Hiring: ",
+    "",
+    "Happy to run it on any other competitors too, or walk you through Ripplewatch whenever suits. Just reply to this.",
+    "",
+    "Jeremy",
+  ].join("\n");
+  const mailto = `mailto:${encodeURIComponent(details.email)}?subject=${encodeURIComponent(
+    `Your Ripplewatch snapshot of ${details.domain}`
+  )}&body=${encodeURIComponent(draft)}`;
+
   const result = await getResend().emails.send({
     from: getAlertsFromEmail(),
     to,
     subject: `Snapshot needs a manual look: ${details.domain} (${details.email})`,
-    html: `<p><b>${email}</b> ran the competitor snapshot on <b>${domain}</b> and we couldn't read its pricing or hiring automatically. They were told someone would take a manual look and email them what we find.</p>
-      <p>Check <a href="https://${domain}">${domain}</a> yourself and reply to ${email} with the pricing and open-roles picture.</p>
-      <p style="color:#888;font-size:12px;">Sent by /api/snapshot. The lookup is also recorded on their lead in Admin → Leads.</p>`,
+    html: `<p><b>${email}</b> ran the competitor snapshot on <b>${domain}</b> and we couldn't answer it automatically: ${why}. Web research didn't turn up anything reliable either. They were told someone would take a manual look and email them what we find.</p>
+      <p><b>To follow up yourself:</b> open <a href="https://${domain}">${domain}</a>, note its pricing and open roles, then <a href="${mailto}">click here for a pre-filled reply</a> to ${email} (it opens in your own email app; fill in the two blanks and send).</p>
+      <p style="color:#888;font-size:12px;">Sent by /api/snapshot. The lookup is also recorded on their lead in Admin → Leads, flagged "needs manual follow-up".</p>`,
   });
   if (result.error) throw new Error(result.error.message);
 }

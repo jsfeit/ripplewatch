@@ -1,14 +1,17 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  fetchSnapshotHomepage,
+  probeSnapshotHomepage,
   fetchSnapshotPricingText,
   fetchSnapshotHiring,
   fetchSnapshotAlternates,
+  fetchSnapshotTypoAlternates,
   extractDiscoveredUrls,
+  withTimeout,
   type SnapshotHiring,
+  type SnapshotReachability,
 } from "@/lib/scraping";
-import { extractPricingStructure } from "@/lib/anthropic";
+import { extractPricingStructure, researchDomainPublicly, type PublicResearch } from "@/lib/anthropic";
 import type { BillingModel, Database } from "@/lib/supabase/types";
 
 // What the visitor can be told about pricing, from most to least useful:
@@ -40,6 +43,14 @@ export type SnapshotResult = {
     capturedAt: string | null;
   };
   hiring: SnapshotHiring;
+  // Why the homepage couldn't be read (or "ok"), so the UI can say what
+  // actually happened: mistyped domain vs a site that blocks automated
+  // requests vs a site that's down.
+  reachability: SnapshotReachability;
+  // Set only when the site couldn't be read directly and a search of public
+  // sources found something reliable about it; the UI labels it as such
+  // rather than presenting it as a live read.
+  research: PublicResearch | null;
   // Other sites with the same name on a different domain ending (e.g. arlo.co
   // for arlo.com), so a visitor who typed the wrong one can switch in a
   // click. Empty when there's nothing that looks like a different company.
@@ -50,25 +61,72 @@ export type SnapshotResult = {
   needsManualCheck: boolean;
 };
 
+// Web search runs a multi-step loop on Anthropic's side; cap how long the
+// visitor waits for it.
+const RESEARCH_TIMEOUT_MS = 50_000;
+
 export async function buildSnapshot(
   domain: string,
   // False once the day's cap on anonymous LLM calls is reached (see the
   // route): pages are still fetched and hiring still read, but the pricing
   // page isn't sent to Claude, so the visitor gets the manual follow-up path
   // instead of the feature spending without limit.
-  opts: { llmAllowed?: boolean } = {}
+  opts: { llmAllowed?: boolean; researchAllowed?: boolean } = {}
 ): Promise<SnapshotResult> {
   const llmAllowed = opts.llmAllowed ?? true;
+  const researchAllowed = opts.researchAllowed ?? true;
   // Started first so it runs alongside everything else instead of adding to
   // the visitor's wait.
   const alternatesPromise = fetchSnapshotAlternates(domain);
-  const home = await fetchSnapshotHomepage(domain);
+  const probe = await probeSnapshotHomepage(domain);
+  const home = probe.page;
+  // A domain that doesn't load and isn't just refusing us is most likely
+  // mistyped; look for the near-miss spelling while the rest runs.
+  const deadDomain = probe.reachability === "no_such_site" || probe.reachability === "placeholder";
+  const typoPromise =
+    deadDomain || (!home && probe.reachability !== "blocked")
+      ? fetchSnapshotTypoAlternates(domain)
+      : Promise.resolve([]);
+
+  // A placeholder page or a domain that doesn't exist has no pricing or job
+  // board to find, so skip the slow fetch phase entirely and just report it
+  // plus the nearest real sites.
+  if (probe.reachability === "placeholder" || probe.reachability === "no_such_site") {
+    const alternates = [...(await typoPromise), ...(await alternatesPromise)]
+      .filter((alt) => alt.title.toLowerCase() !== (home?.title ?? "").toLowerCase())
+      .slice(0, 3)
+      .map(({ domain: altDomain, title }) => ({ domain: altDomain, title }));
+    return {
+      domain,
+      reachable: probe.reachability === "placeholder",
+      title: home?.title ?? null,
+      pricing: {
+        state: probe.reachability === "placeholder" ? "no_page" : "unreachable",
+        billingModel: null,
+        tiers: [],
+        source: null,
+        capturedAt: null,
+      },
+      hiring: { status: "unavailable" },
+      reachability: probe.reachability,
+      research: null,
+      alternates,
+      needsManualCheck: false,
+    };
+  }
   const discovered = home ? extractDiscoveredUrls(home.html, home.finalUrl) : { pricingUrl: null, careersUrl: null };
 
-  const [pricingFetch, hiring] = await Promise.all([
-    fetchSnapshotPricingText(domain, discovered.pricingUrl),
-    fetchSnapshotHiring(domain, discovered.careersUrl),
-  ]);
+  // If the homepage wouldn't even connect (as opposed to refusing us, where
+  // deeper pages sometimes still load), pages beneath it won't either, and
+  // trying each with retries only makes the visitor wait. Go straight to the
+  // research fallback.
+  const skipFetches = probe.reachability === "unreachable";
+  const [pricingFetch, hiring]: [Awaited<ReturnType<typeof fetchSnapshotPricingText>>, SnapshotHiring] = skipFetches
+    ? [{ status: "unavailable" }, { status: "unavailable" }]
+    : await Promise.all([
+        fetchSnapshotPricingText(domain, discovered.pricingUrl),
+        fetchSnapshotHiring(domain, discovered.careersUrl),
+      ]);
 
   let pricing: SnapshotResult["pricing"] = {
     state: home ? "no_page" : "unreachable",
@@ -111,10 +169,22 @@ export async function buildSnapshot(
   // Drop anything that's really the same site (a redirect between endings) or
   // has the same title, and cap the list: it's a hint, not a directory.
   const mainHost = home ? new URL(home.finalUrl).hostname.replace(/^www\./, "") : null;
-  const alternates = (await alternatesPromise)
+  const seenAlternates = new Set<string>();
+  const alternates = [...(await typoPromise), ...(await alternatesPromise)]
     .filter((alt) => alt.host !== mainHost && alt.title.toLowerCase() !== (home?.title ?? "").toLowerCase())
+    .filter((alt) => (seenAlternates.has(alt.domain) ? false : (seenAlternates.add(alt.domain), true)))
     .slice(0, 3)
     .map(({ domain: altDomain, title }) => ({ domain: altDomain, title }));
+
+  // Couldn't answer either question by reading the site: try a search of
+  // public sources before giving up to a manual follow-up. Skipped for a
+  // domain that doesn't exist (nothing to research) and when the day's
+  // research budget is spent. Bounded so a slow search can't hold the
+  // visitor indefinitely.
+  let research: PublicResearch | null = null;
+  if (!answeredPricing && !answeredHiring && researchAllowed) {
+    research = await withTimeout(researchDomainPublicly(domain, home?.title ?? null), RESEARCH_TIMEOUT_MS);
+  }
 
   return {
     domain,
@@ -122,8 +192,13 @@ export async function buildSnapshot(
     title: home?.title ?? null,
     pricing,
     hiring,
+    reachability: probe.reachability,
+    research,
     alternates,
-    needsManualCheck: !answeredPricing && !answeredHiring,
+    // (Domains that don't exist or are placeholders returned early above, so
+    // anything reaching here that we still couldn't answer, even by searching
+    // public sources, genuinely needs a person.)
+    needsManualCheck: !answeredPricing && !answeredHiring && !research,
   };
 }
 
@@ -139,6 +214,9 @@ export type SnapshotLookup = {
   cheapestPeriod: string | null;
   hiringState: SnapshotHiring["status"];
   openRoles: number | null;
+  // Optional: rows recorded before these existed don't have them.
+  reachability?: SnapshotReachability;
+  researchUsed?: boolean;
   needsManualCheck: boolean;
 };
 
@@ -156,6 +234,8 @@ export function toLookup(result: SnapshotResult, at: string = new Date().toISOSt
     cheapestPeriod: cheapest?.price_period ?? null,
     hiringState: result.hiring.status,
     openRoles: result.hiring.status === "ok" ? result.hiring.openRoles : null,
+    reachability: result.reachability,
+    researchUsed: result.research !== null,
     needsManualCheck: result.needsManualCheck,
   };
 }
