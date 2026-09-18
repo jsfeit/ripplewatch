@@ -1,8 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { resolveAccountContext } from "@/lib/impersonation";
 import { competitorCap, competitorCapLabel } from "@/lib/tier-limits";
 import { discoverCompetitorUrls } from "@/lib/scraping";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { reviewNewCompetitor } from "@/lib/competitor-intake";
+
+export const maxDuration = 120;
 
 // Promotes a discovered suggestion into a real tracked competitor. Scoped to
 // the caller's own account via RLS on both tables, except during an admin
@@ -80,6 +84,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   await db.from("suggested_competitors").update({ status: "added" }).eq("id", id);
+
+  // Same background read as a hand-typed competitor: queue a manual follow-up
+  // if we can't get a reliable read on it.
+  after(() =>
+    reviewNewCompetitor(createAdminClient(), competitor, process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin)
+  );
 
   return NextResponse.json({ competitor });
 }

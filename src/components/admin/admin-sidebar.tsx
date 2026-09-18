@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, Shield, Users, Building2, Activity, Briefcase, Radar, Contact2, Mail, Newspaper, Megaphone, Handshake, Gift } from "lucide-react";
+import { LogOut, Shield, Users, Building2, Activity, Briefcase, Radar, Contact2, Mail, Newspaper, Megaphone, Handshake, Gift, ClipboardCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 
 const NAV = [
+  { href: "/admin/followups", label: "Follow-ups", icon: ClipboardCheck },
   { href: "/admin/leads", label: "Leads", icon: Users },
   { href: "/admin/campaigns", label: "Campaigns", icon: Mail },
   { href: "/admin/blog", label: "Blog", icon: Newspaper },
