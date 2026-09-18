@@ -2059,3 +2059,137 @@ export async function summarizeBuzzSentiment(
     return null;
   }
 }
+
+const DOMAIN_RESEARCH_SYSTEM_PROMPT = `You use web search to find public information about the company that operates one specific website domain, for a visitor who wants a quick read on that company's pricing and hiring and whose direct attempt to load the site failed.
+
+Companies very often share a name across different domain endings (a camera company on one, training software on another), so identify the company that operates EXACTLY the domain you're given, and only report what your sources say about that company. Every claim must be backed by a page you actually found: ideally a page on the domain itself, otherwise a third-party page (review site, press, job board) that clearly refers to that domain. If you can't confirm which company operates the domain, or can't find anything reliable, return found=false. Never guess prices or headcounts, never estimate from general knowledge, and never fill a field with a plausible-sounding default.
+
+Respond with strict JSON only, matching the schema. Keep pricingSummary and hiringSummary to one or two plain sentences each, leave a field as an empty string if you found nothing sourced for it, and list only the source pages you actually relied on.`;
+
+const DOMAIN_RESEARCH_SCHEMA = {
+  type: "object",
+  properties: {
+    found: { type: "boolean" },
+    companyName: { type: "string" },
+    pricingSummary: { type: "string" },
+    cheapestPrice: { anyOf: [{ type: "number" }, { type: "null" }] },
+    pricePeriod: { anyOf: [{ type: "string" }, { type: "null" }] },
+    hiringSummary: { type: "string" },
+    openRoles: { anyOf: [{ type: "number" }, { type: "null" }] },
+    sources: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: { title: { type: "string" }, url: { type: "string" } },
+        required: ["title", "url"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["found", "companyName", "pricingSummary", "cheapestPrice", "pricePeriod", "hiringSummary", "openRoles", "sources"],
+  additionalProperties: false,
+} as const;
+
+export type PublicResearch = {
+  companyName: string;
+  pricingSummary: string;
+  cheapestPrice: number | null;
+  pricePeriod: string | null;
+  hiringSummary: string;
+  openRoles: number | null;
+  sources: { title: string; url: string }[];
+};
+
+// Fallback for the public snapshot when a site can't be read directly (bot
+// protection, outage): a web search from Anthropic's side, not ours, so it
+// isn't stopped by whatever is blocking our servers. Costs real money per
+// call (search fee plus tokens), so the caller caps it. The output is checked
+// server-side before anyone sees it: every source must be a URL the search
+// actually returned (a fabricated citation is dropped), and at least one must
+// be a page on the domain itself. A third-party page that merely mentions the
+// name isn't enough on its own, because a wrong-company answer (the arlo.com
+// vs arlo.co problem this feature exists to avoid) is worse than no answer,
+// so those are discarded rather than shown.
+export async function researchDomainPublicly(
+  domain: string,
+  siteTitle: string | null
+): Promise<PublicResearch | null> {
+  const message = await createMessage({
+    model: "claude-sonnet-5",
+    max_tokens: 8192,
+    system: cachedSystemPrompt(DOMAIN_RESEARCH_SYSTEM_PROMPT),
+    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
+    output_config: { format: { type: "json_schema", schema: DOMAIN_RESEARCH_SCHEMA } },
+    messages: [
+      {
+        role: "user",
+        content: `Website domain: ${domain}${siteTitle ? `\nThe site's own page title: "${siteTitle}"` : ""}\n\nFind this company's pricing situation and open roles from public sources.`,
+      },
+    ],
+  });
+  recordLlmUsage(null, "researchDomainPublicly", message.model, message.usage);
+
+  // Every URL the search tool actually returned this turn.
+  const returnedUrls = new Set<string>();
+  for (const block of message.content) {
+    if (block.type !== "web_search_tool_result" || !Array.isArray(block.content)) continue;
+    for (const item of block.content as { url?: unknown }[]) {
+      if (typeof item.url === "string") returnedUrls.add(item.url.toLowerCase());
+    }
+  }
+
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  let parsed: {
+    found?: unknown;
+    companyName?: unknown;
+    pricingSummary?: unknown;
+    cheapestPrice?: unknown;
+    pricePeriod?: unknown;
+    hiringSummary?: unknown;
+    openRoles?: unknown;
+    sources?: { title?: unknown; url?: unknown }[];
+  };
+  try {
+    parsed = JSON.parse(text);
+  } catch (err) {
+    throw new Error(`Could not parse domain research response: ${text}`, { cause: err });
+  }
+  if (parsed.found !== true) return null;
+
+  const bareDomain = domain.replace(/^www\./, "").toLowerCase();
+  const sources = (Array.isArray(parsed.sources) ? parsed.sources : [])
+    .map((s) => ({ title: String(s.title ?? ""), url: String(s.url ?? "") }))
+    .filter((s) => {
+      if (!returnedUrls.has(s.url.toLowerCase())) return false;
+      try {
+        return /^https?:$/.test(new URL(s.url).protocol);
+      } catch {
+        return false;
+      }
+    })
+    .slice(0, 4);
+
+  const onOwnDomain = sources.some((s) => {
+    try {
+      const host = new URL(s.url).hostname.replace(/^www\./, "").toLowerCase();
+      return host === bareDomain || host.endsWith(`.${bareDomain}`);
+    } catch {
+      return false;
+    }
+  });
+  if (!onOwnDomain) return null;
+
+  const pricingSummary = String(parsed.pricingSummary ?? "").trim();
+  const hiringSummary = String(parsed.hiringSummary ?? "").trim();
+  if (!pricingSummary && !hiringSummary) return null;
+
+  return {
+    companyName: String(parsed.companyName ?? "").trim(),
+    pricingSummary,
+    cheapestPrice: typeof parsed.cheapestPrice === "number" ? parsed.cheapestPrice : null,
+    pricePeriod: typeof parsed.pricePeriod === "string" ? parsed.pricePeriod : null,
+    hiringSummary,
+    openRoles: typeof parsed.openRoles === "number" ? parsed.openRoles : null,
+    sources,
+  };
+}

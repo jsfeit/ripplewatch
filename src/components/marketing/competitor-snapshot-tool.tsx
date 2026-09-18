@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Briefcase, DollarSign, Loader2, RefreshCw, Search, Sparkles } from "lucide-react";
+import { ArrowRight, Briefcase, DollarSign, Globe, Loader2, RefreshCw, Search, Sparkles } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -71,24 +71,50 @@ export function CompetitorSnapshotTool() {
   }
 
   if (status === "done" && result) {
+    // The domain itself gave us nothing to read, so suggestions are likelier
+    // a correction than "a different company with the same name".
+    const isDeadDomain = ["no_such_site", "placeholder", "unreachable"].includes(result.reachability);
     return (
       <div className="animate-in fade-in zoom-in-95 space-y-6 duration-500">
         <div className="rounded-2xl border border-primary/25 bg-card p-6 sm:p-8">
           <p className="text-xs font-medium tracking-wide text-primary uppercase">Live snapshot</p>
           <h3 className="mt-1 text-xl font-semibold tracking-tight">{result.domain}</h3>
 
-          {result.title ? <p className="mt-2 text-sm text-muted-foreground">&ldquo;{result.title}&rdquo;</p> : null}
+          {result.title && result.reachability !== "placeholder" ? (
+            <p className="mt-2 text-sm text-muted-foreground">&ldquo;{result.title}&rdquo;</p>
+          ) : null}
 
           <div className="mt-4 space-y-3">
-            <PricingBlock result={result} />
-            <HiringBlock result={result} />
+            {result.reachability === "no_such_site" ? (
+              <InfoRow icon={<Globe className="size-4" />} title={`We couldn't find a website at ${result.domain}`}>
+                <p>Nothing answered at that address. Check the spelling, or try one of the suggestions below.</p>
+              </InfoRow>
+            ) : result.reachability === "placeholder" ? (
+              <InfoRow icon={<Globe className="size-4" />} title={`${result.domain} looks like a placeholder, not a live site`}>
+                <p>
+                  Its page is titled &ldquo;{result.title}&rdquo;, so there&apos;s nothing to check yet. If you meant a
+                  different company, try a suggestion below.
+                </p>
+              </InfoRow>
+            ) : result.research ? (
+              <ResearchBlock result={result} />
+            ) : (
+              <>
+                <PricingBlock result={result} />
+                <HiringBlock result={result} />
+              </>
+            )}
           </div>
 
           {result.alternates.length > 0 ? (
             <div className="mt-4 rounded-xl border border-dashed border-border p-4 text-sm">
-              <p className="font-medium">Did you mean a different company?</p>
+              <p className="font-medium">
+                {isDeadDomain ? "Did you mean one of these?" : "Did you mean a different company?"}
+              </p>
               <p className="mt-0.5 text-muted-foreground">
-                Different companies often share a name across domain endings. We also found:
+                {isDeadDomain
+                  ? "These are the closest real sites we found:"
+                  : "Different companies often share a name across domain endings. We also found:"}
               </p>
               <ul className="mt-3 space-y-2">
                 {result.alternates.map((alt) => (
@@ -108,8 +134,8 @@ export function CompetitorSnapshotTool() {
 
           {result.needsManualCheck ? (
             <p className="mt-4 rounded-xl border border-primary/25 bg-primary/5 p-4 text-sm">
-              We couldn&apos;t read this one automatically, so we&apos;ll take a manual look and email what we find to{" "}
-              <span className="font-medium">{submittedEmail}</span>.
+              We couldn&apos;t get a reliable read on this one automatically, so a person will check it by hand and email
+              what they find to <span className="font-medium">{submittedEmail}</span>.
             </p>
           ) : null}
         </div>
@@ -270,12 +296,24 @@ function PricingBlock({ result }: { result: SnapshotResult }) {
   }
 
   if (pricing.state === "unreachable") {
+    if (result.reachability === "blocked") {
+      return (
+        <InfoRow icon={icon} title="Pricing: this site blocks automated checks">
+          <p>
+            {domain}{" "}
+            refused our request, which some sites do to anything that isn&apos;t a person in a browser. Once
+            you&apos;re tracking a competitor for real, Ripplewatch retries on a schedule and falls back to archived
+            copies instead of giving up after one try.
+          </p>
+        </InfoRow>
+      );
+    }
     return (
-      <InfoRow icon={icon} title="Pricing: site blocked our check">
+      <InfoRow icon={icon} title="Pricing: we couldn't load this site">
         <p>
-          Some sites block automated requests, and this looks like one. Once you&apos;re tracking a competitor for
-          real, Ripplewatch retries on a schedule and falls back to archived copies instead of giving up after one
-          try.
+          {domain}{" "}
+          didn&apos;t load for us. It may be down, slow, or only reachable over an insecure connection.
+          Ripplewatch retries on a schedule, so a temporary outage doesn&apos;t leave a gap.
         </p>
       </InfoRow>
     );
@@ -318,6 +356,51 @@ function HiringBlock({ result }: { result: SnapshotResult }) {
   return (
     <InfoRow icon={icon} title="Hiring: no job board found">
       <p>We couldn&apos;t find a careers page or public job board for them.</p>
+    </InfoRow>
+  );
+}
+
+// Shown only when the site itself couldn't be read and a search of public
+// sources found something reliable. Labeled as exactly that, with the pages
+// it came from, so it isn't mistaken for a live read.
+function ResearchBlock({ result }: { result: SnapshotResult }) {
+  const research = result.research;
+  if (!research) return null;
+  return (
+    <InfoRow icon={<Globe className="size-4" />} title="From public sources">
+      <p>
+        {result.domain}{" "}
+        blocked our direct check, so this comes from a search of public web pages instead of a live
+        read. It may be incomplete or out of date.
+      </p>
+      {research.pricingSummary ? (
+        <p>
+          <span className="font-medium text-foreground">Pricing:</span> {research.pricingSummary}
+        </p>
+      ) : null}
+      {research.hiringSummary ? (
+        <p>
+          <span className="font-medium text-foreground">Hiring:</span> {research.hiringSummary}
+        </p>
+      ) : null}
+      {research.sources.length > 0 ? (
+        <p className="text-xs">
+          Sources:{" "}
+          {research.sources.map((source, index) => (
+            <span key={source.url}>
+              {index > 0 ? ", " : ""}
+              <a
+                href={source.url}
+                target="_blank"
+                rel="noopener noreferrer nofollow"
+                className="underline underline-offset-2 hover:text-foreground"
+              >
+                {source.title || new URL(source.url).hostname}
+              </a>
+            </span>
+          ))}
+        </p>
+      ) : null}
     </InfoRow>
   );
 }

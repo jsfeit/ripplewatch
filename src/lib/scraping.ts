@@ -1,6 +1,7 @@
 import "server-only";
 import * as cheerio from "cheerio";
 import { createHash } from "node:crypto";
+import { lookup } from "node:dns/promises";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import {
@@ -16,7 +17,7 @@ import {
   summarizeBuzzSentiment,
   type SignalSentiment,
 } from "@/lib/anthropic";
-import { normalizeDomain, guessPricingUrl, guessCareersUrl, isBlockedUrl } from "@/lib/domain";
+import { normalizeDomain, guessPricingUrl, guessCareersUrl, isBlockedUrl, isBlockedHost } from "@/lib/domain";
 import { fetchProductHuntLaunches } from "@/lib/producthunt-data";
 import { fetchGithubCommitVelocity } from "@/lib/github-data";
 import { fetchBuzzMentions } from "@/lib/reddit-hn-data";
@@ -1936,7 +1937,7 @@ const SNAPSHOT_ATS_MS = 7_000;
 // Resolves to null on either rejection or timeout: for a public one-shot
 // lookup, "couldn't get it in time" and "couldn't get it" are the same
 // outcome for the visitor.
-async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
+export async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<null>((resolve) => {
     timer = setTimeout(() => resolve(null), ms);
@@ -1971,22 +1972,74 @@ export type SnapshotHomepage = { title: string | null; html: string; finalUrl: s
 // Homepage fetched once: gives the title for display and the HTML that link
 // discovery scans for the real pricing/careers URLs. Tries the bare domain
 // first, then www., since a few sites only answer on one of them.
-export async function fetchSnapshotHomepage(domain: string): Promise<SnapshotHomepage | null> {
-  const hosts = domain.startsWith("www.") ? [domain] : [domain, `www.${domain}`];
-  for (const host of hosts) {
+// Why a homepage couldn't be read, so the visitor is told the truth instead
+// of a blanket "blocked": a mistyped domain, a site that blocks automated
+// requests, and a site that's simply down or serves plain HTTP only need
+// different messages and different follow-up.
+// "placeholder": a site answered, but its page is an under-construction /
+// parked / default-server page (alro.co), so there's no real product to read.
+export type SnapshotReachability = "ok" | "no_such_site" | "placeholder" | "blocked" | "unreachable";
+
+const PLACEHOLDER_TITLE =
+  /under construction|coming soon|domain (name )?(is )?(for sale|available)|for sale|parked|buy this domain|default web page|welcome to nginx|apache2 .*default|^it works!?$/i;
+
+export type SnapshotHomepageProbe = { page: SnapshotHomepage | null; reachability: SnapshotReachability };
+
+// HTTP statuses that mean "we reached a server and it refused an automated
+// request", as opposed to the page simply not existing.
+const BOT_BLOCK_STATUSES = new Set([401, 403, 406, 429, 503]);
+// fetch() failures are all a bare TypeError("fetch failed"); the real reason
+// is on cause.code.
+const DNS_FAILURE_CODES = new Set(["ENOTFOUND", "EAI_AGAIN"]);
+
+function fetchFailureCode(err: unknown): string {
+  return (err as { cause?: { code?: string } })?.cause?.code ?? "";
+}
+
+async function probeHost(host: string): Promise<{ page: SnapshotHomepage | null; blocked: boolean; dns: boolean }> {
+  let blocked = false;
+  let dns = false;
+  // https first; plain http only when https couldn't connect at all (found in
+  // testing: alro.co has no working TLS but serves a site over http).
+  for (const scheme of ["https", "http"] as const) {
     try {
-      const res = await fetch(`https://${host}`, {
+      const res = await fetch(`${scheme}://${host}`, {
         headers: { "User-Agent": "RipplewatchBot/1.0 (+https://ripplewatch.ai)" },
-        signal: AbortSignal.timeout(8_000),
+        signal: AbortSignal.timeout(6_000),
       });
-      if (!res.ok || isBlockedUrl(res.url)) continue;
-      const html = await res.text();
-      return { title: extractTitle(html), html, finalUrl: res.url };
-    } catch {
-      // try the next host variant
+      if (isBlockedUrl(res.url)) return { page: null, blocked, dns };
+      if (res.ok) {
+        const html = await res.text();
+        return { page: { title: extractTitle(html), html, finalUrl: res.url }, blocked, dns };
+      }
+      if (BOT_BLOCK_STATUSES.has(res.status)) blocked = true;
+      // The server answered (with an error), so trying plain http won't help.
+      return { page: null, blocked, dns };
+    } catch (err) {
+      if (DNS_FAILURE_CODES.has(fetchFailureCode(err))) {
+        dns = true;
+        return { page: null, blocked, dns };
+      }
+      // connection refused / TLS failure / timeout: fall through to http
     }
   }
-  return null;
+  return { page: null, blocked, dns };
+}
+
+// Homepage fetched once: gives the title for display and the HTML that link
+// discovery scans for the real pricing/careers URLs. Tries the bare domain
+// and www. in parallel, since a few sites only answer on one of them.
+export async function probeSnapshotHomepage(domain: string): Promise<SnapshotHomepageProbe> {
+  const hosts = domain.startsWith("www.") ? [domain] : [domain, `www.${domain}`];
+  const results = await Promise.all(hosts.map(probeHost));
+
+  const page = results.find((r) => r.page)?.page ?? null;
+  if (page) {
+    return { page, reachability: page.title && PLACEHOLDER_TITLE.test(page.title) ? "placeholder" : "ok" };
+  }
+  if (results.some((r) => r.blocked)) return { page: null, reachability: "blocked" };
+  if (results.every((r) => r.dns)) return { page: null, reachability: "no_such_site" };
+  return { page: null, reachability: "unreachable" };
 }
 
 // Some sites answer a path on the www host but block or bounce the bare
@@ -2145,34 +2198,64 @@ const NOT_A_REAL_SITE =
 
 export type SnapshotAlternate = { domain: string; title: string; host: string };
 
-export async function fetchSnapshotAlternates(domain: string): Promise<SnapshotAlternate[]> {
+async function checkAlternate(candidate: string): Promise<SnapshotAlternate | null> {
+  return withTimeout(
+    (async () => {
+      const res = await fetch(`https://${candidate}`, {
+        headers: { "User-Agent": "RipplewatchBot/1.0 (+https://ripplewatch.ai)" },
+        signal: AbortSignal.timeout(ALTERNATE_TIMEOUT_MS),
+      });
+      if (!res.ok || isBlockedUrl(res.url)) return null;
+      const html = await res.text();
+      const title = extractTitle(html)?.slice(0, 120) ?? "";
+      // A title that is just the domain itself is a parked placeholder.
+      if (!title || NOT_A_REAL_SITE.test(title) || title.toLowerCase().replace(/^www\./, "") === candidate) {
+        return null;
+      }
+      return { domain: candidate, title, host: new URL(res.url).hostname.replace(/^www\./, "") };
+    })(),
+    ALTERNATE_TIMEOUT_MS + 500
+  );
+}
+
+function splitTwoPartDomain(domain: string): { label: string; tld: string } | null {
   const parts = domain.replace(/^www\./, "").split(".");
-  if (parts.length !== 2) return [];
-  const [label, tld] = parts;
+  return parts.length === 2 ? { label: parts[0], tld: parts[1] } : null;
+}
+
+export async function fetchSnapshotAlternates(domain: string): Promise<SnapshotAlternate[]> {
+  const split = splitTwoPartDomain(domain);
+  if (!split) return [];
+  const found = await Promise.all(
+    ALTERNATE_TLDS.filter((t) => t !== split.tld).map((t) => checkAlternate(`${split.label}.${t}`))
+  );
+  return found.filter((alt): alt is SnapshotAlternate => alt !== null);
+}
+
+// For a domain that doesn't load at all: the likeliest explanation is a
+// typo, and the commonest typo is two swapped letters (alro.co for arlo.co).
+// Only candidates that resolve in DNS are fetched, and none that resolve to
+// a private address.
+export async function fetchSnapshotTypoAlternates(domain: string): Promise<SnapshotAlternate[]> {
+  const split = splitTwoPartDomain(domain);
+  if (!split || split.label.length < 3) return [];
+  const { label, tld } = split;
+
+  const variants = new Set<string>();
+  for (let i = 0; i < label.length - 1; i++) {
+    if (label[i] === label[i + 1]) continue;
+    const swapped = label.slice(0, i) + label[i + 1] + label[i] + label.slice(i + 2);
+    variants.add(`${swapped}.${tld}`);
+  }
 
   const found = await Promise.all(
-    ALTERNATE_TLDS.filter((t) => t !== tld).map(async (t): Promise<SnapshotAlternate | null> => {
-      const candidate = `${label}.${t}`;
-      const result = await withTimeout(
-        (async () => {
-          const res = await fetch(`https://${candidate}`, {
-            headers: { "User-Agent": "RipplewatchBot/1.0 (+https://ripplewatch.ai)" },
-            signal: AbortSignal.timeout(ALTERNATE_TIMEOUT_MS),
-          });
-          if (!res.ok || isBlockedUrl(res.url)) return null;
-          const html = await res.text();
-          const title = extractTitle(html)?.slice(0, 120) ?? "";
-          // A title that is just the domain itself is a parked placeholder.
-          if (!title || NOT_A_REAL_SITE.test(title) || title.toLowerCase().replace(/^www\./, "") === candidate) {
-            return null;
-          }
-          return { domain: candidate, title, host: new URL(res.url).hostname.replace(/^www\./, "") };
-        })(),
-        ALTERNATE_TIMEOUT_MS + 500
-      );
-      return result;
-    })
+    Array.from(variants)
+      .slice(0, 12)
+      .map(async (candidate) => {
+        const address = await withTimeout(lookup(candidate), 2_000);
+        if (!address || isBlockedHost(address.address)) return null;
+        return checkAlternate(candidate);
+      })
   );
-
   return found.filter((alt): alt is SnapshotAlternate => alt !== null);
 }
