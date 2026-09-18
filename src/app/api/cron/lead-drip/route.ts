@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendLeadDripEmail } from "@/lib/resend";
+import { sendLeadDripEmail, sendSnapshotDripEmail } from "@/lib/resend";
+import { SNAPSHOT_DRIP_STEPS, SNAPSHOT_DRIP_AFTER_MS } from "@/lib/snapshot-drip";
+import { existingLookups } from "@/lib/snapshot";
+import type { Database } from "@/lib/supabase/types";
+
+type LeadUpdate = Database["public"]["Tables"]["leads"]["Update"];
 import { getBannerCampaign } from "@/lib/promo-campaign";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -9,7 +14,8 @@ const STEP_2_AFTER_MS = 4 * DAY_MS; // 4 days after capture
 const STEP_3_AFTER_MS = 7 * DAY_MS; // 7 days after capture
 
 // Runs once a day. Targets leads captured via the quiz or onboarding's
-// early-email step (capture_point set) who never actually signed up —
+// early-email step (capture_point set) who never actually signed up — and,
+// via a separate longer series, competitor-snapshot signups —
 // legacy rows from the old pre-launch waitlist (capture_point null) are
 // excluded, since "finish signing up" isn't the right message for someone
 // who joined a waitlist that no longer exists. Anyone who *did* sign up in
@@ -28,10 +34,13 @@ export async function GET(request: Request) {
   const { data: leads } = await supabase
     .from("leads")
     .select(
-      "id, email, company_name, capture_point, created_at, drip_email_1_sent_at, drip_email_2_sent_at, drip_email_3_sent_at"
+      "id, email, company_name, capture_point, created_at, metadata, drip_email_1_sent_at, drip_email_2_sent_at, drip_email_3_sent_at, drip_email_4_sent_at, drip_email_5_sent_at, drip_email_6_sent_at"
     )
     .not("capture_point", "is", null)
-    .is("unsubscribed_at", null);
+    .is("unsubscribed_at", null)
+    // An admin paused this lead (typically because they're already in a
+    // real conversation with them, see migration 0068).
+    .is("drip_paused_at", null);
 
   if (!leads || leads.length === 0) {
     return NextResponse.json({ ok: true, summary: [] });
@@ -57,6 +66,42 @@ export async function GET(request: Request) {
     if (existingEmails.has(lead.email.toLowerCase())) continue;
 
     const ageMs = now - new Date(lead.created_at).getTime();
+
+    // Snapshot-tool signups get their own longer series (see
+    // snapshot-drip.ts) instead of the generic quiz/onboarding one below.
+    if (lead.capture_point === "snapshot") {
+      const sentAt = [
+        lead.drip_email_1_sent_at,
+        lead.drip_email_2_sent_at,
+        lead.drip_email_3_sent_at,
+        lead.drip_email_4_sent_at,
+        lead.drip_email_5_sent_at,
+        lead.drip_email_6_sent_at,
+      ];
+      const nextIndex = sentAt.findIndex((value) => !value);
+      if (nextIndex === -1) continue;
+      const nextStep = SNAPSHOT_DRIP_STEPS[nextIndex];
+      if (ageMs < SNAPSHOT_DRIP_AFTER_MS[nextStep]) continue;
+
+      try {
+        await sendSnapshotDripEmail(lead.email, nextStep, {
+          leadId: lead.id,
+          lookups: existingLookups(lead.capture_point, lead.metadata),
+          appUrl,
+        });
+      } catch (err) {
+        console.error(`snapshot drip step ${nextStep} failed for ${lead.email}:`, err);
+        summary.push({ email: lead.email, series: "snapshot", step: nextStep, sent: false });
+        continue;
+      }
+
+      await supabase
+        .from("leads")
+        .update({ [`drip_email_${nextStep}_sent_at`]: new Date().toISOString() } as LeadUpdate)
+        .eq("id", lead.id);
+      summary.push({ email: lead.email, series: "snapshot", step: nextStep, sent: true });
+      continue;
+    }
     let step: 1 | 2 | 3 | null = null;
     if (!lead.drip_email_3_sent_at && lead.drip_email_2_sent_at && ageMs >= STEP_3_AFTER_MS) {
       step = 3;

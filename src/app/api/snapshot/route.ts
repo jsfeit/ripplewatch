@@ -1,53 +1,16 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
-import { normalizeDomain, guessPricingUrl, DOMAIN_PATTERN } from "@/lib/domain";
-import { fetchPageText } from "@/lib/scraping";
-import { extractPricingStructure } from "@/lib/anthropic";
+import { normalizeDomain, DOMAIN_PATTERN, isBlockedHost } from "@/lib/domain";
+import { buildSnapshot, recordSnapshotLead, toLookup } from "@/lib/snapshot";
+import { sendSnapshotManualCheckAlertEmail } from "@/lib/resend";
 
-// One title fetch, one pricing-page fetch, and (only if that page actually
-// returned text) one LLM extraction call — comfortably inside Vercel's
-// default, but explicit since a slow/uncooperative third-party site could
-// otherwise eat into it.
-export const maxDuration = 30;
-
-// This is the one endpoint in the app that fetches a domain typed in by an
-// anonymous, unauthenticated visitor — every other scrape target
-// (competitors.domain) comes from an already-signed-in account. Blocking
-// obvious loopback/private/link-local hosts here is a cheap, real guard
-// against using this as a probe against internal infrastructure; it isn't
-// a full SSRF defense (that would need resolving DNS and checking the
-// resulting IP), but it closes the obvious door for the cost involved.
-const BLOCKED_HOST_PATTERNS = [
-  /^localhost$/i,
-  /^127\./,
-  /^10\./,
-  /^192\.168\./,
-  /^172\.(1[6-9]|2\d|3[01])\./,
-  /^169\.254\./,
-  /^0\.0\.0\.0$/,
-  /\.local$/i,
-  /\.internal$/i,
-];
-
-function isBlockedHost(domain: string): boolean {
-  return BLOCKED_HOST_PATTERNS.some((pattern) => pattern.test(domain));
-}
-
-async function fetchTitle(url: string): Promise<string | null> {
-  try {
-    const res = await fetch(url, {
-      headers: { "User-Agent": "RipplewatchBot/1.0 (+https://ripplewatch.ai)" },
-      signal: AbortSignal.timeout(8_000),
-    });
-    if (!res.ok) return null;
-    const html = await res.text();
-    const match = html.match(/<title[^>]*>([^<]*)<\/title>/i);
-    return match ? match[1].trim().slice(0, 200) || null : null;
-  } catch {
-    return null;
-  }
-}
+// Homepage + pricing (live, then archived) + hiring board all run in
+// parallel with their own time caps (see the snapshot fetchers in
+// scraping.ts), plus one LLM extraction call, so the worst case lands well
+// under this. Explicit because a slow or uncooperative third-party site
+// could otherwise eat into it.
+export const maxDuration = 60;
 
 const VALID_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -67,55 +30,36 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
   }
 
-  const domain = normalizeDomain(rawDomain);
+  const domain = normalizeDomain(rawDomain).toLowerCase();
   if (!DOMAIN_PATTERN.test(domain) || isBlockedHost(domain)) {
     return NextResponse.json({ error: "Enter a real competitor domain, e.g. acme.com." }, { status: 400 });
   }
 
-  const homepageUrl = `https://${domain}`;
-  const title = await fetchTitle(homepageUrl);
+  const result = await buildSnapshot(domain);
 
-  let pricing: Awaited<ReturnType<typeof extractPricingStructure>> | null = null;
-  const pricingUrl = guessPricingUrl(domain);
-  if (pricingUrl) {
+  // Recorded whether or not we found anything (see recordSnapshotLead).
+  // Awaited, not fire-and-forget: on a serverless function the work can be
+  // cut off once the response is sent.
+  const supabase = createAdminClient();
+  await recordSnapshotLead(supabase, {
+    email,
+    utmSource,
+    utmMedium,
+    utmCampaign,
+    lookup: toLookup(result),
+  });
+
+  if (result.needsManualCheck) {
+    const adminEmails = (process.env.ADMIN_EMAILS ?? "")
+      .split(",")
+      .map((e) => e.trim())
+      .filter(Boolean);
     try {
-      const pricingText = await fetchPageText(pricingUrl);
-      if (pricingText.trim().length > 100) {
-        pricing = await extractPricingStructure(pricingText, null);
-      }
+      await sendSnapshotManualCheckAlertEmail(adminEmails, { email, domain });
     } catch (err) {
-      console.error(`snapshot pricing fetch failed for ${domain}:`, err);
+      console.error("snapshot manual-check alert failed:", err);
     }
   }
 
-  // Captured regardless of whether the live fetch above succeeded — some
-  // sites block automated requests, and that's still a real visitor worth
-  // having, not a wasted submission. Which domain they checked (and what we
-  // found) is what turns this into a lead worth prioritizing rather than a
-  // bare email — a rep can open with "saw you were looking at Notion's
-  // pricing" instead of cold.
-  const supabase = createAdminClient();
-  const { error: leadError } = await supabase.from("leads").insert({
-    email,
-    utm_source: utmSource || null,
-    utm_medium: utmMedium || null,
-    utm_campaign: utmCampaign || null,
-    capture_point: "snapshot",
-    metadata: {
-      domain,
-      title,
-      pricingBillingModel: pricing?.billingModel ?? null,
-      pricingCheapestTier: pricing?.tiers.find((t) => t.price !== null) ?? null,
-    },
-  });
-  if (leadError && leadError.code !== "23505") {
-    console.error("snapshot lead insert failed:", leadError);
-  }
-
-  return NextResponse.json({
-    domain,
-    reachable: title !== null || pricing !== null,
-    title,
-    pricing,
-  });
+  return NextResponse.json(result);
 }

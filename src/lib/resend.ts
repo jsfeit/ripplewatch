@@ -1,5 +1,7 @@
 import "server-only";
 import { Resend } from "resend";
+import { buildSnapshotDripEmail, type SnapshotDripStep } from "@/lib/snapshot-drip";
+import type { SnapshotLookup } from "@/lib/snapshot";
 
 let cachedClient: Resend | null = null;
 
@@ -298,6 +300,41 @@ export async function sendLeadDripEmail(
   if (result.error) throw new Error(result.error.message);
 }
 
+// Follow-up series for snapshot-tool signups (see snapshot-drip.ts for the
+// content and cadence). Same envelope as sendLeadDripEmail so it reads as the
+// same sender, but its own copy since "you started setting up Ripplewatch"
+// is wrong for someone who only tried the free tool.
+export async function sendSnapshotDripEmail(
+  to: string,
+  step: SnapshotDripStep,
+  opts: { leadId: string; lookups: SnapshotLookup[]; appUrl: string }
+) {
+  if (!isResendConfigured()) return;
+
+  const { leadId, lookups, appUrl } = opts;
+  const email = buildSnapshotDripEmail(step, { lookups, appUrl });
+  const unsubscribeUrl = `${appUrl}/unsubscribe?lead=${leadId}`;
+
+  const result = await getResend().emails.send({
+    from: getFromEmail(),
+    to,
+    subject: email.subject,
+    html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+      <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">Hi,</p>
+      ${email.bodyHtml}
+      <a href="${email.ctaUrl}" style="display:inline-block;margin-top:8px;padding:10px 20px;background:#0f5f56;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">
+        ${email.ctaLabel}
+      </a>
+      <p style="color:#3a3a3a;font-size:14px;line-height:1.6;margin-top:20px;">Jeremy<br />Founder, Ripplewatch</p>
+      <p style="color:#888;font-size:12px;margin-top:24px;">
+        Questions? Just reply; a person reads every one.<br />
+        <a href="${unsubscribeUrl}" style="color:#888;">Unsubscribe from these emails</a>
+      </p>
+    </div>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
 const TIER_DISPLAY_NAMES: Record<string, string> = { starter: "Starter", plus: "Plus", advanced: "Advanced" };
 const TIER_RANK: Record<string, number> = { starter: 0, plus: 1, advanced: 2 };
 
@@ -393,6 +430,32 @@ export async function sendUptimeAlertEmail(to: string[], detail: string) {
     html: `<p>The scheduled health check against <code>${process.env.NEXT_PUBLIC_APP_URL}</code> just failed.</p>
       <p>${detail}</p>
       <p style="color:#888;font-size:12px;">Sent by /api/cron/uptime-check.</p>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
+// Fired by /api/snapshot when a visitor's lookup couldn't be answered
+// automatically (pricing and hiring both came back empty). The visitor is
+// told a person will take a look, so this is the "a person" part: without it
+// that promise would go nowhere. Internal ops alert, plain HTML, same
+// treatment as the other admin alerts. Email/domain are visitor-supplied, so
+// they're escaped rather than interpolated raw.
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+export async function sendSnapshotManualCheckAlertEmail(to: string[], details: { email: string; domain: string }) {
+  if (!isResendConfigured() || to.length === 0) return;
+
+  const email = escapeHtml(details.email);
+  const domain = escapeHtml(details.domain);
+  const result = await getResend().emails.send({
+    from: getAlertsFromEmail(),
+    to,
+    subject: `Snapshot needs a manual look: ${details.domain} (${details.email})`,
+    html: `<p><b>${email}</b> ran the competitor snapshot on <b>${domain}</b> and we couldn't read its pricing or hiring automatically. They were told someone would take a manual look and email them what we find.</p>
+      <p>Check <a href="https://${domain}">${domain}</a> yourself and reply to ${email} with the pricing and open-roles picture.</p>
+      <p style="color:#888;font-size:12px;">Sent by /api/snapshot. The lookup is also recorded on their lead in Admin → Leads.</p>`,
   });
   if (result.error) throw new Error(result.error.message);
 }
