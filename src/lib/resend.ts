@@ -1,5 +1,7 @@
 import "server-only";
 import { Resend } from "resend";
+import { buildSnapshotDripEmail, type SnapshotDripStep } from "@/lib/snapshot-drip";
+import type { SnapshotLookup } from "@/lib/snapshot";
 
 let cachedClient: Resend | null = null;
 
@@ -289,6 +291,41 @@ export async function sendLeadDripEmail(
       <a href="${pricingUrl}" style="display:inline-block;margin-top:8px;padding:10px 20px;background:#0f5f56;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">
         ${ctaLabel}
       </a>
+      <p style="color:#888;font-size:12px;margin-top:24px;">
+        Questions? Just reply; a person reads every one.<br />
+        <a href="${unsubscribeUrl}" style="color:#888;">Unsubscribe from these emails</a>
+      </p>
+    </div>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
+// Follow-up series for snapshot-tool signups (see snapshot-drip.ts for the
+// content and cadence). Same envelope as sendLeadDripEmail so it reads as the
+// same sender, but its own copy since "you started setting up Ripplewatch"
+// is wrong for someone who only tried the free tool.
+export async function sendSnapshotDripEmail(
+  to: string,
+  step: SnapshotDripStep,
+  opts: { leadId: string; lookups: SnapshotLookup[]; appUrl: string }
+) {
+  if (!isResendConfigured()) return;
+
+  const { leadId, lookups, appUrl } = opts;
+  const email = buildSnapshotDripEmail(step, { lookups, appUrl });
+  const unsubscribeUrl = `${appUrl}/unsubscribe?lead=${leadId}`;
+
+  const result = await getResend().emails.send({
+    from: getFromEmail(),
+    to,
+    subject: email.subject,
+    html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+      <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">Hi,</p>
+      ${email.bodyHtml}
+      <a href="${email.ctaUrl}" style="display:inline-block;margin-top:8px;padding:10px 20px;background:#0f5f56;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">
+        ${email.ctaLabel}
+      </a>
+      <p style="color:#3a3a3a;font-size:14px;line-height:1.6;margin-top:20px;">Jeremy<br />Founder, Ripplewatch</p>
       <p style="color:#888;font-size:12px;margin-top:24px;">
         Questions? Just reply; a person reads every one.<br />
         <a href="${unsubscribeUrl}" style="color:#888;">Unsubscribe from these emails</a>

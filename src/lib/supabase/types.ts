@@ -53,6 +53,9 @@ export interface Database {
           drip_email_1_sent_at: string | null;
           drip_email_2_sent_at: string | null;
           drip_email_3_sent_at: string | null;
+          drip_email_4_sent_at: string | null;
+          drip_email_5_sent_at: string | null;
+          drip_email_6_sent_at: string | null;
           drip_paused_at: string | null;
           unsubscribed_at: string | null;
           created_at: string;
@@ -69,6 +72,9 @@ export interface Database {
           drip_email_1_sent_at?: string | null;
           drip_email_2_sent_at?: string | null;
           drip_email_3_sent_at?: string | null;
+          drip_email_4_sent_at?: string | null;
+          drip_email_5_sent_at?: string | null;
+          drip_email_6_sent_at?: string | null;
           drip_paused_at?: string | null;
           unsubscribed_at?: string | null;
           created_at?: string;

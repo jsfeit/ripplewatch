@@ -4,6 +4,7 @@ import {
   fetchSnapshotHomepage,
   fetchSnapshotPricingText,
   fetchSnapshotHiring,
+  fetchSnapshotAlternates,
   extractDiscoveredUrls,
   type SnapshotHiring,
 } from "@/lib/scraping";
@@ -39,6 +40,10 @@ export type SnapshotResult = {
     capturedAt: string | null;
   };
   hiring: SnapshotHiring;
+  // Other sites with the same name on a different domain ending (e.g. arlo.co
+  // for arlo.com), so a visitor who typed the wrong one can switch in a
+  // click. Empty when there's nothing that looks like a different company.
+  alternates: { domain: string; title: string }[];
   // True when we couldn't answer either question automatically. The route
   // alerts the admin so a human can follow up instead of the visitor being
   // left at a dead end.
@@ -46,6 +51,9 @@ export type SnapshotResult = {
 };
 
 export async function buildSnapshot(domain: string): Promise<SnapshotResult> {
+  // Started first so it runs alongside everything else instead of adding to
+  // the visitor's wait.
+  const alternatesPromise = fetchSnapshotAlternates(domain);
   const home = await fetchSnapshotHomepage(domain);
   const discovered = home ? extractDiscoveredUrls(home.html, home.finalUrl) : { pricingUrl: null, careersUrl: null };
 
@@ -90,12 +98,21 @@ export async function buildSnapshot(domain: string): Promise<SnapshotResult> {
   const answeredPricing = pricing.state === "public" || pricing.state === "public_no_numbers" || pricing.state === "sales_led";
   const answeredHiring = hiring.status === "ok";
 
+  // Drop anything that's really the same site (a redirect between endings) or
+  // has the same title, and cap the list: it's a hint, not a directory.
+  const mainHost = home ? new URL(home.finalUrl).hostname.replace(/^www\./, "") : null;
+  const alternates = (await alternatesPromise)
+    .filter((alt) => alt.host !== mainHost && alt.title.toLowerCase() !== (home?.title ?? "").toLowerCase())
+    .slice(0, 3)
+    .map(({ domain: altDomain, title }) => ({ domain: altDomain, title }));
+
   return {
     domain,
     reachable: home !== null || pricingFetch.status === "ok" || hiring.status !== "unavailable",
     title: home?.title ?? null,
     pricing,
     hiring,
+    alternates,
     needsManualCheck: !answeredPricing && !answeredHiring,
   };
 }

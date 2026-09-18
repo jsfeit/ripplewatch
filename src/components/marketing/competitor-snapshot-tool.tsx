@@ -22,8 +22,15 @@ export function CompetitorSnapshotTool() {
   const [result, setResult] = useState<SnapshotResult | null>(null);
   const [submittedEmail, setSubmittedEmail] = useState("");
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    void runSnapshot(domain.trim());
+  }
+
+  // Also used by the "did you mean" buttons, which re-run the same email
+  // against a different domain.
+  async function runSnapshot(domainToCheck: string) {
+    setDomain(domainToCheck);
     setStatus("loading");
     setError("");
 
@@ -39,7 +46,7 @@ export function CompetitorSnapshotTool() {
       const res = await fetch("/api/snapshot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), domain: domain.trim(), ...utm }),
+        body: JSON.stringify({ email: email.trim(), domain: domainToCheck, ...utm }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -76,6 +83,28 @@ export function CompetitorSnapshotTool() {
             <PricingBlock result={result} />
             <HiringBlock result={result} />
           </div>
+
+          {result.alternates.length > 0 ? (
+            <div className="mt-4 rounded-xl border border-dashed border-border p-4 text-sm">
+              <p className="font-medium">Did you mean a different company?</p>
+              <p className="mt-0.5 text-muted-foreground">
+                Different companies often share a name across domain endings. We also found:
+              </p>
+              <ul className="mt-3 space-y-2">
+                {result.alternates.map((alt) => (
+                  <li key={alt.domain} className="flex items-center justify-between gap-3">
+                    <span className="min-w-0">
+                      <span className="font-medium">{alt.domain}</span>
+                      <span className="block truncate text-muted-foreground">{alt.title}</span>
+                    </span>
+                    <Button type="button" size="sm" variant="outline" onClick={() => void runSnapshot(alt.domain)}>
+                      Try this one
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
           {result.needsManualCheck ? (
             <p className="mt-4 rounded-xl border border-primary/25 bg-primary/5 p-4 text-sm">

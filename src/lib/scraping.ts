@@ -1950,6 +1950,13 @@ async function fetchWithOneRetry<T>(fn: () => Promise<T>): Promise<T | null> {
   return withTimeout(fn(), SNAPSHOT_FETCH_MS);
 }
 
+// cheerio decodes entities (&amp; -> &), unlike a bare regex over the raw
+// HTML, which would put literal "&amp;" in front of a visitor.
+function extractTitle(html: string): string | null {
+  const title = cheerio.load(html)("title").first().text().replace(/\s+/g, " ").trim().slice(0, 200);
+  return title || null;
+}
+
 export type SnapshotHomepage = { title: string | null; html: string; finalUrl: string };
 
 // Homepage fetched once: gives the title for display and the HTML that link
@@ -1965,9 +1972,7 @@ export async function fetchSnapshotHomepage(domain: string): Promise<SnapshotHom
       });
       if (!res.ok || isBlockedUrl(res.url)) continue;
       const html = await res.text();
-      const match = html.match(/<title[^>]*>([^<]*)<\/title>/i);
-      const title = match ? match[1].replace(/\s+/g, " ").trim().slice(0, 200) || null : null;
-      return { title, html, finalUrl: res.url };
+      return { title: extractTitle(html), html, finalUrl: res.url };
     } catch {
       // try the next host variant
     }
@@ -2115,4 +2120,50 @@ export async function fetchSnapshotHiring(domain: string, discoveredUrl: string 
 
   if (reachable.length > 0) return { status: "page_only", url: reachable[0].url };
   return { status: "unavailable" };
+}
+
+// "Did you mean" support for the public snapshot: companies share names
+// across domain endings (arlo.com is a camera company, arlo.co is training
+// software), and a visitor who typed the wrong one just gets a confidently
+// wrong answer. Checks the same name on a few other common endings and
+// returns any that resolve to a different, real-looking site.
+const ALTERNATE_TLDS = ["com", "co", "io", "ai", "app"];
+const ALTERNATE_TIMEOUT_MS = 3_000;
+// Titles that mean "there's no real site here": parked/for-sale pages,
+// default server pages, and bot-challenge interstitials.
+const NOT_A_REAL_SITE =
+  /for sale|parked|buy this domain|domain (name )?(is )?(available|for sale)|sedo|hugedomains|godaddy|namecheap|afternic|coming soon|under construction|default web page|just a moment|attention required|access denied|forbidden|404|not found|error/i;
+
+export type SnapshotAlternate = { domain: string; title: string; host: string };
+
+export async function fetchSnapshotAlternates(domain: string): Promise<SnapshotAlternate[]> {
+  const parts = domain.replace(/^www\./, "").split(".");
+  if (parts.length !== 2) return [];
+  const [label, tld] = parts;
+
+  const found = await Promise.all(
+    ALTERNATE_TLDS.filter((t) => t !== tld).map(async (t): Promise<SnapshotAlternate | null> => {
+      const candidate = `${label}.${t}`;
+      const result = await withTimeout(
+        (async () => {
+          const res = await fetch(`https://${candidate}`, {
+            headers: { "User-Agent": "RipplewatchBot/1.0 (+https://ripplewatch.ai)" },
+            signal: AbortSignal.timeout(ALTERNATE_TIMEOUT_MS),
+          });
+          if (!res.ok || isBlockedUrl(res.url)) return null;
+          const html = await res.text();
+          const title = extractTitle(html)?.slice(0, 120) ?? "";
+          // A title that is just the domain itself is a parked placeholder.
+          if (!title || NOT_A_REAL_SITE.test(title) || title.toLowerCase().replace(/^www\./, "") === candidate) {
+            return null;
+          }
+          return { domain: candidate, title, host: new URL(res.url).hostname.replace(/^www\./, "") };
+        })(),
+        ALTERNATE_TIMEOUT_MS + 500
+      );
+      return result;
+    })
+  );
+
+  return found.filter((alt): alt is SnapshotAlternate => alt !== null);
 }
