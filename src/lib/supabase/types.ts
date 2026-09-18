@@ -604,6 +604,42 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["competitor_buzz"]["Insert"]>;
         Relationships: [];
       };
+      manual_followups: {
+        Row: {
+          id: string;
+          kind: "snapshot" | "competitor";
+          status: "pending" | "resolved" | "dismissed";
+          domain: string;
+          reason: string | null;
+          requester_email: string | null;
+          lead_id: string | null;
+          account_id: string | null;
+          competitor_id: string | null;
+          competitor_name: string | null;
+          draft: Record<string, unknown> | null;
+          resolution: Record<string, unknown> | null;
+          created_at: string;
+          resolved_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          kind: "snapshot" | "competitor";
+          status?: "pending" | "resolved" | "dismissed";
+          domain: string;
+          reason?: string | null;
+          requester_email?: string | null;
+          lead_id?: string | null;
+          account_id?: string | null;
+          competitor_id?: string | null;
+          competitor_name?: string | null;
+          draft?: Record<string, unknown> | null;
+          resolution?: Record<string, unknown> | null;
+          created_at?: string;
+          resolved_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["manual_followups"]["Insert"]>;
+        Relationships: [];
+      };
       competitor_state_history: {
         Row: {
           id: string;

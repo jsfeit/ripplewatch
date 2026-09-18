@@ -2114,7 +2114,8 @@ export type PublicResearch = {
 // so those are discarded rather than shown.
 export async function researchDomainPublicly(
   domain: string,
-  siteTitle: string | null
+  siteTitle: string | null,
+  accountId: string | null = null
 ): Promise<PublicResearch | null> {
   const startedAt = Date.now();
   // Deliberately NOT the setup used by the nightly news search above: that
@@ -2136,7 +2137,7 @@ export async function researchDomainPublicly(
       },
     ],
   });
-  recordLlmUsage(null, "researchDomainPublicly", message.model, message.usage);
+  recordLlmUsage(accountId, "researchDomainPublicly", message.model, message.usage);
 
   // Every URL the search tool actually returned this turn.
   const returnedUrls = new Set<string>();

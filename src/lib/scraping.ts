@@ -23,6 +23,7 @@ import { fetchGithubCommitVelocity } from "@/lib/github-data";
 import { fetchBuzzMentions } from "@/lib/reddit-hn-data";
 import { fetchActiveAdCount } from "@/lib/meta-ads-data";
 import { captureScreenshot } from "@/lib/screenshot";
+import { MANUAL_NOTE_PREFIX } from "@/lib/manual-data";
 
 type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
 type Signal = Database["public"]["Tables"]["signals"]["Row"];
@@ -794,6 +795,18 @@ export async function checkPricingStructure(
   page: PricingPageResult | null
 ): Promise<void> {
   if (!competitor.pricing_url) return;
+
+  // A person checked this by hand (Admin -> Follow-ups) because automation
+  // couldn't read it. Don't let a failed fetch's placeholder, or a stale
+  // archived copy, overwrite that; only a live read of the real page does.
+  if (page === null || page.source !== "live") {
+    const { data: existing } = await supabase
+      .from("competitor_pricing")
+      .select("note")
+      .eq("competitor_id", competitor.id)
+      .maybeSingle();
+    if (existing?.note?.startsWith(MANUAL_NOTE_PREFIX)) return;
+  }
 
   if (page === null) {
     // Previously a silent no-op — a page that consistently 403s (bot

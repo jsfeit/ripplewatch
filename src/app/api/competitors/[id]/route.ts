@@ -1,5 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { discoverCompetitorUrls } from "@/lib/scraping";
+import { reviewNewCompetitor } from "@/lib/competitor-intake";
+
+export const maxDuration = 120;
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -35,10 +40,34 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
   }
 
+  // Changing the domain used to leave the old pricing/careers URLs pointing at
+  // the previous site, so the competitor would keep being "checked" against
+  // the wrong company. Re-discover them when the domain actually changes,
+  // unless the caller set URLs explicitly, and reset the failure counters
+  // that belonged to the old URLs.
+  let rediscovered: { pricing_url: string | null; careers_url: string | null } | null = null;
+  let domainChanged = false;
+  if (domain !== undefined) {
+    const { data: current } = await supabase.from("competitors").select("domain").eq("id", id).maybeSingle();
+    domainChanged = (current?.domain ?? "") !== domain;
+    if (domainChanged && domain) {
+      const urls = await discoverCompetitorUrls(domain);
+      rediscovered = { pricing_url: urls.pricingUrl, careers_url: urls.careersUrl };
+    }
+  }
+
   // RLS scopes this update to the caller's own account_id.
   const { data, error } = await supabase
     .from("competitors")
     .update({
+      ...(domainChanged && rediscovered
+        ? {
+            ...(pricingUrl === undefined ? { pricing_url: rediscovered.pricing_url } : {}),
+            ...(careersUrl === undefined ? { careers_url: rediscovered.careers_url } : {}),
+            pricing_fetch_failures: 0,
+            careers_fetch_failures: 0,
+          }
+        : {}),
       ...(name !== undefined ? { name } : {}),
       ...(domain !== undefined ? { domain: domain || null } : {}),
       ...(category !== undefined ? { category: category || null } : {}),
@@ -52,6 +81,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  if (domainChanged && data.domain) {
+    after(() =>
+      reviewNewCompetitor(createAdminClient(), data, process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin)
+    );
   }
 
   return NextResponse.json({ competitor: data });

@@ -55,6 +55,11 @@ export type SnapshotResult = {
   // for arlo.com), so a visitor who typed the wrong one can switch in a
   // click. Empty when there's nothing that looks like a different company.
   alternates: { domain: string; title: string }[];
+  // True when the site itself gave us pricing or open roles directly (as
+  // opposed to only an archived copy's absence, research, or nothing). Used
+  // for paying customers' competitors, where research alone isn't enough to
+  // skip a person's review.
+  readDirectly: boolean;
   // True when we couldn't answer either question automatically. The route
   // alerts the admin so a human can follow up instead of the visitor being
   // left at a dead end.
@@ -71,10 +76,17 @@ export async function buildSnapshot(
   // route): pages are still fetched and hiring still read, but the pricing
   // page isn't sent to Claude, so the visitor gets the manual follow-up path
   // instead of the feature spending without limit.
-  opts: { llmAllowed?: boolean; researchAllowed?: boolean } = {}
+  opts: {
+    llmAllowed?: boolean;
+    researchAllowed?: boolean;
+    // Set for a signed-in customer's competitor so its LLM spend is
+    // attributed to their account instead of the anonymous pool.
+    accountId?: string | null;
+  } = {}
 ): Promise<SnapshotResult> {
   const llmAllowed = opts.llmAllowed ?? true;
   const researchAllowed = opts.researchAllowed ?? true;
+  const accountId = opts.accountId ?? null;
   // Started first so it runs alongside everything else instead of adding to
   // the visitor's wait.
   const alternatesPromise = fetchSnapshotAlternates(domain);
@@ -111,6 +123,7 @@ export async function buildSnapshot(
       reachability: probe.reachability,
       research: null,
       alternates,
+      readDirectly: false,
       needsManualCheck: false,
     };
   }
@@ -122,7 +135,7 @@ export async function buildSnapshot(
   // the question after all, its result is simply ignored.
   const runResearch = (): Promise<PublicResearch | null> =>
     withTimeout(
-      researchDomainPublicly(domain, home?.title ?? null).catch((err) => {
+      researchDomainPublicly(domain, home?.title ?? null, accountId).catch((err) => {
         console.error(`snapshot research failed for ${domain}:`, err);
         return null;
       }),
@@ -156,7 +169,7 @@ export async function buildSnapshot(
     pricing = { ...pricing, state: "unreadable", source: pricingFetch.source, capturedAt: pricingFetch.capturedAt };
   } else if (pricingFetch.status === "ok") {
     try {
-      const extracted = await extractPricingStructure(pricingFetch.text, null);
+      const extracted = await extractPricingStructure(pricingFetch.text, accountId);
       const hasNumbers = extracted.tiers.some((t) => t.price !== null);
       const state: SnapshotPricingState = hasNumbers
         ? "public"
@@ -218,6 +231,7 @@ export async function buildSnapshot(
     reachability: probe.reachability,
     research,
     alternates,
+    readDirectly: answeredPricing || answeredHiring,
     // (Domains that don't exist or are placeholders returned early above, so
     // anything reaching here that we still couldn't answer, even by searching
     // public sources, genuinely needs a person.)
@@ -315,22 +329,26 @@ type AdminClient = SupabaseClient<Database>;
 export async function recordSnapshotLead(
   supabase: AdminClient,
   input: { email: string; utmSource: string; utmMedium: string; utmCampaign: string; lookup: SnapshotLookup }
-): Promise<void> {
+): Promise<string | null> {
   const { email, utmSource, utmMedium, utmCampaign, lookup } = input;
 
-  const { error: insertError } = await supabase.from("leads").insert({
-    email,
-    utm_source: utmSource || null,
-    utm_medium: utmMedium || null,
-    utm_campaign: utmCampaign || null,
-    capture_point: "snapshot",
-    metadata: { snapshotLookups: [lookup] },
-  });
-  if (!insertError) return;
+  const { data: inserted, error: insertError } = await supabase
+    .from("leads")
+    .insert({
+      email,
+      utm_source: utmSource || null,
+      utm_medium: utmMedium || null,
+      utm_campaign: utmCampaign || null,
+      capture_point: "snapshot",
+      metadata: { snapshotLookups: [lookup] },
+    })
+    .select("id")
+    .single();
+  if (!insertError) return inserted.id;
 
   if (insertError.code !== "23505") {
     console.error("snapshot lead insert failed:", insertError);
-    return;
+    return null;
   }
 
   // leads.email is unique and case-sensitive at the column level, so match
@@ -342,7 +360,7 @@ export async function recordSnapshotLead(
     .maybeSingle();
   if (selectError || !existing) {
     console.error("snapshot lead lookup after duplicate failed:", selectError);
-    return;
+    return null;
   }
 
   const { error: updateError } = await supabase
@@ -350,4 +368,35 @@ export async function recordSnapshotLead(
     .update({ metadata: mergeLookup(existing.capture_point, existing.metadata, lookup) })
     .eq("id", existing.id);
   if (updateError) console.error("snapshot lead lookup merge failed:", updateError);
+  return existing.id;
+}
+
+export type DomainCheck = {
+  reachability: SnapshotReachability;
+  title: string | null;
+  alternates: { domain: string; title: string }[];
+};
+
+// The quick half of a snapshot (does this domain load, and is there a closer
+// match?) without the pricing/hiring/research work, for flows that just need
+// to sanity-check a domain a person typed, like a customer adding a
+// competitor.
+export async function checkDomain(domain: string): Promise<DomainCheck> {
+  const probe = await probeSnapshotHomepage(domain);
+  const home = probe.page;
+  const dead = probe.reachability === "no_such_site" || probe.reachability === "placeholder";
+  const [tldAlternates, typoAlternates] = await Promise.all([
+    fetchSnapshotAlternates(domain),
+    dead || (!home && probe.reachability !== "blocked") ? fetchSnapshotTypoAlternates(domain) : Promise.resolve([]),
+  ]);
+
+  const mainHost = home ? new URL(home.finalUrl).hostname.replace(/^www\./, "") : null;
+  const seen = new Set<string>();
+  const alternates = [...typoAlternates, ...tldAlternates]
+    .filter((alt) => alt.host !== mainHost && alt.title.toLowerCase() !== (home?.title ?? "").toLowerCase())
+    .filter((alt) => (seen.has(alt.domain) ? false : (seen.add(alt.domain), true)))
+    .slice(0, 3)
+    .map(({ domain: altDomain, title }) => ({ domain: altDomain, title }));
+
+  return { reachability: probe.reachability, title: home?.title ?? null, alternates };
 }

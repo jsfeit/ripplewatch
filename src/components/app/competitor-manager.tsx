@@ -48,6 +48,19 @@ export function CompetitorManager({
   const [newDomain, setNewDomain] = useState("");
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState("");
+  // Shown when the server says the domain looks dead (no site, or just a
+  // placeholder): the customer confirms or picks a suggested correction.
+  const [confirmAdd, setConfirmAdd] = useState<{
+    message: string;
+    alternates: { domain: string; title: string }[];
+  } | null>(null);
+  // Shown after a successful add when a different company shares the name on
+  // another domain ending, so a wrong-company add is one click to fix.
+  const [lookalike, setLookalike] = useState<{
+    competitorId: string;
+    name: string;
+    alternates: { domain: string; title: string }[];
+  } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editDomain, setEditDomain] = useState("");
@@ -99,24 +112,54 @@ export function CompetitorManager({
     return scoreB - scoreA;
   });
 
-  async function handleAdd() {
+  async function handleAdd(opts: { domain?: string; force?: boolean } = {}) {
     if (!newName.trim()) return;
+    const domainToAdd = opts.domain ?? newDomain;
     setAdding(true);
     setError("");
+    setConfirmAdd(null);
+    setLookalike(null);
     const res = await fetch("/api/competitors", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newName, domain: newDomain }),
+      body: JSON.stringify({ name: newName, domain: domainToAdd, force: opts.force === true }),
     });
     const data = await res.json();
     setAdding(false);
+    if (res.status === 409 && data.needsConfirmation) {
+      setNewDomain(domainToAdd);
+      setConfirmAdd({ message: data.error, alternates: data.alternates ?? [] });
+      return;
+    }
     if (!res.ok) {
       setError(data.error ?? "Could not add competitor.");
       return;
     }
     setCompetitors((prev) => [...prev, data.competitor]);
+    if (data.notice?.alternates?.length > 0) {
+      setLookalike({ competitorId: data.competitor.id, name: data.competitor.name, alternates: data.notice.alternates });
+    }
     setNewName("");
     setNewDomain("");
+    router.refresh();
+  }
+
+  // Re-points a just-added competitor at the domain the customer meant. The
+  // server re-discovers its pricing/careers pages when the domain changes.
+  async function switchDomain(competitorId: string, domain: string) {
+    setError("");
+    const res = await fetch(`/api/competitors/${competitorId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ domain }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error ?? "Couldn't switch the domain.");
+      return;
+    }
+    setCompetitors((prev) => prev.map((c) => (c.id === competitorId ? data.competitor : c)));
+    setLookalike(null);
     router.refresh();
   }
 
@@ -200,12 +243,73 @@ export function CompetitorManager({
           placeholder="domain.com"
           className="flex-1"
         />
-        <Button type="button" onClick={handleAdd} disabled={adding}>
+        <Button type="button" onClick={() => void handleAdd()} disabled={adding}>
           {adding ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
           Add
         </Button>
       </div>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
+      {confirmAdd ? (
+        <div className="space-y-3 rounded-lg border border-border bg-secondary/40 p-4 text-sm">
+          <p className="font-medium">{confirmAdd.message}</p>
+          {confirmAdd.alternates.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-muted-foreground">Did you mean one of these?</p>
+              {confirmAdd.alternates.map((alt) => (
+                <div key={alt.domain} className="flex items-center justify-between gap-3">
+                  <span className="min-w-0">
+                    <span className="font-medium">{alt.domain}</span>
+                    <span className="block truncate text-muted-foreground">{alt.title}</span>
+                  </span>
+                  <Button type="button" size="sm" variant="outline" onClick={() => void handleAdd({ domain: alt.domain })}>
+                    Use this one
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground">Check the spelling, or add it anyway if the site isn&apos;t live yet.</p>
+          )}
+          <div className="flex gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={() => void handleAdd({ force: true })}>
+              Add it anyway
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setConfirmAdd(null)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {lookalike ? (
+        <div className="space-y-2 rounded-lg border border-dashed border-border p-4 text-sm">
+          <p className="font-medium">Is {lookalike.name} the company you meant?</p>
+          <p className="text-muted-foreground">
+            Different companies often share a name across domain endings. If you meant one of these instead, switch in
+            one click:
+          </p>
+          {lookalike.alternates.map((alt) => (
+            <div key={alt.domain} className="flex items-center justify-between gap-3">
+              <span className="min-w-0">
+                <span className="font-medium">{alt.domain}</span>
+                <span className="block truncate text-muted-foreground">{alt.title}</span>
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => void switchDomain(lookalike.competitorId, alt.domain)}
+              >
+                Use this one
+              </Button>
+            </div>
+          ))}
+          <Button type="button" size="sm" variant="ghost" onClick={() => setLookalike(null)}>
+            No, keep it
+          </Button>
+        </div>
+      ) : null}
 
       {competitors.length > 0 ? (
         <div className="flex flex-wrap items-end justify-between gap-3">

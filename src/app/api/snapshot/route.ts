@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { normalizeDomain, DOMAIN_PATTERN, isBlockedHost } from "@/lib/domain";
 import { buildSnapshot, recordSnapshotLead, toLookup } from "@/lib/snapshot";
-import { sendSnapshotManualCheckAlertEmail } from "@/lib/resend";
+import { createFollowup, announceFollowup } from "@/lib/followups";
 import { countUnattributedLlmCalls } from "@/lib/usage";
 
 // Homepage + pricing (live, then archived) + hiring board all run in
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
   // Awaited, not fire-and-forget: on a serverless function the work can be
   // cut off once the response is sent.
   const supabase = createAdminClient();
-  await recordSnapshotLead(supabase, {
+  const leadId = await recordSnapshotLead(supabase, {
     email,
     utmSource,
     utmMedium,
@@ -73,15 +73,21 @@ export async function POST(request: Request) {
     lookup: toLookup(result),
   });
 
+  // Nothing reliable, even after searching public sources: queue it for a
+  // person (Admin -> Follow-ups) and alert the operator. Also awaited, for the
+  // same reason as above.
   if (result.needsManualCheck) {
-    const adminEmails = (process.env.ADMIN_EMAILS ?? "")
-      .split(",")
-      .map((e) => e.trim())
-      .filter(Boolean);
-    try {
-      await sendSnapshotManualCheckAlertEmail(adminEmails, { email, domain, reachability: result.reachability });
-    } catch (err) {
-      console.error("snapshot manual-check alert failed:", err);
+    const followup = await createFollowup(supabase, {
+      kind: "snapshot",
+      domain,
+      reason: result.reachability,
+      requester_email: email,
+      lead_id: leadId,
+    });
+    if (followup.status !== "duplicate") {
+      await announceFollowup(followup.followup, {
+        appUrl: process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin,
+      });
     }
   }
 

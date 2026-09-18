@@ -444,47 +444,95 @@ function escapeHtml(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-const REACHABILITY_EXPLANATIONS: Record<string, string> = {
+const REASON_EXPLANATIONS: Record<string, string> = {
   blocked: "the site blocks automated requests",
   unreachable: "the site didn't load for us (down, slow, or no working HTTPS)",
   ok: "we reached the site but couldn't find a readable pricing page or job board",
+  unread: "pricing and open roles couldn't be read directly from the site",
 };
 
-export async function sendSnapshotManualCheckAlertEmail(
+// Sent whenever the automation gave up on a domain and a person is needed:
+// a visitor to the public snapshot, or a competitor a paying customer added.
+// Links straight to the item in Admin -> Follow-ups, which has the site,
+// prepared search links, any research draft, and the form to resolve it.
+export async function sendFollowupAlertEmail(
   to: string[],
-  details: { email: string; domain: string; reachability: string }
+  d: {
+    kind: "snapshot" | "competitor";
+    domain: string;
+    reason: string;
+    requesterEmail: string | null;
+    accountName: string | null;
+    competitorName: string | null;
+    hasDraft: boolean;
+    followupUrl: string;
+  }
 ) {
   if (!isResendConfigured() || to.length === 0) return;
 
-  const email = escapeHtml(details.email);
-  const domain = escapeHtml(details.domain);
-  const why = REACHABILITY_EXPLANATIONS[details.reachability] ?? REACHABILITY_EXPLANATIONS.ok;
-
-  // A pre-filled reply from your own inbox: one click, edit the two blanks,
-  // send. Deliberately not sent by us, so it goes out as you.
-  const draft = [
-    "Hi,",
-    "",
-    `Sorry the Ripplewatch snapshot couldn't read ${details.domain} on its own. Here's what I found by looking myself:`,
-    "",
-    "Pricing: ",
-    "Hiring: ",
-    "",
-    "Happy to run it on any other competitors too, or walk you through Ripplewatch whenever suits. Just reply to this.",
-    "",
-    "Jeremy",
-  ].join("\n");
-  const mailto = `mailto:${encodeURIComponent(details.email)}?subject=${encodeURIComponent(
-    `Your Ripplewatch snapshot of ${details.domain}`
-  )}&body=${encodeURIComponent(draft)}`;
+  const domain = escapeHtml(d.domain);
+  const why = REASON_EXPLANATIONS[d.reason] ?? REASON_EXPLANATIONS.unread;
+  const isCustomer = d.kind === "competitor";
+  const who = isCustomer
+    ? `${escapeHtml(d.accountName ?? "A customer")} added <b>${escapeHtml(d.competitorName ?? d.domain)}</b> (${domain}) as a competitor`
+    : `<b>${escapeHtml(d.requesterEmail ?? "A visitor")}</b> ran the competitor snapshot on <b>${domain}</b>`;
+  const consequence = isCustomer
+    ? "Until it's filled in, that competitor's pricing and hiring will show as not checked in their dashboard."
+    : "They were told a person would check it by hand and email them what's found.";
 
   const result = await getResend().emails.send({
     from: getAlertsFromEmail(),
     to,
-    subject: `Snapshot needs a manual look: ${details.domain} (${details.email})`,
-    html: `<p><b>${email}</b> ran the competitor snapshot on <b>${domain}</b> and we couldn't answer it automatically: ${why}. Web research didn't turn up anything reliable either. They were told someone would take a manual look and email them what we find.</p>
-      <p><b>To follow up yourself:</b> open <a href="https://${domain}">${domain}</a>, note its pricing and open roles, then <a href="${mailto}">click here for a pre-filled reply</a> to ${email} (it opens in your own email app; fill in the two blanks and send).</p>
-      <p style="color:#888;font-size:12px;">Sent by /api/snapshot. The lookup is also recorded on their lead in Admin → Leads, flagged "needs manual follow-up".</p>`,
+    subject: `${isCustomer ? "Customer competitor" : "Snapshot"} needs a manual look: ${d.domain}`,
+    html: `<p>${who}, and we couldn't get a reliable read on it automatically: ${why}. ${d.hasDraft ? "A public-sources research draft is attached to the follow-up for you to verify." : "Public-sources research didn't turn up anything reliable either."}</p>
+      <p>${consequence}</p>
+      <p><a href="${d.followupUrl}" style="display:inline-block;padding:10px 18px;background:#0f5f56;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">Open the follow-up</a></p>
+      <p style="color:#666;font-size:13px;">It has links to the site and to searches for its pricing and jobs, and a form. ${isCustomer ? "Saving it writes the pricing and open roles into their account." : "Saving it emails the visitor what you found."}</p>
+      <p style="color:#888;font-size:12px;">Admin &rarr; Follow-ups. Sent to everyone in ADMIN_EMAILS plus the operator address.</p>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
+// The other half of a snapshot follow-up: what a person found by hand,
+// emailed to the visitor. Goes out as the company with replies routed to the
+// operator's own inbox, so a reply reaches a person, not an alerts mailbox.
+export async function sendSnapshotManualResultEmail(
+  to: string,
+  d: {
+    domain: string;
+    pricingSummary: string;
+    hiringSummary: string;
+    notes: string;
+    appUrl: string;
+    demoUrl: string;
+    replyTo: string;
+  }
+) {
+  if (!isResendConfigured()) return;
+
+  const domain = escapeHtml(d.domain);
+  const p = 'style="color:#3a3a3a;font-size:14px;line-height:1.6;"';
+  const section = (label: string, text: string) =>
+    text.trim()
+      ? `<p ${p}><strong>${label}</strong><br />${escapeHtml(text).replace(/\n/g, "<br />")}</p>`
+      : "";
+
+  const result = await getResend().emails.send({
+    from: getFromEmail(),
+    to,
+    replyTo: d.replyTo,
+    subject: `What I found on ${d.domain}`,
+    html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+      <p ${p}>Hi,</p>
+      <p ${p}>You ran the Ripplewatch snapshot on ${domain} and our tool couldn't read it on its own, so I looked at it myself. Here's what I found:</p>
+      ${section("Pricing", d.pricingSummary)}
+      ${section("Hiring", d.hiringSummary)}
+      ${section("Anything else worth knowing", d.notes)}
+      <p ${p}>This is the kind of thing Ripplewatch keeps watching for you, including on sites that block automated tools, and tells you when it changes. If it would help, I'm happy to set it up on your real competitors and walk you through it, or just reply with a question.</p>
+      <a href="${d.demoUrl}" style="display:inline-block;margin-top:8px;padding:10px 20px;background:#0f5f56;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">Book a quick walkthrough</a>
+      <p ${p} style="margin-top:20px;">Jeremy<br />Founder, Ripplewatch</p>
+      <p style="color:#888;font-size:12px;margin-top:24px;">You're getting this because you ran a snapshot on ripplewatch.ai. Just reply if you have questions.</p>
+    </div>`,
   });
   if (result.error) throw new Error(result.error.message);
 }
