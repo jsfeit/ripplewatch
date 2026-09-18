@@ -31,7 +31,10 @@ export async function GET(request: Request) {
       "id, email, company_name, capture_point, created_at, drip_email_1_sent_at, drip_email_2_sent_at, drip_email_3_sent_at"
     )
     .not("capture_point", "is", null)
-    .is("unsubscribed_at", null);
+    .is("unsubscribed_at", null)
+    // An admin paused this lead (typically because they're already in a
+    // real conversation with them, see migration 0068).
+    .is("drip_paused_at", null);
 
   if (!leads || leads.length === 0) {
     return NextResponse.json({ ok: true, summary: [] });

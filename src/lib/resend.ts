@@ -397,6 +397,32 @@ export async function sendUptimeAlertEmail(to: string[], detail: string) {
   if (result.error) throw new Error(result.error.message);
 }
 
+// Fired by /api/snapshot when a visitor's lookup couldn't be answered
+// automatically (pricing and hiring both came back empty). The visitor is
+// told a person will take a look, so this is the "a person" part: without it
+// that promise would go nowhere. Internal ops alert, plain HTML, same
+// treatment as the other admin alerts. Email/domain are visitor-supplied, so
+// they're escaped rather than interpolated raw.
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+export async function sendSnapshotManualCheckAlertEmail(to: string[], details: { email: string; domain: string }) {
+  if (!isResendConfigured() || to.length === 0) return;
+
+  const email = escapeHtml(details.email);
+  const domain = escapeHtml(details.domain);
+  const result = await getResend().emails.send({
+    from: getAlertsFromEmail(),
+    to,
+    subject: `Snapshot needs a manual look: ${details.domain} (${details.email})`,
+    html: `<p><b>${email}</b> ran the competitor snapshot on <b>${domain}</b> and we couldn't read its pricing or hiring automatically. They were told someone would take a manual look and email them what we find.</p>
+      <p>Check <a href="https://${domain}">${domain}</a> yourself and reply to ${email} with the pricing and open-roles picture.</p>
+      <p style="color:#888;font-size:12px;">Sent by /api/snapshot. The lookup is also recorded on their lead in Admin → Leads.</p>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
 export type CostAlertAccount = { name: string; tier: string; tierPriceUsd: number; expectedUsd: number; actualUsd: number };
 
 // Fired by /api/cron/cost-alert when an account's LLM spend this calendar

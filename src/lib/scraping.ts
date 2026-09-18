@@ -16,7 +16,7 @@ import {
   summarizeBuzzSentiment,
   type SignalSentiment,
 } from "@/lib/anthropic";
-import { normalizeDomain, guessPricingUrl, guessCareersUrl } from "@/lib/domain";
+import { normalizeDomain, guessPricingUrl, guessCareersUrl, isBlockedUrl } from "@/lib/domain";
 import { fetchProductHuntLaunches } from "@/lib/producthunt-data";
 import { fetchGithubCommitVelocity } from "@/lib/github-data";
 import { fetchBuzzMentions } from "@/lib/reddit-hn-data";
@@ -75,6 +75,18 @@ export async function discoverCompetitorUrls(
     return fallback;
   }
 
+  const found = extractDiscoveredUrls(html, baseUrl);
+  return { pricingUrl: found.pricingUrl ?? fallback.pricingUrl, careersUrl: found.careersUrl ?? fallback.careersUrl };
+}
+
+// Pure link scan shared by discoverCompetitorUrls (which then falls back to
+// the plain guess) and the public snapshot tool (which fetches the homepage
+// itself so it can also read the title from the same request). Returns null
+// for anything not found rather than a guess — callers decide the fallback.
+export function extractDiscoveredUrls(
+  html: string,
+  baseUrl: string
+): { pricingUrl: string | null; careersUrl: string | null } {
   const $ = cheerio.load(html);
   let pricingUrl: string | null = null;
   let careersUrl: string | null = null;
@@ -89,19 +101,19 @@ export async function discoverCompetitorUrls(
       try {
         pricingUrl = new URL(href, baseUrl).toString();
       } catch {
-        // malformed href — skip
+        // malformed href, skip
       }
     }
     if (!careersUrl && CAREERS_LINK_PATTERN.test(haystack)) {
       try {
         careersUrl = new URL(href, baseUrl).toString();
       } catch {
-        // malformed href — skip
+        // malformed href, skip
       }
     }
   });
 
-  return { pricingUrl: pricingUrl ?? fallback.pricingUrl, careersUrl: careersUrl ?? fallback.careersUrl };
+  return { pricingUrl, careersUrl };
 }
 
 // Self-heals a competitor stuck with no pricing_url/careers_url — e.g. one
@@ -1895,4 +1907,207 @@ export async function checkVisualChange(supabase: AdminClient, competitor: Compe
   );
 
   return signal;
+}
+
+// ---------------------------------------------------------------------------
+// Public competitor-snapshot fetchers (/api/snapshot)
+//
+// The anonymous "try it on one competitor" tool used to do a single fetch of
+// a guessed /pricing URL and give up, so any bot-protected or sales-led site
+// looked like a broken product to the prospect trying it. These reuse the
+// real crawler's fallbacks (link discovery, Wayback, ATS job boards) but with
+// hard time caps, since a visitor is waiting on the response rather than a
+// cron. Nothing here writes to the database.
+// ---------------------------------------------------------------------------
+
+const SNAPSHOT_FETCH_MS = 9_000;
+const SNAPSHOT_WAYBACK_MS = 14_000;
+const SNAPSHOT_ATS_MS = 7_000;
+
+// Resolves to null on either rejection or timeout: for a public one-shot
+// lookup, "couldn't get it in time" and "couldn't get it" are the same
+// outcome for the visitor.
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), ms);
+  });
+  try {
+    return await Promise.race([promise.catch(() => null), timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+// Bot protection on some sites answers intermittently rather than blocking
+// outright (found in testing: arlo.com's careers page failed two of three
+// back-to-back requests and loaded on the third), so a failed page fetch gets
+// exactly one more try after a short pause before being written off.
+async function fetchWithOneRetry<T>(fn: () => Promise<T>): Promise<T | null> {
+  const first = await withTimeout(fn(), SNAPSHOT_FETCH_MS);
+  if (first !== null) return first;
+  await new Promise((resolve) => setTimeout(resolve, 1_200));
+  return withTimeout(fn(), SNAPSHOT_FETCH_MS);
+}
+
+export type SnapshotHomepage = { title: string | null; html: string; finalUrl: string };
+
+// Homepage fetched once: gives the title for display and the HTML that link
+// discovery scans for the real pricing/careers URLs. Tries the bare domain
+// first, then www., since a few sites only answer on one of them.
+export async function fetchSnapshotHomepage(domain: string): Promise<SnapshotHomepage | null> {
+  const hosts = domain.startsWith("www.") ? [domain] : [domain, `www.${domain}`];
+  for (const host of hosts) {
+    try {
+      const res = await fetch(`https://${host}`, {
+        headers: { "User-Agent": "RipplewatchBot/1.0 (+https://ripplewatch.ai)" },
+        signal: AbortSignal.timeout(8_000),
+      });
+      if (!res.ok || isBlockedUrl(res.url)) continue;
+      const html = await res.text();
+      const match = html.match(/<title[^>]*>([^<]*)<\/title>/i);
+      const title = match ? match[1].replace(/\s+/g, " ").trim().slice(0, 200) || null : null;
+      return { title, html, finalUrl: res.url };
+    } catch {
+      // try the next host variant
+    }
+  }
+  return null;
+}
+
+// Some sites answer a path on the www host but block or bounce the bare
+// domain (found in testing: arlo.com/pricing 403s after redirecting, while
+// www.arlo.com/pricing loads), so every candidate is also tried on the other
+// host variant. Discovered links already carry whichever host the homepage
+// resolved to; the guessed URL only ever carries the bare domain.
+function hostVariants(url: string): string[] {
+  try {
+    const parsed = new URL(url);
+    const other = new URL(url);
+    other.hostname = parsed.hostname.startsWith("www.") ? parsed.hostname.slice(4) : `www.${parsed.hostname}`;
+    return [url, other.toString()];
+  } catch {
+    return [url];
+  }
+}
+
+// Only URLs that themselves say pricing/plans (or careers/jobs/hiring) in the
+// host or path are ever read. A link that merely matched on its anchor text
+// (found in testing: hubspot.com's homepage scan matched /products/marketing
+// on the word "plans") isn't a pricing page, and drawing a conclusion from
+// it could tell a prospect something false, like "sales-led" for a company
+// that publishes prices on a JS-rendered page we can't read. Missing the
+// real page is an honest "couldn't read it"; reading the wrong one isn't.
+function orderedCandidates(discovered: string | null, guessed: string | null, pattern: RegExp): string[] {
+  const usable = [discovered, guessed]
+    .filter((u): u is string => Boolean(u) && !isBlockedUrl(u as string))
+    .map((u) => u.split("#")[0])
+    .flatMap(hostVariants)
+    .filter((u) => {
+      try {
+        const { hostname, pathname } = new URL(u);
+        return pattern.test(`${hostname}${pathname}`);
+      } catch {
+        return false;
+      }
+    });
+  return Array.from(new Set(usable));
+}
+
+export type SnapshotPricingFetch =
+  | { status: "ok"; text: string; source: "live" | "wayback"; capturedAt: string | null; url: string }
+  | { status: "unavailable" };
+
+export async function fetchSnapshotPricingText(
+  domain: string,
+  discoveredUrl: string | null
+): Promise<SnapshotPricingFetch> {
+  const candidates = orderedCandidates(discoveredUrl, guessPricingUrl(domain), PRICING_LINK_PATTERN);
+
+  const live = await Promise.all(
+    candidates.map(async (url) => {
+      const text = await fetchWithOneRetry(() => fetchPageText(url));
+      return text && text.trim().length > 100 ? { url, text } : null;
+    })
+  );
+  const liveHit = live.find((hit) => hit !== null);
+  if (liveHit) return { status: "ok", text: liveHit.text, source: "live", capturedAt: null, url: liveHit.url };
+
+  // Nothing readable live (bot protection, timeout, no such page): most
+  // recent archived copy, same stance and age cap as the real crawl, and
+  // the caller is expected to tell the visitor it's an archived read.
+  const archived = await Promise.all(
+    candidates.map(async (url) => {
+      const snapshot = await withTimeout(fetchLatestWaybackSnapshotText(url), SNAPSHOT_WAYBACK_MS);
+      return snapshot && snapshot.text.trim().length > 100 ? { url, ...snapshot } : null;
+    })
+  );
+  const archivedHit = archived.find((hit) => hit !== null);
+  if (archivedHit) {
+    return {
+      status: "ok",
+      text: archivedHit.text,
+      source: "wayback",
+      capturedAt: archivedHit.capturedAt,
+      url: archivedHit.url,
+    };
+  }
+
+  return { status: "unavailable" };
+}
+
+export type SnapshotHiring =
+  | {
+      status: "ok";
+      openRoles: number;
+      departments: { name: string; count: number }[];
+      // Only ever a board their own careers page links to or embeds.
+      provider: string;
+    }
+  | { status: "page_only"; url: string }
+  | { status: "unavailable" };
+
+function summarizeJobs(jobs: AtsJob[]): { openRoles: number; departments: { name: string; count: number }[] } {
+  const counts: Record<string, number> = {};
+  for (const job of jobs) {
+    const bucket = job.department ?? categorizeTitle(job.title);
+    counts[bucket] = (counts[bucket] ?? 0) + 1;
+  }
+  const departments = Object.entries(counts)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 4);
+  return { openRoles: jobs.length, departments };
+}
+
+export async function fetchSnapshotHiring(domain: string, discoveredUrl: string | null): Promise<SnapshotHiring> {
+  const candidates = orderedCandidates(discoveredUrl, guessCareersUrl(domain), CAREERS_LINK_PATTERN);
+
+  const pages = await Promise.all(
+    candidates.map(async (url) => {
+      const html = await fetchWithOneRetry(() => fetchHtml(url));
+      return html ? { url, html } : null;
+    })
+  );
+  const reachable = pages.filter((p): p is { url: string; html: string } => p !== null);
+
+  for (const page of reachable) {
+    const detection = detectAts(page.url, page.html);
+    if (!detection) continue;
+    const jobs = await withTimeout(fetchAtsJobs(detection), SNAPSHOT_ATS_MS);
+    if (jobs && jobs.length > 0) {
+      return { status: "ok", ...summarizeJobs(jobs), provider: detection.provider };
+    }
+  }
+
+  // Deliberately no board-name guessing here, unlike the real crawl's
+  // probeAtsBySlug: a guessed board that turns out to belong to a different
+  // company with a similar name (found in testing: arlo.com's guess landed on
+  // an unrelated health-insurance startup's Ashby board) would show a
+  // stranger's job listings, labeled as this competitor's, to a prospect
+  // evaluating us. For a public first impression, "couldn't read it" beats
+  // wrong. Only a board the competitor's own careers page points at counts.
+
+  if (reachable.length > 0) return { status: "page_only", url: reachable[0].url };
+  return { status: "unavailable" };
 }
