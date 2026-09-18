@@ -2011,7 +2011,12 @@ function orderedCandidates(discovered: string | null, guessed: string | null, pa
         return false;
       }
     });
-  return Array.from(new Set(usable));
+  // Shallowest path first: /pricing beats /pricing/professional-services
+  // (found in testing: arlo.co's homepage link pointed at a services
+  // sub-page, whose "book a consultation" copy reads as sales-led, while the
+  // real plans and prices live at /pricing).
+  const depth = (url: string) => new URL(url).pathname.split("/").filter(Boolean).length;
+  return Array.from(new Set(usable)).sort((a, b) => depth(a) - depth(b));
 }
 
 export type SnapshotPricingFetch =
