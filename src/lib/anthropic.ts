@@ -2114,6 +2114,7 @@ export async function researchDomainPublicly(
   domain: string,
   siteTitle: string | null
 ): Promise<PublicResearch | null> {
+  const startedAt = Date.now();
   const message = await createMessage({
     model: "claude-sonnet-5",
     max_tokens: 8192,
@@ -2139,6 +2140,19 @@ export async function researchDomainPublicly(
   }
 
   const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  // One line per call so it's possible to tell, from the logs alone, whether a
+  // null result was a slow search, an empty one, or the guards rejecting it.
+  const log = (outcome: string, extra: Record<string, unknown> = {}) =>
+    console.info(
+      `researchDomainPublicly ${domain}: ${outcome}`,
+      JSON.stringify({
+        ms: Date.now() - startedAt,
+        stopReason: message.stop_reason,
+        blockTypes: message.content.map((b) => b.type),
+        returnedUrls: returnedUrls.size,
+        ...extra,
+      })
+    );
   let parsed: {
     found?: unknown;
     companyName?: unknown;
@@ -2154,7 +2168,10 @@ export async function researchDomainPublicly(
   } catch (err) {
     throw new Error(`Could not parse domain research response: ${text}`, { cause: err });
   }
-  if (parsed.found !== true) return null;
+  if (parsed.found !== true) {
+    log("model said found=false");
+    return null;
+  }
 
   const bareDomain = domain.replace(/^www\./, "").toLowerCase();
   const sources = (Array.isArray(parsed.sources) ? parsed.sources : [])
@@ -2177,11 +2194,21 @@ export async function researchDomainPublicly(
       return false;
     }
   });
-  if (!onOwnDomain) return null;
+  if (!onOwnDomain) {
+    log("discarded: no source on the domain itself", {
+      claimedSources: Array.isArray(parsed.sources) ? parsed.sources.length : 0,
+      keptSources: sources.length,
+    });
+    return null;
+  }
 
   const pricingSummary = String(parsed.pricingSummary ?? "").trim();
   const hiringSummary = String(parsed.hiringSummary ?? "").trim();
-  if (!pricingSummary && !hiringSummary) return null;
+  if (!pricingSummary && !hiringSummary) {
+    log("discarded: empty summaries");
+    return null;
+  }
+  log("ok", { sources: sources.length });
 
   return {
     companyName: String(parsed.companyName ?? "").trim(),

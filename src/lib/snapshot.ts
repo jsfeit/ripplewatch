@@ -183,7 +183,15 @@ export async function buildSnapshot(
   // visitor indefinitely.
   let research: PublicResearch | null = null;
   if (!answeredPricing && !answeredHiring && researchAllowed) {
-    research = await withTimeout(researchDomainPublicly(domain, home?.title ?? null), RESEARCH_TIMEOUT_MS);
+    const startedAt = Date.now();
+    research = await withTimeout(
+      researchDomainPublicly(domain, home?.title ?? null).catch((err) => {
+        console.error(`snapshot research failed for ${domain}:`, err);
+        return null;
+      }),
+      RESEARCH_TIMEOUT_MS
+    );
+    if (!research) console.info(`snapshot research for ${domain} returned nothing after ${Date.now() - startedAt}ms`);
   }
 
   return {
