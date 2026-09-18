@@ -2115,11 +2115,17 @@ export async function researchDomainPublicly(
   siteTitle: string | null
 ): Promise<PublicResearch | null> {
   const startedAt = Date.now();
+  // Deliberately NOT the setup used by the nightly news search above: that
+  // one uses web_search_20260209 (dynamic filtering, an internal code-
+  // execution loop) on Sonnet with 8k of output headroom, which took over 50s
+  // in production and never finished for a visitor who's waiting on the page.
+  // The basic search tool on Haiku, with a small output budget (the answer is
+  // a short JSON object), is built for this: a few seconds per search.
   const message = await createMessage({
-    model: "claude-sonnet-5",
-    max_tokens: 8192,
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 2000,
     system: cachedSystemPrompt(DOMAIN_RESEARCH_SYSTEM_PROMPT),
-    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
+    tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 2 }],
     output_config: { format: { type: "json_schema", schema: DOMAIN_RESEARCH_SCHEMA } },
     messages: [
       {

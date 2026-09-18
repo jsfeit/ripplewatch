@@ -63,7 +63,7 @@ export type SnapshotResult = {
 
 // Web search runs a multi-step loop on Anthropic's side; cap how long the
 // visitor waits for it.
-const RESEARCH_TIMEOUT_MS = 50_000;
+const RESEARCH_TIMEOUT_MS = 40_000;
 
 export async function buildSnapshot(
   domain: string,
@@ -115,6 +115,22 @@ export async function buildSnapshot(
     };
   }
   const discovered = home ? extractDiscoveredUrls(home.html, home.finalUrl) : { pricingUrl: null, careersUrl: null };
+
+  // A homepage that refused or wouldn't connect makes the research fallback
+  // likely, so start it now and let it overlap with the page fetches below
+  // instead of adding its time to the end. If the fetches turn out to answer
+  // the question after all, its result is simply ignored.
+  const runResearch = (): Promise<PublicResearch | null> =>
+    withTimeout(
+      researchDomainPublicly(domain, home?.title ?? null).catch((err) => {
+        console.error(`snapshot research failed for ${domain}:`, err);
+        return null;
+      }),
+      RESEARCH_TIMEOUT_MS
+    );
+  const researchStartedAt = Date.now();
+  const wantsResearch = researchAllowed && (probe.reachability === "blocked" || probe.reachability === "unreachable");
+  const researchPromise: Promise<PublicResearch | null> = wantsResearch ? runResearch() : Promise.resolve(null);
 
   // If the homepage wouldn't even connect (as opposed to refusing us, where
   // deeper pages sometimes still load), pages beneath it won't either, and
@@ -176,22 +192,21 @@ export async function buildSnapshot(
     .slice(0, 3)
     .map(({ domain: altDomain, title }) => ({ domain: altDomain, title }));
 
-  // Couldn't answer either question by reading the site: try a search of
-  // public sources before giving up to a manual follow-up. Skipped for a
-  // domain that doesn't exist (nothing to research) and when the day's
-  // research budget is spent. Bounded so a slow search can't hold the
-  // visitor indefinitely.
+  // Couldn't answer either question by reading the site: use the search of
+  // public sources rather than giving up to a manual follow-up. For a
+  // blocked/unreachable homepage it was started above and overlapped with the
+  // fetches (its result is ignored if they answered after all); otherwise it
+  // runs here.
   let research: PublicResearch | null = null;
-  if (!answeredPricing && !answeredHiring && researchAllowed) {
-    const startedAt = Date.now();
-    research = await withTimeout(
-      researchDomainPublicly(domain, home?.title ?? null).catch((err) => {
-        console.error(`snapshot research failed for ${domain}:`, err);
-        return null;
-      }),
-      RESEARCH_TIMEOUT_MS
-    );
-    if (!research) console.info(`snapshot research for ${domain} returned nothing after ${Date.now() - startedAt}ms`);
+  if (wantsResearch) {
+    const result = await researchPromise;
+    if (!answeredPricing && !answeredHiring) research = result;
+    if (!result) console.info(`snapshot research for ${domain} returned nothing after ${Date.now() - researchStartedAt}ms`);
+  } else if (researchAllowed && !answeredPricing && !answeredHiring) {
+    // The site loaded but neither its pricing nor its jobs could be read
+    // (typically JavaScript-rendered pages): nothing was started in parallel,
+    // so run the search now.
+    research = await runResearch();
   }
 
   return {
