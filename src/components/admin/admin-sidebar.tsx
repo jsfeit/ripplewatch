@@ -2,19 +2,18 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, Shield, Users, Building2, Activity, Briefcase, Radar, Contact2, Mail, Newspaper, Megaphone, Handshake, Gift, ClipboardCheck } from "lucide-react";
+import { LogOut, Shield, Users, Building2, Activity, Briefcase, Radar, Mail, Newspaper, Megaphone, Handshake, Gift, ClipboardCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 
 const NAV = [
   { href: "/admin/followups", label: "Follow-ups", icon: ClipboardCheck },
-  { href: "/admin/leads", label: "Leads", icon: Users },
+  { href: "/admin/users", label: "Users & leads", icon: Users },
   { href: "/admin/campaigns", label: "Campaigns", icon: Mail },
   { href: "/admin/blog", label: "Blog", icon: Newspaper },
   { href: "/admin/promo-banner", label: "Promotions", icon: Megaphone },
   { href: "/admin/accounts", label: "Accounts", icon: Building2 },
-  { href: "/admin/users", label: "Users", icon: Contact2 },
   { href: "/admin/signals", label: "Signals", icon: Radar },
   { href: "/admin/careers", label: "Careers", icon: Briefcase },
   { href: "/admin/affiliates", label: "Affiliates", icon: Handshake },
