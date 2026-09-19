@@ -604,6 +604,26 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["competitor_buzz"]["Insert"]>;
         Relationships: [];
       };
+      user_activity: {
+        Row: {
+          id: number;
+          user_id: string;
+          account_id: string | null;
+          kind: "login" | "view";
+          path: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          account_id?: string | null;
+          kind: "login" | "view";
+          path?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["user_activity"]["Insert"]>;
+        Relationships: [];
+      };
       manual_followups: {
         Row: {
           id: string;

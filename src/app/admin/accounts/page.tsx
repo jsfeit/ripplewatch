@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { Database } from "@/lib/supabase/types";
 import { sumLlmUsageByAccount } from "@/lib/llm-pricing";
 import { TIERS } from "@/lib/tiers";
+import { daysAgoIso, relativeTime } from "@/lib/activity";
 import { buildOrdinalMap } from "@/lib/admin-numbering";
 
 export const metadata = { title: "Accounts | Admin" };
@@ -37,6 +38,7 @@ export default async function AdminAccountsPage() {
   let accountNumbers = new Map<string, number>();
   let accounts: Account[] | null = null;
   let error: { message: string } | null = null;
+  const lastActiveByAccount = new Map<string, string>();
   let llmCostByAccount = new Map<string, { tokens: number; costUsd: number; calls: number }>();
 
   if (configured) {
@@ -61,6 +63,18 @@ export default async function AdminAccountsPage() {
       userCounts.set(row.account_id, (userCounts.get(row.account_id) ?? 0) + 1);
     }
 
+    // Newest activity per account: one head-of-list row per account would be
+    // a query each, so pull recent rows and keep the max.
+    const { data: activityRows } = await supabase
+      .from("user_activity")
+      .select("account_id, created_at")
+      .gte("created_at", daysAgoIso(90))
+      .order("created_at", { ascending: false })
+      .limit(50_000);
+    for (const row of activityRows ?? []) {
+      if (row.account_id && !lastActiveByAccount.has(row.account_id)) lastActiveByAccount.set(row.account_id, row.created_at);
+    }
+
     const since = new Date();
     since.setUTCDate(since.getUTCDate() - LLM_COST_WINDOW_DAYS);
     const { data: usageRows } = await supabase
@@ -73,7 +87,7 @@ export default async function AdminAccountsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-8 py-10">
+    <div className="mx-auto max-w-6xl px-8 py-10">
       <div className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight">Accounts</h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -101,6 +115,7 @@ export default async function AdminAccountsPage() {
                 <TableHead>Competitors</TableHead>
                 <TableHead>Users</TableHead>
                 <TableHead>LLM cost (30d)</TableHead>
+                <TableHead>Last active</TableHead>
                 <TableHead>Created</TableHead>
               </TableRow>
             </TableHeader>
@@ -167,13 +182,16 @@ export default async function AdminAccountsPage() {
                     })()}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
+                    {lastActiveByAccount.has(a.id) ? relativeTime(lastActiveByAccount.get(a.id)!) : "–"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
                     {new Date(a.created_at).toLocaleDateString()}
                   </TableCell>
                 </TableRow>
               ))}
               {accounts?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground">
+                  <TableCell colSpan={10} className="text-center text-muted-foreground">
                     No accounts yet.
                   </TableCell>
                 </TableRow>
