@@ -1,6 +1,7 @@
 import { AppSidebar } from "@/components/app/app-sidebar";
 import { AskBubble } from "@/components/app/ask-bubble";
 import { ImpersonationBanner } from "@/components/app/impersonation-banner";
+import { ActivityBeacon } from "@/components/app/activity-beacon";
 import { DemoBanner } from "@/components/app/demo-banner";
 import { createClient } from "@/lib/supabase/server";
 import { resolveAccountContext } from "@/lib/impersonation";
@@ -47,6 +48,7 @@ export default async function AppShellLayout({ children }: { children: React.Rea
           <AppSidebar tier={tier} />
         </div>
         <div className="flex-1 overflow-x-hidden">{children}</div>
+        {user && !impersonation ? <ActivityBeacon /> : null}
         {user && !impersonation ? (
           <div className="print:hidden">
             <AskBubble competitorNames={competitorNames} />

@@ -32,6 +32,14 @@ export function LoginForm() {
       return;
     }
 
+    // Sign-in count for Admin -> Users; awaited (briefly) so the navigation
+    // below can't cancel it, and never blocks the login if it fails.
+    await fetch("/api/activity", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "login" }),
+    }).catch(() => {});
+
     router.push(searchParams.get("next") ?? "/app/dashboard");
     router.refresh();
   }
