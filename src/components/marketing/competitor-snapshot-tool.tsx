@@ -1,11 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Briefcase, DollarSign, Globe, Loader2, RefreshCw, Search, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  Briefcase,
+  Check,
+  DollarSign,
+  Globe,
+  Loader2,
+  MessageCircle,
+  RefreshCw,
+  Search,
+  Send,
+  Sparkles,
+} from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { DemoLink } from "@/components/marketing/demo-link";
 import { trackEvent } from "@/lib/analytics";
 import { UTM_STORAGE_KEY } from "@/components/utm-capture";
@@ -46,7 +59,11 @@ export function CompetitorSnapshotTool() {
       const res = await fetch("/api/snapshot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), domain: domainToCheck, ...utm }),
+        body: JSON.stringify({
+          email: email.trim(),
+          domain: domainToCheck,
+          ...utm,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -90,7 +107,10 @@ export function CompetitorSnapshotTool() {
                 <p>Nothing answered at that address. Check the spelling, or try one of the suggestions below.</p>
               </InfoRow>
             ) : result.reachability === "placeholder" ? (
-              <InfoRow icon={<Globe className="size-4" />} title={`${result.domain} looks like a placeholder, not a live site`}>
+              <InfoRow
+                icon={<Globe className="size-4" />}
+                title={`${result.domain} looks like a placeholder, not a live site`}
+              >
                 <p>
                   Its page is titled &ldquo;{result.title}&rdquo;, so there&apos;s nothing to check yet. If you meant a
                   different company, try a suggestion below.
@@ -106,36 +126,10 @@ export function CompetitorSnapshotTool() {
             )}
           </div>
 
-          {result.alternates.length > 0 ? (
-            <div className="mt-4 rounded-xl border border-dashed border-border p-4 text-sm">
-              <p className="font-medium">
-                {isDeadDomain ? "Did you mean one of these?" : "Did you mean a different company?"}
-              </p>
-              <p className="mt-0.5 text-muted-foreground">
-                {isDeadDomain
-                  ? "These are the closest real sites we found:"
-                  : "Different companies often share a name across domain endings. We also found:"}
-              </p>
-              <ul className="mt-3 space-y-2">
-                {result.alternates.map((alt) => (
-                  <li key={alt.domain} className="flex items-center justify-between gap-3">
-                    <span className="min-w-0">
-                      <span className="font-medium">{alt.domain}</span>
-                      <span className="block truncate text-muted-foreground">{alt.title}</span>
-                    </span>
-                    <Button type="button" size="sm" variant="outline" onClick={() => void runSnapshot(alt.domain)}>
-                      Try this one
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
           {result.needsManualCheck ? (
             <p className="mt-4 rounded-xl border border-primary/25 bg-primary/5 p-4 text-sm">
-              We couldn&apos;t get a reliable read on this one automatically, so a person will check it by hand and email
-              what they find to <span className="font-medium">{submittedEmail}</span>.
+              We couldn&apos;t get a reliable read on this one automatically, so a person will check it by hand and
+              email what they find to <span className="font-medium">{submittedEmail}</span>.
             </p>
           ) : null}
         </div>
@@ -143,8 +137,8 @@ export function CompetitorSnapshotTool() {
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-primary/30 bg-accent/40 p-6 text-center">
           <Sparkles className="size-6 text-primary" />
           <p className="max-w-md text-sm text-muted-foreground">
-            This was one look, right now. Ripplewatch keeps checking their pricing and hiring, plus product changes
-            and news, and scores what changes against your own positioning and lost-deal reasons, not just this one
+            This was one look, right now. Ripplewatch keeps checking their pricing and hiring, plus product changes and
+            news, and scores what changes against your own positioning and lost-deal reasons, not just this one
             competitor.
           </p>
           <div className="flex flex-col items-center gap-3 sm:flex-row">
@@ -154,14 +148,34 @@ export function CompetitorSnapshotTool() {
             </Link>
             <DemoLink variant="button" />
           </div>
-          <p className="text-xs text-muted-foreground">
-            Not sure this is even your biggest gap?{" "}
-            <Link href="/competitive-intelligence-quiz" className="font-medium text-primary hover:underline">
-              Take the 5-question maturity quiz
-            </Link>
-            .
-          </p>
+          <QuestionBox email={submittedEmail} domain={result.domain} />
         </div>
+
+        {result.alternates.length > 0 ? (
+          <div className="rounded-2xl border border-dashed border-border p-5 text-sm">
+            <p className="font-medium">
+              {isDeadDomain ? "Did you mean one of these?" : "Did you mean a different company?"}
+            </p>
+            <p className="mt-0.5 text-muted-foreground">
+              {isDeadDomain
+                ? "These are the closest real sites we found:"
+                : "Different companies often share a name across domain endings. We also found:"}
+            </p>
+            <ul className="mt-3 space-y-2">
+              {result.alternates.map((alt) => (
+                <li key={alt.domain} className="flex items-center justify-between gap-3">
+                  <span className="min-w-0">
+                    <span className="font-medium">{alt.domain}</span>
+                    <span className="block truncate text-muted-foreground">{alt.title}</span>
+                  </span>
+                  <Button type="button" size="sm" variant="outline" onClick={() => void runSnapshot(alt.domain)}>
+                    Try this one
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <button
           type="button"
@@ -176,41 +190,41 @@ export function CompetitorSnapshotTool() {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-4 rounded-2xl border border-border bg-card p-6 sm:p-8"
-    >
-      <div className="space-y-2">
-        <Label htmlFor="snapshotDomain">A competitor&apos;s domain</Label>
-        <Input
-          id="snapshotDomain"
-          required
-          value={domain}
-          onChange={(e) => setDomain(e.target.value)}
-          placeholder="acme.com"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="snapshotEmail">Your email</Label>
-        <Input
-          id="snapshotEmail"
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@company.com"
-        />
-      </div>
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      <Button
-        type="submit"
-        className="w-full"
-        disabled={status === "loading" || !EMAIL_PATTERN.test(email.trim()) || !domain.trim()}
-      >
-        {status === "loading" ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
-        {status === "loading" ? "Checking..." : "See their snapshot"}
-      </Button>
-    </form>
+    <>
+      {status === "loading" ? <CheckingOverlay domain={domain.trim()} /> : null}
+      <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-border bg-card p-6 sm:p-8">
+        <div className="space-y-2">
+          <Label htmlFor="snapshotDomain">A competitor&apos;s domain</Label>
+          <Input
+            id="snapshotDomain"
+            required
+            value={domain}
+            onChange={(e) => setDomain(e.target.value)}
+            placeholder="acme.com"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="snapshotEmail">Your email</Label>
+          <Input
+            id="snapshotEmail"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@company.com"
+          />
+        </div>
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={status === "loading" || !EMAIL_PATTERN.test(email.trim()) || !domain.trim()}
+        >
+          {status === "loading" ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+          {status === "loading" ? "Checking..." : "See their snapshot"}
+        </Button>
+      </form>
+    </>
   );
 }
 
@@ -219,7 +233,11 @@ function formatArchiveDate(timestamp: string | null): string | null {
   if (!timestamp || timestamp.length < 6) return null;
   const date = new Date(`${timestamp.slice(0, 4)}-${timestamp.slice(4, 6)}-01T00:00:00Z`);
   if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 function InfoRow({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
@@ -274,10 +292,9 @@ function PricingBlock({ result }: { result: SnapshotResult }) {
     return (
       <InfoRow icon={icon} title="Sales-led pricing">
         <p>
-          {domain}{" "}
-          doesn&apos;t publish prices, you have to talk to their sales team. That&apos;s a real finding:
-          Ripplewatch watches their pricing and packaging pages and flags it when that changes, like a tier
-          appearing or a price going public.
+          {domain} doesn&apos;t publish prices, you have to talk to their sales team. That&apos;s a real finding:
+          Ripplewatch watches their pricing and packaging pages and flags it when that changes, like a tier appearing or
+          a price going public.
         </p>
         {archivedNote}
       </InfoRow>
@@ -300,8 +317,7 @@ function PricingBlock({ result }: { result: SnapshotResult }) {
       return (
         <InfoRow icon={icon} title="Pricing: this site blocks automated checks">
           <p>
-            {domain}{" "}
-            refused our request, which some sites do to anything that isn&apos;t a person in a browser. Once
+            {domain} refused our request, which some sites do to anything that isn&apos;t a person in a browser. Once
             you&apos;re tracking a competitor for real, Ripplewatch retries on a schedule and falls back to archived
             copies instead of giving up after one try.
           </p>
@@ -311,8 +327,7 @@ function PricingBlock({ result }: { result: SnapshotResult }) {
     return (
       <InfoRow icon={icon} title="Pricing: we couldn't load this site">
         <p>
-          {domain}{" "}
-          didn&apos;t load for us. It may be down, slow, or only reachable over an insecure connection.
+          {domain} didn&apos;t load for us. It may be down, slow, or only reachable over an insecure connection.
           Ripplewatch retries on a schedule, so a temporary outage doesn&apos;t leave a gap.
         </p>
       </InfoRow>
@@ -346,8 +361,8 @@ function HiringBlock({ result }: { result: SnapshotResult }) {
     return (
       <InfoRow icon={icon} title="Hiring: careers page found">
         <p>
-          We found their careers page but couldn&apos;t read a structured list of open roles from it. Ripplewatch
-          tracks changes to it over time.
+          We found their careers page but couldn&apos;t read a structured list of open roles from it. Ripplewatch tracks
+          changes to it over time.
         </p>
       </InfoRow>
     );
@@ -367,12 +382,11 @@ function ResearchBlock({ result }: { result: SnapshotResult }) {
   const research = result.research;
   if (!research) return null;
   return (
-    <InfoRow icon={<Globe className="size-4" />} title="From public sources">
+    <InfoRow icon={<Globe className="size-4" />} title="From public and proprietary connections">
       <p>
-        {result.domain}{" "}
-        blocked our direct check, so this comes from a search of public web pages instead of a live
-        read. It may be incomplete or out of date, and any prices shown can be third-party estimates rather than the
-        company&apos;s own published numbers.
+        {result.domain} blocked our direct check, so this comes from public and proprietary connections instead of a
+        live read. It may be incomplete or out of date, and any prices shown can be third-party estimates rather than
+        the company&apos;s own published numbers.
       </p>
       {research.pricingSummary ? (
         <p>
@@ -403,5 +417,140 @@ function ResearchBlock({ result }: { result: SnapshotResult }) {
         </p>
       ) : null}
     </InfoRow>
+  );
+}
+
+// Steps shown while a lookup runs. The timings are a guide to the usual pace,
+// not a live feed: the last step stays active until the answer arrives, so a
+// slow site just sits on it a little longer.
+const CHECK_STEPS: { after: number; label: (domain: string) => string }[] = [
+  { after: 0, label: (d) => `Opening ${d || "the site"}` },
+  { after: 2000, label: () => "Looking for the pricing page" },
+  { after: 4500, label: () => "Checking their careers page and job boards" },
+  { after: 8000, label: () => "Reaching public and proprietary connections" },
+  { after: 13000, label: () => "Cross-checking sources" },
+  { after: 19000, label: () => "Putting your snapshot together" },
+];
+
+function CheckingOverlay({ domain }: { domain: string }) {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    const started = Date.now();
+    const timer = setInterval(() => setElapsed(Date.now() - started), 400);
+    return () => clearInterval(timer);
+  }, []);
+
+  const activeIndex = CHECK_STEPS.reduce((acc, step, i) => (elapsed >= step.after ? i : acc), 0);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+      role="status"
+      aria-live="polite"
+    >
+      <div className="w-full max-w-sm rounded-2xl border border-primary/25 bg-card p-6 shadow-xl">
+        <p className="text-xs font-medium tracking-wide text-primary uppercase">Checking</p>
+        <h3 className="mt-1 text-lg font-semibold tracking-tight">{domain || "your competitor"}</h3>
+        <ul className="mt-5 space-y-3">
+          {CHECK_STEPS.map((step, i) => {
+            if (i > activeIndex) return null;
+            const done = i < activeIndex;
+            return (
+              <li
+                key={step.after}
+                className="flex items-center gap-2.5 text-sm animate-in fade-in slide-in-from-bottom-1 duration-300"
+              >
+                {done ? (
+                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+                    <Check className="size-3" />
+                  </span>
+                ) : (
+                  <Loader2 className="size-5 shrink-0 animate-spin text-primary" />
+                )}
+                <span className={done ? "text-muted-foreground" : "font-medium"}>{step.label(domain)}</span>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="mt-5 text-xs text-muted-foreground">
+          Usually a few seconds. Sites that block checks can take up to a minute.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// "Have questions?" under the sign-up box: opens a small form whose message
+// goes to the support inbox with the visitor's email as the reply-to.
+function QuestionBox({ email, domain }: { email: string; domain: string }) {
+  const [open, setOpen] = useState(false);
+  const [message, setMessage] = useState("");
+  const [state, setState] = useState<"idle" | "sending" | "sent">("idle");
+  const [error, setError] = useState("");
+
+  async function send(e: React.FormEvent) {
+    e.preventDefault();
+    setState("sending");
+    setError("");
+    try {
+      const res = await fetch("/api/snapshot/question", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, domain, message }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "Couldn't send that. Try again.");
+        setState("idle");
+        return;
+      }
+      setState("sent");
+    } catch {
+      setError("Couldn't send that. Try again.");
+      setState("idle");
+    }
+  }
+
+  if (state === "sent") {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Thanks, we got it. We&apos;ll reply to <span className="font-medium text-foreground">{email}</span>.
+      </p>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+      >
+        <MessageCircle className="size-3.5" />
+        Have questions? Ask us
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={send} className="w-full max-w-md space-y-2 text-left">
+      <Textarea
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        placeholder="What would you like to know?"
+        rows={3}
+        maxLength={2000}
+        autoFocus
+      />
+      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs text-muted-foreground">We&apos;ll reply to {email}.</p>
+        <Button type="submit" size="sm" disabled={state === "sending" || !message.trim()}>
+          {state === "sending" ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
+          Send
+        </Button>
+      </div>
+    </form>
   );
 }

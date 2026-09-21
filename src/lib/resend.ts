@@ -493,6 +493,32 @@ export async function sendFollowupAlertEmail(
   if (result.error) throw new Error(result.error.message);
 }
 
+// A question typed into the public competitor-snapshot page. Goes to the same
+// inbox as in-app feedback, with replyTo set to the asker so answering is just
+// hitting reply.
+export async function sendSnapshotQuestionEmail(
+  to: string[],
+  d: { fromEmail: string; domain: string | null; message: string }
+) {
+  if (!isResendConfigured() || to.length === 0) return;
+
+  const result = await getResend().emails.send({
+    from: getAlertsFromEmail(),
+    to,
+    replyTo: d.fromEmail,
+    subject: `Question from the competitor snapshot page (${d.fromEmail})`,
+    html: `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;">
+      <p style="margin:0 0 8px;"><strong>Question from the competitor snapshot page</strong></p>
+      <p style="margin:0 0 12px;color:#3a3a3a;font-size:14px;">
+        From <strong>${escapeHtml(d.fromEmail)}</strong>${d.domain ? `, after checking <strong>${escapeHtml(d.domain)}</strong>` : ""}
+      </p>
+      <p style="margin:0;color:#3a3a3a;font-size:14px;line-height:1.6;white-space:pre-wrap;">${escapeHtml(d.message)}</p>
+      <p style="color:#888;font-size:12px;margin-top:20px;">Reply to this email to answer them directly.</p>
+    </div>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
 // The other half of a snapshot follow-up: what a person found by hand,
 // emailed to the visitor. Goes out as the company with replies routed to the
 // operator's own inbox, so a reply reaches a person, not an alerts mailbox.
