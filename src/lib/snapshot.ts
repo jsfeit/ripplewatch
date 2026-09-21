@@ -68,6 +68,9 @@ export type SnapshotResult = {
 
 // Web search runs a multi-step loop on Anthropic's side; cap how long the
 // visitor waits for it.
+// How long the page fetches get when the homepage was blocked and research is
+// running in parallel.
+const BLOCKED_FETCH_BUDGET_MS = 12_000;
 const RESEARCH_TIMEOUT_MS = 40_000;
 
 export async function buildSnapshot(
@@ -150,12 +153,24 @@ export async function buildSnapshot(
   // trying each with retries only makes the visitor wait. Go straight to the
   // research fallback.
   const skipFetches = probe.reachability === "unreachable";
-  const [pricingFetch, hiring]: [Awaited<ReturnType<typeof fetchSnapshotPricingText>>, SnapshotHiring] = skipFetches
-    ? [{ status: "unavailable" }, { status: "unavailable" }]
-    : await Promise.all([
-        fetchSnapshotPricingText(domain, discovered.pricingUrl),
-        fetchSnapshotHiring(domain, discovered.careersUrl),
-      ]);
+  const unavailableFetches: [Awaited<ReturnType<typeof fetchSnapshotPricingText>>, SnapshotHiring] = [
+    { status: "unavailable" },
+    { status: "unavailable" },
+  ];
+  // A blocked site's deeper pages usually refuse us too, and each failed page
+  // used to burn retries plus an archive lookup (~30s). The research fallback
+  // is already running alongside, so give the fetches a shorter leash: what
+  // they can read in that time still counts, and the rest is left to research.
+  const fetches = () =>
+    Promise.all([
+      fetchSnapshotPricingText(domain, discovered.pricingUrl),
+      fetchSnapshotHiring(domain, discovered.careersUrl),
+    ]);
+  const [pricingFetch, hiring] = skipFetches
+    ? unavailableFetches
+    : wantsResearch
+      ? ((await withTimeout(fetches(), BLOCKED_FETCH_BUDGET_MS)) ?? unavailableFetches)
+      : await fetches();
 
   let pricing: SnapshotResult["pricing"] = {
     state: home ? "no_page" : "unreachable",
