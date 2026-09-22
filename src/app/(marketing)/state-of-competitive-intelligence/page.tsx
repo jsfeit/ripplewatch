@@ -144,6 +144,23 @@ export default function MarketResearchPage() {
       </section>
 
       <section className="mt-16">
+        <h2 className="text-lg font-medium text-muted-foreground">Where G2, Gartner, Capterra, and TrustRadius fit</h2>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+          None of the tools above are review platforms, and none of the review sites are monitoring
+          tools, so they&apos;re not really competing with each other. G2, Gartner Peer Insights,
+          Capterra, and TrustRadius aggregate buyer ratings and are genuinely useful for a first-pass
+          shortlist of vendors in this category. They don&apos;t track what a specific competitor
+          changes day to day, and they can&apos;t tell you why your company specifically is losing
+          deals, since a review is a snapshot of general sentiment, not a live feed. We wrote about
+          that distinction in more depth in{" "}
+          <Link href="/blog/g2-vs-gartner-vs-building-your-own-win-loss-process" className="text-primary hover:underline">
+            G2 vs. Gartner vs. building your own win/loss process
+          </Link>
+          .
+        </p>
+      </section>
+
+      <section className="mt-16">
         <h2 className="text-2xl font-semibold tracking-tight">The anatomy of a CI dashboard</h2>
         <p className="mt-3 max-w-2xl leading-relaxed text-muted-foreground">
           Across all 20+ tools surveyed, four structural elements recur; almost every product is some
@@ -281,10 +298,13 @@ export default function MarketResearchPage() {
           every signal against your own positioning, ICP, and deal history, and tells you why it matters
           before you ever have to ask.
         </p>
-        <div className="mt-6">
+        <div className="mt-6 flex flex-wrap items-center gap-4">
           <Link href="/pricing" className={buttonVariants()}>
             Get started
             <ArrowRight className="size-4" />
+          </Link>
+          <Link href="/competitive-intelligence-quiz" className="text-sm text-primary hover:underline">
+            Or take the 2-minute competitive intelligence questionnaire
           </Link>
         </div>
       </section>
