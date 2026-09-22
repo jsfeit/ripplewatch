@@ -37,6 +37,14 @@ export type IndustryTrendItem = {
   source: { name: string; url: string } | null;
 };
 
+export type MarketMaturity = "emerging" | "growing" | "mature" | "consolidating";
+export type MarketGrowthDirection = "heating_up" | "steady" | "cooling";
+
+export type MarketDynamic = {
+  text: string;
+  source: { name: string; url: string } | null;
+};
+
 export interface Database {
   public: {
     Tables: {
@@ -288,6 +296,38 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["industry_trends"]["Insert"]>;
+        Relationships: [];
+      };
+      market_profile: {
+        Row: {
+          id: string;
+          account_id: string;
+          market_name: string;
+          market_description: string;
+          maturity: MarketMaturity;
+          growth_direction: MarketGrowthDirection;
+          growth_reason: string;
+          dynamics: MarketDynamic[];
+          product_summary: string;
+          generated_at: string;
+          user_edited_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_id: string;
+          market_name: string;
+          market_description: string;
+          maturity: MarketMaturity;
+          growth_direction: MarketGrowthDirection;
+          growth_reason: string;
+          dynamics?: MarketDynamic[];
+          product_summary: string;
+          generated_at?: string;
+          user_edited_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["market_profile"]["Insert"]>;
         Relationships: [];
       };
       crawl_runs: {

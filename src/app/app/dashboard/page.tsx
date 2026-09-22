@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation";
-import { Sparkles, TrendingUp, Scale, Globe2 } from "lucide-react";
+import { Sparkles, TrendingUp, Scale, Globe2, Compass } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { resolveAccountContext } from "@/lib/impersonation";
 import { bucketMonthlyActivity } from "@/lib/monthly-activity";
 import { DashboardFeed } from "./dashboard-feed";
 import { CompetitorOverview } from "./competitor-overview";
 import { IndustryPulseCard, CategoryActivityCard } from "../trends/industry-pulse";
+import { MarketProfileCard, type MarketProfileData } from "./market-profile-card";
 import { TrendsBoard } from "../trends/trends-board";
 import { PricingBoard } from "../pricing/pricing-board";
 import { HiringBoard } from "../hiring/hiring-board";
@@ -23,14 +24,18 @@ type Signal = Database["public"]["Tables"]["signals"]["Row"];
 // trust — regenerating next successful cron run brings it back.
 const VERDICT_STALE_MS = 8 * 24 * 60 * 60 * 1000;
 
-// Ordered synthesis-first, raw-data-last: Industry pulse is the widest lens
-// (the market, not just tracked competitors) so it leads and frames
-// everything below it; Momentum is the most differentiated per-competitor
-// synthesis; Trends is aggregate synthesis over the account's own
-// competitors; Win/loss (per-outcome synthesis) follows; Pricing/Hiring are
-// reference data; News is the rawest, most granular feed, so it trails
-// instead of competing with the synthesized sections for attention.
+// Ordered synthesis-first, raw-data-last: Market is the widest lens of all
+// (what market this account even competes in and where its own product
+// sits, not scoped to tracked competitors or even to any one event), so it
+// leads; Industry pulse is the same wide lens but as an ongoing feed of
+// events rather than a synthesized snapshot; Momentum is the most
+// differentiated per-competitor synthesis; Trends is aggregate synthesis
+// over the account's own competitors; Win/loss (per-outcome synthesis)
+// follows; Pricing/Hiring are reference data; News is the rawest, most
+// granular feed, so it trails instead of competing with the synthesized
+// sections for attention.
 const SECTIONS = [
+  { id: "market", label: "Market" },
   { id: "industry-pulse", label: "Industry pulse" },
   { id: "overview", label: "Momentum" },
   { id: "win-loss", label: "Win/loss" },
@@ -123,6 +128,7 @@ export default async function DashboardPage() {
     { data: stateHistory },
     { data: activitySignals },
     { data: industryTrends },
+    { data: marketProfileRow },
     { data: winLossTrends },
     { data: winLossEntries },
     { data: unattributedWinLossEntries },
@@ -195,6 +201,8 @@ export default async function DashboardPage() {
       .order("generated_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
+    // --- Market & product profile ---
+    db.from("market_profile").select("*").eq("account_id", accountId).maybeSingle(),
     // --- Trends: recurring win/loss themes ---
     db
       .from("win_loss_trends")
@@ -231,6 +239,20 @@ export default async function DashboardPage() {
     new Set((winLossTrends ?? []).flatMap((t) => t.related_signals.map((r) => r.signalId)))
   );
   const trendsGeneratedAt = winLossTrends && winLossTrends.length > 0 ? winLossTrends[0].generated_at : null;
+
+  const marketProfile: MarketProfileData | null = marketProfileRow
+    ? {
+        marketName: marketProfileRow.market_name,
+        marketDescription: marketProfileRow.market_description,
+        maturity: marketProfileRow.maturity,
+        growthDirection: marketProfileRow.growth_direction,
+        growthReason: marketProfileRow.growth_reason,
+        dynamics: marketProfileRow.dynamics,
+        productSummary: marketProfileRow.product_summary,
+        generatedAt: marketProfileRow.generated_at,
+        userEditedAt: marketProfileRow.user_edited_at,
+      }
+    : null;
 
   // Last batch: depends on signal/trend ids resolved above.
   const [{ data: evalLabels }, { data: relatedSignals }] = await Promise.all([
@@ -329,7 +351,22 @@ export default async function DashboardPage() {
         </div>
       ) : null}
 
-      <section id="industry-pulse" className="scroll-mt-20">
+      <section id="market" className="scroll-mt-20">
+        <div className="flex items-center gap-2">
+          <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+            <Compass className="size-3.5" />
+          </span>
+          <h2 className="text-sm font-semibold">Market</h2>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          What market you&apos;re actually in, how it&apos;s moving, and where your own product sits in it.
+        </p>
+        <div className="mt-4">
+          <MarketProfileCard profile={marketProfile} />
+        </div>
+      </section>
+
+      <section id="industry-pulse" className="mt-10 scroll-mt-20">
         <div className="flex items-center gap-2">
           <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
             <Globe2 className="size-3.5" />
