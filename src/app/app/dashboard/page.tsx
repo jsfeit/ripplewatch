@@ -80,7 +80,7 @@ export default async function DashboardPage() {
       .single(),
     db
       .from("competitors")
-      .select("id, name, pricing_url, careers_url")
+      .select("id, name, pricing_url, careers_url, created_at")
       .eq("account_id", accountId)
       .order("created_at", { ascending: true }),
     impersonation
@@ -403,6 +403,7 @@ export default async function DashboardPage() {
             momentumStateHistory={stateHistory ?? []}
             latestSignalByCompetitor={latestSignalByCompetitor}
             pricingByCompetitor={pricingByCompetitor}
+            marketGrowthDirection={marketProfile?.growthDirection ?? null}
           />
         </div>
       </section>

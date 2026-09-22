@@ -74,7 +74,12 @@ const NEWS_DECAY_HALF_LIFE_DAYS = 7;
 // rather than requiring every caller to be rewired at once.
 const RELIABILITY_LOOKBACK_BUCKETS = 6;
 
-export type MomentumLabel = "Heating up" | "Steady" | "Cooling" | "Not enough history yet";
+// "Gone quiet" is never returned by computeMomentum itself — it's an
+// override a caller applies afterward (see gone-quiet.ts) when a
+// competitor's silence is meaningful in context (quiet next to its peers,
+// during a market that's actively heating up), which plain activity-based
+// scoring can't tell apart from a competitor who's simply always quiet.
+export type MomentumLabel = "Heating up" | "Steady" | "Cooling" | "Gone quiet" | "Not enough history yet";
 
 export type MomentumComponent = {
   label: string;
@@ -618,5 +623,6 @@ export const MOMENTUM_STYLES: Record<MomentumLabel, string> = {
   "Heating up": "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
   Steady: "bg-secondary text-muted-foreground",
   Cooling: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+  "Gone quiet": "bg-amber-500/10 text-amber-600 dark:text-amber-400",
   "Not enough history yet": "bg-secondary text-muted-foreground",
 };
