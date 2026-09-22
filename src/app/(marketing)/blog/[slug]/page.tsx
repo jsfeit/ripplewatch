@@ -8,7 +8,7 @@ import { formatDate } from "@/lib/date";
 import { QuizCta } from "@/components/marketing/quiz-cta";
 import { EmailCaptureForm } from "@/components/marketing/email-capture-form";
 import { Panel } from "@/components/ui/panel";
-import { BlogVisual, blogVisualLabel, visualKindForSlug } from "@/components/marketing/blog-visual";
+import { CategoryTag, visualKindForSlug } from "@/components/marketing/blog-visual";
 import { avatarColor } from "@/lib/utils";
 
 // Same caching rationale as the blog index — see that file.
@@ -222,9 +222,9 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         Blog
       </Link>
 
-      <span className="mt-6 inline-flex items-center rounded-full border border-border bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground">
-        {blogVisualLabel(visualKindForSlug(post.slug))}
-      </span>
+      <div className="mt-6">
+        <CategoryTag slug={post.slug} kind={visualKindForSlug(post.slug)} />
+      </div>
       <h1 className="mt-4 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">{post.title}</h1>
       <p className="mt-3 text-lg leading-relaxed text-muted-foreground">{post.description}</p>
 
@@ -240,8 +240,6 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         <span aria-hidden="true">·</span>
         <span>{readingTime(post.body)} min read</span>
       </div>
-
-      <BlogVisual slug={post.slug} kind={visualKindForSlug(post.slug)} className="mt-10 aspect-[21/9] rounded-2xl border border-border" />
 
       <div className="mt-10 space-y-1 text-[15px] leading-relaxed text-muted-foreground">
         {post.body.map((block, i) => (
@@ -279,17 +277,15 @@ async function RelatedPosts({ current }: { current: PostEntry }) {
       <div className="mt-5 grid gap-5 sm:grid-cols-3">
         {sameKindFirst.map((post) => (
           <Link key={post.slug} href={`/blog/${post.slug}`} className="group block">
-            <Panel className="flex h-full flex-col overflow-hidden transition-colors group-hover:border-primary/40">
-              <BlogVisual slug={post.slug} kind={visualKindForSlug(post.slug)} className="aspect-[16/10]" />
-              <div className="flex flex-1 flex-col p-4">
-                <h3 className="text-sm font-medium tracking-tight text-balance group-hover:text-primary">
-                  {post.title}
-                </h3>
-                <span className="mt-auto flex items-center gap-1 pt-3 text-xs text-muted-foreground/70 group-hover:text-primary">
-                  Read
-                  <ArrowUpRight className="size-3" />
-                </span>
-              </div>
+            <Panel className="flex h-full flex-col p-4 transition-colors group-hover:border-primary/40">
+              <CategoryTag slug={post.slug} kind={visualKindForSlug(post.slug)} />
+              <h3 className="mt-2 text-sm font-medium tracking-tight text-balance group-hover:text-primary">
+                {post.title}
+              </h3>
+              <span className="mt-auto flex items-center gap-1 pt-3 text-xs text-muted-foreground/70 group-hover:text-primary">
+                Read
+                <ArrowUpRight className="size-3" />
+              </span>
             </Panel>
           </Link>
         ))}

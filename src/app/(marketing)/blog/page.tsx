@@ -3,7 +3,7 @@ import { ArrowUpRight } from "lucide-react";
 import { getAllPosts, readingTime } from "@/lib/posts";
 import { formatDate } from "@/lib/date";
 import { Panel } from "@/components/ui/panel";
-import { BlogVisual, blogVisualLabel, visualKindForSlug } from "@/components/marketing/blog-visual";
+import { CategoryTag, visualKindForSlug } from "@/components/marketing/blog-visual";
 
 // Public content that only changes when an admin publishes/edits a post
 // (see src/app/api/admin/blog) — cached for 5 minutes instead of forced
@@ -52,22 +52,21 @@ export default async function BlogIndexPage() {
         <>
           {featured && (
             <Link href={`/blog/${featured.slug}`} className="group mt-14 block">
-              <Panel className="grid overflow-hidden transition-colors group-hover:border-primary/40 sm:grid-cols-2">
-                <BlogVisual slug={featured.slug} kind={visualKindForSlug(featured.slug)} className="aspect-[16/10] sm:aspect-auto" />
-                <div className="flex flex-col justify-center p-8 sm:p-10">
-                  <div className="flex items-center gap-3 text-xs font-medium text-muted-foreground">
-                    <span>Latest</span>
-                    <span aria-hidden="true">·</span>
-                    <span>{blogVisualLabel(visualKindForSlug(featured.slug))}</span>
-                  </div>
-                  <h2 className="mt-3 text-2xl font-semibold tracking-tight text-balance group-hover:text-primary">
-                    {featured.title}
-                  </h2>
-                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{featured.description}</p>
-                  <div className="mt-6 flex items-center gap-2 text-sm font-medium text-foreground">
-                    Read the post
-                    <ArrowUpRight className="size-4 text-muted-foreground/60 transition-colors group-hover:text-primary" />
-                  </div>
+              <Panel className="border-primary/25 bg-primary/[0.03] p-8 transition-colors group-hover:border-primary/40 sm:p-10">
+                <div className="flex items-center gap-3 text-xs font-medium text-muted-foreground">
+                  <span>Latest</span>
+                  <span aria-hidden="true">·</span>
+                  <CategoryTag slug={featured.slug} kind={visualKindForSlug(featured.slug)} />
+                </div>
+                <h2 className="mt-3 max-w-2xl text-2xl font-semibold tracking-tight text-balance group-hover:text-primary sm:text-3xl">
+                  {featured.title}
+                </h2>
+                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+                  {featured.description}
+                </p>
+                <div className="mt-6 flex items-center gap-2 text-sm font-medium text-foreground">
+                  Read the post
+                  <ArrowUpRight className="size-4 text-muted-foreground/60 transition-colors group-hover:text-primary" />
                 </div>
               </Panel>
             </Link>
@@ -78,20 +77,18 @@ export default async function BlogIndexPage() {
               const kind = visualKindForSlug(post.slug);
               return (
                 <Link key={post.slug} href={`/blog/${post.slug}`} className="group block h-full">
-                  <Panel className="flex h-full flex-col overflow-hidden transition-colors group-hover:border-primary/40">
-                    <BlogVisual slug={post.slug} kind={kind} className="aspect-[16/10]" />
-                    <div className="flex flex-1 flex-col p-5">
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        <span>{formatDate(post.publishedAt)}</span>
-                        <span aria-hidden="true">·</span>
-                        <span>{readingTime(post.body)} min read</span>
-                      </div>
-                      <h3 className="mt-2 text-base font-medium tracking-tight text-balance group-hover:text-primary">
-                        {post.title}
-                      </h3>
-                      <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
-                        {post.description}
-                      </p>
+                  <Panel className="flex h-full flex-col p-5 transition-colors group-hover:border-primary/40">
+                    <CategoryTag slug={post.slug} kind={kind} />
+                    <h3 className="mt-2 text-base font-medium tracking-tight text-balance group-hover:text-primary">
+                      {post.title}
+                    </h3>
+                    <p className="mt-2 line-clamp-3 flex-1 text-sm leading-relaxed text-muted-foreground">
+                      {post.description}
+                    </p>
+                    <div className="mt-4 flex items-center gap-3 text-xs text-muted-foreground">
+                      <span>{formatDate(post.publishedAt)}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>{readingTime(post.body)} min read</span>
                     </div>
                   </Panel>
                 </Link>
