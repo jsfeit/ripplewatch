@@ -8,6 +8,7 @@ import { CompetitorFactSheet } from "@/components/app/competitor-fact-sheet";
 import { createClient } from "@/lib/supabase/server";
 import { resolveAccountContext } from "@/lib/impersonation";
 import { computeMomentum, type MomentumResult } from "@/lib/momentum";
+import { detectGoneQuiet, type GoneQuietResult } from "@/lib/gone-quiet";
 
 export const dynamic = "force-dynamic";
 
@@ -27,15 +28,17 @@ export default async function CompetitorDetailPage({
   const { accountId, db } = await resolveAccountContext(supabase, user.id);
   if (!accountId) redirect("/onboarding");
 
-  // account/competitors/suggestions/hubspotIntegration only need accountId,
-  // and winLoss only needs the route's id — none of the five depend on each
-  // other, so they no longer pay their round-trip latency one at a time.
+  // account/competitors/suggestions/hubspotIntegration/marketProfile only
+  // need accountId, and winLoss only needs the route's id — none of the six
+  // depend on each other, so they no longer pay their round-trip latency
+  // one at a time.
   const [
     { data: account },
     { data: competitors },
     { data: suggestions },
     { data: winLoss },
     { data: hubspotIntegration },
+    { data: marketProfile },
   ] = await Promise.all([
     db.from("accounts").select("name, tier, has_sales_crm, has_plg").eq("id", accountId).single(),
     db.from("competitors").select("*").eq("account_id", accountId).order("created_at", { ascending: true }),
@@ -57,6 +60,7 @@ export default async function CompetitorDetailPage({
       .eq("provider", "hubspot")
       .eq("connected", true)
       .maybeSingle(),
+    db.from("market_profile").select("growth_direction").eq("account_id", accountId).maybeSingle(),
   ]);
   if (!account) redirect("/onboarding");
 
@@ -96,6 +100,21 @@ export default async function CompetitorDetailPage({
     );
   }
 
+  // Same detection as the dashboard's Momentum section (see gone-quiet.ts)
+  // — kept in sync deliberately: a competitor that reads "Gone quiet" on
+  // the dashboard should read the same way here, not a different label
+  // just because this page computes momentum independently.
+  const goneQuietByCompetitorId: Record<string, GoneQuietResult | null> = {};
+  for (const c of competitors ?? []) {
+    goneQuietByCompetitorId[c.id] = detectGoneQuiet({
+      competitorId: c.id,
+      competitorCreatedAt: c.created_at,
+      allSignals: momentumSignals ?? [],
+      peerCompetitorIds: competitorIds,
+      marketGrowthDirection: marketProfile?.growth_direction ?? null,
+    });
+  }
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-10 sm:py-10">
       <div className="mb-6 print:hidden">
@@ -111,6 +130,7 @@ export default async function CompetitorDetailPage({
           tier={account.tier}
           activeId={id}
           momentum={momentumByCompetitorId}
+          goneQuiet={goneQuietByCompetitorId}
         />
       </div>
 

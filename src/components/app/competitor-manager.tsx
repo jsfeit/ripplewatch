@@ -11,6 +11,7 @@ import { Panel } from "@/components/ui/panel";
 import { cn, avatarColor } from "@/lib/utils";
 import { competitorCap, competitorCapLabel } from "@/lib/tier-limits";
 import { MOMENTUM_STYLES, type MomentumResult } from "@/lib/momentum";
+import type { GoneQuietResult } from "@/lib/gone-quiet";
 import type { Database } from "@/lib/supabase/types";
 
 type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
@@ -30,6 +31,7 @@ export function CompetitorManager({
   demoMode = false,
   activeId,
   momentum,
+  goneQuiet,
 }: {
   competitors: Competitor[];
   tier: Tier;
@@ -41,6 +43,11 @@ export function CompetitorManager({
   // page renders, just surfaced here too so it's visible on the page
   // people actually click into a competitor from, not only its own tab.
   momentum?: Record<string, MomentumResult>;
+  // Same detectGoneQuiet result the dashboard's Momentum section shows —
+  // see gone-quiet.ts. Overrides the momentum badge's label when present,
+  // so a competitor doesn't read "Gone quiet" on the dashboard and
+  // something else here.
+  goneQuiet?: Record<string, GoneQuietResult | null>;
 }) {
   const router = useRouter();
   const [competitors, setCompetitors] = useState(initialCompetitors);
@@ -439,7 +446,17 @@ export function CompetitorManager({
                       Not monitored
                     </Badge>
                   ) : null}
-                  {momentum?.[c.id] && momentum[c.id].score !== null ? (
+                  {goneQuiet?.[c.id] ? (
+                    <span
+                      className={cn(
+                        "flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        MOMENTUM_STYLES["Gone quiet"]
+                      )}
+                      title={goneQuiet[c.id]!.reason}
+                    >
+                      Gone quiet
+                    </span>
+                  ) : momentum?.[c.id] && momentum[c.id].score !== null ? (
                     <span
                       className={cn(
                         "flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold",

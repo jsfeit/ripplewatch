@@ -13,9 +13,10 @@ import {
   type MomentumResult,
   type StateHistoryEntry,
 } from "@/lib/momentum";
-import type { Database } from "@/lib/supabase/types";
+import { detectGoneQuiet, type GoneQuietResult } from "@/lib/gone-quiet";
+import type { Database, MarketGrowthDirection } from "@/lib/supabase/types";
 
-type Competitor = Pick<Database["public"]["Tables"]["competitors"]["Row"], "id" | "name">;
+type Competitor = Pick<Database["public"]["Tables"]["competitors"]["Row"], "id" | "name" | "created_at">;
 type CompetitorPricing = Pick<Database["public"]["Tables"]["competitor_pricing"]["Row"], "tiers">;
 type SignalRow = Database["public"]["Tables"]["signals"]["Row"];
 type MomentumSignal = Pick<
@@ -69,6 +70,7 @@ export function CompetitorOverview({
   momentumStateHistory,
   latestSignalByCompetitor,
   pricingByCompetitor,
+  marketGrowthDirection,
 }: {
   competitors: Competitor[];
   momentumSignals: MomentumSignal[];
@@ -76,6 +78,10 @@ export function CompetitorOverview({
   momentumStateHistory: MomentumStateHistoryEntry[];
   latestSignalByCompetitor: Record<string, LatestSignal>;
   pricingByCompetitor: Record<string, CompetitorPricing>;
+  // Null when the Market panel hasn't generated yet — gone-quiet detection
+  // just doesn't fire for anyone in that case (see detectGoneQuiet's market
+  // gate), same as any other account still waiting on its first crawl.
+  marketGrowthDirection: MarketGrowthDirection | null;
 }) {
   const momentumByCompetitor = useMemo(() => {
     const byCompetitor = new Map<string, MomentumSignal[]>();
@@ -112,6 +118,27 @@ export function CompetitorOverview({
     );
   }, [competitors, momentumSignals, momentumWinLoss, momentumStateHistory]);
 
+  // Independent of momentumByCompetitor: detectGoneQuiet reasons about raw
+  // signal timing across every tracked competitor (peer comparison) plus
+  // the market's own state, not about the computed momentum score itself.
+  const goneQuietByCompetitor = useMemo(() => {
+    const peerIds = competitors.map((c) => c.id);
+    const map = new Map<string, GoneQuietResult | null>();
+    for (const c of competitors) {
+      map.set(
+        c.id,
+        detectGoneQuiet({
+          competitorId: c.id,
+          competitorCreatedAt: c.created_at,
+          allSignals: momentumSignals,
+          peerCompetitorIds: peerIds,
+          marketGrowthDirection,
+        })
+      );
+    }
+    return map;
+  }, [competitors, momentumSignals, marketGrowthDirection]);
+
   const sorted = useMemo(
     () =>
       [...competitors].sort((a, b) => {
@@ -128,21 +155,29 @@ export function CompetitorOverview({
 
   const heatingUpCount = sorted.filter((c) => momentumByCompetitor.get(c.id)?.label === "Heating up").length;
   const coolingCount = sorted.filter((c) => momentumByCompetitor.get(c.id)?.label === "Cooling").length;
+  const goneQuietCount = sorted.filter((c) => goneQuietByCompetitor.get(c.id)).length;
 
   // The single answer to "what should I look at first," named directly
-  // instead of asking someone to scan a sorted list of pills — "Heating up"
-  // (a real direction change) over just the highest absolute score, since a
-  // competitor going from quiet to active is usually more worth attention
-  // right now than one sitting at a high but stable score. Capped at 2 so
+  // instead of asking someone to scan a sorted list of pills. Gone-quiet
+  // competitors lead — they're rarer and, by construction, only ever shown
+  // when the context around them (peers active, market moving) makes the
+  // silence itself the interesting part, which "Heating up" alone doesn't
+  // capture. "Heating up" (a real direction change) still beats just the
+  // highest absolute score, since going from quiet to active is usually
+  // more worth attention than a high but stable score. Capped at 2 total so
   // this stays a pointer, not a second copy of the list below it.
-  const focusCompetitors = useMemo(
-    () =>
-      sorted
-        .filter((c) => momentumByCompetitor.get(c.id)?.label === "Heating up")
-        .slice(0, 2)
-        .map((c) => ({ competitor: c, momentum: momentumByCompetitor.get(c.id)! })),
-    [sorted, momentumByCompetitor]
-  );
+  type FocusItem =
+    | { kind: "gone_quiet"; competitor: Competitor; goneQuiet: GoneQuietResult }
+    | { kind: "heating_up"; competitor: Competitor; momentum: MomentumResult };
+  const focusCompetitors = useMemo(() => {
+    const quiet: FocusItem[] = sorted
+      .filter((c) => goneQuietByCompetitor.get(c.id))
+      .map((c) => ({ kind: "gone_quiet" as const, competitor: c, goneQuiet: goneQuietByCompetitor.get(c.id)! }));
+    const heating: FocusItem[] = sorted
+      .filter((c) => momentumByCompetitor.get(c.id)?.label === "Heating up")
+      .map((c) => ({ kind: "heating_up" as const, competitor: c, momentum: momentumByCompetitor.get(c.id)! }));
+    return [...quiet, ...heating].slice(0, 2);
+  }, [sorted, momentumByCompetitor, goneQuietByCompetitor]);
 
   if (competitors.length === 0) {
     return (
@@ -160,18 +195,23 @@ export function CompetitorOverview({
         <div className="mb-3 flex items-start gap-2.5 rounded-lg border border-primary/25 bg-primary/[0.04] p-3">
           <Flame className="mt-0.5 size-4 shrink-0 text-primary" />
           <p className="text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">Focus here first: </span>
-            {focusCompetitors.map(({ competitor, momentum }, i) => {
-              const driver = topDriver(momentum);
-              return (
-                <span key={competitor.id}>
-                  {i > 0 ? "; " : ""}
-                  <span className="font-medium text-foreground">{competitor.name}</span> is heating up
-                  {driver ? `, driven by ${driver.label.toLowerCase()} (${driver.detail})` : ""}
-                </span>
-              );
-            })}
-            .
+            <span className="font-semibold text-foreground">Focus here first. </span>
+            {focusCompetitors.map((item) => (
+              <span key={item.competitor.id} className="mr-1 inline-block">
+                <span className="font-medium text-foreground">{item.competitor.name}</span>{" "}
+                {item.kind === "gone_quiet" ? (
+                  <>has gone quiet, and it&apos;s worth a look. {item.goneQuiet.reason}</>
+                ) : (
+                  <>
+                    is heating up
+                    {(() => {
+                      const driver = topDriver(item.momentum);
+                      return driver ? `, driven by ${driver.label.toLowerCase()} (${driver.detail}).` : ".";
+                    })()}
+                  </>
+                )}
+              </span>
+            ))}
           </p>
         </div>
       ) : null}
@@ -201,6 +241,12 @@ export function CompetitorOverview({
               <span className="font-medium text-foreground">{coolingCount}</span> cooling
             </span>
           ) : null}
+          {goneQuietCount > 0 ? (
+            <span className="text-muted-foreground">
+              {" · "}
+              <span className="font-medium text-foreground">{goneQuietCount}</span> gone quiet
+            </span>
+          ) : null}
         </span>
         <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
           {expanded ? "Collapse" : "Show all"}
@@ -215,6 +261,7 @@ export function CompetitorOverview({
               key={competitor.id}
               competitor={competitor}
               momentum={momentumByCompetitor.get(competitor.id)!}
+              goneQuiet={goneQuietByCompetitor.get(competitor.id) ?? null}
               latestSignal={latestSignalByCompetitor[competitor.id]}
               pricingRecord={pricingByCompetitor[competitor.id]}
             />
@@ -255,11 +302,13 @@ function MomentumMeter({ score }: { score: number | null }) {
 function CompetitorRow({
   competitor,
   momentum,
+  goneQuiet,
   latestSignal,
   pricingRecord,
 }: {
   competitor: Competitor;
   momentum: MomentumResult;
+  goneQuiet: GoneQuietResult | null;
   latestSignal: LatestSignal | undefined;
   pricingRecord: CompetitorPricing | undefined;
 }) {
@@ -269,6 +318,12 @@ function CompetitorRow({
   // making someone expand every row just to find the one component that
   // actually moved the score.
   const driver = hasMomentumData ? topDriver(momentum) : null;
+  // goneQuiet overrides the plain score-derived label — see gone-quiet.ts.
+  // The raw score/driver stay available underneath (an override, not a
+  // recompute), just not shown here: a number next to "Gone quiet" would
+  // read as a magnitude when the whole point is that magnitude is the
+  // wrong lens for this state.
+  const displayLabel = goneQuiet ? "Gone quiet" : momentum.label;
 
   return (
     <Card>
@@ -298,22 +353,22 @@ function CompetitorRow({
           <div className="flex flex-col items-end gap-0.5">
             <button
               type="button"
-              onClick={() => hasMomentumData && setExpanded((e) => !e)}
-              disabled={!hasMomentumData}
+              onClick={() => (hasMomentumData || goneQuiet) && setExpanded((e) => !e)}
+              disabled={!hasMomentumData && !goneQuiet}
               className={cn(
                 "flex items-center gap-1.5 rounded-full px-2.5 py-1",
-                MOMENTUM_STYLES[momentum.label],
-                hasMomentumData && "cursor-pointer"
+                MOMENTUM_STYLES[displayLabel],
+                (hasMomentumData || goneQuiet) && "cursor-pointer"
               )}
             >
-              {hasMomentumData ? (
+              {hasMomentumData && !goneQuiet ? (
                 <span className="text-xs font-bold tabular-nums">
                   {momentum.score! > 0 ? "+" : ""}
                   {momentum.score}
                 </span>
               ) : null}
-              <span className="text-xs font-semibold whitespace-nowrap">{momentum.label}</span>
-              {hasMomentumData && momentum.confidence === "low" ? (
+              <span className="text-xs font-semibold whitespace-nowrap">{displayLabel}</span>
+              {hasMomentumData && momentum.confidence === "low" && !goneQuiet ? (
                 <span
                   className="text-[10px] font-medium whitespace-nowrap opacity-70"
                   title="Based on limited data. This score may shift as more signals and win/loss data come in."
@@ -321,11 +376,13 @@ function CompetitorRow({
                   (limited data)
                 </span>
               ) : null}
-              {hasMomentumData ? (
+              {hasMomentumData || goneQuiet ? (
                 <ChevronDown className={cn("size-3.5 transition-transform", expanded && "rotate-180")} />
               ) : null}
             </button>
-            {driver ? (
+            {goneQuiet ? (
+              <span className="max-w-[180px] text-right text-[10px] text-muted-foreground">Tap to see why</span>
+            ) : driver ? (
               <span className="max-w-[180px] text-right text-[10px] text-muted-foreground">{driver.label}</span>
             ) : null}
           </div>
@@ -334,6 +391,11 @@ function CompetitorRow({
 
       {expanded ? (
         <div className="border-t border-dashed border-border pt-3">
+          {goneQuiet ? (
+            <p className="mb-3 rounded-lg border border-amber-500/25 bg-amber-500/[0.06] p-2.5 text-[11.5px] leading-relaxed text-foreground">
+              {goneQuiet.reason}
+            </p>
+          ) : null}
           {hasMomentumData ? (
             <div className="space-y-1 text-[11px]">
               {Object.values(momentum.components).map((c) => (

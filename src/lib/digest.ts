@@ -1,6 +1,7 @@
 import "server-only";
 import { generateDigestVerdict, generateMomentumDigest, type VerdictSignal, type MomentumDigestInput } from "@/lib/anthropic";
 import { computeMomentum } from "@/lib/momentum";
+import { detectGoneQuiet } from "@/lib/gone-quiet";
 import { buildUnattributedAttritionContext } from "@/lib/churn-correlation";
 import type { Database } from "@/lib/supabase/types";
 import type { createAdminClient } from "@/lib/supabase/admin";
@@ -28,7 +29,7 @@ export type WeeklyAccountIntelligence = {
 export async function generateWeeklyAccountIntelligence(
   supabase: AdminSupabase,
   account: Account,
-  competitors: { id: string; name: string }[]
+  competitors: { id: string; name: string; created_at: string }[]
 ): Promise<WeeklyAccountIntelligence> {
   const competitorIds = competitors.map((c) => c.id);
   if (competitorIds.length === 0) return { verdict: null, trendsDigest: null };
@@ -121,15 +122,32 @@ export async function generateWeeklyAccountIntelligence(
       .in("competitor_id", competitorIds)
       .gte("recorded_at", reliabilityLookbackStart.toISOString());
 
+    // Same gone-quiet detection the dashboard's Momentum section and the
+    // competitor detail page use (see gone-quiet.ts) — kept in sync
+    // deliberately, so the weekly takeaway never contradicts what the
+    // product itself is showing when someone opens it.
+    const { data: marketProfile } = await supabase
+      .from("market_profile")
+      .select("growth_direction")
+      .eq("account_id", account.id)
+      .maybeSingle();
+
     const momentumInputs: MomentumDigestInput[] = competitors.map((c) => {
       const forCompetitor = (momentumSignals ?? []).filter((s) => s.competitor_id === c.id);
       const winLossForCompetitor = (accountWinLoss ?? []).filter((e) => e.competitor_id === c.id);
       const stateHistoryForCompetitor = (momentumStateHistory ?? []).filter((e) => e.competitor_id === c.id);
       const momentum = computeMomentum(forCompetitor, winLossForCompetitor, stateHistoryForCompetitor);
+      const goneQuiet = detectGoneQuiet({
+        competitorId: c.id,
+        competitorCreatedAt: c.created_at,
+        allSignals: momentumSignals ?? [],
+        peerCompetitorIds: competitorIds,
+        marketGrowthDirection: marketProfile?.growth_direction ?? null,
+      });
       return {
         competitorName: c.name,
-        score: momentum.score,
-        label: momentum.label,
+        score: goneQuiet ? null : momentum.score,
+        label: goneQuiet ? "Gone quiet" : momentum.label,
         hiringDelta: momentum.components.hiring.detail,
         pricingDelta: momentum.components.pricing.detail,
         productChangeDelta: momentum.components.productChange.detail,
@@ -137,6 +155,7 @@ export async function generateWeeklyAccountIntelligence(
         winRateDelta: momentum.components.winRate.detail,
         productActivityDelta:
           momentum.components.productActivity.detail === "no data" ? null : momentum.components.productActivity.detail,
+        goneQuietReason: goneQuiet?.reason ?? null,
       };
     });
 
