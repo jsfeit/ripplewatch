@@ -30,6 +30,7 @@ import {
 } from "@/lib/anthropic";
 import { sendSlackAlert } from "@/lib/slack";
 import { ensureIndustryTrends } from "@/lib/industry-trends";
+import { ensureMarketProfile } from "@/lib/market-profile";
 import { fetchRecentGongTranscripts } from "@/lib/gong";
 import { fetchRecentZoomTranscripts } from "@/lib/zoom";
 import { fetchClosedLostDealNotes } from "@/lib/hubspot";
@@ -553,10 +554,15 @@ async function scoreAccountSignals(supabase: AdminSupabase, account: Account): P
   // just shouldn't add its (web-search-grounded, so slower) latency to
   // every crawl once the one-time self-heal is done. See ensureIndustryTrends
   // for why this adds no new recurring cost.
-  ensureIndustryTrends(
-    supabase,
-    account,
-    competitors.map((c) => c.name)
+  //
+  // Chained, not fired in parallel: ensureMarketProfile synthesizes on top
+  // of this account's freshest industry_trends row, so on a brand-new
+  // account's very first crawl (the only time both self-heals fire in the
+  // same run) it needs trends to already be written first, not read a
+  // still-empty table.
+  const competitorNames = competitors.map((c) => c.name);
+  ensureIndustryTrends(supabase, account, competitorNames).then(() =>
+    ensureMarketProfile(supabase, account, competitorNames)
   );
 
   async function scoreOneSignal(signal: Signal): Promise<(Signal & { competitorName: string }) | null> {

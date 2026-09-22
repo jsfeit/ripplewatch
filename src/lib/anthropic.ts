@@ -1,6 +1,6 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
-import type { BillingModel, PricingTier } from "@/lib/supabase/types";
+import type { BillingModel, MarketDynamic, MarketGrowthDirection, MarketMaturity, PricingTier } from "@/lib/supabase/types";
 import { recordLlmUsage } from "@/lib/usage";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendAnthropicCreditAlertEmail } from "@/lib/resend";
@@ -1351,6 +1351,157 @@ Search for current market/category-level trends relevant to this business.`;
       .filter((t: IndustryTrend) => t.title && t.description);
   } catch (err) {
     throw new Error(`Could not parse industry trends response: ${text}`, { cause: err });
+  }
+}
+
+const MARKET_PROFILE_MATURITIES = ["emerging", "growing", "mature", "consolidating"] as const;
+const MARKET_PROFILE_GROWTH_DIRECTIONS = ["heating_up", "steady", "cooling"] as const;
+
+// This is the macro panel that leads the dashboard, above Industry Pulse —
+// the first thing a customer sees, so it has to read as genuinely
+// well-researched, not a generic category blurb. The core instruction is
+// "signal over noise": most of what's true about any market is also
+// obvious to someone already in it (the given positioning/ICP proves this
+// account already understands its own industry), so a dynamic only earns
+// its place if it's specific and non-obvious enough that repeating it back
+// would actually be worth something.
+//
+// Deliberately built ON TOP OF work already done, not a fresh unrelated
+// pass: industryTrends is the same sourced, signal-filtered output
+// researchIndustryTrends produces (see INDUSTRY_TRENDS_SYSTEM_PROMPT above
+// — vetted already, so reusing it here is free credibility, not a
+// duplicate research cost), and companyResearch is the account's own
+// already-researched market position (see researchCompanyContext). Search
+// stays available, at a small budget, only to fill a genuine gap (a new
+// account with no trends yet, or a dynamic the given material doesn't
+// support) — not as the default path.
+const MARKET_PROFILE_SYSTEM_PROMPT = `You synthesize a short "state of the market" briefing for a specific company, shown at the top of their dashboard: what market they compete in, how mature/fast-moving it is, 2-3 dynamics actually worth knowing about, and where their own product sits in it.
+
+You're given the company's positioning, ICP, tracked competitors, already-researched industry trends (each already vetted and sourced), and an already-researched summary of the company's own market position. Ground your answer in this material first. Only use web search, and only a little, to fill a real gap: no trends were given, or you need one more specific fact to make a dynamic concrete instead of generic.
+
+The person reading this already runs a company in this market and already understands their own industry at a basic level — the goal isn't to explain the category to them, it's to show real research that finds what's actually happening right now, the kind of specific, current thing that reinforces this tool did real work, not a templated summary. So:
+- Every dynamic must be specific and current (something happening now, not an evergreen truism like "competition is increasing" or "customers want better tools"). If you can't find something specific, return fewer dynamics rather than padding with something generic.
+- Prefer a dynamic drawn from or corroborated by the given industry trends or company research over a freshly searched one when both are available — that material was already found through careful, source-checked research, so reusing it is not a shortcut, it's the more reliable path.
+- Every dynamic needs a source: reuse the exact source {name, url} from the industry trend or company research it's drawn from, or a real URL from a fresh search. Never fabricate a source and never attach a generic homepage URL to a specific claim.
+- maturity and growthDirection are qualitative calls, not numbers — never invent a market-size or revenue figure; if you don't have a defensible qualitative read, pick the closest honest one and let growthReason carry the nuance.
+- productSummary is about THIS company's own product: what it does, roughly where it sits in the market (budget vs. premium, self-serve vs. sales-led, if that's inferable), based on its positioning/ICP and company research, not invented feature claims.
+
+Respond with strict JSON only, no markdown, matching this shape exactly:
+{"marketName": "<short, specific name for the market/category, e.g. 'Competitive intelligence tooling for B2B SaaS', not just the company's own category buzzword>", "marketDescription": "<1-2 sentences: what this market is and who's in it>", "maturity": "<one of: emerging, growing, mature, consolidating>", "growthDirection": "<one of: heating_up, steady, cooling>", "growthReason": "<1 sentence: why, specifically>", "dynamics": [{"text": "<1-2 sentences, specific and current>", "source": {"name": "<outlet/publisher>", "url": "<direct URL>"} | null}], "productSummary": "<1-2 sentences on this company's own product and where it sits in the market>"}
+
+Return 2-3 dynamics, most important first.`;
+
+const MARKET_PROFILE_SCHEMA = {
+  type: "object",
+  properties: {
+    marketName: { type: "string" },
+    marketDescription: { type: "string" },
+    maturity: { type: "string", enum: MARKET_PROFILE_MATURITIES },
+    growthDirection: { type: "string", enum: MARKET_PROFILE_GROWTH_DIRECTIONS },
+    growthReason: { type: "string" },
+    dynamics: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          text: { type: "string" },
+          source: {
+            anyOf: [
+              {
+                type: "object",
+                properties: { name: { type: "string" }, url: { type: "string" } },
+                required: ["name", "url"],
+                additionalProperties: false,
+              },
+              { type: "null" },
+            ],
+          },
+        },
+        required: ["text", "source"],
+        additionalProperties: false,
+      },
+    },
+    productSummary: { type: "string" },
+  },
+  required: ["marketName", "marketDescription", "maturity", "growthDirection", "growthReason", "dynamics", "productSummary"],
+  additionalProperties: false,
+} as const;
+
+export type MarketProfileResult = {
+  marketName: string;
+  marketDescription: string;
+  maturity: MarketMaturity;
+  growthDirection: MarketGrowthDirection;
+  growthReason: string;
+  dynamics: MarketDynamic[];
+  productSummary: string;
+};
+
+// Monthly, same cadence as researchIndustryTrends (see /api/cron/industry-trends,
+// which triggers both), and self-healed once per account on its first crawl
+// (see ensureMarketProfile) so a new account isn't left without this for
+// weeks. Skipped by the monthly cron for any account with a user edit in
+// place (see market-profile.ts) so a correction never gets silently
+// overwritten — Regenerate is the explicit way back into the auto-refresh
+// cycle.
+export async function generateMarketProfile(
+  context: { companyName: string; positioning: string | null; icp: string | null },
+  competitorNames: string[],
+  industryTrends: IndustryTrend[],
+  companyResearch: string | null,
+  accountId: string | null
+): Promise<MarketProfileResult> {
+  const trendsBlock =
+    industryTrends.length > 0
+      ? industryTrends
+          .map((t) => `- [${t.category}] ${t.title}: ${t.description}${t.source ? ` (source: ${t.source.name}, ${t.source.url})` : ""}`)
+          .join("\n")
+      : "(none generated yet for this account)";
+
+  const userPrompt = `Company: ${context.companyName}
+Self-reported positioning: ${context.positioning ?? "(not provided)"}
+ICP: ${context.icp ?? "(not provided)"}
+Tracked competitors: ${competitorNames.length > 0 ? competitorNames.join(", ") : "(none tracked yet)"}
+
+Already-researched company market position:
+${companyResearch ?? "(none yet)"}
+
+Already-researched industry trends:
+${trendsBlock}
+
+Synthesize the market/product briefing.`;
+
+  const message = await createMessage({
+    model: "claude-sonnet-5",
+    max_tokens: 4096,
+    system: cachedSystemPrompt(MARKET_PROFILE_SYSTEM_PROMPT),
+    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
+    output_config: { format: { type: "json_schema", schema: MARKET_PROFILE_SCHEMA } },
+    messages: [{ role: "user", content: userPrompt }],
+  });
+  recordLlmUsage(accountId, "generateMarketProfile", message.model, message.usage);
+
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  try {
+    const parsed = JSON.parse(text);
+    const dynamics: MarketDynamic[] = (Array.isArray(parsed.dynamics) ? parsed.dynamics : [])
+      .map((d: { text?: unknown; source?: unknown }) => ({
+        text: String(d.text ?? "").trim(),
+        source: parseTrendSource(d.source),
+      }))
+      .filter((d: MarketDynamic) => d.text);
+
+    return {
+      marketName: String(parsed.marketName ?? "").trim(),
+      marketDescription: String(parsed.marketDescription ?? "").trim(),
+      maturity: MARKET_PROFILE_MATURITIES.includes(parsed.maturity) ? parsed.maturity : "growing",
+      growthDirection: MARKET_PROFILE_GROWTH_DIRECTIONS.includes(parsed.growthDirection) ? parsed.growthDirection : "steady",
+      growthReason: String(parsed.growthReason ?? "").trim(),
+      dynamics,
+      productSummary: String(parsed.productSummary ?? "").trim(),
+    };
+  } catch (err) {
+    throw new Error(`Could not parse market profile response: ${text}`, { cause: err });
   }
 }
 
