@@ -137,12 +137,29 @@ export default async function AlternativePage({ params }: { params: Promise<{ sl
         </div>
       </div>
 
-      <div className="mt-16 space-y-3 text-center">
+      <div className="mt-16 rounded-xl border border-dashed border-border p-6 text-center">
+        <p className="text-sm text-muted-foreground">
+          Want to see it work on {entry.name} itself, right now, no signup?{" "}
+          <Link href="/competitor-snapshot" className="font-medium text-primary hover:underline">
+            Run a free snapshot on {entry.domain}
+          </Link>
+          .
+        </p>
+      </div>
+
+      <div className="mt-10 space-y-3 text-center">
         <Link href="/pricing" className={buttonVariants({ size: "lg" })}>
           Get started
           <ArrowRight className="size-4" />
         </Link>
         <QuizCta variant="inline" />
+        <p className="text-sm text-muted-foreground">
+          Prefer a feature-by-feature breakdown?{" "}
+          <Link href={`/compare/${entry.slug}`} className="text-primary hover:underline">
+            See Ripplewatch vs. {entry.name} in detail
+          </Link>
+          .
+        </p>
       </div>
     </div>
   );
