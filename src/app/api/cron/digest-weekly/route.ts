@@ -51,7 +51,7 @@ export async function GET(request: Request) {
 
     const { data: competitors } = await supabase
       .from("competitors")
-      .select("id, name")
+      .select("id, name, created_at")
       .eq("account_id", account.id);
     const competitorIds = (competitors ?? []).map((c) => c.id);
     if (competitorIds.length === 0) return null;

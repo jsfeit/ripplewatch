@@ -1993,6 +1993,12 @@ export type MomentumDigestInput = {
   // set), so including it unconditionally would read as noise for every
   // account that never uses it.
   productActivityDelta: string | null;
+  // Set only when label is "Gone quiet" (see gone-quiet.ts) — the actual
+  // grounded reasoning (quiet next to peers, market heating up, and
+  // whether it breaks from their own pattern), so the digest can cite it
+  // directly instead of guessing at why a competitor with a low score
+  // carries an unfamiliar label.
+  goneQuietReason?: string | null;
 };
 
 // Distinct from generateDigestVerdict above: that one synthesizes what
@@ -2003,7 +2009,9 @@ export type MomentumDigestInput = {
 // specifically — the same kind of "here's what it means," not "here's the
 // data" takeaway the weekly verdict already models, just for the
 // Trends/momentum view instead of the News feed.
-const MOMENTUM_DIGEST_SYSTEM_PROMPT = `You write a short takeaway summarizing competitive momentum data for one company. You're given each tracked competitor's momentum score (a directional index built from recent hiring/pricing/product-change/press activity vs. the prior period, how the account's own win/loss record against that competitor is trending, and — for open-source competitors only, so it's absent for most — GitHub commit activity) and label (Heating up / Steady / Cooling / Not enough history yet).
+const MOMENTUM_DIGEST_SYSTEM_PROMPT = `You write a short takeaway summarizing competitive momentum data for one company. You're given each tracked competitor's momentum score (a directional index built from recent hiring/pricing/product-change/press activity vs. the prior period, how the account's own win/loss record against that competitor is trending, and — for open-source competitors only, so it's absent for most — GitHub commit activity) and label (Heating up / Steady / Cooling / Gone quiet / Not enough history yet).
+
+"Gone quiet" is a distinct, rarer finding, not just a low score: it means this competitor has gone unusually silent while the wider market is actively heating up, which is worth more attention than an ordinary "Cooling" reading, not less — silence right before a real shift is a known pattern, not just an absence of news. When any competitor carries this label, lead the takeaway with it and use the given goneQuietReason verbatim or near-verbatim, rather than any other competitor's routine activity.
 
 Write ONE short takeaway (1-3 sentences) naming which competitor(s) are moving and on what dimension specifically (e.g. "X is hiring aggressively" not just "X has high momentum") — not a recap of every competitor's score. If everything is steady or there's too little data to say anything real, say that plainly rather than manufacturing a trend. Never invent a fact not present in the given data.
 
@@ -2029,10 +2037,15 @@ export async function generateMomentumDigest(
   const withHistory = momentum.filter((m) => m.label !== "Not enough history yet");
   if (withHistory.length === 0) return null;
 
+  // A "Gone quiet" competitor's raw score/deltas are all near-zero by
+  // definition (that's what triggered the label) — showing them alongside
+  // would read as contradicting the label, so that line carries the
+  // grounded reason instead of the usual component breakdown.
   const momentumText = withHistory
-    .map(
-      (m) =>
-        `${m.competitorName}: ${m.label}${m.score !== null ? ` (${m.score > 0 ? "+" : ""}${m.score})` : ""} — hiring ${m.hiringDelta}, pricing activity ${m.pricingDelta}, product changes ${m.productChangeDelta}, press/funding ${m.pressDelta}, win rate ${m.winRateDelta}${m.productActivityDelta ? `, GitHub activity ${m.productActivityDelta}` : ""}`
+    .map((m) =>
+      m.label === "Gone quiet"
+        ? `${m.competitorName}: Gone quiet — ${m.goneQuietReason ?? "unusually silent while the market heats up"}`
+        : `${m.competitorName}: ${m.label}${m.score !== null ? ` (${m.score > 0 ? "+" : ""}${m.score})` : ""} — hiring ${m.hiringDelta}, pricing activity ${m.pricingDelta}, product changes ${m.productChangeDelta}, press/funding ${m.pressDelta}, win rate ${m.winRateDelta}${m.productActivityDelta ? `, GitHub activity ${m.productActivityDelta}` : ""}`
     )
     .join("\n");
 
