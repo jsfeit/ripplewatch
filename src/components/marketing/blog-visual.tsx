@@ -46,6 +46,7 @@ export const BLOG_VISUAL_KIND: Record<string, BlogVisualKind> = {
   "why-some-pricing-pages-cant-be-scraped": "field",
   "momentum-score-methodology": "data",
   "why-competitive-intelligence-should-always-be-on": "signal",
+  "you-cant-build-a-battlecard-in-30-seconds": "field",
 };
 
 export function visualKindForSlug(slug: string): BlogVisualKind {
