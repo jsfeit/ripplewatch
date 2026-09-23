@@ -123,6 +123,14 @@ export type MomentumResult = {
   // real data — surfaced in the UI so a score built from one thin signal
   // doesn't read with the same weight as one built from all ten.
   confidence: MomentumConfidence;
+  // Absolute average relevance_score (0-100) across this competitor's
+  // recently-scored signals — distinct from components.relevanceTrend,
+  // which is the CHANGE in that average vs. the prior period, not its
+  // current level. Added for the Momentum quadrant (see
+  // momentum-quadrant.tsx): "how relevant is this competitor to your
+  // business right now" is a different, and for that chart more useful,
+  // question than "is that relevance trending up or down."
+  relevanceLevel: number | null;
   components: {
     hiring: MomentumComponent;
     pricing: MomentumComponent;
@@ -588,7 +596,7 @@ export function computeMomentum(
   const present = Object.values(components).filter((c): c is MomentumComponent & { score: number } => c.score !== null);
   const confidence: MomentumConfidence = present.length >= LOW_CONFIDENCE_THRESHOLD ? "full" : "low";
   if (present.length === 0) {
-    return { score: null, label: "Not enough history yet", confidence, components };
+    return { score: null, label: "Not enough history yet", confidence, components, relevanceLevel: relevanceRecentAvg };
   }
 
   // Weighted average by reliability instead of a flat 1/N each: a
@@ -610,7 +618,7 @@ export function computeMomentum(
   const label: MomentumLabel =
     score >= HEATING_UP_THRESHOLD ? "Heating up" : score <= COOLING_THRESHOLD ? "Cooling" : "Steady";
 
-  return { score: Math.round(score), label, confidence, components };
+  return { score: Math.round(score), label, confidence, components, relevanceLevel: relevanceRecentAvg };
 }
 
 function avg(nums: number[]): number {

@@ -14,6 +14,7 @@ import {
   type StateHistoryEntry,
 } from "@/lib/momentum";
 import { detectGoneQuiet, type GoneQuietResult } from "@/lib/gone-quiet";
+import { MomentumQuadrant, type QuadrantCompetitor } from "./momentum-quadrant";
 import type { Database, MarketGrowthDirection } from "@/lib/supabase/types";
 
 type Competitor = Pick<Database["public"]["Tables"]["competitors"]["Row"], "id" | "name" | "created_at">;
@@ -152,6 +153,40 @@ export function CompetitorOverview({
   );
 
   const [expanded, setExpanded] = useState(true);
+  // Map defaults off, and its toggle button only renders at sm: and up
+  // (see the JSX below) — a scatter plot needs real width to read, and a
+  // phone-width user who somehow already had "map" selected (e.g. resized
+  // down from desktop) would otherwise be stuck looking at a squeezed
+  // chart with no visible way back to the list.
+  const [view, setView] = useState<"list" | "map">("list");
+
+  // Lazy initializer, not an inline Date.now() call, so this stays a pure
+  // render — see daysAgoIso's equivalent server-side fix for the same rule.
+  const [nowMs] = useState(() => Date.now());
+
+  // Signal volume in the same 30-day window gone-quiet detection uses (see
+  // gone-quiet.ts's PEER_WINDOW_DAYS) — the quadrant's dot-size dimension.
+  const signalCountByCompetitor = useMemo(() => {
+    const cutoff = nowMs - 30 * 86_400_000;
+    const counts = new Map<string, number>();
+    for (const s of momentumSignals) {
+      if (new Date(s.occurred_on).getTime() < cutoff) continue;
+      counts.set(s.competitor_id, (counts.get(s.competitor_id) ?? 0) + 1);
+    }
+    return counts;
+  }, [momentumSignals, nowMs]);
+
+  const quadrantCompetitors: QuadrantCompetitor[] = useMemo(
+    () =>
+      sorted.map((c) => ({
+        id: c.id,
+        name: c.name,
+        momentum: momentumByCompetitor.get(c.id)!,
+        goneQuiet: goneQuietByCompetitor.get(c.id) ?? null,
+        signalCount: signalCountByCompetitor.get(c.id) ?? 0,
+      })),
+    [sorted, momentumByCompetitor, goneQuietByCompetitor, signalCountByCompetitor]
+  );
 
   const heatingUpCount = sorted.filter((c) => momentumByCompetitor.get(c.id)?.label === "Heating up").length;
   const coolingCount = sorted.filter((c) => momentumByCompetitor.get(c.id)?.label === "Cooling").length;
@@ -216,58 +251,91 @@ export function CompetitorOverview({
         </div>
       ) : null}
 
-      {/* Expanded by default — Momentum leads the dashboard now, so the
-          full per-competitor list is the point of the section rather than
-          something to reveal after a click. Still collapsible for anyone
-          who just wants the summary line. */}
-      <button
-        type="button"
-        data-tour="competitor-card"
-        onClick={() => setExpanded((e) => !e)}
-        className="flex w-full items-center justify-between rounded-lg border border-border bg-card px-4 py-3 text-left hover:border-primary/40"
-      >
-        <span className="text-sm">
-          <span className="font-semibold">{competitors.length}</span>{" "}
-          {competitors.length === 1 ? "competitor" : "competitors"} tracked
-          {heatingUpCount > 0 ? (
-            <span className="text-muted-foreground">
-              {" · "}
-              <span className="font-medium text-foreground">{heatingUpCount}</span> heating up
-            </span>
-          ) : null}
-          {coolingCount > 0 ? (
-            <span className="text-muted-foreground">
-              {" · "}
-              <span className="font-medium text-foreground">{coolingCount}</span> cooling
-            </span>
-          ) : null}
-          {goneQuietCount > 0 ? (
-            <span className="text-muted-foreground">
-              {" · "}
-              <span className="font-medium text-foreground">{goneQuietCount}</span> gone quiet
-            </span>
-          ) : null}
-        </span>
-        <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
-          {expanded ? "Collapse" : "Show all"}
-          <ChevronDown className={cn("size-3.5 transition-transform", expanded && "rotate-180")} />
-        </span>
-      </button>
+      {/* Map needs real width to read as a scatter plot, so its toggle only
+          renders at sm: and up — a phone-width visitor never sees it and
+          stays on List, the default, rather than getting a squeezed chart
+          with no way back. */}
+      <div className="mb-2 hidden items-center gap-1 rounded-lg border border-border bg-secondary/30 p-1 sm:inline-flex">
+        <button
+          type="button"
+          onClick={() => setView("list")}
+          className={cn(
+            "rounded-md px-2.5 py-1 text-xs font-medium",
+            view === "list" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          List
+        </button>
+        <button
+          type="button"
+          onClick={() => setView("map")}
+          className={cn(
+            "rounded-md px-2.5 py-1 text-xs font-medium",
+            view === "map" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          Map
+        </button>
+      </div>
 
-      {expanded ? (
-        <div className="mt-2.5 space-y-2.5">
-          {sorted.map((competitor) => (
-            <CompetitorRow
-              key={competitor.id}
-              competitor={competitor}
-              momentum={momentumByCompetitor.get(competitor.id)!}
-              goneQuiet={goneQuietByCompetitor.get(competitor.id) ?? null}
-              latestSignal={latestSignalByCompetitor[competitor.id]}
-              pricingRecord={pricingByCompetitor[competitor.id]}
-            />
-          ))}
-        </div>
-      ) : null}
+      {view === "map" ? (
+        <MomentumQuadrant competitors={quadrantCompetitors} />
+      ) : (
+        <>
+          {/* Expanded by default — Momentum leads the dashboard now, so the
+              full per-competitor list is the point of the section rather than
+              something to reveal after a click. Still collapsible for anyone
+              who just wants the summary line. */}
+          <button
+            type="button"
+            data-tour="competitor-card"
+            onClick={() => setExpanded((e) => !e)}
+            className="flex w-full items-center justify-between rounded-lg border border-border bg-card px-4 py-3 text-left hover:border-primary/40"
+          >
+            <span className="text-sm">
+              <span className="font-semibold">{competitors.length}</span>{" "}
+              {competitors.length === 1 ? "competitor" : "competitors"} tracked
+              {heatingUpCount > 0 ? (
+                <span className="text-muted-foreground">
+                  {" · "}
+                  <span className="font-medium text-foreground">{heatingUpCount}</span> heating up
+                </span>
+              ) : null}
+              {coolingCount > 0 ? (
+                <span className="text-muted-foreground">
+                  {" · "}
+                  <span className="font-medium text-foreground">{coolingCount}</span> cooling
+                </span>
+              ) : null}
+              {goneQuietCount > 0 ? (
+                <span className="text-muted-foreground">
+                  {" · "}
+                  <span className="font-medium text-foreground">{goneQuietCount}</span> gone quiet
+                </span>
+              ) : null}
+            </span>
+            <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
+              {expanded ? "Collapse" : "Show all"}
+              <ChevronDown className={cn("size-3.5 transition-transform", expanded && "rotate-180")} />
+            </span>
+          </button>
+
+          {expanded ? (
+            <div className="mt-2.5 space-y-2.5">
+              {sorted.map((competitor) => (
+                <CompetitorRow
+                  key={competitor.id}
+                  competitor={competitor}
+                  momentum={momentumByCompetitor.get(competitor.id)!}
+                  goneQuiet={goneQuietByCompetitor.get(competitor.id) ?? null}
+                  latestSignal={latestSignalByCompetitor[competitor.id]}
+                  pricingRecord={pricingByCompetitor[competitor.id]}
+                />
+              ))}
+            </div>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }
