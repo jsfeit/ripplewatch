@@ -31,6 +31,7 @@ import {
 import { sendSlackAlert } from "@/lib/slack";
 import { ensureIndustryTrends } from "@/lib/industry-trends";
 import { ensureMarketProfile } from "@/lib/market-profile";
+import { ensureWinLossTrends } from "@/lib/win-loss-trends";
 import { fetchRecentGongTranscripts } from "@/lib/gong";
 import { fetchRecentZoomTranscripts } from "@/lib/zoom";
 import { fetchClosedLostDealNotes } from "@/lib/hubspot";
@@ -563,6 +564,16 @@ async function scoreAccountSignals(supabase: AdminSupabase, account: Account): P
   const competitorNames = competitors.map((c) => c.name);
   ensureIndustryTrends(supabase, account, competitorNames).then(() =>
     ensureMarketProfile(supabase, account, competitorNames)
+  );
+  // Independent of the industry-trends/market-profile chain above — this
+  // one reads win/loss data, not competitor signals, so there's no
+  // ordering dependency between them. Same self-heal-once shape: Trends
+  // stops defaulting to an empty "click Generate" state on day one for any
+  // account that already has enough logged win/loss reasons.
+  ensureWinLossTrends(
+    supabase,
+    account,
+    competitors.map((c) => ({ id: c.id, name: c.name }))
   );
 
   async function scoreOneSignal(signal: Signal): Promise<(Signal & { competitorName: string }) | null> {
