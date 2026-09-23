@@ -13,6 +13,7 @@ import { HiringBoard } from "../hiring/hiring-board";
 import { WinLossPageClient } from "../win-loss/win-loss-page-client";
 import { AutoProductTour } from "@/components/app/product-tour";
 import { PurchaseTracker } from "@/components/app/purchase-tracker";
+import { InsightCallout } from "@/components/app/insight-callout";
 import { buildUnattributedAttritionContext } from "@/lib/churn-correlation";
 import type { Database } from "@/lib/supabase/types";
 
@@ -414,16 +415,16 @@ export default async function DashboardPage() {
             <Scale className="size-3.5" />
           </span>
           <h2 className="text-sm font-semibold">Win/loss</h2>
-          {winRatePercent !== null ? (
-            <span className="text-xs font-medium text-muted-foreground">
-              · <span className="font-semibold text-foreground">{winRatePercent}%</span> win rate ·{" "}
-              {wonCount + lostCount} logged
-            </span>
-          ) : null}
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
           Import, log, and see the recurring reasons behind every deal, across every competitor.
         </p>
+        {winRatePercent !== null ? (
+          <InsightCallout eyebrow="The headline" className="mt-3">
+            <span className="font-semibold text-foreground">{winRatePercent}% win rate</span> across{" "}
+            {wonCount + lostCount} logged deals.
+          </InsightCallout>
+        ) : null}
         <div className="mt-4">
           <WinLossPageClient
             competitors={(competitors ?? []).map((c) => ({ id: c.id, name: c.name }))}
