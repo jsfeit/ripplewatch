@@ -1,4 +1,4 @@
-import { ArrowUpRight, Rocket } from "lucide-react";
+import { ArrowUpRight, Rocket, Ship } from "lucide-react";
 import { Panel } from "@/components/ui/panel";
 import { cn } from "@/lib/utils";
 
@@ -124,6 +124,12 @@ const ELSEWHERE = [
     label: "PostYourStartup",
     sublabel: "View listing",
     mark: <Rocket className="size-5 text-primary" />,
+  },
+  {
+    href: "https://shipthing.com/projects/ripplewatch?utm_source=badge",
+    label: "ShipThing",
+    sublabel: "View listing",
+    mark: <Ship className="size-5 text-primary" />,
   },
   {
     href: "https://www.linkedin.com/company/ripplewatch/",
