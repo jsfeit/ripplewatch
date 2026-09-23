@@ -1,4 +1,4 @@
-import { ArrowUpRight, Rocket, Ship } from "lucide-react";
+import { ArrowUpRight, Rocket } from "lucide-react";
 import { Panel } from "@/components/ui/panel";
 import { cn } from "@/lib/utils";
 
@@ -126,12 +126,6 @@ const ELSEWHERE = [
     mark: <Rocket className="size-5 text-primary" />,
   },
   {
-    href: "https://shipthing.com/projects/ripplewatch?utm_source=badge",
-    label: "ShipThing",
-    sublabel: "View listing",
-    mark: <Ship className="size-5 text-primary" />,
-  },
-  {
     href: "https://www.linkedin.com/company/ripplewatch/",
     label: "LinkedIn",
     sublabel: "Follow the company page",
@@ -179,21 +173,6 @@ export default function PressPage() {
           {ELSEWHERE.map((item) => (
             <PressLink key={item.label} {...item} />
           ))}
-        </div>
-
-        {/* ShipThing's own badge image, embedded verbatim (not just a
-            styled link to the same URL like the card above) — their free-
-            listing backlink check may look for this exact badge, not just
-            any link to their domain. */}
-        <div className="mt-6 flex justify-center">
-          <a href="https://shipthing.com/projects/ripplewatch?utm_source=badge" target="_blank" rel="noopener noreferrer">
-            {/* eslint-disable-next-line @next/next/no-img-element -- external badge asset from shipthing.com, not a local/optimizable image */}
-            <img
-              src="https://shipthing.com/shipthing/images/badges/featured-on-light.svg"
-              alt="Featured on ShipThing"
-              style={{ height: 44, width: "auto" }}
-            />
-          </a>
         </div>
       </section>
     </>
