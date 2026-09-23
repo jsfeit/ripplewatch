@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ArrowUpRight, TrendingUp, Flame } from "lucide-react";
 import { EmptyState } from "@/components/app/empty-state";
+import { InsightCallout } from "@/components/app/insight-callout";
 import { Card, CardAvatar } from "@/components/app/card";
 import { cn } from "@/lib/utils";
 import {
@@ -227,28 +228,24 @@ export function CompetitorOverview({
   return (
     <div>
       {focusCompetitors.length > 0 ? (
-        <div className="mb-3 flex items-start gap-2.5 rounded-lg border border-primary/25 bg-primary/[0.04] p-3">
-          <Flame className="mt-0.5 size-4 shrink-0 text-primary" />
-          <p className="text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">Focus here first. </span>
-            {focusCompetitors.map((item) => (
-              <span key={item.competitor.id} className="mr-1 inline-block">
-                <span className="font-medium text-foreground">{item.competitor.name}</span>{" "}
-                {item.kind === "gone_quiet" ? (
-                  <>has gone quiet, and it&apos;s worth a look. {item.goneQuiet.reason}</>
-                ) : (
-                  <>
-                    is heating up
-                    {(() => {
-                      const driver = topDriver(item.momentum);
-                      return driver ? `, driven by ${driver.label.toLowerCase()} (${driver.detail}).` : ".";
-                    })()}
-                  </>
-                )}
-              </span>
-            ))}
-          </p>
-        </div>
+        <InsightCallout eyebrow="Focus here first" icon={<Flame className="size-3" />} className="mb-3">
+          {focusCompetitors.map((item) => (
+            <span key={item.competitor.id} className="mr-1 inline-block">
+              <span className="font-medium text-foreground">{item.competitor.name}</span>{" "}
+              {item.kind === "gone_quiet" ? (
+                <>has gone quiet, and it&apos;s worth a look. {item.goneQuiet.reason}</>
+              ) : (
+                <>
+                  is heating up
+                  {(() => {
+                    const driver = topDriver(item.momentum);
+                    return driver ? `, driven by ${driver.label.toLowerCase()} (${driver.detail}).` : ".";
+                  })()}
+                </>
+              )}
+            </span>
+          ))}
+        </InsightCallout>
       ) : null}
 
       {/* Map needs real width to read as a scatter plot, so its toggle only
