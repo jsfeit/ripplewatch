@@ -180,6 +180,21 @@ export default function PressPage() {
             <PressLink key={item.label} {...item} />
           ))}
         </div>
+
+        {/* ShipThing's own badge image, embedded verbatim (not just a
+            styled link to the same URL like the card above) — their free-
+            listing backlink check may look for this exact badge, not just
+            any link to their domain. */}
+        <div className="mt-6 flex justify-center">
+          <a href="https://shipthing.com/projects/ripplewatch?utm_source=badge" target="_blank" rel="noopener noreferrer">
+            {/* eslint-disable-next-line @next/next/no-img-element -- external badge asset from shipthing.com, not a local/optimizable image */}
+            <img
+              src="https://shipthing.com/shipthing/images/badges/featured-on-light.svg"
+              alt="Featured on ShipThing"
+              style={{ height: 44, width: "auto" }}
+            />
+          </a>
+        </div>
       </section>
     </>
   );
