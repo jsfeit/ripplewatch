@@ -106,28 +106,15 @@ export function SiteFooter() {
 
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border/70 pt-8 sm:flex-row">
           <p className="text-xs text-muted-foreground">© 2026 Ripplewatch. ripplewatch.ai</p>
-          <div className="flex items-center gap-4">
-            {/* Site-wide (not just /press) so it's present on whichever
-                page a directory's backlink checker actually crawls, most
-                often the homepage — see the ShipThing listing on /press. */}
-            <a href="https://shipthing.com/projects/ripplewatch?utm_source=badge" target="_blank" rel="noopener noreferrer">
-              {/* eslint-disable-next-line @next/next/no-img-element -- external badge asset from shipthing.com, not a local/optimizable image */}
-              <img
-                src="https://shipthing.com/shipthing/images/badges/featured-on-light.svg"
-                alt="Featured on ShipThing"
-                style={{ height: 32, width: "auto" }}
-              />
-            </a>
-            <a
-              href="https://www.linkedin.com/company/ripplewatch/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex size-6 items-center justify-center text-muted-foreground hover:text-foreground"
-              title="Ripplewatch on LinkedIn"
-            >
-              <LinkedinIcon className="size-4" />
-            </a>
-          </div>
+          <a
+            href="https://www.linkedin.com/company/ripplewatch/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex size-6 items-center justify-center text-muted-foreground hover:text-foreground"
+            title="Ripplewatch on LinkedIn"
+          >
+            <LinkedinIcon className="size-4" />
+          </a>
         </div>
       </div>
     </footer>
