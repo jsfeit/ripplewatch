@@ -1,30 +1,18 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { identifyWinLossTrends, type WinLossTrendEntry, type WinLossTrendCandidateSignal } from "@/lib/anthropic";
+import { runWinLossTrendsForAccount } from "@/lib/win-loss-trends";
 
 // LLM-heavy but bounded (one call, capped entry/signal counts in
 // anthropic.ts) — a generous ceiling in case an account has a lot of
 // logged win/loss history, same reasoning as the fact-sheet route.
 export const maxDuration = 60;
 
-// Below this many total reasons, theme extraction is mostly noise — the
-// model is explicitly told to return an empty list rather than force
-// themes from too little data, but it's cheaper to just not call it.
-const MIN_ENTRIES_FOR_TRENDS = 5;
-
-// Splits the pre-aggregated lost_deal_notes/won_deal_notes blob (see
-// win-loss-import.ts — reasons are joined with ". " and deduped when
-// written) back into individual reason-shaped strings. Imperfect —
-// there's no way to perfectly reverse a concatenation — but good enough
-// to give the model real, distinct examples instead of one giant blob.
-function splitNotes(notes: string | null): string[] {
-  if (!notes) return [];
-  return notes
-    .split(". ")
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
+// The manual "Refresh" button in Trends — same generation
+// runWinLossTrendsForAccount also runs automatically (once on an account's
+// first crawl with enough data, then monthly via /api/cron/industry-trends;
+// see win-loss-trends.ts), so a click here can't drift from what shows up
+// on its own. Uses the caller's own RLS-scoped client, not the admin
+// client the automatic paths use, since this is a user-initiated request.
 export async function POST() {
   const supabase = await createClient();
   const {
@@ -40,88 +28,39 @@ export async function POST() {
   }
   const accountId = profile.account_id;
 
-  const { data: account } = await supabase
-    .from("accounts")
-    .select("lost_deal_notes, won_deal_notes, churn_notes")
-    .eq("id", accountId)
-    .single();
+  const { data: account } = await supabase.from("accounts").select("*").eq("id", accountId).single();
+  if (!account) {
+    return NextResponse.json({ error: "Account not found." }, { status: 404 });
+  }
 
   const { data: competitors } = await supabase.from("competitors").select("id, name").eq("account_id", accountId);
-  const competitorIds = (competitors ?? []).map((c) => c.id);
-  const competitorNameById = new Map((competitors ?? []).map((c) => [c.id, c.name]));
 
-  const { data: winLoss } = competitorIds.length
-    ? await supabase.from("competitor_win_loss").select("competitor_id, outcome, reason").in("competitor_id", competitorIds)
-    : { data: [] };
+  const result = await runWinLossTrendsForAccount(supabase, account, competitors ?? []);
 
-  const entries: WinLossTrendEntry[] = [];
-  for (const row of winLoss ?? []) {
-    if (!row.reason) continue;
-    entries.push({
-      reason: row.reason,
-      // "churned" folds into "lost" here — same as the churn_notes blob
-      // below, this endpoint only ever distinguishes won/lost for themes.
-      outcome: row.outcome === "churned" ? "lost" : row.outcome,
-      competitorName: row.competitor_id ? (competitorNameById.get(row.competitor_id) ?? null) : null,
-    });
+  if (result.skipped === "too_few_entries") {
+    return NextResponse.json({ trends: [], generatedAt: null, totalEntries: result.entries, insufficientData: true });
   }
-  for (const reason of splitNotes(account?.lost_deal_notes ?? null)) {
-    entries.push({ reason, outcome: "lost", competitorName: null });
-  }
-  for (const reason of splitNotes(account?.won_deal_notes ?? null)) {
-    entries.push({ reason, outcome: "won", competitorName: null });
-  }
-  // Churn has no per-competitor home (see /api/accounts/churn) the way a
-  // lost sales deal does, but it's the same signal shape for a PLG/B2C
-  // account — a real reason a customer left — so it counts toward themes
-  // the same way a general lost-deal reason does.
-  for (const reason of splitNotes(account?.churn_notes ?? null)) {
-    entries.push({ reason, outcome: "lost", competitorName: null });
+  if (!result.generated) {
+    return NextResponse.json({ error: "Could not generate trends. Try again shortly." }, { status: 500 });
   }
 
-  if (entries.length < MIN_ENTRIES_FOR_TRENDS) {
-    return NextResponse.json({ trends: [], generatedAt: null, totalEntries: entries.length, insufficientData: true });
-  }
+  const { data: trends } = await supabase
+    .from("win_loss_trends")
+    .select("theme, summary, won_count, lost_count, example_reasons, related_signals, generated_at")
+    .eq("account_id", accountId)
+    .order("won_count", { ascending: false });
 
-  const ninetyDaysAgo = new Date();
-  ninetyDaysAgo.setUTCDate(ninetyDaysAgo.getUTCDate() - 90);
-  const { data: signals } = competitorIds.length
-    ? await supabase
-        .from("signals")
-        .select("id, title, type, occurred_on, relevance_reasoning, relevance_score")
-        .in("competitor_id", competitorIds)
-        .eq("scored", true)
-        .gte("occurred_on", ninetyDaysAgo.toISOString().slice(0, 10))
-        .order("relevance_score", { ascending: false })
-        .limit(60)
-    : { data: [] };
-
-  const candidateSignals: WinLossTrendCandidateSignal[] = (signals ?? []).map((s) => ({
-    id: s.id,
-    title: s.title,
-    type: s.type,
-    occurredOn: s.occurred_on,
-    reasoning: s.relevance_reasoning,
-  }));
-
-  const trends = await identifyWinLossTrends(entries, candidateSignals, accountId);
-
-  const generatedAt = new Date().toISOString();
-  await supabase.from("win_loss_trends").delete().eq("account_id", accountId);
-  if (trends.length > 0) {
-    await supabase.from("win_loss_trends").insert(
-      trends.map((t) => ({
-        account_id: accountId,
-        theme: t.theme,
-        summary: t.summary,
-        won_count: t.wonCount,
-        lost_count: t.lostCount,
-        example_reasons: t.exampleReasons,
-        related_signals: t.relatedSignals,
-        generated_at: generatedAt,
-      }))
-    );
-  }
-
-  return NextResponse.json({ trends, generatedAt, totalEntries: entries.length, insufficientData: false });
+  return NextResponse.json({
+    trends: (trends ?? []).map((t) => ({
+      theme: t.theme,
+      summary: t.summary,
+      wonCount: t.won_count,
+      lostCount: t.lost_count,
+      exampleReasons: t.example_reasons,
+      relatedSignals: t.related_signals,
+    })),
+    generatedAt: trends?.[0]?.generated_at ?? new Date().toISOString(),
+    totalEntries: result.entries,
+    insufficientData: false,
+  });
 }

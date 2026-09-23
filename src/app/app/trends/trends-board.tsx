@@ -6,6 +6,7 @@ import { Loader2, Printer, RefreshCw, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { EmptyState } from "@/components/app/empty-state";
+import { InsightCallout } from "@/components/app/insight-callout";
 import { cn } from "@/lib/utils";
 import { SIGNAL_TYPE_LABELS } from "@/lib/mock-data";
 import type { Database } from "@/lib/supabase/types";
@@ -35,6 +36,14 @@ export function TrendsBoard({
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
   const [insufficientData, setInsufficientData] = useState(false);
+
+  // Most significant by total volume, not just whichever the API happened
+  // to return first — used to feature one theme in the callout above the
+  // full list.
+  const topTrend =
+    trends.length > 0
+      ? trends.reduce((best, t) => (t.won_count + t.lost_count > best.won_count + best.lost_count ? t : best), trends[0])
+      : null;
 
   async function handleGenerate() {
     setGenerating(true);
@@ -88,11 +97,11 @@ export function TrendsBoard({
       <Panel className="flex flex-wrap items-center justify-between gap-3 p-4 print:hidden">
         <div>
           <p className="text-sm font-medium">
-            {generatedAt ? `Generated ${new Date(generatedAt).toLocaleDateString()}` : "Not generated yet"}
+            {generatedAt ? `Updated ${new Date(generatedAt).toLocaleDateString()}` : "Not enough data yet"}
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Looks across every logged win/loss reason for recurring themes. Runs when you click Generate rather
-            than automatically, so it always reflects your latest data.
+            Looks across every logged win/loss reason for recurring themes. Generates on its own once you&apos;ve
+            logged enough, then refreshes monthly — Refresh pulls it forward now instead of waiting.
           </p>
         </div>
         <div className="flex shrink-0 gap-2">
@@ -104,7 +113,7 @@ export function TrendsBoard({
           ) : null}
           <Button variant="outline" size="sm" onClick={handleGenerate} disabled={generating}>
             {generating ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
-            {generatedAt ? "Refresh" : "Generate"}
+            Refresh
           </Button>
         </div>
       </Panel>
@@ -116,8 +125,14 @@ export function TrendsBoard({
           <Link href="/app/dashboard#win-loss" className="text-primary underline underline-offset-2">
             Log or import more in the Win/loss section
           </Link>
-          , then try again.
+          , and this fills in on its own.
         </p>
+      ) : null}
+
+      {trends.length > 0 ? (
+        <InsightCallout eyebrow="Recurring theme" className="mt-4 print:hidden">
+          <span className="font-medium text-foreground">{topTrend?.theme}.</span> {topTrend?.summary}
+        </InsightCallout>
       ) : null}
 
       {trends.length === 0 && !insufficientData ? (
@@ -125,7 +140,7 @@ export function TrendsBoard({
           <EmptyState
             icon={TrendingUp}
             title="No trends yet"
-            description="Click Generate to see the patterns behind why you're winning and losing deals."
+            description="Nothing recurring enough to call a pattern in what's logged so far — check back as more comes in."
           />
         </div>
       ) : (
