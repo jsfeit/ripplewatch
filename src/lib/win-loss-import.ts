@@ -217,3 +217,55 @@ export async function applyExtractedWinLossEntries(
     untrackedAlreadySuggested,
   };
 }
+
+// The CSV-import route adds a few fields on top of ApplyResult (how much
+// of the file it actually read) that the HubSpot-sync route has no
+// equivalent for — optional here for exactly that reason.
+export type ImportMessageData = ApplyResult & {
+  rowsConsidered?: number;
+  totalRows?: number;
+  truncated?: boolean;
+};
+
+// Shared by the two client surfaces that show an import result
+// (CompetitorFactSheet's per-competitor import, and the Win/loss page's
+// all-competitors import) — was hand-duplicated verbatim in both
+// (win-loss-page-client.tsx and competitor-fact-sheet.tsx) apart from one
+// wording difference, which perCompetitor now parameterizes instead: a
+// single competitor's page reasonably calls an unattributed reason
+// "general" (general to that competitor's page), but the all-competitors
+// page needs "unattributed" instead, since "general" there would misread
+// as general to the whole account rather than not tied to any one
+// competitor.
+export function formatWinLossImportMessage(source: string, data: ImportMessageData, perCompetitor: boolean): string {
+  const generalWord = perCompetitor ? "general" : "unattributed";
+  const rowsPart =
+    data.rowsConsidered !== undefined ? `read ${data.rowsConsidered} row${data.rowsConsidered === 1 ? "" : "s"}, ` : "";
+  const parts = [`${source}: ${rowsPart}found ${data.totalExtracted} relevant ${data.totalExtracted === 1 ? "entry" : "entries"}`];
+
+  const generalSkippedNote = data.generalReasonsSkipped > 0 ? `, ${data.generalReasonsSkipped} already known` : "";
+  const generalWonSkippedNote = data.generalWonReasonsSkipped > 0 ? `, ${data.generalWonReasonsSkipped} already known` : "";
+  const untrackedSkippedNote = data.untrackedAlreadySuggested > 0 ? `, ${data.untrackedAlreadySuggested} already suggested` : "";
+
+  parts.push(`imported ${data.imported} win/loss ${data.imported === 1 ? "entry" : "entries"}${data.skipped > 0 ? ` (${data.skipped} already logged)` : ""}.`);
+  if (data.generalReasonsAdded > 0 || data.generalReasonsSkipped > 0) {
+    parts.push(`Added ${data.generalReasonsAdded} ${generalWord} lost-deal reason${data.generalReasonsAdded === 1 ? "" : "s"}${perCompetitor ? " to account context" : ""}${generalSkippedNote}.`);
+  }
+  if (data.generalWonReasonsAdded > 0 || data.generalWonReasonsSkipped > 0) {
+    parts.push(`Added ${data.generalWonReasonsAdded} ${generalWord} win reason${data.generalWonReasonsAdded === 1 ? "" : "s"}${perCompetitor ? " to account context" : ""}${generalWonSkippedNote}.`);
+  }
+  if (data.suggestedCompetitors.length > 0 || data.untrackedAlreadySuggested > 0) {
+    const suggestedPart =
+      data.suggestedCompetitors.length > 0
+        ? `suggested ${data.suggestedCompetitors.length} untracked competitor${data.suggestedCompetitors.length === 1 ? "" : "s"} (${data.suggestedCompetitors.join(", ")})`
+        : "no new competitors to suggest";
+    parts.push(`${suggestedPart}${untrackedSkippedNote}. See the Competitors page.`);
+  }
+  if (data.totalExtracted === 0) {
+    parts.push("(nothing in this file had enough signal to keep)");
+  }
+  if (data.truncated && data.rowsConsidered !== undefined && data.totalRows !== undefined) {
+    parts.push(`Only processed the first ${data.rowsConsidered} of ${data.totalRows} rows.`);
+  }
+  return `${parts[0]}. ${parts.slice(1).join(" ")}`.trim();
+}

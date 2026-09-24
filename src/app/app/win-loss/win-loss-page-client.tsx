@@ -12,6 +12,7 @@ import { CardAvatar, CardFoot, CardHead } from "@/components/app/card";
 import { WinLossReasonSummary, type WinLossEntry } from "@/components/app/win-loss-reason-summary";
 import { createClient } from "@/lib/supabase/client";
 import type { WinLossOutcome } from "@/lib/supabase/types";
+import { formatWinLossImportMessage, type ImportMessageData } from "@/lib/win-loss-import";
 
 type Competitor = { id: string; name: string };
 type AccountEntry = WinLossEntry & { competitor_id: string };
@@ -21,56 +22,6 @@ type AccountEntry = WinLossEntry & { competitor_id: string };
 // plain string (not null) because Base UI's Select needs a non-empty value
 // for every item.
 const UNKNOWN_COMPETITOR = "unknown";
-
-type ImportResponse = {
-  totalExtracted: number;
-  imported: number;
-  skipped: number;
-  generalReasonsAdded: number;
-  generalReasonsSkipped: number;
-  generalWonReasonsAdded: number;
-  generalWonReasonsSkipped: number;
-  suggestedCompetitors: string[];
-  untrackedAlreadySuggested: number;
-  rowsConsidered?: number;
-  totalRows?: number;
-  truncated?: boolean;
-};
-
-// Mirrors competitor-fact-sheet.tsx's formatImportMessage exactly — same
-// import routes, same response shape, just no per-competitor framing since
-// this page already spans every competitor.
-function formatImportMessage(source: string, data: ImportResponse): string {
-  const rowsPart =
-    data.rowsConsidered !== undefined ? `read ${data.rowsConsidered} row${data.rowsConsidered === 1 ? "" : "s"}, ` : "";
-  const parts = [`${source}: ${rowsPart}found ${data.totalExtracted} relevant ${data.totalExtracted === 1 ? "entry" : "entries"}`];
-
-  const generalSkippedNote = data.generalReasonsSkipped > 0 ? `, ${data.generalReasonsSkipped} already known` : "";
-  const generalWonSkippedNote = data.generalWonReasonsSkipped > 0 ? `, ${data.generalWonReasonsSkipped} already known` : "";
-  const untrackedSkippedNote = data.untrackedAlreadySuggested > 0 ? `, ${data.untrackedAlreadySuggested} already suggested` : "";
-
-  parts.push(`imported ${data.imported} win/loss ${data.imported === 1 ? "entry" : "entries"}${data.skipped > 0 ? ` (${data.skipped} already logged)` : ""}.`);
-  if (data.generalReasonsAdded > 0 || data.generalReasonsSkipped > 0) {
-    parts.push(`Added ${data.generalReasonsAdded} unattributed lost-deal reason${data.generalReasonsAdded === 1 ? "" : "s"}${generalSkippedNote}.`);
-  }
-  if (data.generalWonReasonsAdded > 0 || data.generalWonReasonsSkipped > 0) {
-    parts.push(`Added ${data.generalWonReasonsAdded} unattributed win reason${data.generalWonReasonsAdded === 1 ? "" : "s"}${generalWonSkippedNote}.`);
-  }
-  if (data.suggestedCompetitors.length > 0 || data.untrackedAlreadySuggested > 0) {
-    const suggestedPart =
-      data.suggestedCompetitors.length > 0
-        ? `suggested ${data.suggestedCompetitors.length} untracked competitor${data.suggestedCompetitors.length === 1 ? "" : "s"} (${data.suggestedCompetitors.join(", ")})`
-        : "no new competitors to suggest";
-    parts.push(`${suggestedPart}${untrackedSkippedNote}. See the Competitors page.`);
-  }
-  if (data.totalExtracted === 0) {
-    parts.push("(nothing in this file had enough signal to keep)");
-  }
-  if (data.truncated && data.rowsConsidered !== undefined && data.totalRows !== undefined) {
-    parts.push(`Only processed the first ${data.rowsConsidered} of ${data.totalRows} rows.`);
-  }
-  return `${parts[0]}. ${parts.slice(1).join(" ")}`.trim();
-}
 
 function CompetitorPicker({
   competitors,
@@ -176,7 +127,7 @@ export function WinLossPageClient({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Import failed.");
-      setImportMessage(formatImportMessage("CSV", data));
+      setImportMessage(formatWinLossImportMessage("CSV", data as ImportMessageData, false));
       await refetchEntries();
     } catch (err) {
       setImportMessage(err instanceof Error ? err.message : "Import failed.");
@@ -193,7 +144,7 @@ export function WinLossPageClient({
       const res = await fetch("/api/competitors/win-loss/sync-hubspot", { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Sync failed.");
-      setImportMessage(formatImportMessage("HubSpot", data));
+      setImportMessage(formatWinLossImportMessage("HubSpot", data as ImportMessageData, false));
       await refetchEntries();
     } catch (err) {
       setImportMessage(err instanceof Error ? err.message : "Sync failed.");

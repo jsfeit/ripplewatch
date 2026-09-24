@@ -17,64 +17,13 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import type { WinLossOutcome } from "@/lib/supabase/types";
 import { WinLossReasonSummary, type WinLossEntry } from "@/components/app/win-loss-reason-summary";
+import { formatWinLossImportMessage, type ImportMessageData } from "@/lib/win-loss-import";
 
 // Bullets are cached on the competitor row as newline-joined text (see the
 // fact-sheet API route) rather than jsonb, split back into a list here,
 // dropping any blank lines.
 function toBullets(text: string | null): string[] {
   return (text ?? "").split("\n").map((s) => s.trim()).filter(Boolean);
-}
-
-type ImportResponse = {
-  totalExtracted: number;
-  imported: number;
-  skipped: number;
-  generalReasonsAdded: number;
-  generalReasonsSkipped: number;
-  generalWonReasonsAdded: number;
-  generalWonReasonsSkipped: number;
-  suggestedCompetitors: string[];
-  untrackedAlreadySuggested: number;
-  rowsConsidered?: number;
-  totalRows?: number;
-  truncated?: boolean;
-};
-
-// Always leads with what was actually read/found (rowsConsidered,
-// totalExtracted) rather than only the net-new counts — re-running the same
-// file, or one that overlaps a prior import, should read as "found N, all
-// already known" instead of looking identical to a genuinely empty or
-// irrelevant file (both would otherwise show all-zero net-new counts).
-function formatImportMessage(source: string, data: ImportResponse): string {
-  const rowsPart =
-    data.rowsConsidered !== undefined ? `read ${data.rowsConsidered} row${data.rowsConsidered === 1 ? "" : "s"}, ` : "";
-  const parts = [`${source}: ${rowsPart}found ${data.totalExtracted} relevant ${data.totalExtracted === 1 ? "entry" : "entries"}`];
-
-  const generalSkippedNote = data.generalReasonsSkipped > 0 ? `, ${data.generalReasonsSkipped} already known` : "";
-  const generalWonSkippedNote = data.generalWonReasonsSkipped > 0 ? `, ${data.generalWonReasonsSkipped} already known` : "";
-  const untrackedSkippedNote = data.untrackedAlreadySuggested > 0 ? `, ${data.untrackedAlreadySuggested} already suggested` : "";
-
-  parts.push(`imported ${data.imported} win/loss ${data.imported === 1 ? "entry" : "entries"}${data.skipped > 0 ? ` (${data.skipped} already logged)` : ""}.`);
-  if (data.generalReasonsAdded > 0 || data.generalReasonsSkipped > 0) {
-    parts.push(`Added ${data.generalReasonsAdded} general lost-deal reason${data.generalReasonsAdded === 1 ? "" : "s"} to account context${generalSkippedNote}.`);
-  }
-  if (data.generalWonReasonsAdded > 0 || data.generalWonReasonsSkipped > 0) {
-    parts.push(`Added ${data.generalWonReasonsAdded} general win reason${data.generalWonReasonsAdded === 1 ? "" : "s"} to account context${generalWonSkippedNote}.`);
-  }
-  if (data.suggestedCompetitors.length > 0 || data.untrackedAlreadySuggested > 0) {
-    const suggestedPart =
-      data.suggestedCompetitors.length > 0
-        ? `suggested ${data.suggestedCompetitors.length} untracked competitor${data.suggestedCompetitors.length === 1 ? "" : "s"} (${data.suggestedCompetitors.join(", ")})`
-        : "no new competitors to suggest";
-    parts.push(`${suggestedPart}${untrackedSkippedNote}. See the Competitors page.`);
-  }
-  if (data.totalExtracted === 0) {
-    parts.push("(nothing in this file had enough signal to keep)");
-  }
-  if (data.truncated && data.rowsConsidered !== undefined && data.totalRows !== undefined) {
-    parts.push(`Only processed the first ${data.rowsConsidered} of ${data.totalRows} rows.`);
-  }
-  return `${parts[0]}. ${parts.slice(1).join(" ")}`.trim();
 }
 
 export function CompetitorFactSheet({
@@ -152,7 +101,7 @@ export function CompetitorFactSheet({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Import failed.");
-      setImportMessage(formatImportMessage("CSV", data));
+      setImportMessage(formatWinLossImportMessage("CSV", data as ImportMessageData, true));
       await refetchEntries();
     } catch (err) {
       setImportMessage(err instanceof Error ? err.message : "Import failed.");
@@ -169,7 +118,7 @@ export function CompetitorFactSheet({
       const res = await fetch("/api/competitors/win-loss/sync-hubspot", { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Sync failed.");
-      setImportMessage(formatImportMessage("HubSpot", data));
+      setImportMessage(formatWinLossImportMessage("HubSpot", data as ImportMessageData, true));
       await refetchEntries();
     } catch (err) {
       setImportMessage(err instanceof Error ? err.message : "Sync failed.");

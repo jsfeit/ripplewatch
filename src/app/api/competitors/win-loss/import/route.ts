@@ -81,7 +81,6 @@ export async function POST(request: Request) {
     })
   );
   const extracted = chunkResults.flat();
-  console.log(`win-loss import: ${chunks.length} chunks, ${extracted.length} entries extracted`);
 
   const totalRows = rawText.split("\n").filter((l) => l.trim()).length - 1;
   const rowsConsidered = Math.min(totalRows, chunks.length * CHUNK_ROWS);
