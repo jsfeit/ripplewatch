@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { Loader2, Plus, Upload, TrendingUp, MessageSquareText, Trash2, Users } from "lucide-react";
+import { ChevronDown, Loader2, Plus, Upload, TrendingUp, MessageSquareText, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -58,6 +58,12 @@ export function CustomerVoiceBoard({
   const [responses, setResponses] = useState(initialResponses);
   const [asks, setAsks] = useState(initialAsks);
   const summary = useMemo(() => summarizeNps(responses), [responses]);
+
+  // Folded by default for an account with nothing logged yet — two empty
+  // states stacked up (the pre-consolidation layout) read as dead weight
+  // taking real space on a page an account may open every day. Starts open
+  // the moment there's real data in either half.
+  const [expanded, setExpanded] = useState(initialResponses.length > 0 || initialAsks.length > 0);
 
   const [npsFormOpen, setNpsFormOpen] = useState(false);
   const [npsScore, setNpsScore] = useState("9");
@@ -191,17 +197,44 @@ export function CustomerVoiceBoard({
     }
   }
 
+  const hasAnyData = responses.length > 0 || asks.length > 0;
+
   return (
-    <div className="space-y-6">
-      <Panel className="p-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="flex size-6 items-center justify-center rounded-md bg-primary/10 text-primary">
-              <TrendingUp className="size-3.5" />
-            </span>
-            <h2 className="text-sm font-semibold">Customer NPS</h2>
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5">
+    <div>
+      <button
+        type="button"
+        onClick={() => setExpanded((e) => !e)}
+        className="flex w-full items-center justify-between rounded-lg border border-border bg-card px-4 py-3 text-left hover:border-primary/40"
+      >
+        <span className="text-sm">
+          {hasAnyData ? (
+            <>
+              <span className="font-semibold">{responses.length}</span> NPS response{responses.length === 1 ? "" : "s"}
+              <span className="text-muted-foreground">
+                {" · "}
+                <span className="font-semibold text-foreground">{asks.length}</span> ask{asks.length === 1 ? "" : "s"} logged
+              </span>
+            </>
+          ) : (
+            <span className="text-muted-foreground">No customer voice data yet</span>
+          )}
+        </span>
+        <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
+          {expanded ? "Collapse" : "Show"}
+          <ChevronDown className={cn("size-3.5 transition-transform", expanded && "rotate-180")} />
+        </span>
+      </button>
+
+      {expanded ? (
+        <Panel className="mt-2.5 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="flex size-6 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <TrendingUp className="size-3.5" />
+              </span>
+              <h2 className="text-sm font-semibold">Customer NPS</h2>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
             <input
               ref={npsFileInputRef}
               type="file"
@@ -337,9 +370,8 @@ export function CustomerVoiceBoard({
             </div>
           </>
         )}
-      </Panel>
 
-      <Panel className="p-5">
+        <div className="mt-6 border-t border-dashed border-border pt-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span className="flex size-6 items-center justify-center rounded-md bg-primary/10 text-primary">
@@ -444,7 +476,9 @@ export function CustomerVoiceBoard({
             ))}
           </div>
         )}
-      </Panel>
+      </div>
+        </Panel>
+      ) : null}
     </div>
   );
 }

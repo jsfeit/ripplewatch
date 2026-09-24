@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { extractWinLossEntries } from "@/lib/anthropic";
 import { applyExtractedWinLossEntries } from "@/lib/win-loss-import";
 import { mapWithConcurrency } from "@/lib/crawl";
+import { chunkCsv } from "@/lib/csv-chunk";
 
 // A 1,500-row real-world test took several minutes with no maxDuration set
 // (Vercel's default is far shorter) — bigger batches per call and more
@@ -28,17 +29,6 @@ export const maxDuration = 300;
 const CHUNK_ROWS = 30;
 const MAX_CHUNKS = 100; // bounds cost on a pathologically large paste (~3,000 rows)
 const CHUNK_CONCURRENCY = 8;
-
-function chunkCsv(rawText: string): string[] {
-  const lines = rawText.split("\n").filter((l) => l.trim());
-  if (lines.length <= 1) return [rawText];
-  const [header, ...rows] = lines;
-  const chunks: string[] = [];
-  for (let i = 0; i < rows.length && chunks.length < MAX_CHUNKS; i += CHUNK_ROWS) {
-    chunks.push([header, ...rows.slice(i, i + CHUNK_ROWS)].join("\n"));
-  }
-  return chunks;
-}
 
 // Accepts whatever raw text a customer pastes/uploads (CSV, any column
 // layout, plain list) — see extractWinLossEntries for why this doesn't try
@@ -72,7 +62,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Add a competitor before importing win/loss data." }, { status: 400 });
   }
 
-  const chunks = chunkCsv(rawText);
+  const chunks = chunkCsv(rawText, CHUNK_ROWS, MAX_CHUNKS);
   const competitorNames = competitors.map((c) => c.name);
   const chunkResults = await mapWithConcurrency(chunks, CHUNK_CONCURRENCY, (chunk) =>
     extractWinLossEntries(competitorNames, chunk, profile.account_id).catch((err) => {

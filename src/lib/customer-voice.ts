@@ -167,15 +167,22 @@ export type NpsCsvParseResult = {
 
 // Requires a header row with a recognizable score column — everything
 // else (date/reason/respondent) is optional and falls back gracefully, but
-// a file with no identifiable score column has nothing worth importing,
-// so it returns zero rows rather than guessing which column is the score.
+// a file with no identifiable score column has nothing worth importing via
+// this fast path (see the import route's LLM-extraction fallback for that
+// case instead). totalDataRows always reflects the real row count even
+// when scoreCol isn't found — it's what the caller uses to tell "this file
+// is genuinely empty" (skip the LLM call, real error) apart from "this
+// file has rows but no recognizable column" (worth an LLM pass), and
+// conflating the two into a blanket 0 would make the route reject the
+// exact freeform files this fallback exists for before ever attempting it.
 export function parseNpsCsv(rawText: string): NpsCsvParseResult {
   const lines = rawText.split("\n").map((l) => l.replace(/\r$/, "")).filter((l) => l.trim());
   if (lines.length < 2) return { rows: [], totalDataRows: 0, skipped: 0 };
 
+  const totalDataRows = lines.length - 1;
   const headers = parseCsvLine(lines[0]);
   const scoreCol = findColumn(headers, SCORE_HEADERS);
-  if (scoreCol === -1) return { rows: [], totalDataRows: 0, skipped: 0 };
+  if (scoreCol === -1) return { rows: [], totalDataRows, skipped: 0 };
   const dateCol = findColumn(headers, DATE_HEADERS);
   const reasonCol = findColumn(headers, REASON_HEADERS);
   const respondentCol = findColumn(headers, RESPONDENT_HEADERS);
@@ -199,14 +206,16 @@ export function parseNpsCsv(rawText: string): NpsCsvParseResult {
     });
   }
 
-  return { rows, totalDataRows: dataLines.length, skipped };
+  return { rows, totalDataRows, skipped };
 }
 
 // Customer asks are freeform (a support-ticket export, sales-call notes, a
 // survey open-end) so there's no reliable column to key off beyond "does
-// this look like a summary/feedback/request column" — falls back to
-// treating every non-empty line as one ask when no such header is found,
-// which is the common case (a plain list pasted in, one ask per line).
+// this look like a summary/feedback/request column." Two fast paths, both
+// free and instant; anything else escalates to LLM extraction (see the
+// import route) rather than guessing — a real multi-column export with no
+// recognized header is far more likely to need interpretation than to be
+// safely treated as one full CSV row per ask.
 const ASK_HEADERS = ["summary", "ask", "request", "feedback", "feature", "idea", "note"];
 const ASK_SOURCE_HEADERS = ["source", "channel", "via"];
 
@@ -221,11 +230,16 @@ export function parseAsksCsv(rawText: string): ParsedAskRow[] {
   const sourceCol = findColumn(headers, ASK_SOURCE_HEADERS);
 
   if (summaryCol === -1) {
-    // No recognizable header at all — treat the whole file as a plain
-    // list, one ask per line (including what would otherwise have been
-    // treated as a header, since without a matched column there's no
-    // reason to believe line 1 was special).
-    return lines.map((l) => ({ summary: l.replace(/^"|"$/g, "").trim(), source: null })).filter((r) => r.summary);
+    // No recognizable header. If nothing in the file looks like a CSV at
+    // all (no commas anywhere), it's almost certainly a genuinely plain
+    // list — one ask per line, including line 1, since there's no reason
+    // to believe it was a header. Handle that here for free; anything with
+    // real comma-separated structure but no recognized column is left for
+    // the LLM fallback instead of guessing which column matters.
+    if (!lines.some((l) => l.includes(","))) {
+      return lines.map((l) => ({ summary: l.trim(), source: null })).filter((r) => r.summary);
+    }
+    return [];
   }
 
   return lines
