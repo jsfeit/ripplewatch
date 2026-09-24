@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Sparkles, TrendingUp, Scale, Globe2, Compass } from "lucide-react";
+import { Sparkles, TrendingUp, Scale, Globe2, Compass, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { resolveAccountContext } from "@/lib/impersonation";
 import { bucketMonthlyActivity } from "@/lib/monthly-activity";
@@ -11,6 +11,7 @@ import { TrendsBoard } from "../trends/trends-board";
 import { PricingBoard } from "../pricing/pricing-board";
 import { HiringBoard } from "../hiring/hiring-board";
 import { WinLossPageClient } from "../win-loss/win-loss-page-client";
+import { CustomerVoiceBoard } from "./customer-voice-board";
 import { AutoProductTour } from "@/components/app/product-tour";
 import { PurchaseTracker } from "@/components/app/purchase-tracker";
 import { InsightCallout } from "@/components/app/insight-callout";
@@ -40,6 +41,7 @@ const SECTIONS = [
   { id: "industry-pulse", label: "Industry pulse" },
   { id: "overview", label: "Momentum" },
   { id: "win-loss", label: "Win/loss" },
+  { id: "customer-voice", label: "Customer voice" },
   { id: "trends", label: "Trends" },
   { id: "pricing", label: "Competitor pricing" },
   { id: "hiring", label: "Hiring" },
@@ -134,6 +136,8 @@ export default async function DashboardPage() {
     { data: winLossEntries },
     { data: unattributedWinLossEntries },
     { data: hubspotIntegration },
+    { data: npsResponses },
+    { data: customerAsks },
   ] = await Promise.all([
     // --- News ---
     competitorIds.length
@@ -238,6 +242,16 @@ export default async function DashboardPage() {
       .eq("provider", "hubspot")
       .eq("connected", true)
       .maybeSingle(),
+    db
+      .from("account_nps_responses")
+      .select("id, score, reason, respondent, survey_date, source, created_at")
+      .eq("account_id", accountId)
+      .order("survey_date", { ascending: false }),
+    db
+      .from("account_customer_asks")
+      .select("id, summary, source, status, created_at")
+      .eq("account_id", accountId)
+      .order("created_at", { ascending: false }),
   ]);
 
   const pricingByCompetitor = Object.fromEntries((pricing ?? []).map((p) => [p.competitor_id, p]));
@@ -441,6 +455,22 @@ export default async function DashboardPage() {
             showWinLoss={Boolean(account?.has_sales_crm) || !account?.has_plg}
             showChurn={Boolean(account?.has_plg)}
           />
+        </div>
+      </section>
+
+      <section id="customer-voice" className="mt-10 scroll-mt-20">
+        <div className="flex items-center gap-2">
+          <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+            <Users className="size-3.5" />
+          </span>
+          <h2 className="text-sm font-semibold">Customer voice</h2>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          What your own customers think of you — NPS scores and the feature requests they&apos;re asking for.
+          Separate from everything else here, which is about your competitors.
+        </p>
+        <div className="mt-4">
+          <CustomerVoiceBoard initialResponses={npsResponses ?? []} initialAsks={customerAsks ?? []} />
         </div>
       </section>
 
