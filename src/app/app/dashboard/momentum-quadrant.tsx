@@ -243,11 +243,21 @@ export function MomentumQuadrant({
           <line x1={PAD} y1={VIEW_H / 2} x2={VIEW_W - PAD} y2={VIEW_H / 2} className="text-border" stroke="currentColor" strokeWidth="1" strokeDasharray="3 4" />
           <line x1={VIEW_W / 2} y1={PAD} x2={VIEW_W / 2} y2={VIEW_H - PAD} className="text-border" stroke="currentColor" strokeWidth="1" strokeDasharray="3 4" />
 
-          <text x={PAD} y={14} className="fill-muted-foreground" fontSize="9">
-            Cooling
-          </text>
-          <text x={VIEW_W - PAD} y={14} textAnchor="end" className="fill-muted-foreground" fontSize="9">
+          {/* Momentum (Y) and relevance (X) are two independent axes, so
+              their labels get two independent positions, not four shared
+              corners — "Heating up"/"Cooling" describe vertical position
+              (top/bottom) regardless of X, so they're centered horizontally;
+              "Low/High relevance" describe horizontal position regardless of
+              Y, so they stay at the bottom corners where they don't collide
+              with the centered pair. The previous layout put both
+              temperature labels in the TOP row (just left vs right), which
+              reads as a left-right axis even though dots actually move
+              up/down for momentum — correct data, mislabeled axis. */}
+          <text x={VIEW_W / 2} y={14} textAnchor="middle" className="fill-muted-foreground" fontSize="9">
             Heating up
+          </text>
+          <text x={VIEW_W / 2} y={VIEW_H - 10} textAnchor="middle" className="fill-muted-foreground" fontSize="9">
+            Cooling
           </text>
           <text x={PAD} y={VIEW_H - 10} className="fill-muted-foreground" fontSize="9">
             Low relevance to you
