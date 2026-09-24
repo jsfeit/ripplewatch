@@ -100,8 +100,9 @@ export function TrendsBoard({
             {generatedAt ? `Updated ${new Date(generatedAt).toLocaleDateString()}` : "Not enough data yet"}
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Looks across every logged win/loss reason for recurring themes. Generates on its own once you&apos;ve
-            logged enough, then refreshes monthly — Refresh pulls it forward now instead of waiting.
+            Looks across every logged win/loss reason and scored customer-feedback entry for recurring themes.
+            Generates on its own once you&apos;ve logged enough, then refreshes monthly — Refresh pulls it forward
+            now instead of waiting.
           </p>
         </div>
         <div className="flex shrink-0 gap-2">
@@ -121,9 +122,13 @@ export function TrendsBoard({
       {error ? <p className="mt-3 text-sm text-destructive print:hidden">{error}</p> : null}
       {insufficientData ? (
         <p className="mt-3 text-sm text-muted-foreground print:hidden">
-          Not enough logged win/loss or churn data yet to identify real trends.{" "}
+          Not enough logged win/loss, churn, or scored customer-feedback data yet to identify real trends.{" "}
           <Link href="/app/dashboard#win-loss" className="text-primary underline underline-offset-2">
-            Log or import more in the Win/loss section
+            Log or import more in Win/loss
+          </Link>{" "}
+          or{" "}
+          <Link href="/app/dashboard#customer-voice" className="text-primary underline underline-offset-2">
+            Customer voice
           </Link>
           , and this fills in on its own.
         </p>

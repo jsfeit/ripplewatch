@@ -12,6 +12,8 @@ import { PricingBoard } from "../pricing/pricing-board";
 import { HiringBoard } from "../hiring/hiring-board";
 import { WinLossPageClient } from "../win-loss/win-loss-page-client";
 import { CustomerVoiceBoard } from "./customer-voice-board";
+import { YourMomentumCard } from "./your-momentum-card";
+import { computeYourMomentum } from "@/lib/your-momentum";
 import { AutoProductTour } from "@/components/app/product-tour";
 import { PurchaseTracker } from "@/components/app/purchase-tracker";
 import { InsightCallout } from "@/components/app/insight-callout";
@@ -136,8 +138,7 @@ export default async function DashboardPage() {
     { data: winLossEntries },
     { data: unattributedWinLossEntries },
     { data: hubspotIntegration },
-    { data: npsResponses },
-    { data: customerAsks },
+    { data: customerFeedback },
   ] = await Promise.all([
     // --- News ---
     competitorIds.length
@@ -243,15 +244,10 @@ export default async function DashboardPage() {
       .eq("connected", true)
       .maybeSingle(),
     db
-      .from("account_nps_responses")
-      .select("id, score, reason, respondent, survey_date, source, created_at")
+      .from("account_customer_feedback")
+      .select("id, summary, score, respondent, source, status, feedback_date, origin, created_at")
       .eq("account_id", accountId)
-      .order("survey_date", { ascending: false }),
-    db
-      .from("account_customer_asks")
-      .select("id, summary, source, status, created_at")
-      .eq("account_id", accountId)
-      .order("created_at", { ascending: false }),
+      .order("feedback_date", { ascending: false }),
   ]);
 
   const pricingByCompetitor = Object.fromEntries((pricing ?? []).map((p) => [p.competitor_id, p]));
@@ -305,6 +301,14 @@ export default async function DashboardPage() {
   const wonCount = attributedWinLossEntries.filter((e) => e.outcome === "won").length;
   const lostCount = attributedWinLossEntries.filter((e) => e.outcome === "lost").length;
   const winRatePercent = wonCount + lostCount > 0 ? Math.round((wonCount / (wonCount + lostCount)) * 100) : null;
+
+  // Account-wide, not scoped to any one competitor — every win/loss entry
+  // regardless of whether it named a competitor, since "did we win or lose
+  // more lately" is a fact about the account's own performance either way.
+  const yourMomentum = computeYourMomentum(
+    (customerFeedback ?? []).filter((e) => e.score !== null),
+    [...(winLossEntries ?? []), ...(unattributedWinLossEntries ?? [])]
+  );
 
   // Directional-only: do recent unattributed losses/churn coincide with a
   // tracked competitor cutting pricing or shipping something new? Never a
@@ -417,6 +421,9 @@ export default async function DashboardPage() {
           detail behind its momentum score.
         </p>
         <div className="mt-4">
+          <YourMomentumCard result={yourMomentum} />
+        </div>
+        <div className="mt-4">
           <CompetitorOverview
             competitors={competitors ?? []}
             momentumSignals={momentumSignals ?? []}
@@ -470,7 +477,7 @@ export default async function DashboardPage() {
           Separate from everything else here, which is about your competitors.
         </p>
         <div className="mt-4">
-          <CustomerVoiceBoard initialResponses={npsResponses ?? []} initialAsks={customerAsks ?? []} />
+          <CustomerVoiceBoard initialEntries={customerFeedback ?? []} />
         </div>
       </section>
 

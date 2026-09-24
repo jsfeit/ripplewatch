@@ -1748,112 +1748,44 @@ Classify the rows.`;
   }
 }
 
-export type ExtractedNpsResponse = {
-  score: number;
+export type ExtractedFeedback = {
+  summary: string;
+  score: number | null;
   date: string | null;
-  reason: string | null;
   respondent: string | null;
+  source: string | null;
 };
 
-// Fallback for customer-voice.ts's parseNpsCsv, used only when the fast
-// column-header match finds nothing (or nearly nothing) — most survey-tool
-// exports have a recognizable "score"/"nps"/"rating" column and never need
-// this, but a real-world export can just as easily use a full survey
-// question as its header ("What is your likelihood to recommend us to a
-// friend or colleague?") or bury the score in an unlabeled column, same
+// Fallback for customer-voice.ts's parseFeedbackCsv, used only when the
+// fast column-header match finds nothing (or the file has no comma
+// structure it can key off at all) — most survey-tool/support exports have
+// a recognizable "score"/"summary"-ish column and never need this, but a
+// real-world export can just as easily use a full survey question as its
+// header ("What is your likelihood to recommend us to a friend or
+// colleague?") or bury the real content in an unlabeled column, same
 // problem win-loss CSVs already had before extractWinLossEntries. One
-// model call reads whatever raw text it's given rather than trying to grow
-// the header-matching list to cover every real-world variant.
-const EXTRACT_NPS_SYSTEM_PROMPT = `You read raw NPS/customer-survey export data — CSV rows with any column names/order, a survey-tool export, or a plain list — and extract every row that has an identifiable 0-10 "how likely are you to recommend us" score. Do this mechanically, one row at a time.
+// model call reads whatever raw text it's given — a survey export (score +
+// comment), a support-ticket export (no score, just a request), or a
+// mixed file — rather than requiring two separate extraction passes for
+// what's the same underlying "feedback entry, score optional" shape
+// customer-voice.ts already uses.
+const EXTRACT_FEEDBACK_SYSTEM_PROMPT = `You read raw customer-feedback export data — CSV rows with any column names/order, a survey-tool export, a support-ticket export, sales-call notes, or a plain list — and extract every row with real signal: either an identifiable 0-10 "how likely to recommend" score, a specific thing the customer said/asked for/complained about, or both. Do this mechanically, one row at a time.
 
-Only extract a row if it has a real numeric score from 0 to 10. Skip rows with no score at all. A 1-5 star rating is a DIFFERENT scale, not NPS — don't rescale it into 0-10, just skip those rows unless the same row also has a genuinely separate 0-10 recommendation score.
+Skip rows with no real signal: blank, purely administrative (a ticket ID or timestamp with nothing else), "N/A," or closed with no comment and no score.
 
-For each row with a real score, also pull (all optional — null if not present in that row):
-- date: when the response was actually given/collected, normalized to YYYY-MM-DD if you can tell the format, else null. Never invent a date that isn't in the row.
-- reason: the open-ended "why" comment/feedback text, if present.
-- respondent: a name, company, or email identifying who responded, if present.
+A 1-5 star rating is a DIFFERENT scale, not NPS — don't rescale it into 0-10; treat that row as score: null and use whatever text comment it has as the summary instead.
 
-Respond with strict JSON only, no markdown, matching this shape exactly:
-{"entries": [{"score": <integer 0-10>, "date": "<YYYY-MM-DD or null>", "reason": "<string or null>", "respondent": "<string or null>"}, ...]}`;
-
-const EXTRACT_NPS_SCHEMA = {
-  type: "object",
-  properties: {
-    entries: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          score: { type: "integer", minimum: 0, maximum: 10 },
-          date: { anyOf: [{ type: "string" }, { type: "null" }] },
-          reason: { anyOf: [{ type: "string" }, { type: "null" }] },
-          respondent: { anyOf: [{ type: "string" }, { type: "null" }] },
-        },
-        required: ["score", "date", "reason", "respondent"],
-        additionalProperties: false,
-      },
-    },
-  },
-  required: ["entries"],
-  additionalProperties: false,
-} as const;
-
-const NPS_EXTRACT_LINE_LIMIT = 60;
-
-export async function extractNpsResponses(rawText: string, accountId: string | null): Promise<ExtractedNpsResponse[]> {
-  if (!rawText.trim()) return [];
-
-  const truncated = rawText.split("\n").slice(0, NPS_EXTRACT_LINE_LIMIT).join("\n");
-  const message = await createMessage({
-    model: "claude-sonnet-5",
-    max_tokens: 8192,
-    system: cachedSystemPrompt(EXTRACT_NPS_SYSTEM_PROMPT),
-    output_config: { format: { type: "json_schema", schema: EXTRACT_NPS_SCHEMA } },
-    messages: [{ role: "user", content: `Raw data:\n${truncated}\n\nExtract the scores.` }],
-  });
-  recordLlmUsage(accountId, "extractNpsResponses", message.model, message.usage);
-
-  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
-  try {
-    const parsed = JSON.parse(text);
-    const entries = Array.isArray(parsed.entries) ? parsed.entries : [];
-    const result: ExtractedNpsResponse[] = [];
-    for (const e of entries) {
-      if (!e || typeof e.score !== "number" || e.score < 0 || e.score > 10) continue;
-      result.push({
-        score: Math.round(e.score),
-        date: typeof e.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(e.date) ? e.date : null,
-        reason: typeof e.reason === "string" && e.reason.trim() ? e.reason.trim() : null,
-        respondent: typeof e.respondent === "string" && e.respondent.trim() ? e.respondent.trim() : null,
-      });
-    }
-    return result;
-  } catch (err) {
-    console.error("extractNpsResponses: failed to parse response", text.slice(0, 500), err);
-    throw new Error(`Could not parse NPS extraction response: ${text}`, { cause: err });
-  }
-}
-
-export type ExtractedCustomerAsk = { summary: string; source: string | null };
-
-// Same fallback role as extractNpsResponses, for customer-voice.ts's
-// parseAsksCsv — a support-ticket export or sales-call notes rarely has a
-// column literally named "summary"/"ask"/"request", so this reads whatever
-// raw text it's given and pulls out the actual thing each row is asking
-// for, rather than requiring a recognized header or falling back to
-// treating a whole multi-column row as one garbled "ask."
-const EXTRACT_CUSTOMER_ASKS_SYSTEM_PROMPT = `You read raw customer feedback data — CSV rows with any column names/order, a support-ticket export, sales-call notes, or a plain list — and extract every row that contains a real, specific thing a customer asked for, complained about, or wants: a feature request, a missing capability, friction with something that already exists. Do this mechanically, one row at a time.
-
-Skip rows with no real signal: blank, purely administrative (a ticket ID or timestamp with nothing else), "N/A," or closed with no comment.
-
-For each real row, write:
-- summary: a short, specific rewrite of the ask in plain language — the actual thing they want, in one sentence, not a verbatim copy of a long paragraph or the raw row.
+For each real row, extract:
+- summary: required. A short, specific rewrite of what the customer said in plain language — not a verbatim copy of a long paragraph or the raw row. If the row is ONLY a bare score with no comment at all, write a short factual summary like "NPS response, no comment given."
+- score: the 0-10 recommendation score if the row has one, else null.
+- date: when this was actually given/collected, normalized to YYYY-MM-DD if you can tell the format, else null. Never invent a date that isn't in the row.
+- respondent: a name, company, or email identifying who this is from, if present, else null.
 - source: where this came from, if the row indicates it (e.g. "Support ticket", "Sales call", "Survey"), else null.
 
 Respond with strict JSON only, no markdown, matching this shape exactly:
-{"entries": [{"summary": "<string>", "source": "<string or null>"}, ...]}`;
+{"entries": [{"summary": "<string>", "score": <integer 0-10 or null>, "date": "<YYYY-MM-DD or null>", "respondent": "<string or null>", "source": "<string or null>"}, ...]}`;
 
-const EXTRACT_CUSTOMER_ASKS_SCHEMA = {
+const EXTRACT_FEEDBACK_SCHEMA = {
   type: "object",
   properties: {
     entries: {
@@ -1862,9 +1794,12 @@ const EXTRACT_CUSTOMER_ASKS_SCHEMA = {
         type: "object",
         properties: {
           summary: { type: "string" },
+          score: { anyOf: [{ type: "integer", minimum: 0, maximum: 10 }, { type: "null" }] },
+          date: { anyOf: [{ type: "string" }, { type: "null" }] },
+          respondent: { anyOf: [{ type: "string" }, { type: "null" }] },
           source: { anyOf: [{ type: "string" }, { type: "null" }] },
         },
-        required: ["summary", "source"],
+        required: ["summary", "score", "date", "respondent", "source"],
         additionalProperties: false,
       },
     },
@@ -1873,37 +1808,41 @@ const EXTRACT_CUSTOMER_ASKS_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-const CUSTOMER_ASKS_EXTRACT_LINE_LIMIT = 60;
+const FEEDBACK_EXTRACT_LINE_LIMIT = 60;
 
-export async function extractCustomerAsks(rawText: string, accountId: string | null): Promise<ExtractedCustomerAsk[]> {
+export async function extractCustomerFeedback(rawText: string, accountId: string | null): Promise<ExtractedFeedback[]> {
   if (!rawText.trim()) return [];
 
-  const truncated = rawText.split("\n").slice(0, CUSTOMER_ASKS_EXTRACT_LINE_LIMIT).join("\n");
+  const truncated = rawText.split("\n").slice(0, FEEDBACK_EXTRACT_LINE_LIMIT).join("\n");
   const message = await createMessage({
     model: "claude-sonnet-5",
     max_tokens: 8192,
-    system: cachedSystemPrompt(EXTRACT_CUSTOMER_ASKS_SYSTEM_PROMPT),
-    output_config: { format: { type: "json_schema", schema: EXTRACT_CUSTOMER_ASKS_SCHEMA } },
-    messages: [{ role: "user", content: `Raw data:\n${truncated}\n\nExtract the asks.` }],
+    system: cachedSystemPrompt(EXTRACT_FEEDBACK_SYSTEM_PROMPT),
+    output_config: { format: { type: "json_schema", schema: EXTRACT_FEEDBACK_SCHEMA } },
+    messages: [{ role: "user", content: `Raw data:\n${truncated}\n\nExtract the feedback.` }],
   });
-  recordLlmUsage(accountId, "extractCustomerAsks", message.model, message.usage);
+  recordLlmUsage(accountId, "extractCustomerFeedback", message.model, message.usage);
 
   const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
   try {
     const parsed = JSON.parse(text);
     const entries = Array.isArray(parsed.entries) ? parsed.entries : [];
-    const result: ExtractedCustomerAsk[] = [];
+    const result: ExtractedFeedback[] = [];
     for (const e of entries) {
       if (!e || typeof e.summary !== "string" || !e.summary.trim()) continue;
+      const score = typeof e.score === "number" && e.score >= 0 && e.score <= 10 ? Math.round(e.score) : null;
       result.push({
         summary: e.summary.trim(),
+        score,
+        date: typeof e.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(e.date) ? e.date : null,
+        respondent: typeof e.respondent === "string" && e.respondent.trim() ? e.respondent.trim() : null,
         source: typeof e.source === "string" && e.source.trim() ? e.source.trim() : null,
       });
     }
     return result;
   } catch (err) {
-    console.error("extractCustomerAsks: failed to parse response", text.slice(0, 500), err);
-    throw new Error(`Could not parse customer-ask extraction response: ${text}`, { cause: err });
+    console.error("extractCustomerFeedback: failed to parse response", text.slice(0, 500), err);
+    throw new Error(`Could not parse customer-feedback extraction response: ${text}`, { cause: err });
   }
 }
 
