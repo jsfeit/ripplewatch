@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { DollarSign } from "lucide-react";
+import { ChevronDown, DollarSign } from "lucide-react";
 import { EmptyState } from "@/components/app/empty-state";
 import { Card, CardAvatar, CardChangedBadge, CardFoot, CardHead } from "@/components/app/card";
+import { CaveatNote } from "@/components/app/caveat-note";
 import { cn } from "@/lib/utils";
 import { timeAgo } from "@/lib/date";
 import { BILLING_MODEL_LABELS, BILLING_MODEL_STYLES, BILLING_MODEL_DOT } from "@/lib/billing-model";
@@ -175,6 +176,12 @@ function cheapestPrice(record: CompetitorPricing | undefined): number | null {
   return prices.length > 0 ? Math.min(...prices) : null;
 }
 
+// Collapsed by default, same shape as Momentum's competitor rows: a
+// headline number up front (cheapest tier's price, the one figure someone
+// scanning the section actually wants) instead of every tier's full
+// feature list always expanded, which was what made this section run much
+// taller than any other card grid on the dashboard and read as a denser,
+// separate tool. Full tier breakdown is one click away, not gone.
 function PricingCard({
   competitor,
   record,
@@ -184,6 +191,10 @@ function PricingCard({
   record: CompetitorPricing | undefined;
   changedAt: string | undefined;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const cheapest = record?.tiers.find((t) => t.price !== null) ?? null;
+  const hasTierDetail = Boolean(record?.publicly_priced && record.tiers.length > 0);
+
   return (
     <Card>
       <CardHead
@@ -192,76 +203,95 @@ function PricingCard({
         meta={changedAt ? <CardChangedBadge>Changed {timeAgo(changedAt)}</CardChangedBadge> : null}
       />
 
-      {!record && !competitor.pricing_url ? (
-        <p className="text-xs text-muted-foreground">
-          No pricing page URL set for this competitor yet.
-        </p>
-      ) : !record ? (
-        <p className="text-xs text-muted-foreground">
-          Not checked yet; runs on the next scheduled crawl.
-        </p>
+      {!record ? (
+        <CaveatNote>
+          {competitor.pricing_url ? "Not checked yet; runs on the next scheduled crawl." : "No pricing page URL set for this competitor yet."}
+        </CaveatNote>
       ) : (
         <>
-          <span
-            className={cn(
-              "inline-flex w-fit items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold",
-              BILLING_MODEL_STYLES[record.billing_model]
-            )}
-          >
-            <span className={cn("size-1.5 rounded-full", BILLING_MODEL_DOT[record.billing_model])} />
-            {BILLING_MODEL_LABELS[record.billing_model]}
-          </span>
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+            <span
+              className={cn(
+                "inline-flex w-fit items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold",
+                BILLING_MODEL_STYLES[record.billing_model]
+              )}
+            >
+              <span className={cn("size-1.5 rounded-full", BILLING_MODEL_DOT[record.billing_model])} />
+              {BILLING_MODEL_LABELS[record.billing_model]}
+            </span>
+            {hasTierDetail ? (
+              <p className="text-base font-bold">
+                {cheapest ? (
+                  <>
+                    From ${cheapest.price}
+                    {cheapest.price_period ? (
+                      <span className="text-[11px] font-medium text-muted-foreground">/{cheapest.price_period}</span>
+                    ) : null}
+                  </>
+                ) : (
+                  <span className="text-sm font-medium text-muted-foreground">Not public</span>
+                )}
+              </p>
+            ) : null}
+          </div>
 
-          {!record.publicly_priced || record.tiers.length === 0 ? (
-            <p className="text-xs italic text-muted-foreground">
+          {!hasTierDetail ? (
+            <CaveatNote className="mt-2">
               {record.note ?? "No public pricing found."}
               {competitor.pricing_url ? (
                 <>
                   {" "}
-                  <a
-                    href={competitor.pricing_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="not-italic text-primary hover:underline"
-                  >
+                  <a href={competitor.pricing_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                     View page
                   </a>
                 </>
               ) : null}
-            </p>
+            </CaveatNote>
           ) : (
-            <div>
-              {record.tiers.map((tier, i) => (
-                <div key={tier.name + i} className={cn("py-2.5", i > 0 && "border-t border-border")}>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {tier.name}
-                  </p>
-                  <p className="mt-0.5 text-base font-bold">
-                    {tier.price !== null ? (
-                      <>
-                        ${tier.price}
-                        {tier.price_period ? (
-                          <span className="text-[11px] font-medium text-muted-foreground">
-                            /{tier.price_period}
-                          </span>
-                        ) : null}
-                      </>
-                    ) : (
-                      <span className="text-sm font-medium italic text-muted-foreground">Not public</span>
-                    )}
-                  </p>
-                  {tier.features.length > 0 ? (
-                    <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
-                      {tier.features.map((f, fi) => (
-                        <li key={fi} className="before:mr-1 before:text-primary before:content-['‣']">
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
+            <>
+              <button
+                type="button"
+                onClick={() => setExpanded((e) => !e)}
+                className="mt-2 flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+              >
+                {record!.tiers.length} tier{record!.tiers.length === 1 ? "" : "s"}
+                <ChevronDown className={cn("size-3 transition-transform", expanded && "rotate-180")} />
+              </button>
+              {expanded ? (
+                <div className="mt-1">
+                  {record!.tiers.map((tier, i) => (
+                    <div key={tier.name + i} className={cn("py-2.5", i > 0 && "border-t border-border")}>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        {tier.name}
+                      </p>
+                      <p className="mt-0.5 text-base font-bold">
+                        {tier.price !== null ? (
+                          <>
+                            ${tier.price}
+                            {tier.price_period ? (
+                              <span className="text-[11px] font-medium text-muted-foreground">
+                                /{tier.price_period}
+                              </span>
+                            ) : null}
+                          </>
+                        ) : (
+                          <span className="text-sm font-medium italic text-muted-foreground">Not public</span>
+                        )}
+                      </p>
+                      {tier.features.length > 0 ? (
+                        <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                          {tier.features.map((f, fi) => (
+                            <li key={fi} className="before:mr-1 before:text-primary before:content-['‣']">
+                              {f}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              ) : null}
+            </>
           )}
 
           <CardFoot>
