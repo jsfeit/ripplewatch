@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Pencil, Plus, Trash2, Loader2, RefreshCw, Sparkles, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -79,6 +80,7 @@ export function AccountAdminView({
   llmUsageTotalUsd?: number;
   llmUsageWindowDays?: number;
 }) {
+  const router = useRouter();
   const [tier, setTier] = useState(account.tier);
   const [savingTier, setSavingTier] = useState(false);
   const [status, setStatus] = useState(account.status);
@@ -101,6 +103,17 @@ export function AccountAdminView({
   }
   const [recrawling, setRecrawling] = useState(false);
   const [recrawlResult, setRecrawlResult] = useState<string | null>(null);
+  const recrawlPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Clears any in-flight poll on unmount so a background setInterval
+  // doesn't keep firing (and calling setState on an unmounted component)
+  // after someone navigates away mid-crawl.
+  useEffect(() => {
+    return () => {
+      if (recrawlPollRef.current) clearInterval(recrawlPollRef.current);
+    };
+  }, []);
+
   const [discovering, setDiscovering] = useState(false);
   const [discoverResult, setDiscoverResult] = useState<string | null>(null);
   const [competitors, setCompetitors] = useState(initialCompetitors);
@@ -223,22 +236,88 @@ export function AccountAdminView({
     if (!res.ok) setDemoMode(previous);
   }
 
+  // Queued, not run synchronously — the actual checks happen afterward via
+  // a background worker (every couple minutes; see the recrawl route's own
+  // comment). The POST resolving only confirms the jobs were CREATED, not
+  // that they're done, which used to be exactly what made this look broken:
+  // the button re-enabled the instant the fetch returned, "Last crawled"
+  // hadn't moved yet (the worker hadn't picked the jobs up), and clicking
+  // again just queued a second full batch on top of the first. Now the
+  // button stays disabled and polls the run's actual job status
+  // (GET .../recrawl?runId=...) until every job either completes or
+  // errors, so there's a visible "still working" state instead of a false
+  // "done" the moment it's queued, and it's not possible to stack
+  // duplicate batches by clicking again.
+  const RECRAWL_POLL_INTERVAL_MS = 3000;
+  // Generous ceiling, not an expected duration — a batch this account's
+  // size should clear in well under a minute, but a slow/bot-protected
+  // domain shouldn't leave the button spinning forever if something really
+  // is stuck; stop polling and say so rather than spin indefinitely.
+  const RECRAWL_POLL_TIMEOUT_MS = 5 * 60 * 1000;
+
+  function pollRecrawlStatus(runId: string, total: number, startedAt: number) {
+    recrawlPollRef.current = setInterval(async () => {
+      const res = await fetch(`/api/admin/accounts/${account.id}/recrawl?runId=${runId}`);
+      const data = await res.json().catch(() => null);
+      const timedOut = Date.now() - startedAt > RECRAWL_POLL_TIMEOUT_MS;
+
+      if (!res.ok || !data) {
+        if (timedOut) {
+          if (recrawlPollRef.current) clearInterval(recrawlPollRef.current);
+          recrawlPollRef.current = null;
+          setRecrawling(false);
+          setRecrawlResult("Lost track of the crawl's progress — check back in a bit.");
+        }
+        return;
+      }
+
+      const { done, error: errored, finished } = data as { done: number; error: number; finished: boolean };
+      if (finished || timedOut) {
+        if (recrawlPollRef.current) clearInterval(recrawlPollRef.current);
+        recrawlPollRef.current = null;
+        setRecrawling(false);
+        if (!finished) {
+          setRecrawlResult(`Still running (${done + errored}/${total}) — check back in a bit.`);
+          return;
+        }
+        setRecrawlResult(
+          errored > 0
+            ? `Done — ${done}/${total} succeeded, ${errored} failed.`
+            : `Done — ${total} competitor${total === 1 ? "" : "s"} crawled.`
+        );
+        // Refreshes "Last crawled" and the rest of this server-fetched page
+        // data now that the run is actually finished, instead of leaving it
+        // stale until the next manual reload.
+        router.refresh();
+        return;
+      }
+
+      setRecrawlResult(`Crawling ${done + errored}/${total}…`);
+    }, RECRAWL_POLL_INTERVAL_MS);
+  }
+
   async function handleRecrawl() {
+    if (recrawling) return;
     setRecrawling(true);
-    setRecrawlResult(null);
+    setRecrawlResult("Queuing…");
     const res = await fetch(`/api/admin/accounts/${account.id}/recrawl`, { method: "POST" });
     const data = await res.json().catch(() => null);
-    setRecrawling(false);
-    // Queued, not run synchronously — see the recrawl route's own comment.
-    // A background worker (every couple minutes) does the actual checks,
-    // so this just confirms the jobs were created, not that they're done.
-    setRecrawlResult(
-      res.ok
-        ? data.summary.queued > 0
-          ? `Queued ${data.summary.queued} competitor${data.summary.queued === 1 ? "" : "s"} — check back in a minute or two.`
-          : "No competitors to crawl."
-        : (data?.error ?? "Failed to queue recrawl.")
-    );
+
+    if (!res.ok) {
+      setRecrawling(false);
+      setRecrawlResult(data?.error ?? "Failed to queue recrawl.");
+      return;
+    }
+
+    const { queued, runId } = data.summary as { queued: number; runId?: string };
+    if (queued === 0 || !runId) {
+      setRecrawling(false);
+      setRecrawlResult("No competitors to crawl.");
+      return;
+    }
+
+    setRecrawlResult(`Crawling 0/${queued}…`);
+    pollRecrawlStatus(runId, queued, Date.now());
   }
 
   async function handleDiscoverCompetitors() {
