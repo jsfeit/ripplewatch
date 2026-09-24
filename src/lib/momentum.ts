@@ -1,9 +1,17 @@
 import type { Database } from "@/lib/supabase/types";
 
+// title/url are optional, not part of the base Pick, so every existing
+// caller's narrower signals select keeps compiling unchanged — only
+// callers that widen their query to include them get the topSignal
+// citation below (see pickTopSignal); everyone else degrades to the
+// count-only detail text exactly as before.
 type Signal = Pick<
   Database["public"]["Tables"]["signals"]["Row"],
   "type" | "occurred_on" | "scored" | "relevance_score" | "sentiment"
->;
+> & {
+  title?: string | null;
+  url?: string | null;
+};
 
 type WinLossEntry = Pick<Database["public"]["Tables"]["competitor_win_loss"]["Row"], "outcome" | "created_at">;
 
@@ -41,6 +49,28 @@ const MIN_WIN_LOSS_ENTRIES = 4;
 const WINDOW_DAYS = 30;
 const HEATING_UP_THRESHOLD = 15;
 const COOLING_THRESHOLD = -15;
+
+// Below this many RECENT-window signals, a signal-count-based component's
+// swing is real but too thin to headline by itself — one story flipping a
+// competitor from "neutral coverage" to "positive coverage" is legitimate
+// evidence, but presenting it with the same confidence as a swing backed
+// by several stories overstates the case. Deliberately checks recentCount
+// alone, not recentCount + priorCount: a big prior-window baseline (e.g. 10
+// old neutral stories) says nothing about how much fresh evidence backs
+// the CURRENT claim, and summing the two would let a thin 1-story swing
+// pass the floor just because the competitor has a lot of unrelated
+// history. Used for wellSupported on the component itself (see
+// MomentumComponent), which a UI checks before naming a component as THE
+// reason to feature a competitor.
+const MIN_RECENT_EVIDENCE = 2;
+
+// Separately, how many recent signals sentimentDelta needs to trust its
+// own raw magnitude at full strength — see that function's comment for why
+// a decay-weighted AVERAGE needs this and a plain count delta doesn't.
+// Set slightly above MIN_RECENT_EVIDENCE so even a component that clears
+// the "well supported enough to cite" bar can still have its score damped
+// a little short of full strength until a third story corroborates it.
+const SENTIMENT_FULL_CONFIDENCE_COUNT = 3;
 
 // The number of components computeMomentum can ever populate — used as the
 // LOW_CONFIDENCE_THRESHOLD cutoff for the confidence flag, and as the
@@ -100,6 +130,24 @@ export type MomentumComponent = {
   // another's did (this competitor logs win/loss consistently, that one
   // rarely does).
   weight: number;
+  // Whether there's enough evidence behind this component's score to name
+  // it as THE reason a competitor gets featured, not just a factor in the
+  // averaged score. True by default for a magnitude-mode component (a real
+  // periodic reading — open role count, entry price, GitHub commits, a
+  // review rating, buzz mentions, ad count — is its own justification
+  // regardless of how few readings exist). For a signal-count-based
+  // component (press & funding, product changes, hiring/pricing when
+  // falling back to counting discrete events, relevance trend), true only
+  // once MIN_SIGNAL_EVIDENCE combined signals back it — see the constant's
+  // comment for why a 1-story swing shouldn't headline on its own even
+  // though it's real signal.
+  wellSupported: boolean;
+  // The specific recent-window story behind a signal-count-based
+  // component's score, when available (see pickTopSignal) — lets a UI cite
+  // the actual headline instead of a bare count pair. Always null for
+  // magnitude-mode components, whose recentCount/priorCount are already a
+  // concrete reading and need no further citation.
+  topSignal: { title: string; url: string | null; sentiment: Signal["sentiment"] } | null;
 };
 
 // Below this many populated components (out of the 11 computeMomentum can
@@ -233,11 +281,44 @@ function decayWeightedSentiment(signals: Signal[], now: Date): number {
 // "is this good or bad news for them, and how fresh is it" instead. Same
 // zero-baseline guard as countDelta: requires at least one signal in both
 // windows, since an empty prior window says nothing about sentiment either.
+//
+// Volume-scaled by recent-window count: unlike countDelta, an average has
+// no built-in dampening for a thin sample — one positive story against an
+// empty-ish baseline swings avgRecent straight to +1.0, the same as ten
+// positive stories would, because both produce the same average. That was
+// letting a single story move this component as hard as a real trend,
+// which is exactly the kind of thin-evidence swing that shouldn't carry
+// full weight. Scaling the raw delta by how many recent stories actually
+// back it (capped at 1 once SENTIMENT_FULL_CONFIDENCE_COUNT is reached)
+// means a single story still moves the score, just not as far as a
+// corroborated one does. Deliberately keyed to recent.length only, not
+// prior — a large prior-window story count says nothing about how much
+// fresh evidence backs the current swing (see MIN_RECENT_EVIDENCE).
 function sentimentDelta(recent: Signal[], prior: Signal[], now: Date): number | null {
   if (recent.length === 0 || prior.length === 0) return null;
   const avgRecent = decayWeightedSentiment(recent, now);
   const avgPrior = decayWeightedSentiment(prior, now);
-  return Math.max(-100, Math.min(100, (avgRecent - avgPrior) * 100));
+  const raw = (avgRecent - avgPrior) * 100;
+  const volumeConfidence = Math.min(1, recent.length / SENTIMENT_FULL_CONFIDENCE_COUNT);
+  return Math.max(-100, Math.min(100, raw * volumeConfidence));
+}
+
+// The single most relevant titled signal behind a signal-count-based
+// component's recent-window score — lets the UI cite the actual headline
+// instead of just a count pair ("1 positive vs 2 neutral"). Highest
+// relevance_score first, most recent as the tiebreak; returns null when
+// nothing in the window has a title yet (a caller whose signals select
+// doesn't include it — see the Signal type comment above — or an empty
+// window).
+function pickTopSignal(signals: Signal[]): { title: string; url: string | null; sentiment: Signal["sentiment"] } | null {
+  const titled = signals.filter((s): s is Signal & { title: string } => Boolean(s.title));
+  if (titled.length === 0) return null;
+  const [best] = [...titled].sort((a, b) => {
+    const scoreDiff = (b.relevance_score ?? 0) - (a.relevance_score ?? 0);
+    if (scoreDiff !== 0) return scoreDiff;
+    return new Date(b.occurred_on).getTime() - new Date(a.occurred_on).getTime();
+  });
+  return { title: best.title, url: best.url ?? null, sentiment: best.sentiment };
 }
 
 // "3 positive, 1 negative" — omits a sentiment bucket entirely when it's
@@ -315,14 +396,24 @@ export function computeMomentum(
   const recent = signals.filter((s) => inWindow(s.occurred_on, recentStart, now));
   const prior = signals.filter((s) => inWindow(s.occurred_on, priorStart, recentStart));
 
-  const hiringRecentSignals = recent.filter((s) => s.type === "job_posting").length;
-  const hiringPriorSignals = prior.filter((s) => s.type === "job_posting").length;
+  // Kept as arrays, not just counts, so pickTopSignal can cite the actual
+  // story behind a swing rather than just a count pair (see
+  // MomentumComponent.topSignal) — every existing `.length` use below is
+  // unchanged, just moved onto the array.
+  const hiringRecentSignalList = recent.filter((s) => s.type === "job_posting");
+  const hiringPriorSignalList = prior.filter((s) => s.type === "job_posting");
+  const hiringRecentSignals = hiringRecentSignalList.length;
+  const hiringPriorSignals = hiringPriorSignalList.length;
 
-  const pricingRecentSignals = recent.filter((s) => s.type === "pricing").length;
-  const pricingPriorSignals = prior.filter((s) => s.type === "pricing").length;
+  const pricingRecentSignalList = recent.filter((s) => s.type === "pricing");
+  const pricingPriorSignalList = prior.filter((s) => s.type === "pricing");
+  const pricingRecentSignals = pricingRecentSignalList.length;
+  const pricingPriorSignals = pricingPriorSignalList.length;
 
-  const productChangeRecent = recent.filter((s) => s.type === "product_change").length;
-  const productChangePrior = prior.filter((s) => s.type === "product_change").length;
+  const productChangeRecentList = recent.filter((s) => s.type === "product_change");
+  const productChangePriorList = prior.filter((s) => s.type === "product_change");
+  const productChangeRecent = productChangeRecentList.length;
+  const productChangePrior = productChangePriorList.length;
 
   const pressRecentSignals = recent.filter((s) => s.type === "news" || s.type === "funding");
   const pressPriorSignals = prior.filter((s) => s.type === "news" || s.type === "funding");
@@ -491,6 +582,11 @@ export function computeMomentum(
           ? `${hiringRecentValue} open roles vs ${hiringPriorValue} last period`
           : countDetail(hiringScore, hiringRecentSignals, hiringPriorSignals),
       weight: hiringWeight,
+      // A magnitude reading (real open-role count) is its own evidence; the
+      // signal-count fallback needs the same volume floor as the other
+      // count-based components below.
+      wellSupported: hiringUsesMagnitude || hiringRecentSignals >= MIN_RECENT_EVIDENCE,
+      topSignal: hiringUsesMagnitude ? null : pickTopSignal(hiringRecentSignalList),
     },
     pricing: {
       label: "Pricing activity",
@@ -503,6 +599,8 @@ export function computeMomentum(
           ? `entry tier $${pricingRecentValue} vs $${pricingPriorValue} last period`
           : countDetail(pricingScore, pricingRecentSignals, pricingPriorSignals),
       weight: pricingWeight,
+      wellSupported: pricingUsesMagnitude || pricingRecentSignals >= MIN_RECENT_EVIDENCE,
+      topSignal: pricingUsesMagnitude ? null : pickTopSignal(pricingRecentSignalList),
     },
     productChange: {
       label: "Product changes",
@@ -511,6 +609,8 @@ export function computeMomentum(
       priorCount: productChangePrior,
       detail: countDetail(productChangeScore, productChangeRecent, productChangePrior),
       weight: productChangeWeight,
+      wellSupported: productChangeRecent >= MIN_RECENT_EVIDENCE,
+      topSignal: pickTopSignal(productChangeRecentList),
     },
     pressAndFunding: {
       label: "Press & funding",
@@ -522,6 +622,8 @@ export function computeMomentum(
           ? "no data"
           : `${describeSentimentMix(pressRecentSignals)} vs ${describeSentimentMix(pressPriorSignals)} last period`,
       weight: pressWeight,
+      wellSupported: pressRecentSignals.length >= MIN_RECENT_EVIDENCE,
+      topSignal: pickTopSignal(pressRecentSignals),
     },
     relevanceTrend: {
       label: "Relevance trend",
@@ -533,6 +635,8 @@ export function computeMomentum(
           ? "no data"
           : `avg ${relevanceRecentAvg} vs ${relevancePriorAvg} last period`,
       weight: relevanceWeight,
+      wellSupported: scoredRecent.length >= MIN_RECENT_EVIDENCE,
+      topSignal: null,
     },
     winRate: {
       label: "Win rate trend",
@@ -546,6 +650,10 @@ export function computeMomentum(
             : `${sortedWinLoss.length} logged, need ${MIN_WIN_LOSS_ENTRIES} to include this`
           : `${describeWinLossMix(winLossNewer)} recently vs ${describeWinLossMix(winLossOlder)} earlier`,
       weight: winRateWeight,
+      // Already gated behind MIN_WIN_LOSS_ENTRIES to get a score at all, so
+      // whenever this has a score it's already cleared its own floor.
+      wellSupported: true,
+      topSignal: null,
     },
     productActivity: {
       label: "Product activity (GitHub)",
@@ -556,6 +664,8 @@ export function computeMomentum(
         ? "no data"
         : `${githubRecentValue} commits/4wk vs ${githubPriorValue} commits/4wk last period`,
       weight: productActivityWeight,
+      wellSupported: true,
+      topSignal: null,
     },
     reviewSentiment: {
       label: "Review sentiment (G2/Capterra)",
@@ -564,6 +674,8 @@ export function computeMomentum(
       priorCount: reviewPriorValue ?? 0,
       detail: !reviewHasData ? "no data" : `${reviewRecentValue}★ vs ${reviewPriorValue}★ last period`,
       weight: reviewSentimentWeight,
+      wellSupported: true,
+      topSignal: null,
     },
     buzz: {
       label: "Buzz (Reddit/Hacker News)",
@@ -572,6 +684,8 @@ export function computeMomentum(
       priorCount: buzzPriorValue ?? 0,
       detail: !buzzHasData ? "no data" : `${buzzRecentValue} mentions vs ${buzzPriorValue} last period`,
       weight: buzzWeight,
+      wellSupported: true,
+      topSignal: null,
     },
     adActivity: {
       label: "Ad activity (Meta)",
@@ -580,6 +694,8 @@ export function computeMomentum(
       priorCount: adPriorValue ?? 0,
       detail: !adHasData ? "no data" : `${adRecentValue} active ads vs ${adPriorValue} last period`,
       weight: adActivityWeight,
+      wellSupported: true,
+      topSignal: null,
     },
     callMentions: {
       label: "Call mentions (Gong/Zoom)",
@@ -590,6 +706,8 @@ export function computeMomentum(
         ? "no data"
         : `${callMentionsRecentValue} calls vs ${callMentionsPriorValue} last period`,
       weight: callMentionsWeight,
+      wellSupported: true,
+      topSignal: null,
     },
   };
 
