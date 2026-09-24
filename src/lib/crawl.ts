@@ -177,7 +177,12 @@ async function ensureCompanyResearch(supabase: AdminSupabase, account: Account):
 }
 
 export type CrawlSummary = { account: string; newSignals: number; scored: number; error?: string };
-export type EnqueueSummary = { account: string; queued: number };
+// runId lets a caller that cares about completion (the admin "Recrawl now"
+// button — see /api/admin/accounts/[id]/recrawl) poll this specific run's
+// crawl_jobs rather than just firing and forgetting. Undefined when
+// nothing was queued (no competitors, or the insert itself failed) since
+// there's nothing to poll in either case.
+export type EnqueueSummary = { account: string; queued: number; runId?: string };
 
 type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
 
@@ -226,7 +231,7 @@ export async function enqueueCrawlForAccount(supabase: AdminSupabase, account: A
     return { account: account.name, queued: 0 };
   }
 
-  return { account: account.name, queued: competitors.length };
+  return { account: account.name, queued: competitors.length, runId: run.id };
 }
 
 export type CompetitorCrawlOptions = {
