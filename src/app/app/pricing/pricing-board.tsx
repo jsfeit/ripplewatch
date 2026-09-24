@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, DollarSign } from "lucide-react";
 import { EmptyState } from "@/components/app/empty-state";
-import { Card, CardAvatar, CardChangedBadge, CardFoot, CardHead } from "@/components/app/card";
+import { Card, CardAvatar, CardChangedBadge, CardHead } from "@/components/app/card";
 import { CaveatNote } from "@/components/app/caveat-note";
 import { cn } from "@/lib/utils";
 import { timeAgo } from "@/lib/date";
@@ -176,12 +176,17 @@ function cheapestPrice(record: CompetitorPricing | undefined): number | null {
   return prices.length > 0 ? Math.min(...prices) : null;
 }
 
-// Collapsed by default, same shape as Momentum's competitor rows: a
-// headline number up front (cheapest tier's price, the one figure someone
-// scanning the section actually wants) instead of every tier's full
-// feature list always expanded, which was what made this section run much
-// taller than any other card grid on the dashboard and read as a denser,
-// separate tool. Full tier breakdown is one click away, not gone.
+// Collapsed by default, same shape as Momentum's competitor rows: the
+// full spread of prices across tiers up front (not just the cheapest one)
+// so a glance already answers "what does the range look like," while the
+// feature list behind each tier stays one click away rather than always
+// expanded — that's what was making this section run much taller than any
+// other card grid on the dashboard. "Last checked" moved up next to the
+// billing chip (was its own bottom row via CardFoot) and a no-pricing
+// card's note is clamped to two lines instead of running however long the
+// scraper's message happens to be, so a mixed grid of found/blocked cards
+// reads as one consistent height instead of the blocked ones ballooning
+// past the ones with real data.
 function PricingCard({
   competitor,
   record,
@@ -192,8 +197,21 @@ function PricingCard({
   changedAt: string | undefined;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const cheapest = record?.tiers.find((t) => t.price !== null) ?? null;
   const hasTierDetail = Boolean(record?.publicly_priced && record.tiers.length > 0);
+  // Cheapest-to-most-expensive for the ladder line only (a quick read of
+  // the spread) — the expanded detail below keeps each tier in its
+  // original, named order (Starter/Team/Pro/...), since that's the order
+  // that actually means something once you're reading the feature lists.
+  const ladderTiers = hasTierDetail
+    ? [...record!.tiers].sort((a, b) => {
+        if (a.price === null && b.price === null) return 0;
+        if (a.price === null) return 1;
+        if (b.price === null) return -1;
+        return a.price - b.price;
+      })
+    : [];
+  const ladderPeriod = ladderTiers.find((t) => t.price_period)?.price_period ?? null;
+  const noPricingNote = record ? (record.note ?? "No public pricing found.") : null;
 
   return (
     <Card>
@@ -209,7 +227,7 @@ function PricingCard({
         </CaveatNote>
       ) : (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             <span
               className={cn(
                 "inline-flex w-fit items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold",
@@ -219,40 +237,45 @@ function PricingCard({
               <span className={cn("size-1.5 rounded-full", BILLING_MODEL_DOT[record.billing_model])} />
               {BILLING_MODEL_LABELS[record.billing_model]}
             </span>
-            {hasTierDetail ? (
-              <p className="text-base font-bold">
-                {cheapest ? (
-                  <>
-                    From ${cheapest.price}
-                    {cheapest.price_period ? (
-                      <span className="text-[11px] font-medium text-muted-foreground">/{cheapest.price_period}</span>
-                    ) : null}
-                  </>
-                ) : (
-                  <span className="text-sm font-medium text-muted-foreground">Not public</span>
-                )}
-              </p>
-            ) : null}
+            <span className="text-[11px] text-muted-foreground">Checked {timeAgo(record.last_checked_at)}</span>
           </div>
 
-          {!hasTierDetail ? (
-            <CaveatNote className="mt-2">
-              {record.note ?? "No public pricing found."}
-              {competitor.pricing_url ? (
-                <>
-                  {" "}
-                  <a href={competitor.pricing_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                    View page
-                  </a>
-                </>
-              ) : null}
-            </CaveatNote>
+          {hasTierDetail ? (
+            <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
+              {ladderTiers.map((tier, i) => (
+                <span key={tier.name + i} className="flex items-baseline">
+                  <span className={i === 0 ? "text-base font-bold" : "text-xs font-semibold text-muted-foreground"}>
+                    {tier.price !== null ? `$${tier.price}` : "Custom"}
+                  </span>
+                  {i < ladderTiers.length - 1 ? <span className="mx-1 text-muted-foreground/40">·</span> : null}
+                </span>
+              ))}
+              {ladderPeriod ? <span className="text-[11px] text-muted-foreground">/{ladderPeriod}</span> : null}
+            </div>
           ) : (
+            <div>
+              <CaveatNote title={noPricingNote ?? undefined}>
+                <span className="line-clamp-2">{noPricingNote}</span>
+              </CaveatNote>
+              {competitor.pricing_url ? (
+                <a
+                  href={competitor.pricing_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 inline-block text-[11px] font-medium text-primary hover:underline"
+                >
+                  View page →
+                </a>
+              ) : null}
+            </div>
+          )}
+
+          {hasTierDetail ? (
             <>
               <button
                 type="button"
                 onClick={() => setExpanded((e) => !e)}
-                className="mt-2 flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+                className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
               >
                 {record!.tiers.length} tier{record!.tiers.length === 1 ? "" : "s"}
                 <ChevronDown className={cn("size-3 transition-transform", expanded && "rotate-180")} />
@@ -292,11 +315,7 @@ function PricingCard({
                 </div>
               ) : null}
             </>
-          )}
-
-          <CardFoot>
-            <span>Last checked {timeAgo(record.last_checked_at)}</span>
-          </CardFoot>
+          ) : null}
         </>
       )}
     </Card>
