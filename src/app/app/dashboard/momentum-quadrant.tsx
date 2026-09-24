@@ -199,6 +199,16 @@ export function MomentumQuadrant({
   // range — used to caption the chart so a tightened axis doesn't get
   // silently misread as "everyone happens to sit near the far edge."
   const isZoomed = relevanceDomain.max - relevanceDomain.min < 100 || scoreDomain.max - scoreDomain.min < 200;
+  // Once zoomed, absolute 0 (score) and 50 (relevance) frequently fall
+  // outside the visible domain entirely (a cluster of competitors that are
+  // all below 50 relevance, say) — suppressing the gridline in that case
+  // left the chart looking like it had no axis at all, not like a
+  // quadrant chart. The cross is always drawn now, at the middle of
+  // whatever range is currently in view (which is exactly the chart's own
+  // pixel center by construction, since domainFor centers its span on the
+  // data) — same "how do your competitors compare to EACH OTHER" framing
+  // as the zoom itself and the caption below, rather than an absolute
+  // "how do you compare to a fixed 0" that the zoom already gave up on.
 
   function xFor(relevanceLevel: number): number {
     const span = relevanceDomain.max - relevanceDomain.min || 1;
@@ -226,23 +236,12 @@ export function MomentumQuadrant({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plottable, relevanceDomain, scoreDomain]);
 
-  // Zero gridlines only mean something when they actually fall inside the
-  // zoomed-in domain — drawing a dashed line pinned to the chart's edge
-  // after zooming past the real 0/50 mark would silently misrepresent
-  // where neutral actually is.
-  const showScoreZeroLine = scoreDomain.min <= 0 && scoreDomain.max >= 0;
-  const showRelevanceMidLine = relevanceDomain.min <= 50 && relevanceDomain.max >= 50;
-
   return (
     <div>
       <div className="rounded-lg border border-border bg-secondary/20 p-3">
         <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} className="w-full" role="img" aria-label="Competitors plotted by momentum and relevance to your business">
-          {showScoreZeroLine ? (
-            <line x1={PAD} y1={yFor(0)} x2={VIEW_W - PAD} y2={yFor(0)} className="text-border" stroke="currentColor" strokeWidth="1" strokeDasharray="3 4" />
-          ) : null}
-          {showRelevanceMidLine ? (
-            <line x1={xFor(50)} y1={PAD} x2={xFor(50)} y2={VIEW_H - PAD} className="text-border" stroke="currentColor" strokeWidth="1" strokeDasharray="3 4" />
-          ) : null}
+          <line x1={PAD} y1={VIEW_H / 2} x2={VIEW_W - PAD} y2={VIEW_H / 2} className="text-border" stroke="currentColor" strokeWidth="1" strokeDasharray="3 4" />
+          <line x1={VIEW_W / 2} y1={PAD} x2={VIEW_W / 2} y2={VIEW_H - PAD} className="text-border" stroke="currentColor" strokeWidth="1" strokeDasharray="3 4" />
 
           <text x={PAD} y={14} className="fill-muted-foreground" fontSize="9">
             Cooling
