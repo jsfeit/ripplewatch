@@ -23,7 +23,7 @@ type CompetitorPricing = Pick<Database["public"]["Tables"]["competitor_pricing"]
 type SignalRow = Database["public"]["Tables"]["signals"]["Row"];
 type MomentumSignal = Pick<
   SignalRow,
-  "competitor_id" | "type" | "sentiment" | "occurred_on" | "scored" | "relevance_score"
+  "competitor_id" | "type" | "sentiment" | "occurred_on" | "scored" | "relevance_score" | "title" | "url"
 >;
 type LatestSignal = Pick<SignalRow, "title">;
 type MomentumWinLoss = Pick<
@@ -44,11 +44,22 @@ function pricingSummary(record: CompetitorPricing | undefined): string {
 // low reliability weight (e.g. one stale signal) shouldn't outrank a
 // smaller but well-supported one. This is what lets a row say "why" at a
 // glance instead of making someone expand it to find out.
-function topDriver(momentum: MomentumResult): MomentumComponent | null {
+//
+// requireWellSupported restricts the search to components that have
+// cleared MIN_SIGNAL_EVIDENCE (see momentum.ts) — used for the Focus
+// banner below, which headlines one specific reason and shouldn't lead
+// with a component whose score came from a single thin data point, even
+// if that component happens to have the largest raw swing. The row-level
+// call (no restriction) still surfaces whatever actually moved the score,
+// thin or not — expanding a row is an explicit request for the detail, so
+// it's fine to show the real driver there and let the evidence speak for
+// itself via the component list underneath.
+function topDriver(momentum: MomentumResult, opts?: { requireWellSupported?: boolean }): MomentumComponent | null {
   let best: MomentumComponent | null = null;
   let bestMagnitude = 0;
   for (const component of Object.values(momentum.components)) {
     if (component.score === null) continue;
+    if (opts?.requireWellSupported && !component.wellSupported) continue;
     const magnitude = Math.abs(component.score) * component.weight;
     if (magnitude > bestMagnitude) {
       bestMagnitude = magnitude;
@@ -204,14 +215,23 @@ export function CompetitorOverview({
   // this stays a pointer, not a second copy of the list below it.
   type FocusItem =
     | { kind: "gone_quiet"; competitor: Competitor; goneQuiet: GoneQuietResult }
-    | { kind: "heating_up"; competitor: Competitor; momentum: MomentumResult };
+    | { kind: "heating_up"; competitor: Competitor; momentum: MomentumResult; driver: MomentumComponent };
   const focusCompetitors = useMemo(() => {
     const quiet: FocusItem[] = sorted
       .filter((c) => goneQuietByCompetitor.get(c.id))
       .map((c) => ({ kind: "gone_quiet" as const, competitor: c, goneQuiet: goneQuietByCompetitor.get(c.id)! }));
+    // Only featured when a well-supported component actually explains the
+    // move — a "Heating up" label backed by nothing but a single thin
+    // signal still shows as a pill in the list below, it just doesn't get
+    // promoted to "the thing to look at first" without real evidence
+    // behind it.
     const heating: FocusItem[] = sorted
       .filter((c) => momentumByCompetitor.get(c.id)?.label === "Heating up")
-      .map((c) => ({ kind: "heating_up" as const, competitor: c, momentum: momentumByCompetitor.get(c.id)! }));
+      .flatMap((c) => {
+        const momentum = momentumByCompetitor.get(c.id)!;
+        const driver = topDriver(momentum, { requireWellSupported: true });
+        return driver ? [{ kind: "heating_up" as const, competitor: c, momentum, driver }] : [];
+      });
     return [...quiet, ...heating].slice(0, 2);
   }, [sorted, momentumByCompetitor, goneQuietByCompetitor]);
 
@@ -236,11 +256,30 @@ export function CompetitorOverview({
                 <>has gone quiet, and it&apos;s worth a look. {item.goneQuiet.reason}</>
               ) : (
                 <>
-                  is heating up
-                  {(() => {
-                    const driver = topDriver(item.momentum);
-                    return driver ? `, driven by ${driver.label.toLowerCase()} (${driver.detail}).` : ".";
-                  })()}
+                  is heating up, driven by {item.driver.label.toLowerCase()}
+                  {item.driver.topSignal ? (
+                    <>
+                      :{" "}
+                      {item.driver.topSignal.url ? (
+                        <a
+                          href={item.driver.topSignal.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline"
+                        >
+                          &ldquo;{item.driver.topSignal.title}&rdquo;
+                        </a>
+                      ) : (
+                        <>&ldquo;{item.driver.topSignal.title}&rdquo;</>
+                      )}
+                      {item.driver.topSignal.sentiment === "positive" || item.driver.topSignal.sentiment === "negative"
+                        ? ` (${item.driver.topSignal.sentiment})`
+                        : ""}
+                      , {item.driver.detail}.
+                    </>
+                  ) : (
+                    <> ({item.driver.detail}).</>
+                  )}
                 </>
               )}
             </span>
@@ -462,11 +501,39 @@ function CompetitorRow({
             </p>
           ) : null}
           {hasMomentumData ? (
-            <div className="space-y-1 text-[11px]">
+            <div className="space-y-1.5 text-[11px]">
               {Object.values(momentum.components).map((c) => (
-                <div key={c.label} className="flex items-center justify-between text-muted-foreground">
-                  <span>{c.label}</span>
-                  <span className="tabular-nums">{c.detail}</span>
+                <div key={c.label} className="text-muted-foreground">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-1">
+                      {c.label}
+                      {c.score !== null && !c.wellSupported ? (
+                        <span
+                          className="rounded-sm bg-amber-500/10 px-1 py-px text-[9px] font-semibold text-amber-600 dark:text-amber-400"
+                          title="Based on very little data so far — an early signal, not yet a confirmed trend."
+                        >
+                          thin
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="shrink-0 tabular-nums">{c.detail}</span>
+                  </div>
+                  {c.topSignal ? (
+                    <p className="mt-0.5 truncate text-[10.5px] italic">
+                      {c.topSignal.url ? (
+                        <a
+                          href={c.topSignal.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline"
+                        >
+                          &ldquo;{c.topSignal.title}&rdquo;
+                        </a>
+                      ) : (
+                        <>&ldquo;{c.topSignal.title}&rdquo;</>
+                      )}
+                    </p>
+                  ) : null}
                 </div>
               ))}
             </div>
