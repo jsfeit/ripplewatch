@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ChevronDown,
@@ -211,13 +211,69 @@ export function CompetitorOverview({
     [competitors, momentumByCompetitor]
   );
 
-  const [expanded, setExpanded] = useState(true);
+  // Named sectionExpanded, not just "expanded" — a second, unrelated
+  // "expanded" concept (which competitor ROWS are open) got added below
+  // once the Map's click-through needed to force one open, and reusing the
+  // same name for both was already confusing before that.
+  const [sectionExpanded, setSectionExpanded] = useState(true);
   // Map defaults off, and its toggle button only renders at sm: and up
   // (see the JSX below) — a scatter plot needs real width to read, and a
   // phone-width user who somehow already had "map" selected (e.g. resized
   // down from desktop) would otherwise be stuck looking at a squeezed
   // chart with no visible way back to the list.
   const [view, setView] = useState<"list" | "map">("list");
+
+  // Which competitor rows are expanded — lifted up from CompetitorRow's own
+  // local state so a Map dot click (see handleMapSelect) can force a
+  // specific row open without fighting each row's independent toggle.
+  const [expandedRowIds, setExpandedRowIds] = useState<Set<string>>(new Set());
+  function toggleRowExpanded(id: string) {
+    setExpandedRowIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  // Scrolls to and briefly highlights a row after a Map click — see
+  // handleMapSelect and the effect below. rowRefs isn't state: mutating it
+  // doesn't need a re-render, only the effect that reads it after view
+  // switches to "list" does.
+  const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  // A token (not just the id) so clicking the SAME dot twice in a row still
+  // re-triggers the scroll — an object's identity changes every call even
+  // when its id doesn't, where storing just a string wouldn't change and
+  // the effect wouldn't re-fire. This also sidesteps ever needing to reset
+  // the value back to null from inside the effect itself (a lint-flagged
+  // pattern — setState synchronously inside an effect body).
+  const [scrollTarget, setScrollTarget] = useState<{ id: string; token: number } | null>(null);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!scrollTarget || view !== "list") return;
+    const el = rowRefs.current.get(scrollTarget.id);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [scrollTarget, view]);
+
+  useEffect(() => {
+    if (!highlightId) return;
+    const t = setTimeout(() => setHighlightId(null), 1800);
+    return () => clearTimeout(t);
+  }, [highlightId]);
+
+  // What clicking a Map dot actually does — jumps to that competitor's row
+  // right here on the dashboard (switching to List if needed, expanding
+  // the row, scrolling it into view, briefly highlighting it) instead of
+  // navigating to a separate page. The "Fact sheet" link inside the
+  // expanded row is still there for anyone who wants the full page.
+  function handleMapSelect(id: string) {
+    setView("list");
+    setSectionExpanded(true);
+    setExpandedRowIds((prev) => new Set(prev).add(id));
+    setScrollTarget({ id, token: Date.now() });
+    setHighlightId(id);
+  }
 
   // Lazy initializer, not an inline Date.now() call, so this stays a pure
   // render — see daysAgoIso's equivalent server-side fix for the same rule.
@@ -356,7 +412,7 @@ export function CompetitorOverview({
       </div>
 
       {view === "map" ? (
-        <MomentumQuadrant competitors={quadrantCompetitors} />
+        <MomentumQuadrant competitors={quadrantCompetitors} onSelect={handleMapSelect} />
       ) : (
         <>
           {/* Expanded by default — Momentum leads the dashboard now, so the
@@ -366,7 +422,7 @@ export function CompetitorOverview({
           <button
             type="button"
             data-tour="competitor-card"
-            onClick={() => setExpanded((e) => !e)}
+            onClick={() => setSectionExpanded((e) => !e)}
             className="flex w-full items-center justify-between rounded-lg border border-border bg-card px-4 py-3 text-left hover:border-primary/40"
           >
             <span className="text-sm">
@@ -392,12 +448,12 @@ export function CompetitorOverview({
               ) : null}
             </span>
             <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
-              {expanded ? "Collapse" : "Show all"}
-              <ChevronDown className={cn("size-3.5 transition-transform", expanded && "rotate-180")} />
+              {sectionExpanded ? "Collapse" : "Show all"}
+              <ChevronDown className={cn("size-3.5 transition-transform", sectionExpanded && "rotate-180")} />
             </span>
           </button>
 
-          {expanded ? (
+          {sectionExpanded ? (
             <div className="mt-2.5 space-y-2.5">
               {sorted.map((competitor) => (
                 <CompetitorRow
@@ -408,6 +464,13 @@ export function CompetitorOverview({
                   latestSignal={latestSignalByCompetitor[competitor.id]}
                   pricingRecord={pricingByCompetitor[competitor.id]}
                   sparkline={sparklineByCompetitor.get(competitor.id) ?? []}
+                  expanded={expandedRowIds.has(competitor.id)}
+                  onToggleExpanded={() => toggleRowExpanded(competitor.id)}
+                  highlighted={highlightId === competitor.id}
+                  rowRef={(el) => {
+                    if (el) rowRefs.current.set(competitor.id, el);
+                    else rowRefs.current.delete(competitor.id);
+                  }}
                 />
               ))}
             </div>
@@ -592,6 +655,10 @@ function CompetitorRow({
   latestSignal,
   pricingRecord,
   sparkline,
+  expanded,
+  onToggleExpanded,
+  highlighted,
+  rowRef,
 }: {
   competitor: Competitor;
   momentum: MomentumResult;
@@ -599,8 +666,17 @@ function CompetitorRow({
   latestSignal: LatestSignal | undefined;
   pricingRecord: CompetitorPricing | undefined;
   sparkline: number[];
+  // Lifted to CompetitorOverview (was local state) so a Map dot click can
+  // force this specific row open — see handleMapSelect.
+  expanded: boolean;
+  onToggleExpanded: () => void;
+  // Briefly true right after a Map click lands on this row — a highlight
+  // ring, not a persistent state, so "you jumped here" is visible even
+  // though the row was already fully in view (scrollIntoView alone gives
+  // no feedback when nothing needed to scroll).
+  highlighted: boolean;
+  rowRef: (el: HTMLDivElement | null) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
   const hasMomentumData = momentum.score !== null;
   // Named here so the collapsed row already answers "why," instead of
   // making someone expand every row just to find the one component that
@@ -615,6 +691,7 @@ function CompetitorRow({
   const sparklineColor = displayLabel === "Heating up" ? "emerald" : displayLabel === "Cooling" ? "rose" : "muted";
 
   return (
+    <div ref={rowRef} className={cn("rounded-xl transition-shadow", highlighted && "ring-2 ring-primary/60")}>
     <Card>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
@@ -650,7 +727,7 @@ function CompetitorRow({
           <div className="flex flex-col items-end gap-0.5">
             <button
               type="button"
-              onClick={() => (hasMomentumData || goneQuiet) && setExpanded((e) => !e)}
+              onClick={() => (hasMomentumData || goneQuiet) && onToggleExpanded()}
               disabled={!hasMomentumData && !goneQuiet}
               className={cn(
                 "flex items-center gap-1.5 rounded-full px-2.5 py-1",
@@ -738,5 +815,6 @@ function CompetitorRow({
         </div>
       ) : null}
     </Card>
+    </div>
   );
 }
