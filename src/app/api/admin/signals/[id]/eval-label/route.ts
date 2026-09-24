@@ -16,7 +16,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       { signal_id: id, label, note: body?.note?.trim() || null },
       { onConflict: "signal_id" }
     )
-    .select("*")
+    .select("signal_id, label, note")
     .single();
 
   if (error) {

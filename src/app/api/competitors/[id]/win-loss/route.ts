@@ -33,7 +33,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { data, error } = await supabase
     .from("competitor_win_loss")
     .insert({ account_id: profile.account_id, competitor_id: id, outcome, reason, created_by: user.id })
-    .select("*")
+    .select("id, outcome, reason, created_at")
     .single();
 
   if (error) {

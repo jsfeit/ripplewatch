@@ -38,7 +38,7 @@ export async function generateWeeklyAccountIntelligence(
   const sevenDaysAgo = new Date(Date.now() - SEVEN_DAYS_MS).toISOString();
   const { data: weekSignals } = await supabase
     .from("signals")
-    .select("*")
+    .select("competitor_id, title, type, occurred_on, relevance_level, relevance_reasoning")
     .in("competitor_id", competitorIds)
     .in("relevance_level", ["High", "Medium"])
     .gte("created_at", sevenDaysAgo)

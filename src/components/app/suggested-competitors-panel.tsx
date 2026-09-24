@@ -10,7 +10,7 @@ import { Panel } from "@/components/ui/panel";
 import { cn, avatarColor } from "@/lib/utils";
 import type { Database } from "@/lib/supabase/types";
 
-type Suggestion = Database["public"]["Tables"]["suggested_competitors"]["Row"];
+type Suggestion = Pick<Database["public"]["Tables"]["suggested_competitors"]["Row"], "id" | "name" | "category" | "reasoning">;
 
 // Weekly discovery job surfaces these (see /api/cron/discover-competitors);
 // this panel is how a member reviews and acts on them. Renders nothing once

@@ -5,7 +5,10 @@ import { generateWeeklyAccountIntelligence } from "@/lib/digest";
 import { mapWithConcurrency } from "@/lib/crawl";
 import type { Database } from "@/lib/supabase/types";
 
-type Signal = Database["public"]["Tables"]["signals"]["Row"];
+type Signal = Pick<
+  Database["public"]["Tables"]["signals"]["Row"],
+  "id" | "competitor_id" | "title" | "scored" | "relevance_level" | "relevance_reasoning"
+>;
 type Account = Database["public"]["Tables"]["accounts"]["Row"];
 
 // Bounded the same way digest-daily/crawl fan out across accounts — each
@@ -70,7 +73,7 @@ export async function GET(request: Request) {
 
     const { data: signals } = await supabase
       .from("signals")
-      .select("*")
+      .select("id, competitor_id, title, scored, relevance_level, relevance_reasoning")
       .in("competitor_id", competitorIds)
       .is("email_digest_sent_at", null)
       .or("relevance_level.eq.Low,scored.eq.false")

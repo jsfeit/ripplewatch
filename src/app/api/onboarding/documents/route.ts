@@ -14,7 +14,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("account_documents")
-    .select("*")
+    .select("id, file_name, size_bytes")
     .eq("uploaded_by", user.id)
     .order("created_at", { ascending: false });
 
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
       storage_path: storagePath,
       size_bytes: file.size,
     })
-    .select("*")
+    .select("id, file_name, size_bytes")
     .single();
 
   if (error) {

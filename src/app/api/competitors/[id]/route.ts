@@ -76,7 +76,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       ...(githubRepo !== undefined ? { github_repo: githubRepo || null } : {}),
     })
     .eq("id", id)
-    .select("*")
+    .select("id, name, domain, category, github_repo, created_at, account_id")
     .single();
 
   if (error) {

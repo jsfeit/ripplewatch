@@ -6,7 +6,7 @@ import { buildSnapshot } from "@/lib/snapshot";
 import { createFollowup, announceFollowup } from "@/lib/followups";
 
 type AdminClient = SupabaseClient<Database>;
-type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
+type Competitor = Pick<Database["public"]["Tables"]["competitors"]["Row"], "id" | "name" | "domain" | "account_id">;
 
 // Runs after a signed-in customer adds (or re-points) a competitor, off the
 // request path. It applies the same machinery the public snapshot uses (direct

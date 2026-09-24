@@ -29,11 +29,31 @@ import { EmbeddedCheckoutModal } from "@/components/app/embedded-checkout-modal"
 import { PurchaseTracker } from "@/components/app/purchase-tracker";
 import type { Database } from "@/lib/supabase/types";
 
-type Account = Database["public"]["Tables"]["accounts"]["Row"];
-type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
-type Suggestion = Database["public"]["Tables"]["suggested_competitors"]["Row"];
-type Integration = Database["public"]["Tables"]["integrations"]["Row"];
-type Signal = Database["public"]["Tables"]["signals"]["Row"];
+type Account = Pick<
+  Database["public"]["Tables"]["accounts"]["Row"],
+  | "id"
+  | "tier"
+  | "status"
+  | "subscription_status"
+  | "contact_email"
+  | "demo_mode"
+  | "referral_code"
+  | "slack_digest_day"
+  | "slack_digest_hour"
+  | "stripe_customer_id"
+  | "stripe_subscription_id"
+  | "timezone"
+>;
+type Competitor = Pick<
+  Database["public"]["Tables"]["competitors"]["Row"],
+  "id" | "name" | "domain" | "category" | "github_repo" | "created_at"
+>;
+type Suggestion = Pick<Database["public"]["Tables"]["suggested_competitors"]["Row"], "id" | "name" | "category" | "reasoning">;
+type Integration = Pick<Database["public"]["Tables"]["integrations"]["Row"], "provider" | "connected">;
+type Signal = Pick<
+  Database["public"]["Tables"]["signals"]["Row"],
+  "id" | "competitor_id" | "scored" | "relevance_level" | "relevance_reasoning" | "title"
+>;
 type ApiKey = Pick<
   Database["public"]["Tables"]["api_keys"]["Row"],
   "id" | "name" | "key_prefix" | "last_used_at" | "created_at"

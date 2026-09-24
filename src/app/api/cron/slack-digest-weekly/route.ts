@@ -69,7 +69,7 @@ export async function GET(request: Request) {
 
     const { data: slackIntegration } = await supabase
       .from("integrations")
-      .select("*")
+      .select("credentials")
       .eq("account_id", account.id)
       .eq("provider", "slack")
       .eq("connected", true)
