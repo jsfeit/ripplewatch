@@ -41,10 +41,25 @@ export default async function CompetitorDetailPage({
     { data: marketProfile },
   ] = await Promise.all([
     db.from("accounts").select("name, tier, has_sales_crm, has_plg").eq("id", accountId).single(),
-    db.from("competitors").select("*").eq("account_id", accountId).order("created_at", { ascending: true }),
+    // NOTE: pricing_fetch_failures/pricing_last_failed_at/
+    // careers_fetch_failures/careers_last_failed_at (migration 0059) are
+    // deliberately NOT selected here even though CompetitorMonitoringUrls
+    // has props for them — that migration was never actually applied to
+    // production (confirmed directly against the live DB while narrowing
+    // this select), so those columns don't exist there yet. select("*")
+    // was silently omitting them before too; this just makes that explicit
+    // instead of accidentally erroring the whole query once real column
+    // names are specified. Add them back here once migration 0059 ships.
+    db
+      .from("competitors")
+      .select(
+        "id, name, domain, category, github_repo, created_at, pricing_url, careers_url, fact_sheet_why_we_win, fact_sheet_why_we_lose, fact_sheet_generated_at"
+      )
+      .eq("account_id", accountId)
+      .order("created_at", { ascending: true }),
     db
       .from("suggested_competitors")
-      .select("*")
+      .select("id, name, category, reasoning")
       .eq("account_id", accountId)
       .eq("status", "pending")
       .order("discovered_at", { ascending: false }),
@@ -166,10 +181,18 @@ export default async function CompetitorDetailPage({
             domain={competitor.domain}
             initialPricingUrl={competitor.pricing_url}
             initialCareersUrl={competitor.careers_url}
-            pricingFetchFailures={competitor.pricing_fetch_failures}
-            pricingLastFailedAt={competitor.pricing_last_failed_at}
-            careersFetchFailures={competitor.careers_fetch_failures}
-            careersLastFailedAt={competitor.careers_last_failed_at}
+            // These four columns (migration 0059) aren't selected above
+            // because they don't exist on production yet — see the select's
+            // own comment. 0/null here matches what was actually happening
+            // before this select was narrowed (select("*") already silently
+            // returned undefined for these, which behaved as "no known
+            // failures" wherever UrlHealthWarning compares against a
+            // threshold) — not a behavior change, just made honest instead
+            // of a silent type mismatch.
+            pricingFetchFailures={0}
+            pricingLastFailedAt={null}
+            careersFetchFailures={0}
+            careersLastFailedAt={null}
           />
         </div>
       </div>

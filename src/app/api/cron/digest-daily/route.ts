@@ -5,7 +5,10 @@ import { generateDigestVerdict, type VerdictSignal } from "@/lib/anthropic";
 import { mapWithConcurrency } from "@/lib/crawl";
 import type { Database } from "@/lib/supabase/types";
 
-type Signal = Database["public"]["Tables"]["signals"]["Row"];
+type Signal = Pick<
+  Database["public"]["Tables"]["signals"]["Row"],
+  "id" | "competitor_id" | "title" | "relevance_level" | "relevance_reasoning"
+>;
 type Account = Database["public"]["Tables"]["accounts"]["Row"];
 type AdminSupabase = ReturnType<typeof createAdminClient>;
 
@@ -25,7 +28,7 @@ async function sendDailyDigestForAccount(supabase: AdminSupabase, account: Accou
 
   const { data: signals } = await supabase
     .from("signals")
-    .select("*")
+    .select("id, competitor_id, title, relevance_level, relevance_reasoning")
     .in("competitor_id", competitorIds)
     .in("relevance_level", ["High", "Medium"])
     .is("email_digest_sent_at", null)

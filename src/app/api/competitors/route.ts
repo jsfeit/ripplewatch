@@ -106,7 +106,7 @@ export async function POST(request: Request) {
       pricing_url: urls.pricingUrl,
       careers_url: urls.careersUrl,
     })
-    .select("*")
+    .select("id, name, domain, category, github_repo, created_at, account_id")
     .single();
 
   if (error) {

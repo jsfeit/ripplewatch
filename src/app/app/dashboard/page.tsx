@@ -203,7 +203,13 @@ export default async function DashboardPage() {
       .limit(1)
       .maybeSingle(),
     // --- Market & product profile ---
-    db.from("market_profile").select("*").eq("account_id", accountId).maybeSingle(),
+    db
+      .from("market_profile")
+      .select(
+        "market_name, market_description, maturity, growth_direction, growth_reason, dynamics, product_summary, generated_at, user_edited_at"
+      )
+      .eq("account_id", accountId)
+      .maybeSingle(),
     // --- Trends: recurring win/loss themes ---
     db
       .from("win_loss_trends")

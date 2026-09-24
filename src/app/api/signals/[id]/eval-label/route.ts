@@ -26,7 +26,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   const { data, error } = await supabase
     .from("signal_eval_labels")
     .upsert({ signal_id: id, label, labeled_by: user.id }, { onConflict: "signal_id" })
-    .select("*")
+    .select("signal_id, label")
     .single();
 
   if (error) {

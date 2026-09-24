@@ -10,7 +10,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
   const { token } = await params;
 
   const admin = createAdminClient();
-  const { data: invite } = await admin.from("invites").select("*").eq("token", token).single();
+  const { data: invite } = await admin.from("invites").select("account_id, email, accepted_at").eq("token", token).single();
   if (!invite) notFound();
 
   const { data: account } = await admin.from("accounts").select("name").eq("id", invite.account_id).single();

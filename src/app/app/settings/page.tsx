@@ -38,12 +38,22 @@ export default async function SettingsPage() {
     { data: apiKeys },
     { data: referrals },
   ] = await Promise.all([
-    db.from("accounts").select("*").eq("id", accountId).single(),
-    db.from("competitors").select("*").eq("account_id", accountId).order("created_at", { ascending: true }),
-    db.from("integrations").select("*").eq("account_id", accountId),
+    db
+      .from("accounts")
+      .select(
+        "id, tier, status, subscription_status, contact_email, demo_mode, referral_code, slack_digest_day, slack_digest_hour, stripe_customer_id, stripe_subscription_id, timezone"
+      )
+      .eq("id", accountId)
+      .single(),
+    db
+      .from("competitors")
+      .select("id, name, domain, category, github_repo, created_at")
+      .eq("account_id", accountId)
+      .order("created_at", { ascending: true }),
+    db.from("integrations").select("provider, connected").eq("account_id", accountId),
     db
       .from("suggested_competitors")
-      .select("*")
+      .select("id, name, category, reasoning")
       .eq("account_id", accountId)
       .eq("status", "pending")
       .order("discovered_at", { ascending: false }),
@@ -81,7 +91,7 @@ export default async function SettingsPage() {
     ? await Promise.all([
         db
           .from("signals")
-          .select("*")
+          .select("id, competitor_id, scored, relevance_level, relevance_reasoning, title")
           .in("competitor_id", competitorIds)
           .order("occurred_on", { ascending: false })
           .limit(10),

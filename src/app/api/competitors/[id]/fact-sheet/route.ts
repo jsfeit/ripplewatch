@@ -34,7 +34,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
   // RLS scopes this read to the caller's own account, so a competitor from
   // another account simply won't be found here.
-  const { data: competitor } = await supabase.from("competitors").select("*").eq("id", id).single();
+  const { data: competitor } = await supabase.from("competitors").select("name, category").eq("id", id).single();
   if (!competitor) {
     return NextResponse.json({ error: "Competitor not found." }, { status: 404 });
   }

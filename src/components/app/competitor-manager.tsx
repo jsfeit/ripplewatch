@@ -14,7 +14,10 @@ import { MOMENTUM_STYLES, type MomentumResult } from "@/lib/momentum";
 import type { GoneQuietResult } from "@/lib/gone-quiet";
 import type { Database } from "@/lib/supabase/types";
 
-type Competitor = Database["public"]["Tables"]["competitors"]["Row"];
+type Competitor = Pick<
+  Database["public"]["Tables"]["competitors"]["Row"],
+  "id" | "name" | "domain" | "category" | "github_repo" | "created_at"
+>;
 type Tier = Database["public"]["Tables"]["accounts"]["Row"]["tier"];
 
 type SortOption = "momentum" | "name" | "date";

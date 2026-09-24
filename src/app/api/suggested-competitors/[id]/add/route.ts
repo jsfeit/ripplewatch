@@ -31,7 +31,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const { data: suggestion } = await db
     .from("suggested_competitors")
-    .select("*")
+    .select("status, domain, name, category")
     .eq("id", id)
     .eq("account_id", accountId)
     .maybeSingle();
@@ -76,7 +76,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       pricing_url: urls.pricingUrl,
       careers_url: urls.careersUrl,
     })
-    .select("*")
+    .select("id, name, domain, account_id")
     .single();
 
   if (error) {

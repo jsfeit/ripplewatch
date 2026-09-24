@@ -42,7 +42,7 @@ export async function GET() {
 
   const { data: invites } = await supabase
     .from("invites")
-    .select("*")
+    .select("id, email, created_at")
     .eq("account_id", profile.account_id)
     .is("accepted_at", null)
     .order("created_at", { ascending: false });
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
   const { data: invite, error } = await supabase
     .from("invites")
     .insert({ account_id: profile.account_id, email, invited_by: user.id })
-    .select("*")
+    .select("token")
     .single();
 
   if (error) {

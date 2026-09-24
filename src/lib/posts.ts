@@ -22,7 +22,10 @@ export type PostEntry = {
   body: PostBlock[];
 };
 
-type BlogPostRow = Database["public"]["Tables"]["blog_posts"]["Row"];
+type BlogPostRow = Pick<
+  Database["public"]["Tables"]["blog_posts"]["Row"],
+  "id" | "slug" | "title" | "description" | "published_at" | "body" | "updated_at"
+>;
 
 function rowToPost(row: BlogPostRow): PostEntry {
   return {
@@ -38,13 +41,20 @@ function rowToPost(row: BlogPostRow): PostEntry {
 
 export async function getAllPosts(): Promise<PostEntry[]> {
   const supabase = createPublicClient();
-  const { data } = await supabase.from("blog_posts").select("*").order("published_at", { ascending: false });
+  const { data } = await supabase
+    .from("blog_posts")
+    .select("id, slug, title, description, published_at, body, updated_at")
+    .order("published_at", { ascending: false });
   return (data ?? []).map(rowToPost);
 }
 
 export async function getPost(slug: string): Promise<PostEntry | undefined> {
   const supabase = createPublicClient();
-  const { data } = await supabase.from("blog_posts").select("*").eq("slug", slug).maybeSingle();
+  const { data } = await supabase
+    .from("blog_posts")
+    .select("id, slug, title, description, published_at, body, updated_at")
+    .eq("slug", slug)
+    .maybeSingle();
   return data ? rowToPost(data) : undefined;
 }
 

@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   }
 
   const admin = createAdminClient();
-  const { data: invite } = await admin.from("invites").select("*").eq("token", token).single();
+  const { data: invite } = await admin.from("invites").select("id, account_id, role, accepted_at").eq("token", token).single();
 
   if (!invite) {
     return NextResponse.json({ error: "This invite link isn't valid." }, { status: 404 });

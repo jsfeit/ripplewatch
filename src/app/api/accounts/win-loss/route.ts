@@ -48,7 +48,7 @@ export async function POST(request: Request) {
   const { data, error } = await supabase
     .from("competitor_win_loss")
     .insert({ account_id: accountId, competitor_id: competitorId, outcome, reason, created_by: user.id })
-    .select("*")
+    .select("id, outcome, reason, created_at")
     .single();
 
   if (error) {

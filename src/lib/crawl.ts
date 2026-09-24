@@ -91,7 +91,7 @@ async function buildCallMentions(
 ): Promise<CompetitorMention[]> {
   const { data: callIntegrations } = await supabase
     .from("integrations")
-    .select("*")
+    .select("credentials, provider")
     .eq("account_id", accountId)
     .in("provider", ["gong", "zoom"])
     .eq("connected", true);
@@ -120,7 +120,7 @@ async function buildCallMentions(
 async function buildHubspotNotes(supabase: AdminSupabase, accountId: string): Promise<string | null> {
   const { data: integration } = await supabase
     .from("integrations")
-    .select("*")
+    .select("credentials")
     .eq("account_id", accountId)
     .eq("provider", "hubspot")
     .eq("connected", true)
@@ -140,7 +140,7 @@ async function buildHubspotNotes(supabase: AdminSupabase, accountId: string): Pr
 async function buildIntercomNotes(supabase: AdminSupabase, accountId: string): Promise<string | null> {
   const { data: integration } = await supabase
     .from("integrations")
-    .select("*")
+    .select("credentials")
     .eq("account_id", accountId)
     .eq("provider", "intercom")
     .eq("connected", true)
@@ -664,7 +664,7 @@ async function scoreAccountSignals(supabase: AdminSupabase, account: Account): P
   if (highRelevanceSignals.length > 0) {
     const { data: slackIntegration } = await supabase
       .from("integrations")
-      .select("*")
+      .select("credentials")
       .eq("account_id", account.id)
       .eq("provider", "slack")
       .eq("connected", true)
