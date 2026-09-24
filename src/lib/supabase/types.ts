@@ -14,6 +14,8 @@ export type ProfileRole = "member" | "admin";
 export type BillingModel = "subscription" | "per_seat" | "usage_based" | "custom" | "unknown";
 export type SuggestedCompetitorStatus = "pending" | "dismissed" | "added";
 export type WinLossOutcome = "won" | "lost" | "churned";
+export type NpsSource = "manual" | "csv_import";
+export type CustomerAskStatus = "new" | "considering" | "planned" | "shipped" | "declined";
 
 export type PricingTier = {
   name: string;
@@ -250,6 +252,54 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["competitor_win_loss"]["Insert"]>;
+        Relationships: [];
+      };
+      account_nps_responses: {
+        Row: {
+          id: string;
+          account_id: string;
+          score: number;
+          reason: string | null;
+          respondent: string | null;
+          survey_date: string;
+          source: NpsSource;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_id: string;
+          score: number;
+          reason?: string | null;
+          respondent?: string | null;
+          survey_date?: string;
+          source?: NpsSource;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["account_nps_responses"]["Insert"]>;
+        Relationships: [];
+      };
+      account_customer_asks: {
+        Row: {
+          id: string;
+          account_id: string;
+          summary: string;
+          source: string | null;
+          status: CustomerAskStatus;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_id: string;
+          summary: string;
+          source?: string | null;
+          status?: CustomerAskStatus;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["account_customer_asks"]["Insert"]>;
         Relationships: [];
       };
       win_loss_trends: {
