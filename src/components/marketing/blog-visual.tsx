@@ -47,6 +47,7 @@ export const BLOG_VISUAL_KIND: Record<string, BlogVisualKind> = {
   "momentum-score-methodology": "data",
   "why-competitive-intelligence-should-always-be-on": "signal",
   "you-cant-build-a-battlecard-in-30-seconds": "field",
+  "dashboards-and-alerts-are-dead": "field",
 };
 
 export function visualKindForSlug(slug: string): BlogVisualKind {

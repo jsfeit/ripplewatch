@@ -46,7 +46,7 @@ const SECTIONS = [
   { id: "news", label: "News" },
 ];
 
-export const metadata = { title: "Dashboard" };
+export const metadata = { title: "Momentum" };
 export const dynamic = "force-dynamic";
 
 // Single home page: news, competitor pricing, trends (momentum + industry
@@ -308,7 +308,7 @@ export default async function DashboardPage() {
       <AutoProductTour hasSeenTour={hasSeenTour} />
       <PurchaseTracker />
       <div className="mb-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Momentum</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Everything scored and tracked for your account, in one place.
         </p>
