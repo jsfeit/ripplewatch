@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { runMarketProfileForAccount } from "@/lib/market-profile";
+import { mapWithConcurrency } from "@/lib/crawl";
 
 export const maxDuration = 300;
+
+// Matches the monthly industry-trends cron's own ACCOUNT_CONCURRENCY —
+// same reasoning (a few LLM calls per account, don't run every missing
+// account fully sequentially).
+const ACCOUNT_CONCURRENCY = 3;
 
 // One-off catch-up for accounts that existed before market_profile shipped
 // (see migration 0072): ensureMarketProfile only self-heals on an
@@ -30,11 +36,10 @@ export async function POST() {
     namesByAccount.set(c.account_id, list);
   }
 
-  const results = [];
-  for (const account of missing) {
+  const results = await mapWithConcurrency(missing, ACCOUNT_CONCURRENCY, async (account) => {
     const result = await runMarketProfileForAccount(admin, account, namesByAccount.get(account.id) ?? []);
-    results.push({ accountId: account.id, ...result });
-  }
+    return { accountId: account.id, ...result };
+  });
 
   return NextResponse.json({ ok: true, checked: accounts?.length ?? 0, missing: missing.length, results });
 }

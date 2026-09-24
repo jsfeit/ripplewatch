@@ -1,38 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import { Loader2, ThumbsDown, ThumbsUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-type EvalLabel = "correct" | "incorrect" | null;
+import { useEvalLabel, type EvalLabel } from "@/lib/use-eval-label";
 
 export function EvalLabelControl({ signalId, initialLabel }: { signalId: string; initialLabel: EvalLabel }) {
-  const [label, setLabel] = useState<EvalLabel>(initialLabel);
-  const [pending, setPending] = useState(false);
-
-  async function setEvalLabel(next: "correct" | "incorrect") {
-    if (pending) return;
-    const clearing = label === next;
-    setPending(true);
-    const previous = label;
-    setLabel(clearing ? null : next);
-
-    try {
-      const res = clearing
-        ? await fetch(`/api/admin/signals/${signalId}/eval-label`, { method: "DELETE" })
-        : await fetch(`/api/admin/signals/${signalId}/eval-label`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ label: next }),
-          });
-      if (!res.ok) throw new Error("Request failed");
-    } catch {
-      setLabel(previous);
-    } finally {
-      setPending(false);
-    }
-  }
+  const { label, pending, setEvalLabel } = useEvalLabel("/api/admin/signals", signalId, initialLabel);
 
   return (
     <div className="flex items-center gap-1">
