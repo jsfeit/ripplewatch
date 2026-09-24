@@ -492,7 +492,11 @@ export function CompetitorOverview({
 // spotlight cards) adds the axis labels; size="sm" (every list row) omits
 // them to stay compact, the same rose/emerald signal is legible from the
 // marker position and the pill next to it alone.
-function MomentumMeter({
+// Exported so YourMomentumCard (dashboard/your-momentum-card.tsx) can reuse
+// the exact same gradient meter for the account's own momentum reading —
+// same visual vocabulary for "how are they doing" and "how are we doing"
+// is the whole point of putting both under one Momentum umbrella.
+export function MomentumMeter({
   score,
   size = "sm",
   className,

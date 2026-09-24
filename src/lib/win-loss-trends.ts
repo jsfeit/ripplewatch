@@ -25,6 +25,19 @@ export type WinLossTrendsSummary = { account: string; generated: boolean; entrie
 // industry trends, market profile, and this) — moved out of
 // /api/trends/generate so the manual "Refresh" button and the automatic
 // path run the exact same logic and can't drift apart.
+//
+// Also folds in customer-voice's scored feedback entries (NPS responses),
+// not just win/loss deals — a detractor's reason and a lost-deal reason are
+// the same kind of "why is this account losing ground" signal, and a
+// promoter's reason is the same kind of signal a won-deal reason is. This
+// is the concrete version of "tie customer-feedback trends to competitive
+// intelligence": those reasons flow through the exact same theme-detection
+// pass as win/loss already gets, including getting linked to the specific
+// competitor signal that explains them (see identifyWinLossTrends). Passive
+// (7-8) scores and unscored asks/feature-requests are deliberately left
+// out — neither has the clear-cut won/lost framing this pass needs; asks
+// stay visible in their own Customer voice list instead of being forced
+// into a theme here.
 export async function runWinLossTrendsForAccount(
   supabase: AdminSupabase,
   account: Account,
@@ -33,9 +46,12 @@ export async function runWinLossTrendsForAccount(
   const competitorIds = competitors.map((c) => c.id);
   const competitorNameById = new Map(competitors.map((c) => [c.id, c.name]));
 
-  const { data: winLoss } = competitorIds.length
-    ? await supabase.from("competitor_win_loss").select("competitor_id, outcome, reason").in("competitor_id", competitorIds)
-    : { data: [] };
+  const [{ data: winLoss }, { data: feedback }] = await Promise.all([
+    competitorIds.length
+      ? supabase.from("competitor_win_loss").select("competitor_id, outcome, reason").in("competitor_id", competitorIds)
+      : Promise.resolve({ data: [] }),
+    supabase.from("account_customer_feedback").select("summary, score").eq("account_id", account.id).not("score", "is", null),
+  ]);
 
   const entries: WinLossTrendEntry[] = [];
   for (const row of winLoss ?? []) {
@@ -49,6 +65,10 @@ export async function runWinLossTrendsForAccount(
   for (const reason of splitNotes(account.lost_deal_notes)) entries.push({ reason, outcome: "lost", competitorName: null });
   for (const reason of splitNotes(account.won_deal_notes)) entries.push({ reason, outcome: "won", competitorName: null });
   for (const reason of splitNotes(account.churn_notes)) entries.push({ reason, outcome: "lost", competitorName: null });
+  for (const row of feedback ?? []) {
+    if (row.score === null || (row.score >= 7 && row.score <= 8)) continue; // passive — no clear direction
+    entries.push({ reason: row.summary, outcome: row.score >= 9 ? "won" : "lost", competitorName: null });
+  }
 
   if (entries.length < MIN_ENTRIES_FOR_TRENDS) {
     return { account: account.name, generated: false, entries: entries.length, skipped: "too_few_entries" };

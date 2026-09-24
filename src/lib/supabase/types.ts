@@ -14,8 +14,8 @@ export type ProfileRole = "member" | "admin";
 export type BillingModel = "subscription" | "per_seat" | "usage_based" | "custom" | "unknown";
 export type SuggestedCompetitorStatus = "pending" | "dismissed" | "added";
 export type WinLossOutcome = "won" | "lost" | "churned";
-export type NpsSource = "manual" | "csv_import";
-export type CustomerAskStatus = "new" | "considering" | "planned" | "shipped" | "declined";
+export type FeedbackOrigin = "manual" | "csv_import";
+export type CustomerFeedbackStatus = "new" | "considering" | "planned" | "shipped" | "declined";
 
 export type PricingTier = {
   name: string;
@@ -254,39 +254,20 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["competitor_win_loss"]["Insert"]>;
         Relationships: [];
       };
-      account_nps_responses: {
-        Row: {
-          id: string;
-          account_id: string;
-          score: number;
-          reason: string | null;
-          respondent: string | null;
-          survey_date: string;
-          source: NpsSource;
-          created_by: string | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          account_id: string;
-          score: number;
-          reason?: string | null;
-          respondent?: string | null;
-          survey_date?: string;
-          source?: NpsSource;
-          created_by?: string | null;
-          created_at?: string;
-        };
-        Update: Partial<Database["public"]["Tables"]["account_nps_responses"]["Insert"]>;
-        Relationships: [];
-      };
-      account_customer_asks: {
+      account_customer_feedback: {
         Row: {
           id: string;
           account_id: string;
           summary: string;
+          // Optional — present for a scored NPS-style response, null for a
+          // plain ask/feature-request. Nothing else about the row's shape
+          // depends on whether this is set.
+          score: number | null;
           source: string | null;
-          status: CustomerAskStatus;
+          respondent: string | null;
+          status: CustomerFeedbackStatus;
+          feedback_date: string;
+          origin: FeedbackOrigin;
           created_by: string | null;
           created_at: string;
         };
@@ -294,12 +275,16 @@ export interface Database {
           id?: string;
           account_id: string;
           summary: string;
+          score?: number | null;
           source?: string | null;
-          status?: CustomerAskStatus;
+          respondent?: string | null;
+          status?: CustomerFeedbackStatus;
+          feedback_date?: string;
+          origin?: FeedbackOrigin;
           created_by?: string | null;
           created_at?: string;
         };
-        Update: Partial<Database["public"]["Tables"]["account_customer_asks"]["Insert"]>;
+        Update: Partial<Database["public"]["Tables"]["account_customer_feedback"]["Insert"]>;
         Relationships: [];
       };
       win_loss_trends: {
