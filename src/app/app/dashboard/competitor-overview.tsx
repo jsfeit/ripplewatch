@@ -2,9 +2,26 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ArrowUpRight, TrendingUp, Flame } from "lucide-react";
+import {
+  ChevronDown,
+  ArrowUpRight,
+  TrendingUp,
+  Flame,
+  Moon,
+  Newspaper,
+  Briefcase,
+  DollarSign,
+  Package,
+  Target,
+  Trophy,
+  GitBranch,
+  Star,
+  MessageSquare,
+  Megaphone,
+  Phone,
+  type LucideIcon,
+} from "lucide-react";
 import { EmptyState } from "@/components/app/empty-state";
-import { InsightCallout } from "@/components/app/insight-callout";
 import { Card, CardAvatar } from "@/components/app/card";
 import { cn } from "@/lib/utils";
 import {
@@ -39,6 +56,36 @@ function pricingSummary(record: CompetitorPricing | undefined): string {
   const cheapest = numericTiers.reduce((min, t) => (t.price < min.price ? t : min));
   return `From $${cheapest.price}${cheapest.price_period ? `/${cheapest.price_period}` : ""}`;
 }
+
+// One glance icon per momentum component, keyed by MomentumComponent.label
+// exactly as momentum.ts defines it — gives a driver a visual identity
+// instead of only ever being a text label, both in a compact row and in
+// the bigger Focus spotlight cards below.
+const DRIVER_ICONS: Record<string, LucideIcon> = {
+  Hiring: Briefcase,
+  "Pricing activity": DollarSign,
+  "Product changes": Package,
+  "Press & funding": Newspaper,
+  "Relevance trend": Target,
+  "Win rate trend": Trophy,
+  "Product activity (GitHub)": GitBranch,
+  "Review sentiment (G2/Capterra)": Star,
+  "Buzz (Reddit/Hacker News)": MessageSquare,
+  "Ad activity (Meta)": Megaphone,
+  "Call mentions (Gong/Zoom)": Phone,
+};
+
+function DriverIcon({ label, className }: { label: string; className?: string }) {
+  const Icon = DRIVER_ICONS[label];
+  if (!Icon) return null;
+  return <Icon className={className} />;
+}
+
+// Module scope, not local to CompetitorOverview, so SpotlightCard (a
+// sibling component, not a closure) can take one as a prop.
+type FocusItem =
+  | { kind: "gone_quiet"; competitor: Competitor; goneQuiet: GoneQuietResult }
+  | { kind: "heating_up"; competitor: Competitor; momentum: MomentumResult; driver: MomentumComponent };
 
 // Weight * |score|, not just |score| — a component with a big raw swing but
 // low reliability weight (e.g. one stale signal) shouldn't outrank a
@@ -188,6 +235,29 @@ export function CompetitorOverview({
     return counts;
   }, [momentumSignals, nowMs]);
 
+  // Feeds the inline sparkline next to each row's meter — 8 buckets of 4
+  // days apiece (~32 days, roughly the two 30-day windows momentum itself
+  // compares) so a row's recent shape is visible without reading any
+  // numbers. Coarser than daily buckets on purpose: most competitors don't
+  // produce a signal every single day, so a daily bucket count would mostly
+  // be a flat line of 0s and 1s with no visible shape — 4-day buckets
+  // smooth that into something that actually reads as a trend.
+  const SPARKLINE_BUCKETS = 8;
+  const SPARKLINE_BUCKET_DAYS = 4;
+  const sparklineByCompetitor = useMemo(() => {
+    const map = new Map<string, number[]>();
+    for (const c of competitors) map.set(c.id, new Array(SPARKLINE_BUCKETS).fill(0) as number[]);
+    for (const s of momentumSignals) {
+      const counts = map.get(s.competitor_id);
+      if (!counts) continue;
+      const daysAgo = Math.floor((nowMs - new Date(s.occurred_on).getTime()) / 86_400_000);
+      // Bucket 0 = oldest, last bucket = most recent.
+      const bucket = SPARKLINE_BUCKETS - 1 - Math.floor(daysAgo / SPARKLINE_BUCKET_DAYS);
+      if (bucket >= 0 && bucket < SPARKLINE_BUCKETS) counts[bucket]++;
+    }
+    return map;
+  }, [competitors, momentumSignals, nowMs]);
+
   const quadrantCompetitors: QuadrantCompetitor[] = useMemo(
     () =>
       sorted.map((c) => ({
@@ -213,9 +283,6 @@ export function CompetitorOverview({
   // highest absolute score, since going from quiet to active is usually
   // more worth attention than a high but stable score. Capped at 2 total so
   // this stays a pointer, not a second copy of the list below it.
-  type FocusItem =
-    | { kind: "gone_quiet"; competitor: Competitor; goneQuiet: GoneQuietResult }
-    | { kind: "heating_up"; competitor: Competitor; momentum: MomentumResult; driver: MomentumComponent };
   const focusCompetitors = useMemo(() => {
     const quiet: FocusItem[] = sorted
       .filter((c) => goneQuietByCompetitor.get(c.id))
@@ -248,43 +315,17 @@ export function CompetitorOverview({
   return (
     <div>
       {focusCompetitors.length > 0 ? (
-        <InsightCallout eyebrow="Focus here first" icon={<Flame className="size-3" />} className="mb-3">
-          {focusCompetitors.map((item) => (
-            <span key={item.competitor.id} className="mr-1 inline-block">
-              <span className="font-medium text-foreground">{item.competitor.name}</span>{" "}
-              {item.kind === "gone_quiet" ? (
-                <>has gone quiet, and it&apos;s worth a look. {item.goneQuiet.reason}</>
-              ) : (
-                <>
-                  is heating up, driven by {item.driver.label.toLowerCase()}
-                  {item.driver.topSignal ? (
-                    <>
-                      :{" "}
-                      {item.driver.topSignal.url ? (
-                        <a
-                          href={item.driver.topSignal.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary hover:underline"
-                        >
-                          &ldquo;{item.driver.topSignal.title}&rdquo;
-                        </a>
-                      ) : (
-                        <>&ldquo;{item.driver.topSignal.title}&rdquo;</>
-                      )}
-                      {item.driver.topSignal.sentiment === "positive" || item.driver.topSignal.sentiment === "negative"
-                        ? ` (${item.driver.topSignal.sentiment})`
-                        : ""}
-                      , {item.driver.detail}.
-                    </>
-                  ) : (
-                    <> ({item.driver.detail}).</>
-                  )}
-                </>
-              )}
-            </span>
-          ))}
-        </InsightCallout>
+        <div className="mb-3">
+          <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+            <Flame className="size-3 text-primary" />
+            Focus here first
+          </div>
+          <div className={cn("grid gap-2", focusCompetitors.length > 1 && "sm:grid-cols-2")}>
+            {focusCompetitors.map((item) => (
+              <SpotlightCard key={item.competitor.id} item={item} />
+            ))}
+          </div>
+        </div>
       ) : null}
 
       {/* Map needs real width to read as a scatter plot, so its toggle only
@@ -366,6 +407,7 @@ export function CompetitorOverview({
                   goneQuiet={goneQuietByCompetitor.get(competitor.id) ?? null}
                   latestSignal={latestSignalByCompetitor[competitor.id]}
                   pricingRecord={pricingByCompetitor[competitor.id]}
+                  sparkline={sparklineByCompetitor.get(competitor.id) ?? []}
                 />
               ))}
             </div>
@@ -376,29 +418,169 @@ export function CompetitorOverview({
   );
 }
 
-// A quiet diverging bar next to the score/label pill — without it, a list of
-// mostly-Steady competitors reads as a wall of near-identical gray pills with
-// no visual way to tell "barely steady" from "solidly steady" at a glance.
-// Fixed track spanning the full -100..+100 range; the fill grows from the
-// center toward whichever side the score leans, in the same emerald/rose
-// used by MOMENTUM_STYLES so it reads as the same signal, not a second
-// palette. A Steady score near zero correctly shows almost no fill — the
-// bar itself is the "how far from neutral" read, not just a color swatch.
-function MomentumMeter({ score }: { score: number | null }) {
+// A fixed rose-to-emerald gradient track spanning the full -100..+100
+// range with a marker at the score's position — replaces the old
+// center-anchored fill bar, which at a glance looked identical across most
+// of a Steady list (a thin sliver either way of dead center) and gave no
+// sense of where "Heating up" or "Cooling" actually sit on the scale. The
+// gradient itself is always the same regardless of score — only the marker
+// moves — so the read is positional ("where on the scale is this") rather
+// than needing to notice a fill bar's length. size="lg" (the Focus
+// spotlight cards) adds the axis labels; size="sm" (every list row) omits
+// them to stay compact, the same rose/emerald signal is legible from the
+// marker position and the pill next to it alone.
+function MomentumMeter({
+  score,
+  size = "sm",
+  className,
+}: {
+  score: number | null;
+  size?: "sm" | "lg";
+  className?: string;
+}) {
   if (score === null) return null;
   const clamped = Math.max(-100, Math.min(100, score));
-  const magnitudePercent = Math.abs(clamped) / 2; // half the track = a magnitude of 100
+  const percent = (clamped + 100) / 2;
   const positive = clamped > 0;
   return (
-    <div
-      className="relative h-1.5 w-12 shrink-0 overflow-hidden rounded-full bg-secondary"
-      role="img"
-      aria-label={`Momentum ${clamped > 0 ? "+" : ""}${clamped} out of a possible -100 to +100`}
-    >
+    <div className={cn(size === "lg" ? "w-full" : "w-16 shrink-0", className)}>
       <div
-        className={cn("absolute inset-y-0 rounded-full", positive ? "bg-emerald-500" : "bg-rose-500")}
-        style={positive ? { left: "50%", width: `${magnitudePercent}%` } : { right: "50%", width: `${magnitudePercent}%` }}
-      />
+        className={cn(
+          "relative rounded-full bg-gradient-to-r from-rose-500 via-secondary to-emerald-500",
+          size === "lg" ? "h-1.5" : "h-1"
+        )}
+        role="img"
+        aria-label={`Momentum ${clamped > 0 ? "+" : ""}${clamped} out of a possible -100 to +100`}
+      >
+        <div
+          className={cn(
+            "absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 bg-background",
+            size === "lg" ? "size-3" : "size-2",
+            positive ? "border-emerald-500" : "border-rose-500"
+          )}
+          style={{ left: `${percent}%` }}
+        />
+      </div>
+      {size === "lg" ? (
+        <div className="mt-1 flex justify-between text-[9px] text-muted-foreground">
+          <span>Cooling</span>
+          <span>Steady</span>
+          <span>Heating up</span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// Tiny inline signal-volume trend, colored to match the row's own momentum
+// state (emerald/rose/muted) so it reads as part of the same signal rather
+// than a second, disconnected chart. Purely a shape cue — no axis, no
+// hover, no labels — the numeric score and pill remain the actual reading;
+// this is what lets a scan of the list feel like it has real texture
+// instead of every row being a name and a pill.
+function Sparkline({ counts, color }: { counts: number[]; color: "emerald" | "rose" | "muted" }) {
+  if (counts.length === 0 || counts.every((c) => c === 0)) return null;
+  const width = 40;
+  const height = 16;
+  const max = Math.max(...counts, 1);
+  const step = width / (counts.length - 1);
+  const points = counts.map((c, i) => `${i * step},${height - (c / max) * (height - 2) - 1}`).join(" ");
+  const stroke =
+    color === "emerald" ? "stroke-emerald-500" : color === "rose" ? "stroke-rose-500" : "stroke-muted-foreground/60";
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      className="shrink-0"
+      role="img"
+      aria-label="Signal activity over the last month, oldest to most recent"
+    >
+      <polyline points={points} fill="none" className={stroke} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// Replaces the old single-paragraph "Focus here first" banner (every
+// featured competitor as one more sentence in a shared box) with an actual
+// card per competitor — a colored left accent, the driver's icon in a
+// chip instead of plain text, and the meter at full width with its axis
+// labels, so the two things worth featuring look like the most important
+// thing on the section instead of reading as a denser continuation of the
+// same paragraph. The reasoning sentence (built from the driving
+// component's real detail/citation) is the ONLY copy here — no separate
+// headline above it — since duplicating the latest-signal headline this
+// card already explains in its own sentence would just repeat the same
+// fact twice.
+function SpotlightCard({ item }: { item: FocusItem }) {
+  const isQuiet = item.kind === "gone_quiet";
+  return (
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-xl border border-l-[3px] bg-card p-3.5",
+        isQuiet ? "border-amber-500/20 border-l-amber-500 bg-amber-500/[0.03]" : "border-emerald-500/20 border-l-emerald-500 bg-emerald-500/[0.03]"
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <CardAvatar seed={item.competitor.name} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href={`/app/competitors/${item.competitor.id}`} className="text-sm font-bold hover:underline">
+              {item.competitor.name}
+            </Link>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap",
+                isQuiet ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+              )}
+            >
+              {isQuiet ? <Moon className="size-2.5" /> : <DriverIcon label={item.driver.label} className="size-2.5" />}
+              {isQuiet ? "Gone quiet" : item.driver.label}
+            </span>
+          </div>
+          <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
+            {isQuiet ? (
+              item.goneQuiet.reason
+            ) : (
+              <>
+                Heating up, driven by {item.driver.label.toLowerCase()}
+                {item.driver.topSignal ? (
+                  <>
+                    :{" "}
+                    {item.driver.topSignal.url ? (
+                      <a
+                        href={item.driver.topSignal.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        &ldquo;{item.driver.topSignal.title}&rdquo;
+                      </a>
+                    ) : (
+                      <>&ldquo;{item.driver.topSignal.title}&rdquo;</>
+                    )}
+                    {item.driver.topSignal.sentiment === "positive" || item.driver.topSignal.sentiment === "negative"
+                      ? ` (${item.driver.topSignal.sentiment})`
+                      : ""}
+                    , {item.driver.detail}.
+                  </>
+                ) : (
+                  <> ({item.driver.detail}).</>
+                )}
+              </>
+            )}
+          </p>
+        </div>
+        {!isQuiet ? (
+          <div className="shrink-0 text-right">
+            <div className={cn("text-xl leading-none font-extrabold tabular-nums", item.momentum.score! > 0 ? "text-emerald-500" : "text-rose-500")}>
+              {item.momentum.score! > 0 ? "+" : ""}
+              {item.momentum.score}
+            </div>
+          </div>
+        ) : null}
+      </div>
+      {!isQuiet ? <MomentumMeter score={item.momentum.score} size="lg" className="mt-3" /> : null}
     </div>
   );
 }
@@ -409,12 +591,14 @@ function CompetitorRow({
   goneQuiet,
   latestSignal,
   pricingRecord,
+  sparkline,
 }: {
   competitor: Competitor;
   momentum: MomentumResult;
   goneQuiet: GoneQuietResult | null;
   latestSignal: LatestSignal | undefined;
   pricingRecord: CompetitorPricing | undefined;
+  sparkline: number[];
 }) {
   const [expanded, setExpanded] = useState(false);
   const hasMomentumData = momentum.score !== null;
@@ -428,6 +612,7 @@ function CompetitorRow({
   // read as a magnitude when the whole point is that magnitude is the
   // wrong lens for this state.
   const displayLabel = goneQuiet ? "Gone quiet" : momentum.label;
+  const sparklineColor = displayLabel === "Heating up" ? "emerald" : displayLabel === "Cooling" ? "rose" : "muted";
 
   return (
     <Card>
@@ -451,8 +636,16 @@ function CompetitorRow({
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 sm:gap-x-4">
+        {/* w-full so this row's own flex-wrap can actually kick in on
+            mobile — without a width, a flex-wrap container just grows to
+            fit its content instead of wrapping, which was pushing the
+            score pill off the right edge of the screen instead of onto its
+            own line once the sparkline/meter were added. sm:w-auto lets it
+            go back to shrinking to content once it's sharing a row with
+            the name section at that breakpoint. */}
+        <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-1.5 sm:w-auto sm:shrink-0 sm:gap-x-4">
           <span className="text-xs text-muted-foreground">{pricingSummary(pricingRecord)}</span>
+          <Sparkline counts={sparkline} color={sparklineColor} />
           <MomentumMeter score={momentum.score} />
           <div className="flex flex-col items-end gap-0.5">
             <button
@@ -487,7 +680,10 @@ function CompetitorRow({
             {goneQuiet ? (
               <span className="max-w-[180px] text-right text-[10px] text-muted-foreground">Tap to see why</span>
             ) : driver ? (
-              <span className="max-w-[180px] text-right text-[10px] text-muted-foreground">{driver.label}</span>
+              <span className="flex max-w-[180px] items-center gap-1 text-right text-[10px] text-muted-foreground">
+                <DriverIcon label={driver.label} className="size-2.5 shrink-0" />
+                {driver.label}
+              </span>
             ) : null}
           </div>
         </div>
