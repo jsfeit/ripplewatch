@@ -15,7 +15,7 @@ import { TIER_DOT } from "@/lib/tier-style";
 // a specific competitor's fact sheet is still its own page
 // (/app/competitors/[id]), just no longer top-level nav.
 const NAV = [
-  { href: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/app/dashboard", label: "Momentum", icon: LayoutDashboard },
   { href: "/app/ask", label: "Ask", icon: Sparkles },
   { href: "/app/settings", label: "Settings", icon: Settings },
 ];
