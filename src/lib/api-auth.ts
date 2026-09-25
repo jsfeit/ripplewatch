@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hashApiKey, looksLikeApiKey } from "@/lib/api-keys";
 import { API_ACCESS_ALLOWED } from "@/lib/tier-limits";
+import type { Tier as AccountTier } from "@/lib/supabase/types";
 
 // Fixed 60s window, reset lazily on the next request past it rather than a
 // cron sweep — correct across serverless instances without an external
@@ -18,7 +19,9 @@ export type ApiAuthResult =
 // below) and the MCP endpoint, which reads the same bearer key from its own
 // transport. Returns a plain status/error instead of a NextResponse so each
 // caller can shape the failure the way its protocol expects.
-export type ApiKeyAuth = { ok: true; accountId: string } | { ok: false; status: number; error: string };
+export type ApiKeyAuth =
+  | { ok: true; accountId: string; tier: AccountTier; demoMode: boolean }
+  | { ok: false; status: number; error: string };
 
 export async function authenticateApiKey(token: string): Promise<ApiKeyAuth> {
   if (!token || !looksLikeApiKey(token)) {
@@ -39,7 +42,7 @@ export async function authenticateApiKey(token: string): Promise<ApiKeyAuth> {
   // Re-checked at request time, not just key-creation time — a downgrade
   // after the key was issued should cut off access immediately, not just
   // block creating new keys going forward.
-  const { data: account } = await supabase.from("accounts").select("tier").eq("id", key.account_id).single();
+  const { data: account } = await supabase.from("accounts").select("tier, demo_mode").eq("id", key.account_id).single();
   if (!account || !API_ACCESS_ALLOWED[account.tier]) {
     return { ok: false, status: 403, error: "API access requires the Plus plan." };
   }
@@ -62,7 +65,7 @@ export async function authenticateApiKey(token: string): Promise<ApiKeyAuth> {
     })
     .eq("id", key.id);
 
-  return { ok: true, accountId: key.account_id };
+  return { ok: true, accountId: key.account_id, tier: account.tier, demoMode: account.demo_mode };
 }
 
 // Every /api/v1/* route calls this first. A request carries only a bearer

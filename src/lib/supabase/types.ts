@@ -2,7 +2,7 @@
 // changes, update this alongside the migration — there's no live project to
 // generate it from yet (`supabase gen types typescript` once one exists).
 
-export type Tier = "starter" | "plus";
+export type Tier = "starter" | "plus" | "connect";
 export type AccountStatus = "active" | "hold" | "cancelled";
 export type SignalType = "pricing" | "job_posting" | "review" | "news" | "funding" | "seo" | "product_change";
 export type SeoTrafficTrend = "up" | "down" | "flat" | "unknown";
@@ -984,6 +984,56 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["system_health"]["Insert"]>;
         Relationships: [];
       };
+      connect_wallets: {
+        Row: {
+          account_id: string;
+          balance_micros: number;
+          auto_reload_enabled: boolean;
+          reload_amount_cents: number;
+          reload_threshold_cents: number;
+          reload_failed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          account_id: string;
+          balance_micros?: number;
+          auto_reload_enabled?: boolean;
+          reload_amount_cents?: number;
+          reload_threshold_cents?: number;
+          reload_failed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["connect_wallets"]["Insert"]>;
+        Relationships: [];
+      };
+      connect_wallet_ledger: {
+        Row: {
+          id: string;
+          account_id: string;
+          kind: "funding" | "usage" | "refund" | "adjustment";
+          amount_micros: number;
+          balance_after_micros: number;
+          ref: string;
+          description: string | null;
+          meta: Record<string, unknown> | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_id: string;
+          kind: "funding" | "usage" | "refund" | "adjustment";
+          amount_micros: number;
+          balance_after_micros: number;
+          ref: string;
+          description?: string | null;
+          meta?: Record<string, unknown> | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["connect_wallet_ledger"]["Insert"]>;
+        Relationships: [];
+      };
       llm_usage: {
         Row: {
           id: string;
@@ -1120,6 +1170,18 @@ export interface Database {
       claim_crawl_jobs: {
         Args: { batch_size: number };
         Returns: Database["public"]["Tables"]["crawl_jobs"]["Row"][];
+      };
+      connect_wallet_apply: {
+        Args: {
+          p_account_id: string;
+          p_amount_micros: number;
+          p_kind: string;
+          p_ref: string;
+          p_description?: string | null;
+          p_meta?: Record<string, unknown> | null;
+          p_allow_negative?: boolean;
+        };
+        Returns: { applied: boolean; balance_micros: number }[];
       };
     };
   };

@@ -67,7 +67,7 @@ async function handle(req: Request): Promise<Response> {
     token,
     clientId: "clientId" in auth && typeof auth.clientId === "string" ? auth.clientId : "api-key",
     scopes: ["read", "write"],
-    extra: { accountId: auth.accountId },
+    extra: { accountId: auth.accountId, tier: auth.tier },
   });
   return authedHandler(req);
 }
