@@ -43,6 +43,11 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
         answer:
           'Whichever fits how your team already works: paste a CSV export or sync HubSpot deals from the dashboard\'s Win/loss section, push outcomes programmatically via <a href="/docs/api">POST /api/v1/win-loss</a> the moment a deal closes, or just forward or CC a "we lost this deal" email to your personal address shown in Settings → Developer (Plus/Advanced plans). All three feed the same pipeline, and update each competitor\'s Momentum win-rate trend immediately.',
       },
+      {
+        question: "Can I use Ripplewatch from Claude, ChatGPT, or another AI assistant?",
+        answer:
+          'Yes, through our MCP server (see <a href="/docs/api">the docs</a>). It works with assistants that support remote MCP servers over HTTP, including Claude (web, desktop, and Claude Code) and developer tools like Cursor. ChatGPT supports custom MCP connectors through its developer mode, which is in beta and has to be enabled by a workspace admin. Gemini supports MCP in Gemini CLI, but we haven\'t confirmed support in the Gemini app. Today you connect with an API key; signing in through a browser (OAuth) is coming.',
+      },
     ],
   },
   {
