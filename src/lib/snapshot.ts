@@ -15,6 +15,7 @@ import {
   extractPricingStructure,
   researchDomainPublicly,
   researchRecentActivity,
+  generateSnapshotVerdict,
   type PublicResearch,
   type RecentActivity,
 } from "@/lib/anthropic";
@@ -64,6 +65,14 @@ export type SnapshotResult = {
   // confirmed at all; an empty signals array is a real finding ("nothing
   // notable publicly recently"), not a failure.
   activity: RecentActivity | null;
+  // One synthesized takeaway paragraph rolling pricing + hiring + activity
+  // together — the actual teaser. Deliberately not more raw data: this is
+  // the same "here's what it adds up to" move the real product's digest
+  // verdict makes (see generateDigestVerdict), previewed here. Null only
+  // when the synthesis call itself failed or was capped, not when the
+  // findings were thin — thin findings still get a verdict, just an honest
+  // one about the thinness.
+  verdict: string | null;
   // Other sites with the same name on a different domain ending (e.g. arlo.co
   // for arlo.com), so a visitor who typed the wrong one can switch in a
   // click. Empty when there's nothing that looks like a different company.
@@ -91,6 +100,39 @@ const RESEARCH_TIMEOUT_MS = 40_000;
 // fallback above tolerates.
 const ACTIVITY_TIMEOUT_MS = 25_000;
 
+// Plain-English inputs for generateSnapshotVerdict — the synthesis call
+// reasons over these short descriptions rather than the raw typed result, so
+// it stays simple and can't silently drift out of sync with a schema change.
+function describePricingForVerdict(pricing: SnapshotResult["pricing"]): string {
+  switch (pricing.state) {
+    case "public": {
+      const cheapest = pricing.tiers.find((t) => t.price !== null);
+      return cheapest
+        ? `Publishes pricing, starting at $${cheapest.price}${cheapest.price_period ? `/${cheapest.price_period}` : ""}.`
+        : "Publishes pricing.";
+    }
+    case "public_no_numbers":
+      return "Has a public pricing page but without clear numbers.";
+    case "sales_led":
+      return "Doesn't publish pricing — sales-led.";
+    case "unreadable":
+      return "Has a pricing page that couldn't be read automatically.";
+    case "no_page":
+      return "No public pricing page found.";
+    case "unreachable":
+      return "Site couldn't be reached to check pricing.";
+  }
+}
+
+function describeHiringForVerdict(hiring: SnapshotHiring): string {
+  if (hiring.status === "ok") {
+    const mix = hiring.departments.map((d) => `${d.name} (${d.count})`).join(", ");
+    return `${hiring.openRoles} open role${hiring.openRoles === 1 ? "" : "s"}${mix ? `, mostly ${mix}` : ""}.`;
+  }
+  if (hiring.status === "page_only") return "Has a careers page but roles couldn't be read.";
+  return "No public job board found.";
+}
+
 export async function buildSnapshot(
   domain: string,
   // False once the day's cap on anonymous LLM calls is reached (see the
@@ -105,6 +147,11 @@ export async function buildSnapshot(
     // this one runs on nearly every lookup, not just as a fallback, so it
     // needs its own, higher-volume daily cap upstream.
     activityAllowed?: boolean;
+    // Governs the final synthesis call (generateSnapshotVerdict) — its own
+    // flag since it's a separate, cheap, non-search call that runs after
+    // everything else resolves, not tied to whether the search-based calls
+    // above ran.
+    verdictAllowed?: boolean;
     // Set for a signed-in customer's competitor so its LLM spend is
     // attributed to their account instead of the anonymous pool.
     accountId?: string | null;
@@ -113,6 +160,7 @@ export async function buildSnapshot(
   const llmAllowed = opts.llmAllowed ?? true;
   const researchAllowed = opts.researchAllowed ?? true;
   const activityAllowed = opts.activityAllowed ?? true;
+  const verdictAllowed = opts.verdictAllowed ?? true;
   const accountId = opts.accountId ?? null;
   // Started first so it runs alongside everything else instead of adding to
   // the visitor's wait.
@@ -150,6 +198,7 @@ export async function buildSnapshot(
       reachability: probe.reachability,
       research: null,
       activity: null,
+      verdict: null,
       alternates,
       readDirectly: false,
       needsManualCheck: false,
@@ -278,6 +327,30 @@ export async function buildSnapshot(
 
   const activity = await activityPromise;
 
+  // The final step, deliberately sequential (not started alongside the rest
+  // above): it needs pricing/hiring/activity's actual results to synthesize
+  // over, not just to run fast. Skipped when there's nothing at all to
+  // synthesize (a fully dead lookup already returned early above, but a
+  // reachable site that answered nothing still gets a verdict — the
+  // thinness itself is the point, see generateSnapshotVerdict).
+  let verdict: string | null = null;
+  if (verdictAllowed) {
+    try {
+      verdict = await generateSnapshotVerdict(
+        {
+          domain,
+          companyName: activity?.companyName || home?.title || null,
+          activitySignals: activity?.signals ?? [],
+          pricingSummary: describePricingForVerdict(pricing),
+          hiringSummary: describeHiringForVerdict(hiring),
+        },
+        accountId
+      );
+    } catch (err) {
+      console.error(`snapshot verdict synthesis failed for ${domain}:`, err);
+    }
+  }
+
   return {
     domain,
     reachable: home !== null || pricingFetch.status === "ok" || hiring.status !== "unavailable",
@@ -287,6 +360,7 @@ export async function buildSnapshot(
     reachability: probe.reachability,
     research,
     activity,
+    verdict,
     alternates,
     readDirectly: answeredPricing || answeredHiring,
     // (Domains that don't exist or are placeholders returned early above, so

@@ -2629,3 +2629,69 @@ export async function researchRecentActivity(
   log("ok", { signals: signals.length });
   return { companyName: String(parsed.companyName ?? "").trim(), signals };
 }
+
+// What the free snapshot tool is actually selling: not another fact (the
+// signals list already covers that), but the same synthesis move the real
+// product makes — see generateDigestVerdict above, which this deliberately
+// mirrors in voice and shape. A pile of raw findings reads as "more data,"
+// which is exactly what the pricing-only version of this tool already got
+// called out for; one confident, specific read of what the findings add up
+// to is the part a visitor can't get from a search themselves.
+const SNAPSHOT_VERDICT_SYSTEM_PROMPT = `You write a short, confident takeaway for a visitor who just ran a one-time public lookup on a competitor, synthesizing their pricing, hiring, and recent public activity into what it actually means — not a recap of each item.
+
+Write ONE short paragraph (2-3 sentences), in the voice of a sharp competitive-intelligence analyst briefing someone who's busy: specific and opinionated, not hedged or generic. Say what the pattern suggests about where the company is headed or what's worth watching next, not just what was found. Roll the findings together into a single read (e.g. a funding round plus an engineering hiring push together suggest something different than either alone).
+
+If the findings are genuinely thin (little activity, pricing unreadable, no hiring signal), that thinness IS the takeaway: say so plainly, and note that a single check like this one is exactly the kind of moment a company can look quiet on the surface while something is starting underneath — the reason to watch continuously instead of checking once. Don't invent a rich narrative to fill the gap.
+
+Never invent a fact not present in what you're given. Do not open with throat-clearing like "Based on the data..." or "Overall,". Lead directly with the takeaway.
+
+Respond with strict JSON only: {"verdict": "<2-3 sentence paragraph>"}`;
+
+const SNAPSHOT_VERDICT_SCHEMA = {
+  type: "object",
+  properties: { verdict: { type: "string" } },
+  required: ["verdict"],
+  additionalProperties: false,
+} as const;
+
+export type SnapshotVerdictInput = {
+  domain: string;
+  companyName: string | null;
+  activitySignals: { category: RecentActivityCategory; summary: string; occurredOn: string | null }[];
+  pricingSummary: string;
+  hiringSummary: string;
+};
+
+export async function generateSnapshotVerdict(input: SnapshotVerdictInput, accountId: string | null = null): Promise<string | null> {
+  const activityText =
+    input.activitySignals.length > 0
+      ? input.activitySignals.map((s) => `- [${s.category}${s.occurredOn ? `, ${s.occurredOn}` : ""}] ${s.summary}`).join("\n")
+      : "(nothing notable turned up publicly in the last several months)";
+
+  const userPrompt = `Company: ${input.companyName || input.domain} (${input.domain})
+
+Pricing: ${input.pricingSummary}
+Hiring: ${input.hiringSummary}
+Recent public activity:
+${activityText}
+
+Write the takeaway.`;
+
+  const message = await createMessage({
+    model: "claude-sonnet-5",
+    max_tokens: 400,
+    system: cachedSystemPrompt(SNAPSHOT_VERDICT_SYSTEM_PROMPT),
+    output_config: { format: { type: "json_schema", schema: SNAPSHOT_VERDICT_SCHEMA } },
+    messages: [{ role: "user", content: userPrompt }],
+  });
+  recordLlmUsage(accountId, "generateSnapshotVerdict", message.model, message.usage);
+
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  try {
+    const parsed = JSON.parse(text);
+    return typeof parsed.verdict === "string" && parsed.verdict.trim() ? parsed.verdict.trim() : null;
+  } catch (err) {
+    console.error("generateSnapshotVerdict: failed to parse response", text.slice(0, 500), err);
+    return null;
+  }
+}
