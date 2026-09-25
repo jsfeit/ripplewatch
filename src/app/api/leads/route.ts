@@ -8,7 +8,7 @@ import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 // post newsletter form, so that abandoning any of them still leaves an
 // email to retarget with. Writes to the "leads" table, tagged with
 // capturePoint so the admin view can tell where each row came from.
-const VALID_CAPTURE_POINTS = new Set(["onboarding", "quiz", "blog"]);
+const VALID_CAPTURE_POINTS = new Set(["onboarding", "quiz", "blog", "connect"]);
 
 export async function POST(request: Request) {
   if (!checkRateLimit(`lead-capture:${getClientIp(request)}`, 5, 60_000)) {
@@ -50,6 +50,25 @@ export async function POST(request: Request) {
 
   // Unique violation on email — this email was already captured (e.g. a
   // retry, or they left and came back). Not an error from the caller's POV.
+  // A Connect request is the exception worth keeping: the email may already be
+  // a lead from the quiz or snapshot, and dropping this would lose the one
+  // thing that says they want the AI-assistant option, so it's recorded on
+  // the existing row (first-touch capture point and UTMs are left alone).
+  if (error?.code === "23505" && capturePoint === "connect") {
+    const { data: existing } = await supabase.from("leads").select("id, metadata").eq("email", email).maybeSingle();
+    if (existing) {
+      await supabase
+        .from("leads")
+        .update({
+          metadata: {
+            ...((existing.metadata as Record<string, unknown> | null) ?? {}),
+            connectInterest: { ...(metadata ?? {}), at: new Date().toISOString() },
+          },
+        })
+        .eq("id", existing.id);
+    }
+    return NextResponse.json({ ok: true });
+  }
   if (error && error.code !== "23505") {
     console.error("lead insert failed:", error);
     return NextResponse.json({ error: "Something went wrong." }, { status: 500 });

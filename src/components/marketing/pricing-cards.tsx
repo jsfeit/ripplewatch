@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { Check, Sparkles } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { TIERS } from "@/lib/tiers";
 import { ANNUAL_DISCOUNT_PERCENT, annualPriceUsd } from "@/lib/pricing";
+import { CONNECT_FEATURES, CONNECT_NAME, CONNECT_TAGLINE } from "@/lib/connect";
 import { BillingPeriodToggle, type BillingPeriod } from "./billing-period-toggle";
 
 export function PricingCards() {
@@ -19,7 +20,7 @@ export function PricingCards() {
         <BillingPeriodToggle period={period} onChange={setPeriod} discountPercent={ANNUAL_DISCOUNT_PERCENT} />
       </div>
 
-      <div className="mx-auto mt-10 grid max-w-3xl gap-6 sm:grid-cols-2">
+      <div className="mx-auto mt-10 grid max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {TIERS.map((tier) => {
           const displayMonthly = period === "annual" ? annualPriceUsd(tier.monthlyUsd) / 12 : tier.monthlyUsd;
           const href = tier.selfServe ? `/onboarding?plan=${tier.id}&period=${period}` : "/pricing";
@@ -85,6 +86,37 @@ export function PricingCards() {
             </div>
           );
         })}
+
+        <div className="relative">
+          <span className="absolute -top-3 left-1/2 z-10 -translate-x-1/2 rounded-full border border-primary/40 bg-background px-3 py-1 text-xs font-semibold text-primary">
+            Early access
+          </span>
+          <Card className="flex h-full flex-col border-dashed">
+            <CardHeader>
+              <p className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
+                <Sparkles className="size-3.5 text-primary" />
+                {CONNECT_NAME}
+              </p>
+              <div className="flex items-baseline gap-1">
+                <span className="text-3xl font-semibold tracking-tight">Usage-based</span>
+              </div>
+              <p className="text-xs text-primary">Small platform fee plus usage. Pricing shared before it opens.</p>
+              <p className="text-sm text-muted-foreground">{CONNECT_TAGLINE}</p>
+            </CardHeader>
+            <CardContent className="flex flex-1 flex-col gap-3">
+              <ul className="flex-1 space-y-3 text-sm">
+                {CONNECT_FEATURES.map((f) => (
+                  <FeatureRow key={f} label={f} />
+                ))}
+                <FeatureRow label="No dashboard seat to pay for" />
+              </ul>
+              <Link href="/connect#early-access" className={buttonVariants({ variant: "outline", className: "w-full" })}>
+                Request early access
+              </Link>
+              <p className="text-center text-xs text-muted-foreground">Already included in Plus.</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

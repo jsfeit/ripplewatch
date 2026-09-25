@@ -48,6 +48,9 @@ export async function GET(request: Request) {
       "id, email, company_name, capture_point, created_at, metadata, drip_email_1_sent_at, drip_email_2_sent_at, drip_email_3_sent_at, drip_email_4_sent_at, drip_email_5_sent_at, drip_email_6_sent_at"
     )
     .not("capture_point", "is", null)
+    // Connect requests want the AI-assistant option, not the dashboard
+    // sign-up reminders this series sends.
+    .neq("capture_point", "connect")
     .is("unsubscribed_at", null)
     // An admin paused this lead (typically because they're already in a
     // real conversation with them, see migration 0068).

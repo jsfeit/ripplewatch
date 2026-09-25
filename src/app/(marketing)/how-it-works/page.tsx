@@ -241,6 +241,17 @@ export default function HowItWorksPage() {
         ))}
       </div>
 
+      <div className="mx-auto mt-16 max-w-2xl rounded-xl border border-border bg-secondary/40 p-6 text-center">
+        <h3 className="text-lg font-semibold">Read it where you already work</h3>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Everything above shows up in the dashboard, Slack and email. You can also connect Ripplewatch to Claude or
+          ChatGPT and ask it directly, no dashboard needed.
+        </p>
+        <Link href="/connect" className={buttonVariants({ variant: "outline", className: "mt-4" })}>
+          See Ripplewatch Connect
+        </Link>
+      </div>
+
       <div className="mt-20 text-center">
         <Link href="/onboarding" className={buttonVariants({ size: "lg" })}>
           Try the live preview
