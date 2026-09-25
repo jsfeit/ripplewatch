@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { logCustomerFeedback } from "@/lib/feedback-log";
 
 // Manual single-entry logging — one piece of customer feedback at a time,
-// same shape as logging a single win/loss deal. score is optional: present
-// for an NPS-style entry, omitted for a plain ask/feature-request. RLS
-// scopes the insert to the caller's own account.
+// same shape as logging a single win/loss deal. Validation and the insert
+// live in logCustomerFeedback, shared with the MCP tool. RLS scopes the
+// insert to the caller's own account.
 export async function POST(request: Request) {
   const supabase = await createClient();
   const {
@@ -20,46 +21,14 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => null);
-  const summary = typeof body?.summary === "string" ? body.summary.trim() : "";
-  if (!summary) {
-    return NextResponse.json({ error: "Enter what the customer said." }, { status: 400 });
-  }
+  const result = await logCustomerFeedback(supabase, profile.account_id, user.id, {
+    summary: body?.summary,
+    score: body?.score,
+    respondent: body?.respondent,
+    source: body?.source,
+    feedbackDate: body?.feedbackDate,
+  });
+  if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
 
-  let score: number | null = null;
-  if (body?.score !== undefined && body?.score !== null && body?.score !== "") {
-    const parsed = Number(body.score);
-    if (!Number.isInteger(parsed) || parsed < 0 || parsed > 10) {
-      return NextResponse.json({ error: "Score must be a whole number from 0 to 10." }, { status: 400 });
-    }
-    score = parsed;
-  }
-
-  const respondent = typeof body?.respondent === "string" && body.respondent.trim() ? body.respondent.trim() : null;
-  const source = typeof body?.source === "string" && body.source.trim() ? body.source.trim() : null;
-  const feedbackDate =
-    typeof body?.feedbackDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.feedbackDate)
-      ? body.feedbackDate
-      : new Date().toISOString().slice(0, 10);
-
-  const { data, error } = await supabase
-    .from("account_customer_feedback")
-    .insert({
-      account_id: profile.account_id,
-      summary,
-      score,
-      respondent,
-      source,
-      feedback_date: feedbackDate,
-      status: "new",
-      origin: "manual",
-      created_by: user.id,
-    })
-    .select("id, summary, score, respondent, source, status, feedback_date, origin, created_at")
-    .single();
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json({ entry: data });
+  return NextResponse.json({ entry: result.entry });
 }

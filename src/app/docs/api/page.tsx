@@ -290,6 +290,35 @@ export default function ApiDocsPage() {
         />
       </div>
 
+      <h2>Connect an AI assistant (MCP)</h2>
+      <p>
+        Ripplewatch also runs as an MCP server, so an assistant like Claude can answer questions about your
+        competitors and record what you tell it, without you opening the dashboard. Use the same API key as
+        above against this endpoint:
+      </p>
+      <Code>{`https://www.ripplewatch.ai/api/mcp`}</Code>
+      <p>
+        Send the key as a bearer token. In Claude Code, for example:
+      </p>
+      <Code>{`claude mcp add --transport http ripplewatch https://www.ripplewatch.ai/api/mcp \\
+  --header "Authorization: Bearer rw_live_..."`}</Code>
+      <p>
+        Clients that only support signing in through a browser (adding a custom connector in Claude or ChatGPT
+        without pasting a key) need OAuth, which we haven&apos;t shipped yet.
+      </p>
+      <p>The tools it exposes:</p>
+      <ul>
+        <li><code>get_briefing</code> - start here: the weekly verdict, who is heating up or cooling, and the top recent signals.</li>
+        <li><code>ask</code> - a free-form question answered against your positioning, ICP and the last 90 days of signals.</li>
+        <li><code>list_competitors</code>, <code>get_competitor</code>, <code>get_momentum</code>, <code>get_trends</code> - read what Ripplewatch knows.</li>
+        <li><code>add_competitor</code>, <code>log_win_loss</code>, <code>log_customer_feedback</code>, <code>set_context</code> - record what you tell the assistant.</li>
+        <li><code>get_next_step</code> - the one thing you could share that would make answers more specific.</li>
+      </ul>
+      <p>
+        Signal text comes from public third-party sources, so tool results label it as data rather than
+        instructions. The same 60 requests/minute limit applies, and each tool call counts as a request.
+      </p>
+
       <h2>Email win/loss data in</h2>
       <p>
         No integration or script needed: on Plus/Advanced plans, Settings → Developer shows a personal address of
