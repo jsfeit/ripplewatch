@@ -23,7 +23,11 @@ const NAV = [
 const TIER_LABELS: Record<string, string> = {
   starter: "Starter",
   plus: "Plus",
+  connect: "Connect",
 };
+
+// Ripplewatch Connect has no dashboard: the web app is Ask and Settings.
+const CONNECT_NAV = NAV.filter((item) => item.href !== "/app/dashboard");
 
 export function AppSidebar({ tier }: { tier: string }) {
   const pathname = usePathname();
@@ -98,7 +102,7 @@ export function AppSidebar({ tier }: { tier: string }) {
           </Button>
         </div>
         <nav className="flex-1 space-y-1 p-3">
-          {NAV.map((item) => {
+          {(tier === "connect" ? CONNECT_NAV : NAV).map((item) => {
             // A competitor's own fact-sheet page (/app/competitors/[id]) has
             // no nav item of its own — it reads as part of Settings, where
             // the competitor list now lives.

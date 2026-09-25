@@ -231,21 +231,21 @@ export default function HomePage() {
         <div className="mx-auto max-w-4xl px-6 py-20 text-center">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
             <Sparkles className="size-3.5" />
-            {CONNECT_NAME} · early access
+            {CONNECT_NAME}
           </span>
           <h2 className="mx-auto mt-4 max-w-xl text-3xl font-semibold tracking-tight">
             Or skip the dashboard. Ask from Claude or ChatGPT.
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
             Connect Ripplewatch to the assistant you already use. Ask what changed, get the read on what it means for
-            your deals, and log wins and losses by just saying so. Included in Plus today.
+            your deals, and log wins and losses by just saying so. $29 a month plus usage you prepay for.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link href="/connect" className={buttonVariants()}>
               See how it works <ArrowRight className="size-4" />
             </Link>
-            <Link href="/connect#early-access" className={buttonVariants({ variant: "outline" })}>
-              Request early access
+            <Link href="/onboarding?path=connect" className={buttonVariants({ variant: "outline" })}>
+              Get {CONNECT_NAME}
             </Link>
           </div>
         </div>

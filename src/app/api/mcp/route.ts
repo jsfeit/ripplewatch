@@ -3,6 +3,7 @@ import type { AuthInfo } from "@modelcontextprotocol/server";
 import { authenticateApiKey } from "@/lib/api-auth";
 import { looksLikeApiKey } from "@/lib/api-keys";
 import { authenticateOAuthAccessToken, bearerChallenge } from "@/lib/mcp-oauth";
+import { canUseMcp } from "@/lib/tier-limits";
 import { registerRipplewatchTools } from "@/lib/mcp-tools";
 
 // Add-competitor and Ask can each take several seconds (domain check, URL
@@ -61,6 +62,12 @@ async function handle(req: Request): Promise<Response> {
         headers: auth.status === 401 ? { "WWW-Authenticate": bearerChallenge(req, token ? "invalid_token" : undefined) } : undefined,
       }
     );
+  }
+
+  // The MCP server is Ripplewatch Connect's product: a dashboard plan (with
+  // its REST API) doesn't include it.
+  if (!canUseMcp(auth.tier, auth.demoMode)) {
+    return Response.json({ error: "Connecting an AI assistant requires Ripplewatch Connect." }, { status: 403 });
   }
 
   verified.set(req, {

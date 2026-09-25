@@ -4,14 +4,14 @@ import { ShieldCheck, Waves } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
-import { API_ACCESS_ALLOWED } from "@/lib/tier-limits";
+import { canUseMcp } from "@/lib/tier-limits";
 import { decideAuthorization } from "./actions";
 
 export const metadata = { title: "Connect an app", robots: { index: false, follow: false } };
 
 const ERRORS: Record<string, string> = {
   invalid: "That authorization request isn't valid. Go back to the app and try connecting again.",
-  plan: "Connecting an AI assistant is part of the Plus plan.",
+  plan: "Connecting an AI assistant is part of Ripplewatch Connect.",
   failed: "Something went wrong approving that. Go back to the app and try connecting again.",
 };
 
@@ -76,9 +76,9 @@ export default async function ConsentPage({
 
   const { data: profile } = await supabase.from("profiles").select("account_id").eq("id", user.id).maybeSingle();
   const { data: account } = profile?.account_id
-    ? await supabase.from("accounts").select("name, tier").eq("id", profile.account_id).single()
+    ? await supabase.from("accounts").select("name, tier, demo_mode").eq("id", profile.account_id).single()
     : { data: null };
-  const allowed = Boolean(account && API_ACCESS_ALLOWED[account.tier]);
+  const allowed = Boolean(account && canUseMcp(account.tier, account.demo_mode));
 
   // The host the app will send the user back to, shown plainly so a lookalike
   // client name can't hide where the approval actually goes.
@@ -138,9 +138,9 @@ export default async function ConsentPage({
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">{ERRORS.plan}</p>
               <div className="flex gap-3">
-                <Link href="/app/settings" className="flex-1">
+                <Link href="/connect" className="flex-1">
                   <Button type="button" className="w-full">
-                    See plans
+                    About Connect
                   </Button>
                 </Link>
                 <form action={decideAuthorization} className="flex-1">

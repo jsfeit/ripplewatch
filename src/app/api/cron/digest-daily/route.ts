@@ -114,6 +114,8 @@ export async function GET(request: Request) {
     .from("accounts")
     .select("*")
     .not("contact_email", "is", null)
+    // Ripplewatch Connect accounts have no dashboard, so no digest.
+    .neq("tier", "connect")
     .eq("status", "active");
 
   // Accounts run concurrently (bounded), not one at a time — same reasoning

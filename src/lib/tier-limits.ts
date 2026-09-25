@@ -74,6 +74,19 @@ export const API_ACCESS_ALLOWED: Record<AccountTier, boolean> = {
   connect: true,
 };
 
+// Connecting an AI assistant (the MCP server and its OAuth sign-in) is
+// Ripplewatch Connect's product, not part of the dashboard plans. Demo
+// accounts keep it so the whole product can be shown.
+export const MCP_ACCESS_ALLOWED: Record<AccountTier, boolean> = {
+  starter: false,
+  plus: false,
+  connect: true,
+};
+
+export function canUseMcp(tier: AccountTier, demoMode: boolean): boolean {
+  return demoMode || MCP_ACCESS_ALLOWED[tier];
+}
+
 // Visual diffing (checkVisualChange in scraping.ts) calls a paid screenshot
 // API per competitor per week — unlike everything else in scraping.ts,
 // which is free scraping, this has a real per-account cost, so it's gated

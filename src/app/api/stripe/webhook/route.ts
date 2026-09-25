@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { getStripe, TIER_BY_PRICE } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPlanChangeEmail, sendPaymentReceivedEmail, sendReferralWelcomeEmail, sendReferralSignedUpEmail } from "@/lib/resend";
+import { creditWalletFromCheckout, creditWalletFromReloadInvoice, saveDefaultPaymentMethod } from "@/lib/connect-billing";
 
 export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
@@ -30,6 +31,34 @@ export async function POST(request: Request) {
         const session = event.data.object as Stripe.Checkout.Session;
         const accountId = session.metadata?.account_id ?? session.client_reference_id;
         const tier = session.metadata?.tier;
+
+        // Ripplewatch Connect: activates the account (signup only) and credits
+        // the prepaid wallet. Handled separately from the dashboard plans:
+        // there's no plan tier to map, and the wallet credit must be
+        // idempotent and payment-gated (see creditWalletFromCheckout).
+        const connectPurpose = session.metadata?.purpose;
+        if (connectPurpose === "connect_signup" || connectPurpose === "connect_topup") {
+          if (!accountId) throw new Error(`connect checkout ${session.id} has no account id`);
+          if (connectPurpose === "connect_signup" && session.payment_status === "paid") {
+            const { error } = await supabase
+              .from("accounts")
+              .update({
+                stripe_customer_id: String(session.customer),
+                stripe_subscription_id: String(session.subscription),
+                tier: "connect",
+                subscription_status: "active",
+                status: "active",
+              })
+              .eq("id", accountId);
+            if (error) throw new Error(`connect signup account update failed: ${error.message}`);
+            await saveDefaultPaymentMethod(session).catch((err) =>
+              console.error("saving default payment method failed:", err)
+            );
+          }
+          await creditWalletFromCheckout(supabase, session);
+          break;
+        }
+
         if (accountId && tier) {
           const { error } = await supabase
             .from("accounts")
@@ -93,9 +122,16 @@ export async function POST(request: Request) {
           // subscription's cancellation (see customer.subscription.deleted);
           // a real new subscription always clears that, regardless of why
           // it was held.
+          // A Connect account only goes active once its subscription really is
+          // (the checkout webhook also activates it after the first payment).
+          const connectNotActive = tier === "connect" && !["active", "trialing"].includes(subscription.status);
           const { error } = await supabase
             .from("accounts")
-            .update({ ...(tier ? { tier } : {}), subscription_status: subscription.status, status: "active" })
+            .update({
+              ...(tier ? { tier } : {}),
+              subscription_status: subscription.status,
+              ...(connectNotActive ? {} : { status: "active" as const }),
+            })
             .eq("id", accountId);
           if (error) throw new Error(`customer.subscription.created account update failed: ${error.message}`);
         }
@@ -125,9 +161,24 @@ export async function POST(request: Request) {
             .eq("id", accountId)
             .single();
 
+          // Connect access follows the subscription: it stops when the fee
+          // isn't being paid (unpaid, canceled, expired) and resumes when it
+          // is. past_due keeps working while Stripe retries the card.
+          const connectStatus =
+            tier === "connect"
+              ? ["active", "trialing"].includes(subscription.status)
+                ? ("active" as const)
+                : ["unpaid", "canceled", "incomplete_expired"].includes(subscription.status)
+                  ? ("hold" as const)
+                  : undefined
+              : undefined;
           const { error } = await supabase
             .from("accounts")
-            .update({ ...(tier ? { tier } : {}), subscription_status: subscription.status })
+            .update({
+              ...(tier ? { tier } : {}),
+              subscription_status: subscription.status,
+              ...(connectStatus ? { status: connectStatus } : {}),
+            })
             .eq("id", accountId);
           if (error) throw new Error(`customer.subscription.updated account update failed: ${error.message}`);
 
@@ -153,6 +204,9 @@ export async function POST(request: Request) {
       case "invoice.payment_succeeded": {
         const invoice = event.data.object as Stripe.Invoice;
         const customerId = typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id;
+        // A paid Connect auto-reload invoice: credit the wallet (idempotent, so
+        // this is a no-op when the reload code already credited it).
+        if (invoice.metadata?.purpose === "connect_reload") await creditWalletFromReloadInvoice(supabase, invoice);
         if (customerId && invoice.amount_paid > 0) {
           const { data: account } = await supabase
             .from("accounts")
@@ -191,9 +245,18 @@ export async function POST(request: Request) {
           // new subscription via checkout) sets tier/subscription_status
           // again below (customer.subscription.created) but does not
           // touch status, so also flip it back to "active" there.
+          // A cancelled Connect account stays a Connect account (on hold) so
+          // it can resubscribe; falling back to "starter" would leave it looking
+          // like a dashboard customer with a plan it never bought.
+          const { data: current } = await supabase.from("accounts").select("tier").eq("id", accountId).single();
           const { error } = await supabase
             .from("accounts")
-            .update({ tier: "starter", stripe_subscription_id: null, subscription_status: "canceled", status: "hold" })
+            .update({
+              ...(current?.tier === "connect" ? {} : { tier: "starter" as const }),
+              stripe_subscription_id: null,
+              subscription_status: "canceled",
+              status: "hold",
+            })
             .eq("id", accountId);
           if (error) throw new Error(`customer.subscription.deleted account update failed: ${error.message}`);
         }

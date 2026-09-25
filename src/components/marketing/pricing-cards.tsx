@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { TIERS } from "@/lib/tiers";
 import { ANNUAL_DISCOUNT_PERCENT, annualPriceUsd } from "@/lib/pricing";
 import { CONNECT_FEATURES, CONNECT_NAME, CONNECT_TAGLINE } from "@/lib/connect";
+import { CONNECT_BASE_FEE_USD, CONNECT_MIN_FUNDING_USD } from "@/lib/connect-pricing";
 import { BillingPeriodToggle, type BillingPeriod } from "./billing-period-toggle";
 
 export function PricingCards() {
@@ -89,7 +90,7 @@ export function PricingCards() {
 
         <div className="relative">
           <span className="absolute -top-3 left-1/2 z-10 -translate-x-1/2 rounded-full border border-primary/40 bg-background px-3 py-1 text-xs font-semibold text-primary">
-            Early access
+            New
           </span>
           <Card className="flex h-full flex-col border-dashed">
             <CardHeader>
@@ -98,9 +99,10 @@ export function PricingCards() {
                 {CONNECT_NAME}
               </p>
               <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-semibold tracking-tight">Usage-based</span>
+                <span className="text-3xl font-semibold tracking-tight">${CONNECT_BASE_FEE_USD}</span>
+                <span className="text-sm text-muted-foreground">/mo + usage</span>
               </div>
-              <p className="text-xs text-primary">Small platform fee plus usage. Pricing shared before it opens.</p>
+              <p className="text-xs text-primary">Usage comes from a balance you prepay, from ${CONNECT_MIN_FUNDING_USD}.</p>
               <p className="text-sm text-muted-foreground">{CONNECT_TAGLINE}</p>
             </CardHeader>
             <CardContent className="flex flex-1 flex-col gap-3">
@@ -108,12 +110,17 @@ export function PricingCards() {
                 {CONNECT_FEATURES.map((f) => (
                   <FeatureRow key={f} label={f} />
                 ))}
-                <FeatureRow label="No dashboard seat to pay for" />
+                <FeatureRow label="Pay only for what you use, never on credit" />
               </ul>
-              <Link href="/connect#early-access" className={buttonVariants({ variant: "outline", className: "w-full" })}>
-                Request early access
+              <Link href="/onboarding?path=connect" className={buttonVariants({ variant: "outline", className: "w-full" })}>
+                Get {CONNECT_NAME}
               </Link>
-              <p className="text-center text-xs text-muted-foreground">Already included in Plus.</p>
+              <p className="text-center text-xs text-muted-foreground">
+                Separate from the dashboard plans.{" "}
+                <Link href="/connect" className="underline underline-offset-2 hover:text-foreground">
+                  How it works
+                </Link>
+              </p>
             </CardContent>
           </Card>
         </div>

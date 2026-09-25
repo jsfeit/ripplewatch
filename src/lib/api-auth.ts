@@ -42,9 +42,15 @@ export async function authenticateApiKey(token: string): Promise<ApiKeyAuth> {
   // Re-checked at request time, not just key-creation time — a downgrade
   // after the key was issued should cut off access immediately, not just
   // block creating new keys going forward.
-  const { data: account } = await supabase.from("accounts").select("tier, demo_mode").eq("id", key.account_id).single();
+  const { data: account } = await supabase.from("accounts").select("tier, demo_mode, status").eq("id", key.account_id).single();
   if (!account || !API_ACCESS_ALLOWED[account.tier]) {
     return { ok: false, status: 403, error: "API access requires the Plus plan." };
+  }
+
+  // A Connect account whose subscription isn't paying is on hold: cut off
+  // here too, not just in the dashboard.
+  if (account.tier === "connect" && account.status !== "active") {
+    return { ok: false, status: 403, error: "Your Ripplewatch Connect subscription isn't active." };
   }
 
   const now = Date.now();

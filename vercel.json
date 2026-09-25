@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/cron/connect-usage",
+      "schedule": "0 12 * * *"
+    },
+    {
       "path": "/api/cron/crawl",
       "schedule": "0 13 * * *"
     },

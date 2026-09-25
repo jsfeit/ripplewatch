@@ -25,7 +25,22 @@ export async function GET(request: Request) {
   }
 
   const supabase = createAdminClient();
-  const { data: accounts } = await supabase.from("accounts").select("*").eq("status", "active");
+  const { data: allAccounts } = await supabase.from("accounts").select("*").eq("status", "active");
+
+  // Ripplewatch Connect accounts prepay for monitoring: one with nothing left
+  // in its balance isn't crawled until it adds funds (the daily usage charge
+  // runs just before this, so an account that just ran out is skipped today).
+  const connectIds = (allAccounts ?? []).filter((a) => a.tier === "connect").map((a) => a.id);
+  const funded = new Set<string>();
+  if (connectIds.length > 0) {
+    const { data: wallets } = await supabase
+      .from("connect_wallets")
+      .select("account_id, balance_micros")
+      .in("account_id", connectIds)
+      .gt("balance_micros", 0);
+    for (const w of wallets ?? []) funded.add(w.account_id);
+  }
+  const accounts = (allAccounts ?? []).filter((a) => a.tier !== "connect" || funded.has(a.id));
 
   const summary = await mapWithConcurrency(accounts ?? [], 10, async (account: Account): Promise<EnqueueSummary> => {
     try {

@@ -28,7 +28,7 @@ export async function GET(request: Request) {
   }
 
   const supabase = createAdminClient();
-  const { data: accounts } = await supabase.from("accounts").select("*").eq("status", "active");
+  const { data: accounts } = await supabase.from("accounts").select("*").neq("tier", "connect").eq("status", "active");
 
   // One batched fetch of every account's competitors instead of a
   // per-account query, grouped in JS — same shape as the N+1 fix already

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft, LayoutDashboard, MessagesSquare } from "lucide-react";
-import { ConnectInterestForm } from "@/components/marketing/connect-interest-form";
+import { ConnectPurchase } from "@/components/marketing/connect-purchase";
 import { trackEvent } from "@/lib/analytics";
 import { CONNECT_NAME } from "@/lib/connect";
 import { OnboardingFlow } from "./onboarding-flow";
@@ -12,8 +12,7 @@ type Path = "choose" | "dashboard" | "connect";
 
 // The front door of onboarding: dashboard or your own AI assistant. The
 // dashboard path is the existing flow, unchanged. The assistant path is an
-// early-access request, because Connect isn't purchasable yet; the one way to
-// use the connector today is Plus, which the confirmation offers.
+// purchase of Ripplewatch Connect (account, then Stripe Checkout).
 //
 // The choice is skipped whenever the visitor has already decided or is
 // already inside the flow: they arrived from a pricing-page plan button
@@ -25,7 +24,7 @@ export function OnboardingEntry({ initiallySignedIn, hasAccount }: { initiallySi
   const alreadyDecided = initiallySignedIn || hasAccount || Boolean(searchParams.get("plan")) || requestedPath === "dashboard";
 
   const [path, setPath] = useState<Path>(
-    alreadyDecided ? "dashboard" : requestedPath === "connect" ? "connect" : "choose"
+    requestedPath === "connect" ? "connect" : alreadyDecided ? "dashboard" : "choose"
   );
 
   function pick(next: Exclude<Path, "choose">) {
@@ -38,24 +37,39 @@ export function OnboardingEntry({ initiallySignedIn, hasAccount }: { initiallySi
   }
 
   if (path === "connect") {
-    return (
-      <div className="mx-auto max-w-lg space-y-6">
-        <button
-          type="button"
-          onClick={() => setPath("choose")}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="size-3.5" />
-          Back
-        </button>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{CONNECT_NAME} is in early access</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Tell us where to reach you and which assistant you use. We&apos;ll email when it opens, with pricing before
-            you decide anything.
+    // Someone who already has a dashboard account can't add Connect to it:
+    // it's a separate product on its own account.
+    if (hasAccount) {
+      return (
+        <div className="mx-auto max-w-lg space-y-3 rounded-2xl border border-border bg-card p-8 text-center">
+          <h1 className="text-xl font-semibold tracking-tight">{CONNECT_NAME} is its own account</h1>
+          <p className="text-sm text-muted-foreground">
+            You&apos;re signed in to a dashboard account. {CONNECT_NAME} is a separate product, so sign out and sign up
+            with another email to buy it.
           </p>
         </div>
-        <ConnectInterestForm source="onboarding" />
+      );
+    }
+    return (
+      <div className="mx-auto max-w-lg space-y-6">
+        {!initiallySignedIn ? (
+          <button
+            type="button"
+            onClick={() => setPath("choose")}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="size-3.5" />
+            Back
+          </button>
+        ) : null}
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Get {CONNECT_NAME}</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Use Ripplewatch inside Claude or ChatGPT. A flat monthly platform fee, and usage you prepay for, so you
+            only pay for what you use.
+          </p>
+        </div>
+        <ConnectPurchase initiallySignedIn={initiallySignedIn} />
       </div>
     );
   }
@@ -90,8 +104,7 @@ export function OnboardingEntry({ initiallySignedIn, hasAccount }: { initiallySi
           </span>
           <span className="text-base font-semibold">My AI assistant</span>
           <span className="text-sm text-muted-foreground">
-            Use Ripplewatch inside Claude or ChatGPT, no dashboard. {CONNECT_NAME} is in early access, and the connector is
-            included in Plus today.
+            Use Ripplewatch inside Claude or ChatGPT, no dashboard. {CONNECT_NAME} is $29/month plus usage you prepay for.
           </span>
         </button>
       </div>

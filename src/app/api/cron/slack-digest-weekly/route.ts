@@ -53,7 +53,7 @@ export async function GET(request: Request) {
   const now = new Date();
 
   const supabase = createAdminClient();
-  const { data: accounts } = await supabase.from("accounts").select("*").eq("status", "active");
+  const { data: accounts } = await supabase.from("accounts").select("*").neq("tier", "connect").eq("status", "active");
 
   const summary = await mapWithConcurrency(accounts ?? [], ACCOUNT_CONCURRENCY, async (account: Account) => {
     const local = localDayAndHour(account.timezone, now);

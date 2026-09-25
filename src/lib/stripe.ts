@@ -37,14 +37,24 @@ export function getPriceId(tier: SelfServeTier, period: BillingPeriod): string |
   return PRICE_BY_TIER_AND_PERIOD[tier][period];
 }
 
+// Ripplewatch Connect's monthly platform fee. Separate from the self-serve
+// dashboard tiers above: it's its own product, bought on its own path, with a
+// prepaid usage wallet alongside (see connect-pricing.ts).
+export function getConnectPriceId(): string | undefined {
+  return process.env.STRIPE_PRICE_CONNECT;
+}
+
 // Maps every configured price ID (monthly and annual) back to its tier, so
 // the webhook can sync accounts.tier regardless of which billing period a
 // customer is on.
-export const TIER_BY_PRICE: Record<string, SelfServeTier> = Object.fromEntries(
-  (Object.entries(PRICE_BY_TIER_AND_PERIOD) as [SelfServeTier, Record<BillingPeriod, string | undefined>][]).flatMap(
-    ([tier, periods]) =>
-      Object.values(periods)
-        .filter((price): price is string => Boolean(price))
-        .map((price) => [price, tier])
-  )
-);
+export const TIER_BY_PRICE: Record<string, SelfServeTier | "connect"> = {
+  ...Object.fromEntries(
+    (Object.entries(PRICE_BY_TIER_AND_PERIOD) as [SelfServeTier, Record<BillingPeriod, string | undefined>][]).flatMap(
+      ([tier, periods]) =>
+        Object.values(periods)
+          .filter((price): price is string => Boolean(price))
+          .map((price) => [price, tier])
+    )
+  ),
+  ...(process.env.STRIPE_PRICE_CONNECT ? { [process.env.STRIPE_PRICE_CONNECT]: "connect" as const } : {}),
+};

@@ -59,9 +59,13 @@ export async function authenticateOAuthAccessToken(token: string): Promise<OAuth
 
   // Same plan gate as API keys, checked on every request so a downgrade cuts
   // off connected apps immediately instead of when the token expires.
-  const { data: account } = await supabase.from("accounts").select("tier, demo_mode").eq("id", profile.account_id).single();
+  const { data: account } = await supabase.from("accounts").select("tier, demo_mode, status").eq("id", profile.account_id).single();
   if (!account || !API_ACCESS_ALLOWED[account.tier]) {
-    return { ok: false, status: 403, error: "Connecting an AI assistant requires the Plus plan." };
+    return { ok: false, status: 403, error: "Connecting an AI assistant requires Ripplewatch Connect." };
+  }
+
+  if (account.tier === "connect" && account.status !== "active") {
+    return { ok: false, status: 403, error: "Your Ripplewatch Connect subscription isn't active." };
   }
 
   if (!checkRateLimit(`mcp-oauth:${userId}`, RATE_LIMIT_PER_MINUTE, 60_000)) {

@@ -68,9 +68,9 @@ export default function PricingPage() {
         <h3 className="text-lg font-semibold">Not sure which tier fits?</h3>
         <p className="mt-2 text-sm text-muted-foreground">
           Most self-serve teams start on Starter and move to Plus once they&apos;re tracking more
-          than 3 competitors, or want HubSpot, API access and the Claude and ChatGPT connector. Every
-          plan gets full scoring and Momentum from day one. Prefer to skip the dashboard entirely?
-          Ripplewatch Connect is in early access.
+          than 3 competitors, or want HubSpot and API access. Every plan gets full scoring and Momentum
+          from day one. Prefer to skip the dashboard and use Ripplewatch inside Claude or ChatGPT?
+          Ripplewatch Connect is a separate product: $29 a month plus usage you prepay for.
         </p>
         <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link href="/onboarding?plan=starter&period=monthly" className={buttonVariants()}>

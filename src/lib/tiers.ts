@@ -70,7 +70,7 @@ export const TIERS: Tier[] = [
     callIntel: "Zoom call insights",
     gong: "Gong (coming soon)",
     intercom: "Intercom (coming soon)",
-    apiAccess: "Read-only API + Claude and ChatGPT connector",
+    apiAccess: "Read-only API access",
     visualDiff: "Visual change detection",
     seats: "Unlimited",
     cta: "Start with Plus",

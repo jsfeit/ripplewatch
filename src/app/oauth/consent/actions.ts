@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { API_ACCESS_ALLOWED } from "@/lib/tier-limits";
+import { canUseMcp } from "@/lib/tier-limits";
 
 const AUTHORIZATION_ID = /^[\w-]{8,200}$/;
 
@@ -25,9 +25,9 @@ export async function decideAuthorization(formData: FormData) {
   if (decision === "approve") {
     const { data: profile } = await supabase.from("profiles").select("account_id").eq("id", user.id).maybeSingle();
     const { data: account } = profile?.account_id
-      ? await supabase.from("accounts").select("tier").eq("id", profile.account_id).single()
+      ? await supabase.from("accounts").select("tier, demo_mode").eq("id", profile.account_id).single()
       : { data: null };
-    if (!account || !API_ACCESS_ALLOWED[account.tier]) redirect(`${consentPath}&error=plan`);
+    if (!account || !canUseMcp(account.tier, account.demo_mode)) redirect(`${consentPath}&error=plan`);
   }
 
   const result =

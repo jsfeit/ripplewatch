@@ -305,7 +305,7 @@ export default function ApiDocsPage() {
       <p>
         In Claude or ChatGPT you don&apos;t need a key: add <code>https://www.ripplewatch.ai/api/mcp</code> as a
         custom connector, sign in to Ripplewatch when prompted, and approve the connection. Manage connected apps
-        under Settings → Developer. Both paths are limited to accounts on the Plus plan.
+        under Settings → Developer. Both paths require a Ripplewatch Connect account; a dashboard plan doesn&apos;t include the assistant connector.
       </p>
       <p>The tools it exposes:</p>
       <ul>
