@@ -512,14 +512,17 @@ function ResearchBlock({ result }: { result: SnapshotResult }) {
 
 // Steps shown while a lookup runs. The timings are a guide to the usual pace,
 // not a live feed: the last step stays active until the answer arrives, so a
-// slow site just sits on it a little longer.
+// slow site just sits on it a little longer. Each step uses a different verb
+// and reads like a person working through the material, not a checklist of
+// API calls ("searching this, searching that") — the payoff at the end
+// ("Writing your read") is the actual takeaway that's about to appear.
 const CHECK_STEPS: { after: number; label: (domain: string) => string }[] = [
-  { after: 0, label: (d) => `Opening ${d || "the site"}` },
-  { after: 2000, label: () => "Pulling their pricing and careers pages" },
-  { after: 5000, label: () => "Scanning funding, hiring, and press activity" },
-  { after: 11000, label: () => "Cross-checking every source we found" },
-  { after: 17000, label: () => "Weighing what's actually notable" },
-  { after: 21000, label: () => "Synthesizing your read" },
+  { after: 0, label: (d) => `Pulling up ${d || "the site"}` },
+  { after: 2000, label: () => "Reading between the lines on pricing and hiring" },
+  { after: 5000, label: () => "Chasing down funding news, launches, and headlines" },
+  { after: 11000, label: () => "Sorting what matters from what doesn't" },
+  { after: 17000, label: () => "Connecting the dots" },
+  { after: 21000, label: () => "Writing your read" },
 ];
 
 function CheckingOverlay({ domain }: { domain: string }) {
@@ -540,7 +543,7 @@ function CheckingOverlay({ domain }: { domain: string }) {
       aria-live="polite"
     >
       <div className="w-full max-w-sm rounded-2xl border border-primary/25 bg-card p-6 shadow-xl">
-        <p className="text-xs font-medium tracking-wide text-primary uppercase">Checking</p>
+        <p className="text-xs font-medium tracking-wide text-primary uppercase">Digging in</p>
         <h3 className="mt-1 text-lg font-semibold tracking-tight">{domain || "your competitor"}</h3>
         <ul className="mt-5 space-y-3">
           {CHECK_STEPS.map((step, i) => {
