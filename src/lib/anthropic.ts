@@ -2491,3 +2491,141 @@ export async function researchDomainPublicly(
     sources,
   };
 }
+
+export type RecentActivityCategory = "funding" | "hiring" | "product" | "leadership" | "news";
+
+export type RecentActivitySignal = {
+  category: RecentActivityCategory;
+  summary: string;
+  // Free text ("March 2026", "Q1 2026") rather than a strict date: search
+  // results rarely carry an exact day, and forcing one invites the model to
+  // guess. Null when no date could be pinned down at all.
+  occurredOn: string | null;
+  sourceUrl: string;
+  sourceTitle: string;
+};
+
+export type RecentActivity = {
+  companyName: string;
+  // Deliberately can be empty: a search that confirms the company but finds
+  // nothing notable in the window is a real, honest answer ("nothing public
+  // recently"), not a failure. Only a null RecentActivity (the company
+  // itself couldn't be confirmed) means the caller has nothing usable.
+  signals: RecentActivitySignal[];
+};
+
+// Runs on essentially every public snapshot, not just as a fallback for sites
+// we couldn't load (see researchDomainPublicly above, which is fallback-
+// only) — this is the actual headline of the free tool: not "what's their
+// price today" but "what have they been doing lately," the same question
+// Ripplewatch answers continuously for a real account. A one-time search
+// obviously can't match a monitored account's history, so it's framed
+// honestly in the UI as a quick pull, not a full trend read.
+const RECENT_ACTIVITY_SYSTEM_PROMPT = `You use web search to find recent, notable public activity (roughly the last 9 months) about the company that operates one specific website domain, for a visitor who wants to know what that company has been up to lately, not just what it charges today.
+
+Companies very often share a name across different domain endings, so first identify the company that operates EXACTLY the given domain. If you can't confirm which company operates the domain, return found=false and an empty signals array.
+
+Once confirmed, look for genuinely notable items from roughly the last 9 months: funding rounds, a hiring surge or a notable pullback, product launches or major feature announcements, leadership changes (new CEO/exec hires or departures), a rebrand or repositioning, acquisitions, or meaningful press coverage. Skip routine blog posts, minor UI tweaks, or anything you can't date even approximately. Return at most 4 signals, the most notable and most recent first. If you find genuinely nothing notable in that window, return an empty signals array rather than stretching to fill one — "nothing public recently" is itself a real, useful answer.
+
+Every signal must be backed by a specific page you actually found in search results; never invent or estimate one from general knowledge. Keep each summary to one plain sentence. Respond with strict JSON only, matching the schema.`;
+
+const RECENT_ACTIVITY_SCHEMA = {
+  type: "object",
+  properties: {
+    found: { type: "boolean" },
+    companyName: { type: "string" },
+    signals: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          category: { type: "string", enum: ["funding", "hiring", "product", "leadership", "news"] },
+          summary: { type: "string" },
+          occurredOn: { anyOf: [{ type: "string" }, { type: "null" }] },
+          sourceUrl: { type: "string" },
+          sourceTitle: { type: "string" },
+        },
+        required: ["category", "summary", "occurredOn", "sourceUrl", "sourceTitle"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["found", "companyName", "signals"],
+  additionalProperties: false,
+} as const;
+
+export async function researchRecentActivity(
+  domain: string,
+  siteTitle: string | null,
+  accountId: string | null = null
+): Promise<RecentActivity | null> {
+  const startedAt = Date.now();
+  const message = await createMessage({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 2000,
+    system: cachedSystemPrompt(RECENT_ACTIVITY_SYSTEM_PROMPT),
+    tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 2 }],
+    output_config: { format: { type: "json_schema", schema: RECENT_ACTIVITY_SCHEMA } },
+    messages: [
+      {
+        role: "user",
+        content: `Website domain: ${domain}${siteTitle ? `\nThe site's own page title: "${siteTitle}"` : ""}\n\nWhat has this company been up to publicly in roughly the last 9 months?`,
+      },
+    ],
+  });
+  recordLlmUsage(accountId, "researchRecentActivity", message.model, message.usage);
+
+  const returnedUrls = new Set<string>();
+  for (const block of message.content) {
+    if (block.type !== "web_search_tool_result" || !Array.isArray(block.content)) continue;
+    for (const item of block.content as { url?: unknown }[]) {
+      if (typeof item.url === "string") returnedUrls.add(item.url.toLowerCase());
+    }
+  }
+
+  const text = message.content.find((block) => block.type === "text")?.text ?? "{}";
+  const log = (outcome: string, extra: Record<string, unknown> = {}) =>
+    console.info(
+      `researchRecentActivity ${domain}: ${outcome}`,
+      JSON.stringify({ ms: Date.now() - startedAt, stopReason: message.stop_reason, ...extra })
+    );
+
+  let parsed: { found?: unknown; companyName?: unknown; signals?: unknown[] };
+  try {
+    parsed = JSON.parse(text);
+  } catch (err) {
+    throw new Error(`Could not parse recent activity response: ${text}`, { cause: err });
+  }
+  if (parsed.found !== true) {
+    log("model said found=false");
+    return null;
+  }
+
+  const validCategories: RecentActivityCategory[] = ["funding", "hiring", "product", "leadership", "news"];
+  const signals: RecentActivitySignal[] = (Array.isArray(parsed.signals) ? parsed.signals : [])
+    .map((raw) => {
+      const s = raw as Record<string, unknown>;
+      return {
+        category: validCategories.includes(s.category as RecentActivityCategory) ? (s.category as RecentActivityCategory) : "news",
+        summary: String(s.summary ?? "").trim(),
+        occurredOn: typeof s.occurredOn === "string" && s.occurredOn.trim() ? s.occurredOn.trim() : null,
+        sourceUrl: String(s.sourceUrl ?? ""),
+        sourceTitle: String(s.sourceTitle ?? ""),
+      };
+    })
+    // Same anti-hallucination guard as researchDomainPublicly: a source is
+    // only trusted if the search tool actually returned that exact URL this
+    // turn, not merely a URL the model wrote down.
+    .filter((s) => {
+      if (!s.summary || !returnedUrls.has(s.sourceUrl.toLowerCase())) return false;
+      try {
+        return /^https?:$/.test(new URL(s.sourceUrl).protocol);
+      } catch {
+        return false;
+      }
+    })
+    .slice(0, 4);
+
+  log("ok", { signals: signals.length });
+  return { companyName: String(parsed.companyName ?? "").trim(), signals };
+}

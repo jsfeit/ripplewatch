@@ -9,11 +9,16 @@ import {
   DollarSign,
   Globe,
   Loader2,
+  Megaphone,
   MessageCircle,
   RefreshCw,
+  Rocket,
   Search,
   Send,
   Sparkles,
+  TrendingUp,
+  UserRound,
+  Wallet,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +29,7 @@ import { trackEvent } from "@/lib/analytics";
 import { UTM_STORAGE_KEY } from "@/components/utm-capture";
 import { BILLING_MODEL_LABELS } from "@/lib/billing-model";
 import type { SnapshotResult } from "@/lib/snapshot";
+import type { RecentActivityCategory } from "@/lib/anthropic";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -116,12 +122,17 @@ export function CompetitorSnapshotTool() {
                   different company, try a suggestion below.
                 </p>
               </InfoRow>
-            ) : result.research ? (
-              <ResearchBlock result={result} />
             ) : (
               <>
-                <PricingBlock result={result} />
-                <HiringBlock result={result} />
+                <ActivityBlock result={result} />
+                {result.research ? (
+                  <ResearchBlock result={result} />
+                ) : (
+                  <>
+                    <PricingBlock result={result} />
+                    <HiringBlock result={result} />
+                  </>
+                )}
               </>
             )}
           </div>
@@ -248,6 +259,66 @@ function InfoRow({ icon, title, children }: { icon: React.ReactNode; title: stri
         <p className="font-medium">{title}</p>
         <div className="mt-0.5 space-y-1 text-muted-foreground">{children}</div>
       </div>
+    </div>
+  );
+}
+
+const ACTIVITY_ICONS: Record<RecentActivityCategory, React.ReactNode> = {
+  funding: <Wallet className="size-4" />,
+  hiring: <TrendingUp className="size-4" />,
+  product: <Rocket className="size-4" />,
+  leadership: <UserRound className="size-4" />,
+  news: <Megaphone className="size-4" />,
+};
+
+const ACTIVITY_LABELS: Record<RecentActivityCategory, string> = {
+  funding: "Funding",
+  hiring: "Hiring",
+  product: "Product",
+  leadership: "Leadership",
+  news: "News",
+};
+
+// The actual headline of the tool: what has this competitor been doing
+// lately, not just what they charge today. Shown above pricing/hiring so the
+// page's own question ("what would we catch about your competitor?") gets
+// answered first, not last.
+function ActivityBlock({ result }: { result: SnapshotResult }) {
+  const activity = result.activity;
+  if (!activity) return null;
+
+  if (activity.signals.length === 0) {
+    return (
+      <InfoRow icon={<TrendingUp className="size-4" />} title="Nothing notable publicly in the last several months">
+        <p>
+          No funding news, leadership changes, or major launches turned up. That&apos;s a real read, not a gap: some
+          competitors go quiet for a while right before a real move. Ripplewatch is built to catch that shift the
+          moment it happens instead of finding out from a search months later.
+        </p>
+      </InfoRow>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Recent activity</p>
+      {activity.signals.map((signal, i) => (
+        <InfoRow
+          key={`${signal.sourceUrl}-${i}`}
+          icon={ACTIVITY_ICONS[signal.category]}
+          title={`${ACTIVITY_LABELS[signal.category]}${signal.occurredOn ? ` · ${signal.occurredOn}` : ""}`}
+        >
+          <p>{signal.summary}</p>
+          <a
+            href={signal.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer nofollow"
+            className="text-xs underline underline-offset-2 hover:text-foreground"
+          >
+            {signal.sourceTitle || new URL(signal.sourceUrl).hostname}
+          </a>
+        </InfoRow>
+      ))}
     </div>
   );
 }
@@ -427,9 +498,9 @@ const CHECK_STEPS: { after: number; label: (domain: string) => string }[] = [
   { after: 0, label: (d) => `Opening ${d || "the site"}` },
   { after: 2000, label: () => "Looking for the pricing page" },
   { after: 4500, label: () => "Checking their careers page and job boards" },
-  { after: 8000, label: () => "Reaching public and proprietary connections" },
-  { after: 13000, label: () => "Cross-checking sources" },
-  { after: 19000, label: () => "Putting your snapshot together" },
+  { after: 8000, label: () => "Searching for recent funding, hiring, and news" },
+  { after: 14000, label: () => "Cross-checking sources" },
+  { after: 20000, label: () => "Putting your snapshot together" },
 ];
 
 function CheckingOverlay({ domain }: { domain: string }) {
