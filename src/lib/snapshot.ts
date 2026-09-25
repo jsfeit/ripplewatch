@@ -11,7 +11,13 @@ import {
   type SnapshotHiring,
   type SnapshotReachability,
 } from "@/lib/scraping";
-import { extractPricingStructure, researchDomainPublicly, type PublicResearch } from "@/lib/anthropic";
+import {
+  extractPricingStructure,
+  researchDomainPublicly,
+  researchRecentActivity,
+  type PublicResearch,
+  type RecentActivity,
+} from "@/lib/anthropic";
 import type { BillingModel, Database } from "@/lib/supabase/types";
 
 // What the visitor can be told about pricing, from most to least useful:
@@ -51,6 +57,13 @@ export type SnapshotResult = {
   // sources found something reliable about it; the UI labels it as such
   // rather than presenting it as a live read.
   research: PublicResearch | null;
+  // What the company's been up to lately (funding, hiring, launches, press)
+  // over roughly the last 9 months — this is the actual headline of the free
+  // tool, not the pricing table. Runs regardless of whether the site itself
+  // was readable, unlike `research` above. Null when the company couldn't be
+  // confirmed at all; an empty signals array is a real finding ("nothing
+  // notable publicly recently"), not a failure.
+  activity: RecentActivity | null;
   // Other sites with the same name on a different domain ending (e.g. arlo.co
   // for arlo.com), so a visitor who typed the wrong one can switch in a
   // click. Empty when there's nothing that looks like a different company.
@@ -72,6 +85,11 @@ export type SnapshotResult = {
 // running in parallel.
 const BLOCKED_FETCH_BUDGET_MS = 12_000;
 const RESEARCH_TIMEOUT_MS = 40_000;
+// A basic web search on Haiku usually finishes in a few seconds (see
+// researchDomainPublicly's own comment on this), so this bounds the worst
+// case without making every lookup pay the full 40s the blocked-site
+// fallback above tolerates.
+const ACTIVITY_TIMEOUT_MS = 25_000;
 
 export async function buildSnapshot(
   domain: string,
@@ -82,6 +100,11 @@ export async function buildSnapshot(
   opts: {
     llmAllowed?: boolean;
     researchAllowed?: boolean;
+    // Governs researchRecentActivity specifically — separate from
+    // researchAllowed (the blocked-site pricing/hiring fallback) because
+    // this one runs on nearly every lookup, not just as a fallback, so it
+    // needs its own, higher-volume daily cap upstream.
+    activityAllowed?: boolean;
     // Set for a signed-in customer's competitor so its LLM spend is
     // attributed to their account instead of the anonymous pool.
     accountId?: string | null;
@@ -89,6 +112,7 @@ export async function buildSnapshot(
 ): Promise<SnapshotResult> {
   const llmAllowed = opts.llmAllowed ?? true;
   const researchAllowed = opts.researchAllowed ?? true;
+  const activityAllowed = opts.activityAllowed ?? true;
   const accountId = opts.accountId ?? null;
   // Started first so it runs alongside everything else instead of adding to
   // the visitor's wait.
@@ -125,12 +149,27 @@ export async function buildSnapshot(
       hiring: { status: "unavailable" },
       reachability: probe.reachability,
       research: null,
+      activity: null,
       alternates,
       readDirectly: false,
       needsManualCheck: false,
     };
   }
   const discovered = home ? extractDiscoveredUrls(home.html, home.finalUrl) : { pricingUrl: null, careersUrl: null };
+
+  // Started now so it overlaps with the fetches below instead of stacking on
+  // top of them — this is the headline finding, so it runs for basically
+  // every lookup that reaches here, not just the ones the site itself
+  // refused (contrast with runResearch below, which is fallback-only).
+  const activityPromise: Promise<RecentActivity | null> = activityAllowed
+    ? withTimeout(
+        researchRecentActivity(domain, home?.title ?? null, accountId).catch((err) => {
+          console.error(`snapshot activity research failed for ${domain}:`, err);
+          return null;
+        }),
+        ACTIVITY_TIMEOUT_MS
+      ).then((result) => result ?? null)
+    : Promise.resolve(null);
 
   // A homepage that refused or wouldn't connect makes the research fallback
   // likely, so start it now and let it overlap with the page fetches below
@@ -237,6 +276,8 @@ export async function buildSnapshot(
     research = await runResearch();
   }
 
+  const activity = await activityPromise;
+
   return {
     domain,
     reachable: home !== null || pricingFetch.status === "ok" || hiring.status !== "unavailable",
@@ -245,6 +286,7 @@ export async function buildSnapshot(
     hiring,
     reachability: probe.reachability,
     research,
+    activity,
     alternates,
     readDirectly: answeredPricing || answeredHiring,
     // (Domains that don't exist or are placeholders returned early above, so

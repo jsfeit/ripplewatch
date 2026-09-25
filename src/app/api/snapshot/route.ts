@@ -8,9 +8,12 @@ import { countUnattributedLlmCalls } from "@/lib/usage";
 
 // Homepage + pricing (live, then archived) + hiring board all run in
 // parallel with their own time caps (see the snapshot fetchers in
-// scraping.ts), plus one LLM extraction call. When a site can't be read at
-// all, a web-search research step (capped at 50s in buildSnapshot) runs after
-// that, so the worst case is roughly 35s of fetching plus 50s of research.
+// scraping.ts), plus one LLM extraction call. A recent-activity web search
+// (capped at 25s) now runs alongside those for nearly every lookup, not just
+// as a fallback. When a site can't be read at all, an additional web-search
+// research step for pricing/hiring (capped at 40s) also overlaps with the
+// rest, so the worst case is roughly 35s of fetching plus 40s of that
+// fallback research, both already overlapping the 25s activity search.
 // Explicit because a slow or uncooperative third-party site could otherwise
 // eat into it.
 export const maxDuration = 120;
@@ -27,6 +30,12 @@ const SNAPSHOT_DAILY_LLM_CAP = 300;
 // extraction and only runs for sites we couldn't read, so it has its own,
 // lower ceiling.
 const SNAPSHOT_DAILY_RESEARCH_CAP = 100;
+
+// The recent-activity search runs on nearly every lookup (it's the tool's
+// headline finding now, not a fallback), so its cap sits closer to the main
+// LLM cap than to the blocked-site research cap above. Past it, the snapshot
+// still shows pricing/hiring as usual, just without the activity signals.
+const SNAPSHOT_DAILY_ACTIVITY_CAP = 250;
 
 const VALID_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -59,7 +68,11 @@ export async function POST(request: Request) {
   const researchAllowed = researchUsed === null || researchUsed < SNAPSHOT_DAILY_RESEARCH_CAP;
   if (!researchAllowed) console.warn(`snapshot research cap (${SNAPSHOT_DAILY_RESEARCH_CAP}/24h) reached, skipping web research`);
 
-  const result = await buildSnapshot(domain, { llmAllowed, researchAllowed });
+  const activityUsed = await countUnattributedLlmCalls("researchRecentActivity", 24);
+  const activityAllowed = activityUsed === null || activityUsed < SNAPSHOT_DAILY_ACTIVITY_CAP;
+  if (!activityAllowed) console.warn(`snapshot activity cap (${SNAPSHOT_DAILY_ACTIVITY_CAP}/24h) reached, skipping activity research`);
+
+  const result = await buildSnapshot(domain, { llmAllowed, researchAllowed, activityAllowed });
 
   // Recorded whether or not we found anything (see recordSnapshotLead).
   // Awaited, not fire-and-forget: on a serverless function the work can be

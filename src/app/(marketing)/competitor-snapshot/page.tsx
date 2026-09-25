@@ -3,7 +3,7 @@ import { CompetitorSnapshotTool } from "@/components/marketing/competitor-snapsh
 import { DemoLink } from "@/components/marketing/demo-link";
 
 const description =
-  "Enter a competitor's domain and get a live, one-time snapshot of their pricing, right now. See what Ripplewatch would track continuously.";
+  "Enter a competitor's domain and get a live, one-time read on what they've been up to: funding, hiring, launches, pricing. See what Ripplewatch would track continuously.";
 
 export const metadata = {
   title: "Free Competitor Snapshot",
