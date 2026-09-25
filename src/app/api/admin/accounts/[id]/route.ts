@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Tier, AccountStatus } from "@/lib/supabase/types";
 
-const VALID_TIERS = ["starter", "plus"];
+const VALID_TIERS = ["starter", "plus", "connect"];
 const VALID_STATUSES = ["active", "hold", "cancelled"];
 
 // Manual override for support/sales use — all tiers are self-serve now, but

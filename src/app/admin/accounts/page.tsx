@@ -16,6 +16,7 @@ export const dynamic = "force-dynamic";
 const TIER_LABELS: Record<string, string> = {
   starter: "Starter",
   plus: "Plus",
+  connect: "Connect",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -39,6 +40,8 @@ export default async function AdminAccountsPage() {
   let error: { message: string } | null = null;
   const lastActiveByAccount = new Map<string, string>();
   let llmCostByAccount = new Map<string, { tokens: number; costUsd: number; calls: number }>();
+  // Prepaid usage balance per Ripplewatch Connect account.
+  const walletBalanceByAccount = new Map<string, number>();
 
   if (configured) {
     const supabase = createAdminClient();
@@ -50,6 +53,9 @@ export default async function AdminAccountsPage() {
     // itself still lists newest-first, so this is a separate ascending rank
     // rather than the row's position in the rendered list.
     accountNumbers = buildOrdinalMap(accounts ?? [], (a) => a.id, (a) => a.created_at);
+
+    const { data: walletRows } = await supabase.from("connect_wallets").select("account_id, balance_micros");
+    for (const w of walletRows ?? []) walletBalanceByAccount.set(w.account_id, Number(w.balance_micros) / 1_000_000);
 
     const { data: competitorRows } = await supabase.from("competitors").select("account_id");
     for (const row of competitorRows ?? []) {
@@ -140,6 +146,11 @@ export default async function AdminAccountsPage() {
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary">{TIER_LABELS[a.tier] ?? a.tier}</Badge>
+                    {a.tier === "connect" ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        ${(walletBalanceByAccount.get(a.id) ?? 0).toFixed(2)} balance
+                      </p>
+                    ) : null}
                   </TableCell>
                   <TableCell>
                     {!a.subscription_status ? (

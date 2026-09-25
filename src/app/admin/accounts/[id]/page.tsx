@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/is-configured";
 import { SupabaseNotConfigured } from "@/components/admin/not-configured";
-import { AccountAdminView } from "@/components/admin/account-admin-view";
+import { AccountAdminView, type ConnectAdminData } from "@/components/admin/account-admin-view";
 import { AccountActivityCard, type ActivityUser, type AdoptionItem } from "@/components/admin/account-activity-card";
 import { daysAgoIso, relativeTime, summarizeActivity, type ActivityRow } from "@/lib/activity";
 import { sumLlmUsageByFunction } from "@/lib/llm-pricing";
@@ -95,6 +95,58 @@ export default async function AdminAccountDetailPage({
     .map(([functionName, totals]) => ({ functionName, ...totals }))
     .sort((a, b) => b.costUsd - a.costUsd);
   const llmUsageTotalUsd = llmUsageByFunction.reduce((sum, row) => sum + row.costUsd, 0);
+
+  // Ripplewatch Connect: the prepaid wallet, and whether usage is earning its
+  // keep: what we charged over the last 30 days against what the same period
+  // cost us in LLM spend.
+  let connect: ConnectAdminData | null = null;
+  if (account.tier === "connect") {
+    const window30 = new Date();
+    window30.setUTCDate(window30.getUTCDate() - 30);
+    const [{ data: wallet }, { data: ledgerRows }, { data: ledger30 }] = await Promise.all([
+      supabase
+        .from("connect_wallets")
+        .select("balance_micros, auto_reload_enabled, reload_amount_cents, reload_threshold_cents, reload_failed_at")
+        .eq("account_id", id)
+        .maybeSingle(),
+      supabase
+        .from("connect_wallet_ledger")
+        .select("id, kind, amount_micros, balance_after_micros, description, created_at")
+        .eq("account_id", id)
+        .order("created_at", { ascending: false })
+        .limit(15),
+      supabase
+        .from("connect_wallet_ledger")
+        .select("kind, amount_micros")
+        .eq("account_id", id)
+        .gte("created_at", window30.toISOString()),
+    ]);
+    const sum = (kind: string) => (ledger30 ?? []).filter((r) => r.kind === kind).reduce((s, r) => s + Number(r.amount_micros), 0) / 1_000_000;
+    const llmCost30 = sumLlmUsageByFunction((usageRows ?? []).filter((r) => new Date(r.created_at) >= window30));
+    const llmCost30Usd = Array.from(llmCost30.values()).reduce((s, t) => s + t.costUsd, 0);
+    connect = {
+      balanceUsd: Number(wallet?.balance_micros ?? 0) / 1_000_000,
+      autoReload: wallet
+        ? {
+            enabled: wallet.auto_reload_enabled,
+            amountUsd: wallet.reload_amount_cents / 100,
+            thresholdUsd: wallet.reload_threshold_cents / 100,
+            failed: Boolean(wallet.reload_failed_at),
+          }
+        : null,
+      fundedUsd30: sum("funding"),
+      chargedUsd30: Math.abs(sum("usage")),
+      llmCostUsd30: llmCost30Usd,
+      ledger: (ledgerRows ?? []).map((r) => ({
+        id: r.id,
+        kind: r.kind,
+        amountUsd: Number(r.amount_micros) / 1_000_000,
+        balanceUsd: Number(r.balance_after_micros) / 1_000_000,
+        description: r.description,
+        createdAt: r.created_at,
+      })),
+    };
+  }
 
   // Activity: who's on the account, when they signed up / last signed in /
   // how often, which pages they open, and which product areas they've set up.
@@ -200,6 +252,7 @@ export default async function AdminAccountDetailPage({
         llmUsageByFunction={llmUsageByFunction}
         llmUsageTotalUsd={llmUsageTotalUsd}
         llmUsageWindowDays={LLM_USAGE_LOOKBACK_DAYS}
+        connect={connect}
       />
     </div>
   );
