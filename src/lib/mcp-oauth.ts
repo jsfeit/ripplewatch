@@ -3,6 +3,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { API_ACCESS_ALLOWED } from "@/lib/tier-limits";
 import { checkRateLimit } from "@/lib/rate-limit";
+import type { Tier as AccountTier } from "@/lib/supabase/types";
 
 // Ripplewatch doesn't run its own OAuth server: Supabase Auth's OAuth 2.1
 // server issues the tokens (it handles client registration, PKCE, code and
@@ -25,7 +26,7 @@ function jwks() {
 const RATE_LIMIT_PER_MINUTE = 60;
 
 export type OAuthAuth =
-  | { ok: true; accountId: string; userId: string; clientId: string }
+  | { ok: true; accountId: string; userId: string; clientId: string; tier: AccountTier; demoMode: boolean }
   | { ok: false; status: 401 | 403 | 429; error: string };
 
 // Verifies a Supabase-issued OAuth access token and resolves the account it
@@ -58,7 +59,7 @@ export async function authenticateOAuthAccessToken(token: string): Promise<OAuth
 
   // Same plan gate as API keys, checked on every request so a downgrade cuts
   // off connected apps immediately instead of when the token expires.
-  const { data: account } = await supabase.from("accounts").select("tier").eq("id", profile.account_id).single();
+  const { data: account } = await supabase.from("accounts").select("tier, demo_mode").eq("id", profile.account_id).single();
   if (!account || !API_ACCESS_ALLOWED[account.tier]) {
     return { ok: false, status: 403, error: "Connecting an AI assistant requires the Plus plan." };
   }
@@ -67,7 +68,7 @@ export async function authenticateOAuthAccessToken(token: string): Promise<OAuth
     return { ok: false, status: 429, error: "Rate limit exceeded. Try again shortly." };
   }
 
-  return { ok: true, accountId: profile.account_id, userId, clientId };
+  return { ok: true, accountId: profile.account_id, userId, clientId, tier: account.tier, demoMode: account.demo_mode };
 }
 
 // RFC 9728 Protected Resource Metadata: tells an MCP client which

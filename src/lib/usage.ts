@@ -1,5 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { estimateCostUsd } from "@/lib/llm-pricing";
+import { addMeteredCost } from "@/lib/usage-meter";
 
 export type AnthropicUsage = {
   input_tokens: number;
@@ -22,6 +24,21 @@ export function recordLlmUsage(
   model: string,
   usage: AnthropicUsage
 ): void {
+  // Also reported to any metered operation in progress (see usage-meter.ts),
+  // so a prepaid Connect call can be charged what it actually cost.
+  addMeteredCost(
+    estimateCostUsd(
+      model,
+      {
+        input_tokens: usage.input_tokens,
+        output_tokens: usage.output_tokens,
+        cache_creation_tokens: usage.cache_creation_input_tokens ?? 0,
+        cache_read_tokens: usage.cache_read_input_tokens ?? 0,
+      },
+      new Date().toISOString()
+    )
+  );
+
   createAdminClient()
     .from("llm_usage")
     .insert({

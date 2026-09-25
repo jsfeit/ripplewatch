@@ -8,6 +8,9 @@ import type { SignalType } from "./mock-data";
 export const COMPETITOR_LIMIT: Record<AccountTier, number> = {
   starter: 3,
   plus: 20,
+  // Connect isn't capped by count: each competitor draws from the prepaid
+  // wallet, so what limits it is the balance.
+  connect: Infinity,
 };
 
 // Signal sources are uniform across every tier — differentiation is
@@ -22,6 +25,7 @@ export const COMPETITOR_LIMIT: Record<AccountTier, number> = {
 export const TIER_SIGNAL_SOURCES: Record<AccountTier, SignalType[]> = {
   starter: ["pricing", "job_posting", "news", "funding", "product_change"],
   plus: ["pricing", "job_posting", "news", "funding", "product_change"],
+  connect: ["pricing", "job_posting", "news", "funding", "product_change"],
 };
 
 // CRM (HubSpot) read-only pull is a Plus feature — same gate shape as
@@ -29,6 +33,7 @@ export const TIER_SIGNAL_SOURCES: Record<AccountTier, SignalType[]> = {
 export const CRM_ALLOWED: Record<AccountTier, boolean> = {
   starter: false,
   plus: true,
+  connect: false,
 };
 
 // Team seats: Starter cap encourages upgrading once a team grows past a
@@ -36,6 +41,7 @@ export const CRM_ALLOWED: Record<AccountTier, boolean> = {
 export const SEAT_LIMIT: Record<AccountTier, number> = {
   starter: 3,
   plus: Infinity,
+  connect: Infinity,
 };
 
 export function seatLimitLabel(tier: AccountTier): string {
@@ -48,6 +54,7 @@ export function seatLimitLabel(tier: AccountTier): string {
 export const CALL_INTEL_ALLOWED: Record<AccountTier, boolean> = {
   starter: false,
   plus: true,
+  connect: false,
 };
 
 // Intercom (churn/cancellation reasons) is Plus-only, matching the
@@ -55,6 +62,7 @@ export const CALL_INTEL_ALLOWED: Record<AccountTier, boolean> = {
 export const INTERCOM_ALLOWED: Record<AccountTier, boolean> = {
   starter: false,
   plus: true,
+  connect: false,
 };
 
 // Read-only REST API (see /api/v1/*) for customers wiring Ripplewatch's
@@ -63,6 +71,7 @@ export const INTERCOM_ALLOWED: Record<AccountTier, boolean> = {
 export const API_ACCESS_ALLOWED: Record<AccountTier, boolean> = {
   starter: false,
   plus: true,
+  connect: true,
 };
 
 // Visual diffing (checkVisualChange in scraping.ts) calls a paid screenshot
@@ -72,6 +81,7 @@ export const API_ACCESS_ALLOWED: Record<AccountTier, boolean> = {
 export const VISUAL_DIFF_ALLOWED: Record<AccountTier, boolean> = {
   starter: false,
   plus: true,
+  connect: false,
 };
 
 export function competitorLimitLabel(tier: AccountTier): string {

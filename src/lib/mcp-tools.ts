@@ -11,6 +11,9 @@ import { reviewNewCompetitor } from "@/lib/competitor-intake";
 import { logWinLoss } from "@/lib/win-loss-log";
 import { logCustomerFeedback } from "@/lib/feedback-log";
 import { computeNextBestActions, type NextBestActions } from "@/lib/next-best-action";
+import { runMetered } from "@/lib/usage-meter";
+import { chargeUsage, hasMinimumBalance } from "@/lib/connect-wallet";
+import { CONNECT_MIN_BALANCE_TO_RUN_USD } from "@/lib/connect-pricing";
 
 // Signal titles and summaries come from public third-party pages, so they can
 // contain text written by anyone. Every tool that returns them says so, so an
@@ -28,8 +31,10 @@ function accountIdFrom(ctx: Ctx): string {
   return id;
 }
 
-function result(payload: unknown, next?: NextBestActions | null) {
-  const body =
+type UsageNote = { charged_usd: number; wallet_balance_usd: number };
+
+function result(payload: unknown, next?: NextBestActions | null, usage?: UsageNote | null) {
+  const withNext =
     next === undefined
       ? payload
       : {
@@ -38,7 +43,46 @@ function result(payload: unknown, next?: NextBestActions | null) {
           also_worth_doing: next?.alternates ?? [],
           context_score: next?.contextScore ?? null,
         };
+  // Connect customers see what each call cost, so a usage bill is never a surprise.
+  const body = usage ? { ...(withNext as Record<string, unknown>), usage } : withNext;
   return { content: [{ type: "text" as const, text: JSON.stringify(body, null, 2) }] };
+}
+
+function tierFrom(ctx: Ctx): string | undefined {
+  const tier = ctx.http?.authInfo?.extra?.tier;
+  return typeof tier === "string" ? tier : undefined;
+}
+
+// Runs something that costs money. Connect accounts prepay: the call is
+// refused below a minimum balance, and afterward the wallet is charged what it
+// actually cost plus the markup. Every other account (demo, comped, or on a
+// dashboard plan) runs it without a charge.
+async function metered<T>(
+  ctx: Ctx,
+  accountId: string,
+  toolName: string,
+  work: () => Promise<T>
+): Promise<{ ok: true; value: T; usage: UsageNote | null } | { ok: false; message: string }> {
+  if (tierFrom(ctx) !== "connect") return { ok: true, value: await work(), usage: null };
+
+  const supabase = createAdminClient();
+  const funds = await hasMinimumBalance(supabase, accountId);
+  if (!funds.ok) {
+    const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.ripplewatch.ai";
+    return {
+      ok: false,
+      message: `Your Ripplewatch Connect balance is $${funds.balanceUsd.toFixed(2)}, below the $${CONNECT_MIN_BALANCE_TO_RUN_USD.toFixed(2)} needed to run this. Add funds at ${base}/app/settings?tab=plan to keep going.`,
+    };
+  }
+
+  const { result: value, costUsd } = await runMetered(work);
+  const charge = await chargeUsage(supabase, accountId, {
+    ref: `mcp:${toolName}:${crypto.randomUUID()}`,
+    costUsd,
+    description: `MCP tool: ${toolName}`,
+    meta: { tool: toolName },
+  });
+  return { ok: true, value, usage: { charged_usd: Number(charge.chargedUsd.toFixed(4)), wallet_balance_usd: Number(charge.balanceUsd.toFixed(2)) } };
 }
 
 function failure(message: string) {
@@ -127,11 +171,10 @@ export function registerRipplewatchTools(server: McpServer) {
       const accountId = accountIdFrom(ctx as Ctx);
       const supabase = createAdminClient();
       try {
-        const [answer, next] = await Promise.all([
-          askAccountQuestion(supabase, accountId, question),
-          computeNextBestActions(supabase, accountId),
-        ]);
-        return result({ note: UNTRUSTED_NOTE, answer }, next);
+        const run = await metered(ctx as Ctx, accountId, "ask", () => askAccountQuestion(supabase, accountId, question));
+        if (!run.ok) return failure(run.message);
+        const next = await computeNextBestActions(supabase, accountId);
+        return result({ note: UNTRUSTED_NOTE, answer: run.value }, next, run.usage);
       } catch (err) {
         console.error("mcp ask failed:", err);
         return failure("Couldn't get an answer just now. Try again in a moment.");
@@ -296,7 +339,11 @@ export function registerRipplewatchTools(server: McpServer) {
     async ({ name, domain, force }, ctx) => {
       const accountId = accountIdFrom(ctx as Ctx);
       const supabase = createAdminClient();
-      const added = await addCompetitor(supabase, accountId, { name, domain: domain ?? "", force });
+      const run = await metered(ctx as Ctx, accountId, "add_competitor", () =>
+        addCompetitor(supabase, accountId, { name, domain: domain ?? "", force })
+      );
+      if (!run.ok) return failure(run.message);
+      const added = run.value;
       if (!added.ok) {
         if (added.status === 409) {
           return failure(
@@ -315,7 +362,8 @@ export function registerRipplewatchTools(server: McpServer) {
           look_alikes: added.notice?.alternates ?? [],
           note: "Tracking has started. The first signals can take a little while to appear.",
         },
-        next
+        next,
+        run.usage
       );
     }
   );
