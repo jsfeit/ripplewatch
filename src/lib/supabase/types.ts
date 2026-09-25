@@ -992,6 +992,7 @@ export interface Database {
           reload_amount_cents: number;
           reload_threshold_cents: number;
           reload_failed_at: string | null;
+          reload_started_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -1002,6 +1003,7 @@ export interface Database {
           reload_amount_cents?: number;
           reload_threshold_cents?: number;
           reload_failed_at?: string | null;
+          reload_started_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1170,6 +1172,10 @@ export interface Database {
       claim_crawl_jobs: {
         Args: { batch_size: number };
         Returns: Database["public"]["Tables"]["crawl_jobs"]["Row"][];
+      };
+      connect_wallet_claim_reload: {
+        Args: { p_account_id: string };
+        Returns: boolean;
       };
       connect_wallet_apply: {
         Args: {

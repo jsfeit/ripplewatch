@@ -52,6 +52,13 @@ export default function TermsPage() {
             time remaining in a period you have already paid for.
           </li>
         </ul>
+        <p>
+          <strong>Ripplewatch Connect.</strong> Connect is billed as a monthly platform fee plus usage drawn from a prepaid
+          balance that you fund. The platform fee is refundable on request within 30 days of the charge. Usage that has
+          already been drawn from your balance is not refundable; unused balance is refundable on request within 30 days of
+          the payment that funded it. Usage stops when your balance reaches zero, and you are never billed for usage on
+          credit.
+        </p>
         <p>We may change our pricing going forward; we will give you notice before any change affects your active subscription.</p>
       </section>
 

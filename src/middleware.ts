@@ -96,11 +96,23 @@ export async function middleware(request: NextRequest) {
     // so it's worth the one query it costs rather than two.
     const { data: profile } = await supabase
       .from("profiles")
-      .select("accounts(subscription_status)")
+      .select("accounts(subscription_status, tier)")
       .eq("id", user.id)
       .single();
     const account = Array.isArray(profile?.accounts) ? profile.accounts[0] : profile?.accounts;
-    if (account?.subscription_status === "canceled") {
+    // Ripplewatch Connect accounts have no dashboard: their web app is
+    // Ask and Settings (billing, balance, connector). A cancelled one lands on
+    // the same Settings tab, which offers to resubscribe, rather than the
+    // dashboard-plan reactivation page.
+    if (account?.tier === "connect") {
+      const allowed = pathname === "/app/ask" || pathname.startsWith("/app/ask/") || pathname.startsWith("/app/settings");
+      if (!allowed) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/app/settings";
+        url.search = "?tab=connect";
+        return NextResponse.redirect(url);
+      }
+    } else if (account?.subscription_status === "canceled") {
       const url = request.nextUrl.clone();
       url.pathname = "/app/reactivate";
       return NextResponse.redirect(url);

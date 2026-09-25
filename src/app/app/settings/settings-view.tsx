@@ -10,6 +10,7 @@ import { SlackDigestSchedule } from "@/components/app/slack-digest-schedule";
 import { TeamManager } from "@/components/app/team-manager";
 import { ApiKeysManager } from "@/components/app/api-keys-manager";
 import { ConnectedApps } from "@/components/app/connected-apps";
+import { ConnectPanel, type ConnectLedgerRow } from "@/components/app/connect-panel";
 import { WinLossEmailAddress } from "@/components/app/win-loss-email-address";
 import { ReferralCodeManager } from "@/components/app/referral-code-manager";
 import { CompetitorManager } from "@/components/app/competitor-manager";
@@ -21,7 +22,7 @@ import { BillingPeriodToggle, type BillingPeriod } from "@/components/marketing/
 import { TIERS } from "@/lib/tiers";
 import { ANNUAL_DISCOUNT_PERCENT, annualPriceUsd } from "@/lib/pricing";
 import { trackEvent } from "@/lib/analytics";
-import { CRM_ALLOWED, CALL_INTEL_ALLOWED, INTERCOM_ALLOWED, API_ACCESS_ALLOWED, effectiveTier } from "@/lib/tier-limits";
+import { CRM_ALLOWED, CALL_INTEL_ALLOWED, INTERCOM_ALLOWED, API_ACCESS_ALLOWED, canUseMcp, effectiveTier } from "@/lib/tier-limits";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { TIER_BADGE } from "@/lib/tier-style";
@@ -61,7 +62,7 @@ type ApiKey = Pick<
 >;
 type Referral = Pick<Database["public"]["Tables"]["referrals"]["Row"], "id" | "referred_at" | "qualified_at">;
 
-const KNOWN_TABS = ["competitors", "integrations", "team", "plan", "referrals", "digest", "developer", "appearance"] as const;
+const KNOWN_TABS = ["connect", "competitors", "integrations", "team", "plan", "referrals", "digest", "developer", "appearance"] as const;
 
 export function SettingsView({
   account,
@@ -73,6 +74,7 @@ export function SettingsView({
   apiKeys,
   referrals,
   currentUserId,
+  connect,
 }: {
   account: Account;
   competitors: Competitor[];
@@ -83,6 +85,13 @@ export function SettingsView({
   apiKeys: ApiKey[];
   referrals: Referral[];
   currentUserId: string;
+  // Present only for Ripplewatch Connect accounts (see the Connect tab).
+  connect: {
+    balanceUsd: number;
+    hasSubscription: boolean;
+    ledger: ConnectLedgerRow[];
+    autoReload: { enabled: boolean; amountUsd: number; thresholdUsd: number; failed: boolean };
+  } | null;
 }) {
   const [error, setError] = useState("");
   const [billingLoading, setBillingLoading] = useState<string | null>(null);
@@ -109,7 +118,8 @@ export function SettingsView({
   // the effect then flips tabs post-mount. This only fires once on mount —
   // every in-app tab switch after that goes through selectTab() below
   // instead, which also keeps the address bar's hash in sync.
-  const [activeTab, setActiveTab] = useState("integrations");
+  const isConnectAccount = account.tier === "connect";
+  const [activeTab, setActiveTab] = useState(isConnectAccount ? "connect" : "integrations");
 
   useEffect(() => {
     // Hash takes priority — it's the form worth sharing (short, no "?tab="
@@ -200,17 +210,40 @@ export function SettingsView({
           look on desktop (content narrower than the container) while
           staying reachable on mobile. */}
       <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:overflow-visible sm:px-0">
-        <TabsList>
-          <TabsTrigger value="competitors">Competitors</TabsTrigger>
-          <TabsTrigger value="integrations">Integrations</TabsTrigger>
-          <TabsTrigger value="team">Team</TabsTrigger>
-          <TabsTrigger value="plan">Plan</TabsTrigger>
-          <TabsTrigger value="referrals">Referrals</TabsTrigger>
-          <TabsTrigger value="digest">Digest preview</TabsTrigger>
-          <TabsTrigger value="developer">Developer</TabsTrigger>
-          <TabsTrigger value="appearance">Appearance</TabsTrigger>
-        </TabsList>
+        {isConnectAccount ? (
+          // Ripplewatch Connect has no dashboard plans, integrations, digest or
+          // referrals: just its own billing tab plus the shared ones.
+          <TabsList>
+            <TabsTrigger value="connect">Connect</TabsTrigger>
+            <TabsTrigger value="competitors">Competitors</TabsTrigger>
+            <TabsTrigger value="team">Team</TabsTrigger>
+            <TabsTrigger value="developer">Developer</TabsTrigger>
+            <TabsTrigger value="appearance">Appearance</TabsTrigger>
+          </TabsList>
+        ) : (
+          <TabsList>
+            <TabsTrigger value="competitors">Competitors</TabsTrigger>
+            <TabsTrigger value="integrations">Integrations</TabsTrigger>
+            <TabsTrigger value="team">Team</TabsTrigger>
+            <TabsTrigger value="plan">Plan</TabsTrigger>
+            <TabsTrigger value="referrals">Referrals</TabsTrigger>
+            <TabsTrigger value="digest">Digest preview</TabsTrigger>
+            <TabsTrigger value="developer">Developer</TabsTrigger>
+            <TabsTrigger value="appearance">Appearance</TabsTrigger>
+          </TabsList>
+        )}
       </div>
+
+      {connect ? (
+        <TabsContent value="connect" className="mt-6">
+          <ConnectPanel
+            balanceUsd={connect.balanceUsd}
+            hasSubscription={connect.hasSubscription}
+            ledger={connect.ledger}
+            autoReload={connect.autoReload}
+          />
+        </TabsContent>
+      ) : null}
 
       <TabsContent value="competitors" className="mt-6 space-y-6">
         <SuggestedCompetitorsPanel suggestions={suggestions} />
@@ -585,7 +618,7 @@ export function SettingsView({
           </CardContent>
         </Card>
 
-        {API_ACCESS_ALLOWED[account.tier] && (
+        {canUseMcp(account.tier, account.demo_mode) && (
           <Card className="mt-6">
             <CardHeader>
               <h2 className="font-medium">Connected AI assistants</h2>

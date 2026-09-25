@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { ArrowRight, Check, MessageSquare, PlugZap, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, Check, MessageSquare, PlugZap, ShieldCheck, Sparkles, Wallet } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import { ConnectInterestForm } from "@/components/marketing/connect-interest-form";
 import { CONNECT_EXAMPLES, CONNECT_FEATURES, CONNECT_NAME, CONNECT_TAGLINE } from "@/lib/connect";
+import { CONNECT_BASE_FEE_USD, CONNECT_MIN_FUNDING_USD } from "@/lib/connect-pricing";
 
 const description =
-  "Ripplewatch Connect brings competitive intelligence into Claude and ChatGPT. Ask what changed, get the read on what it means for your deals, and log outcomes by just telling your assistant.";
+  "Ripplewatch Connect brings competitive intelligence into Claude and ChatGPT. Ask what changed, get the read on what it means for your deals, and log outcomes by just telling your assistant. $29 a month plus usage you prepay for.";
 
 export const metadata = {
   title: `${CONNECT_NAME}: Ripplewatch inside Claude and ChatGPT`,
@@ -33,19 +33,27 @@ const STEPS = [
   },
 ];
 
+const GET_STARTED = "/onboarding?path=connect";
+
 export default function ConnectPage() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-20">
       <div className="mx-auto max-w-2xl text-center">
         <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
           <Sparkles className="size-3.5" />
-          Early access
+          New
         </span>
         <h1 className="mt-4 text-4xl font-semibold tracking-tight">Ripplewatch, inside the assistant you already use</h1>
         <p className="mt-4 text-muted-foreground">
           {CONNECT_TAGLINE} Ask what your competitors did this week, what it means for your deals, and tell it how deals
           went, all in the chat.
         </p>
+        <div className="mt-8 flex justify-center">
+          <Link href={GET_STARTED} className={buttonVariants({ size: "lg" })}>
+            Get {CONNECT_NAME} <ArrowRight className="size-4" />
+          </Link>
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">${CONNECT_BASE_FEE_USD}/month plus usage you prepay for.</p>
       </div>
 
       <div className="mt-14 grid gap-6 sm:grid-cols-3">
@@ -86,27 +94,49 @@ export default function ConnectPage() {
         </div>
 
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Get early access</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {CONNECT_NAME}{" "}
-            will be a small platform fee plus usage, with no dashboard seat to pay for. We&apos;ll share pricing before
-            it opens.
-          </p>
-          <div className="mt-5">
-            <ConnectInterestForm source="connect_page" />
+          <h2 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+            <Wallet className="size-5 text-primary" />
+            Simple pricing
+          </h2>
+          <dl className="mt-5 space-y-4 text-sm">
+            <div className="rounded-lg border border-border bg-card p-4">
+              <dt className="font-medium">${CONNECT_BASE_FEE_USD} a month, platform fee</dt>
+              <dd className="mt-1 text-muted-foreground">
+                Unlimited teammates, the assistant connector and support. Refundable within 30 days.
+              </dd>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4">
+              <dt className="font-medium">Usage comes from a balance you prepay</dt>
+              <dd className="mt-1 text-muted-foreground">
+                Each answer and each competitor you watch draws from your balance at our actual AI cost plus a small
+                margin. Typically a few cents an answer and a dollar or two a month per competitor. Start with $
+                {CONNECT_MIN_FUNDING_USD} or more.
+              </dd>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4">
+              <dt className="font-medium">You can never run up a bill</dt>
+              <dd className="mt-1 text-muted-foreground">
+                When the balance hits zero, answers and monitoring pause until you add funds. Each answer shows what it
+                cost. Balance already used isn&apos;t refundable.
+              </dd>
+            </div>
+          </dl>
+          <div className="mt-6">
+            <Link href={GET_STARTED} className={buttonVariants({ className: "w-full" })}>
+              Get {CONNECT_NAME} <ArrowRight className="size-4" />
+            </Link>
           </div>
         </div>
       </div>
 
       <div className="mx-auto mt-16 max-w-2xl rounded-xl border border-border bg-secondary/40 p-8 text-center">
-        <h3 className="text-lg font-semibold">Want it today?</h3>
+        <h3 className="text-lg font-semibold">Prefer a dashboard?</h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          Connecting Claude or ChatGPT is included in the Plus plan right now, alongside the full dashboard, Slack and
-          HubSpot.
+          The Ripplewatch dashboard is a separate product with fixed monthly pricing and no usage bill.
         </p>
         <div className="mt-5 flex justify-center">
           <Link href="/pricing" className={buttonVariants({ variant: "outline" })}>
-            See Plus <ArrowRight className="size-4" />
+            See dashboard plans <ArrowRight className="size-4" />
           </Link>
         </div>
       </div>

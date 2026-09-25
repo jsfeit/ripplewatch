@@ -25,6 +25,8 @@ export async function GET(request: Request) {
     .from("accounts")
     .select("id, name, contact_email, created_at, payment_reminder_1_sent_at, payment_reminder_2_sent_at")
     .is("stripe_subscription_id", null)
+    // Connect accounts pay through their own checkout; these are dashboard-plan nudges.
+    .neq("tier", "connect")
     .eq("status", "active");
 
   const now = Date.now();

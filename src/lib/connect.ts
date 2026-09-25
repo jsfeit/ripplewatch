@@ -16,6 +16,7 @@ export const CONNECT_FEATURES = [
   "A weekly briefing of what changed and what it means for your deals",
   "Log won and lost deals and customer feedback by just telling your assistant",
   "It tells you what to share next to make answers sharper",
+  "Unlimited teammates on one account",
   "Sign in once, disconnect any time",
 ] as const;
 

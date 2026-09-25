@@ -46,12 +46,12 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "What is Ripplewatch Connect?",
         answer:
-          'Ripplewatch Connect is a way to use Ripplewatch without opening a dashboard. You add Ripplewatch to Claude or ChatGPT as a connector, then ask what changed with your competitors, what it means for your deals, and tell it how deals went, all in the chat. It\'s in early access: <a href="/connect">request access here</a>. The same connector is included in the Plus plan today.',
+          'Ripplewatch Connect is a way to use Ripplewatch without opening a dashboard. You add Ripplewatch to Claude or ChatGPT as a connector, then ask what changed with your competitors, what it means for your deals, and tell it how deals went, all in the chat. It\'s a separate product from the dashboard plans: $29 a month plus usage you prepay for. <a href="/connect">See how it works</a>.',
       },
       {
         question: "Can I use Ripplewatch from Claude, ChatGPT, or another AI assistant?",
         answer:
-          'Yes, through our MCP server (see <a href="/docs/api">the docs</a>). It works with assistants that support remote MCP servers over HTTP, including Claude (web, desktop, and Claude Code) and developer tools like Cursor. ChatGPT supports custom MCP connectors through its developer mode, which is in beta and has to be enabled by a workspace admin. Gemini supports MCP in Gemini CLI, but we haven\'t confirmed support in the Gemini app. You can connect by signing in and approving the connection, or with an API key for developer tools. Both need the Plus plan today.',
+          'Yes, with Ripplewatch Connect, through our MCP server (see <a href="/docs/api">the docs</a>). It works with assistants that support remote MCP servers over HTTP, including Claude (web, desktop, and Claude Code) and developer tools like Cursor. ChatGPT supports custom MCP connectors through its developer mode, which is in beta and has to be enabled by a workspace admin. Gemini supports MCP in Gemini CLI, but we haven\'t confirmed support in the Gemini app. You connect by signing in and approving, or with an API key for developer tools.',
       },
       {
         question: "What can an AI assistant do with my Ripplewatch account?",
@@ -66,12 +66,22 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "How much does Ripplewatch Connect cost?",
         answer:
-          "Connect will be a small platform fee plus usage, with no dashboard seat to pay for. It's in early access and we haven't set the numbers yet, so we'll share pricing before it opens and you won't be charged anything by requesting access. If you want to use it now, the connector is included in the Plus plan.",
+          "$29 a month for the platform, plus usage from a balance you prepay (from $50). Each answer and each competitor you watch draws from that balance at our actual AI cost plus a small margin: typically a few cents an answer and a dollar or two a month per competitor. Teammates are unlimited. Taxes are added at checkout.",
+      },
+      {
+        question: "What happens when my Connect balance runs out?",
+        answer:
+          "Answers and competitor monitoring pause until you add funds, so you never owe for usage on credit. Each answer shows what it cost and what\'s left, and you can add funds any time from Settings.",
+      },
+      {
+        question: "Can I get a refund on Ripplewatch Connect?",
+        answer:
+          "Yes, within 30 days: the $29 platform fee is refundable, and so is any balance you haven\'t used. Balance already used on answers and monitoring isn\'t refundable. Email us and we\'ll take care of it.",
       },
       {
         question: "Do I need the dashboard to use Ripplewatch Connect?",
         answer:
-          "No. The dashboard and Connect run on the same data, but Connect is meant for people who'd rather ask Claude or ChatGPT than log in. Starter and Plus stay fixed-price with no usage bill; Connect is the usage-based option.",
+          "No, and you don\'t get one: Connect is a separate product for people who\'d rather ask Claude or ChatGPT than log in. Your account has Ask and Settings (billing, balance, connector, competitors). The dashboard plans (Starter and Plus) are separate, fixed-price, with no usage bill.",
       },
       {
         question: "Can I cancel anytime?",

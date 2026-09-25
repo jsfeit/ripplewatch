@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveAccountContext } from "@/lib/impersonation";
 import { computeMomentum, type MomentumResult } from "@/lib/momentum";
 import { SettingsView } from "./settings-view";
+import type { ConnectLedgerRow } from "@/components/app/connect-panel";
 import { FeedbackButton } from "@/components/app/feedback-button";
 
 export const metadata = { title: "Settings" };
@@ -73,6 +74,49 @@ export default async function SettingsPage() {
   ]);
   if (!account) redirect("/onboarding");
 
+  // Ripplewatch Connect accounts see their prepaid balance and its history in
+  // Settings. Read through the caller's own session (RLS lets a customer read
+  // their own wallet), same as everything else on this page.
+  let connect: {
+    balanceUsd: number;
+    hasSubscription: boolean;
+    ledger: ConnectLedgerRow[];
+    autoReload: { enabled: boolean; amountUsd: number; thresholdUsd: number; failed: boolean };
+  } | null = null;
+  if (account.tier === "connect") {
+    const [{ data: wallet }, { data: ledgerRows }] = await Promise.all([
+      db
+        .from("connect_wallets")
+        .select("balance_micros, auto_reload_enabled, reload_amount_cents, reload_threshold_cents, reload_failed_at")
+        .eq("account_id", accountId)
+        .maybeSingle(),
+      db
+        .from("connect_wallet_ledger")
+        .select("id, kind, amount_micros, balance_after_micros, description, created_at")
+        .eq("account_id", accountId)
+        .order("created_at", { ascending: false })
+        .limit(25),
+    ]);
+    connect = {
+      balanceUsd: Number(wallet?.balance_micros ?? 0) / 1_000_000,
+      hasSubscription: Boolean(account.stripe_subscription_id) && account.subscription_status !== "canceled",
+      autoReload: {
+        enabled: wallet?.auto_reload_enabled ?? true,
+        amountUsd: (wallet?.reload_amount_cents ?? 5000) / 100,
+        thresholdUsd: (wallet?.reload_threshold_cents ?? 1000) / 100,
+        failed: Boolean(wallet?.reload_failed_at),
+      },
+      ledger: (ledgerRows ?? []).map((r) => ({
+        id: r.id,
+        kind: r.kind,
+        amountUsd: Number(r.amount_micros) / 1_000_000,
+        balanceUsd: Number(r.balance_after_micros) / 1_000_000,
+        description: r.description,
+        createdAt: r.created_at,
+      })),
+    };
+  }
+
   // Same momentum sort the competitor list already offers on its own
   // fact-sheet page (see /app/competitors/[id]) — kept for parity now that
   // the list itself lives here. 180-day lookback (not just the 60
@@ -138,6 +182,7 @@ export default async function SettingsPage() {
         apiKeys={apiKeys ?? []}
         referrals={referrals ?? []}
         currentUserId={user.id}
+        connect={connect}
       />
     </div>
   );

@@ -47,6 +47,8 @@ export async function GET(request: Request) {
     .from("accounts")
     .select("*")
     .not("contact_email", "is", null)
+    // Ripplewatch Connect accounts have no dashboard, so no digest.
+    .neq("tier", "connect")
     .eq("status", "active");
 
   const summary = await mapWithConcurrency(accounts ?? [], ACCOUNT_CONCURRENCY, async (account: Account) => {
