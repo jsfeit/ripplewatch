@@ -79,16 +79,16 @@ export function OnboardingFlow({
   const [step, setStep] = useState(0);
   const [chosenPlanId, setChosenPlanId] = useState<string | null>(null);
   const finalPlan = selectedPlan ?? chosenPlanId;
-  // Consistent with the pricing page's per-tier competitor caps (3/7/20).
-  // Defaults to Advanced's limit (the most permissive) until a plan is
+  // Consistent with the pricing page's per-tier competitor caps (3/20).
+  // Defaults to Plus's limit (the most permissive) until a plan is
   // actually chosen — e.g. the no-query-param "Live demo" path, where plan
   // selection happens at the last step, after competitors are entered.
   const maxCompetitors =
     finalPlan && finalPlan in COMPETITOR_LIMIT
       ? COMPETITOR_LIMIT[finalPlan as keyof typeof COMPETITOR_LIMIT]
-      : COMPETITOR_LIMIT.advanced;
+      : COMPETITOR_LIMIT.plus;
   const [checkoutModal, setCheckoutModal] = useState<{
-    tier: "starter" | "plus" | "advanced";
+    tier: "starter" | "plus";
     period: "monthly" | "annual";
   } | null>(null);
 
@@ -327,7 +327,7 @@ export function OnboardingFlow({
       // this render, since the setChosenPlanId() a few lines up hasn't
       // taken effect yet.
       const tier = payload.tier;
-      if (tier === "starter" || tier === "plus" || tier === "advanced") {
+      if (tier === "starter" || tier === "plus") {
         // Opens the embedded Checkout modal right over this step — the
         // account already exists at this point regardless of payment
         // outcome, so closing the modal (see the modal's onOpenChange
@@ -852,7 +852,7 @@ export function OnboardingFlow({
                 {initiallySignedIn ? "By continuing, you agree to our" : "By creating an account, you agree to our"}{" "}
                 <Link href="/terms" className="text-primary hover:underline">Terms of Service</Link> and{" "}
                 <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>.
-                {finalPlan === "starter" || finalPlan === "plus" || finalPlan === "advanced"
+                {finalPlan === "starter" || finalPlan === "plus"
                   ? " You'll complete payment on the next step."
                   : null}
               </p>

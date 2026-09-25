@@ -135,7 +135,7 @@ export async function POST(request: Request) {
   }
 
   // Discovery fetches each competitor's homepage once, in parallel — with
-  // up to 20 competitors on the Advanced tier, doing this sequentially
+  // up to 20 competitors on the Plus tier, doing this sequentially
   // could add tens of seconds to onboarding completion. Category is
   // resolved the same way (one batched call, not per-competitor) so the
   // news-relevance filter has real disambiguating context from day one.

@@ -23,7 +23,6 @@ const NAV = [
 const TIER_LABELS: Record<string, string> = {
   starter: "Starter",
   plus: "Plus",
-  advanced: "Advanced",
 };
 
 export function AppSidebar({ tier }: { tier: string }) {

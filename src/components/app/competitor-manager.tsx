@@ -39,7 +39,7 @@ export function CompetitorManager({
   competitors: Competitor[];
   tier: Tier;
   // Uncaps the competitor count entirely for a white-labeled demo account,
-  // beyond even what Advanced allows — see tier-limits.ts.
+  // beyond even what Plus allows — see tier-limits.ts.
   demoMode?: boolean;
   activeId?: string;
   // Keyed by competitor id — same computeMomentum result the Trends

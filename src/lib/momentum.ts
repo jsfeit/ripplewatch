@@ -43,7 +43,7 @@ const MIN_WIN_LOSS_ENTRIES = 4;
 // GitHub commit activity — into one directional number, rather than making
 // someone eyeball seven separate trend chips and do the mental math
 // themselves. Deliberately excludes SEO/traffic: that source is still a
-// stub (see seo-data.ts) and only available Plus/Advanced, so folding it in
+// stub (see seo-data.ts) and only available on Plus, so folding it in
 // would make momentum meaningless for Starter accounts and wrong for
 // everyone until real data lands.
 const WINDOW_DAYS = 30;

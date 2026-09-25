@@ -335,8 +335,8 @@ export async function sendSnapshotDripEmail(
   if (result.error) throw new Error(result.error.message);
 }
 
-const TIER_DISPLAY_NAMES: Record<string, string> = { starter: "Starter", plus: "Plus", advanced: "Advanced" };
-const TIER_RANK: Record<string, number> = { starter: 0, plus: 1, advanced: 2 };
+const TIER_DISPLAY_NAMES: Record<string, string> = { starter: "Starter", plus: "Plus" };
+const TIER_RANK: Record<string, number> = { starter: 0, plus: 1 };
 
 // Fired by the customer.subscription.updated webhook handler whenever a
 // tier switch actually lands (comparing the account's tier before vs.

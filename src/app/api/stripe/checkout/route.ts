@@ -4,7 +4,7 @@ import { getStripe, getPriceId, type BillingPeriod } from "@/lib/stripe";
 import { getCheckoutCampaign } from "@/lib/promo-campaign";
 import { TIERS } from "@/lib/tiers";
 
-// Self-serve checkout for all three tiers.
+// Self-serve checkout for both tiers.
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const requestedTier: unknown = body?.tier;
@@ -20,10 +20,10 @@ export async function POST(request: Request) {
     ? (requestedReturnPath as (typeof ALLOWED_RETURN_PATHS)[number])
     : "/app/settings";
 
-  if (requestedTier !== "starter" && requestedTier !== "plus" && requestedTier !== "advanced") {
+  if (requestedTier !== "starter" && requestedTier !== "plus") {
     return NextResponse.json({ error: "Unknown tier." }, { status: 400 });
   }
-  const tier: "starter" | "plus" | "advanced" = requestedTier;
+  const tier: "starter" | "plus" = requestedTier;
 
   const period: BillingPeriod = requestedPeriod === "annual" ? "annual" : "monthly";
 
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
 
   // Referral discount takes priority over an evergreen campaign — a
   // personal invite beats a generic promo. Tier-agnostic percent_off (never
-  // amount_off) so the same math works across Starter/Plus/Advanced without
+  // amount_off) so the same math works across Starter/Plus without
   // per-tier coupons: monthly gets 2 months fully free (repeating), annual
   // gets ~2/12 off applied once at this one signup invoice. Created inline,
   // single-use — this route only ever runs on a customer's first paid

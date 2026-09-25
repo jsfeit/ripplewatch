@@ -1859,7 +1859,7 @@ const SCREENSHOT_BUCKET = "competitor-screenshots";
 
 // Entirely skipped when SCREENSHOTONE_ACCESS_KEY isn't configured (see
 // captureScreenshot) — same dormant-until-configured pattern as
-// checkAdActivity above. Gated to Plus/Advanced in crawl.ts
+// checkAdActivity above. Gated to Plus in crawl.ts
 // (VISUAL_DIFF_ALLOWED) since unlike everything else here this is a paid
 // API call per competitor per week, not free scraping.
 //

@@ -12,7 +12,6 @@ export const PRODUCT_TAX_CODE = "txcd_10103001";
 export const MONTHLY_PRICE_USD = {
   starter: 69,
   plus: 149,
-  advanced: 349,
 } as const;
 
 export type TierKey = keyof typeof MONTHLY_PRICE_USD;

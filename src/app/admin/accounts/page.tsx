@@ -16,7 +16,6 @@ export const dynamic = "force-dynamic";
 const TIER_LABELS: Record<string, string> = {
   starter: "Starter",
   plus: "Plus",
-  advanced: "Advanced",
 };
 
 const STATUS_LABELS: Record<string, string> = {

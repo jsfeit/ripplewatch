@@ -19,7 +19,7 @@ export async function POST(request: Request) {
 
   const { data: account } = await supabase.from("accounts").select("tier").eq("id", profile.account_id).single();
   if (!account || !API_ACCESS_ALLOWED[account.tier]) {
-    return NextResponse.json({ error: "API access requires the Plus or Advanced plan." }, { status: 403 });
+    return NextResponse.json({ error: "API access requires the Plus plan." }, { status: 403 });
   }
 
   const body = await request.json().catch(() => null);

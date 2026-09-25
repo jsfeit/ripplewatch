@@ -86,7 +86,7 @@ export default function ApiDocsPage() {
       <p className="text-muted-foreground">
         A REST API for pulling your competitive intel into your own agents or tools, instead of a person reading
         the dashboard, and for pushing win/loss data in the moment a deal closes instead of batch-exporting a
-        CSV later. Available on Plus and Advanced plans: generate a key from{" "}
+        CSV later. Available on the Plus plan: generate a key from{" "}
         <a href="/app/settings?tab=developer">Settings → Developer</a>.
       </p>
 
@@ -321,7 +321,7 @@ export default function ApiDocsPage() {
 
       <h2>Email win/loss data in</h2>
       <p>
-        No integration or script needed: on Plus/Advanced plans, Settings → Developer shows a personal address of
+        No integration or script needed: on the Plus plan, Settings → Developer shows a personal address of
         the form <code>winloss+&lt;accountId&gt;@in.ripplewatch.ai</code>. Forward a &quot;we lost this deal&quot;
         email there, or CC it from your CRM&apos;s outcome notification, and it runs through the same extraction
         pipeline as a CSV import: matched against your tracked competitors, or added as a suggested competitor if
@@ -339,7 +339,7 @@ export default function ApiDocsPage() {
       <p>Errors return <code>{"{ error: string }"}</code> with one of these statuses:</p>
       <ul>
         <li><code>401</code> - missing, malformed, or revoked API key.</li>
-        <li><code>403</code> - the key&apos;s account isn&apos;t on Plus or Advanced (API access is gated by plan, checked on every request, not just at key creation).</li>
+        <li><code>403</code> - the key&apos;s account isn&apos;t on Plus (API access is gated by plan, checked on every request, not just at key creation).</li>
         <li><code>404</code> - resource not found, or not owned by your account.</li>
         <li><code>429</code> - rate limit exceeded (60 requests/minute per key). Retry after a few seconds.</li>
         <li><code>500</code> - something went wrong on our end.</li>

@@ -57,7 +57,6 @@ const STRUCTURED_DATA = {
   offers: [
     { "@type": "Offer", name: "Starter", price: "69", priceCurrency: "USD" },
     { "@type": "Offer", name: "Plus", price: "149", priceCurrency: "USD" },
-    { "@type": "Offer", name: "Advanced", price: "349", priceCurrency: "USD" },
   ],
 };
 

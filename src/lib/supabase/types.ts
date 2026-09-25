@@ -2,7 +2,7 @@
 // changes, update this alongside the migration — there's no live project to
 // generate it from yet (`supabase gen types typescript` once one exists).
 
-export type Tier = "starter" | "plus" | "advanced";
+export type Tier = "starter" | "plus";
 export type AccountStatus = "active" | "hold" | "cancelled";
 export type SignalType = "pricing" | "job_posting" | "review" | "news" | "funding" | "seo" | "product_change";
 export type SeoTrafficTrend = "up" | "down" | "flat" | "unknown";

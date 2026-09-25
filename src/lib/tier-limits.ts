@@ -7,8 +7,7 @@ import type { SignalType } from "./mock-data";
 
 export const COMPETITOR_LIMIT: Record<AccountTier, number> = {
   starter: 3,
-  plus: 7,
-  advanced: 20,
+  plus: 20,
 };
 
 // Signal sources are uniform across every tier — differentiation is
@@ -23,23 +22,20 @@ export const COMPETITOR_LIMIT: Record<AccountTier, number> = {
 export const TIER_SIGNAL_SOURCES: Record<AccountTier, SignalType[]> = {
   starter: ["pricing", "job_posting", "news", "funding", "product_change"],
   plus: ["pricing", "job_posting", "news", "funding", "product_change"],
-  advanced: ["pricing", "job_posting", "news", "funding", "product_change"],
 };
 
-// CRM (HubSpot) read-only pull is a Plus-and-above feature — same gate
-// shape as CALL_INTEL_ALLOWED below.
+// CRM (HubSpot) read-only pull is a Plus feature — same gate shape as
+// CALL_INTEL_ALLOWED below.
 export const CRM_ALLOWED: Record<AccountTier, boolean> = {
   starter: false,
   plus: true,
-  advanced: true,
 };
 
 // Team seats: Starter cap encourages upgrading once a team grows past a
-// single marketer; Plus caps at 10; Advanced is unlimited.
+// single marketer; Plus is unlimited.
 export const SEAT_LIMIT: Record<AccountTier, number> = {
   starter: 3,
-  plus: 10,
-  advanced: Infinity,
+  plus: Infinity,
 };
 
 export function seatLimitLabel(tier: AccountTier): string {
@@ -47,29 +43,26 @@ export function seatLimitLabel(tier: AccountTier): string {
   return limit === Infinity ? "unlimited" : String(limit);
 }
 
-// Zoom call-intelligence is Advanced-only (Gong isn't connectable at all
+// Zoom call-intelligence is Plus-only (Gong isn't connectable at all
 // yet — see "comingSoon" in settings-view.tsx, tier-independent).
 export const CALL_INTEL_ALLOWED: Record<AccountTier, boolean> = {
   starter: false,
-  plus: false,
-  advanced: true,
+  plus: true,
 };
 
-// Intercom (churn/cancellation reasons) is Advanced-only, matching the
-// pricing page's "Intercom (coming soon)" line item under Advanced.
+// Intercom (churn/cancellation reasons) is Plus-only, matching the
+// pricing page's "Intercom (coming soon)" line item under Plus.
 export const INTERCOM_ALLOWED: Record<AccountTier, boolean> = {
   starter: false,
-  plus: false,
-  advanced: true,
+  plus: true,
 };
 
 // Read-only REST API (see /api/v1/*) for customers wiring Ripplewatch's
-// intel into their own agents/tools — a Plus/Advanced feature, same shape
-// as the SEO/traffic gate above, not a Starter-tier expectation.
+// intel into their own agents/tools — a Plus feature, not a Starter-tier
+// expectation.
 export const API_ACCESS_ALLOWED: Record<AccountTier, boolean> = {
   starter: false,
   plus: true,
-  advanced: true,
 };
 
 // Visual diffing (checkVisualChange in scraping.ts) calls a paid screenshot
@@ -79,7 +72,6 @@ export const API_ACCESS_ALLOWED: Record<AccountTier, boolean> = {
 export const VISUAL_DIFF_ALLOWED: Record<AccountTier, boolean> = {
   starter: false,
   plus: true,
-  advanced: true,
 };
 
 export function competitorLimitLabel(tier: AccountTier): string {
@@ -87,15 +79,15 @@ export function competitorLimitLabel(tier: AccountTier): string {
   return limit === Infinity ? "unlimited" : String(limit);
 }
 
-// Demo accounts (accounts.demo_mode) get the full Advanced feature set —
-// including integrations that are normally gated below Advanced — plus an
-// uncapped competitor count beyond what even Advanced allows, so a demo
+// Demo accounts (accounts.demo_mode) get the full Plus feature set —
+// including integrations that are normally gated below Plus — plus an
+// uncapped competitor count beyond what even Plus allows, so a demo
 // shows the whole product with nothing held back. The only thing demo
 // mode actually restricts is billing (see the Stripe API routes), and a
 // red banner in the app shell (DemoBanner) makes that plain rather than
 // leaving it a silent, undiscoverable rule.
 export function effectiveTier(tier: AccountTier, demoMode: boolean): AccountTier {
-  return demoMode ? "advanced" : tier;
+  return demoMode ? "plus" : tier;
 }
 
 export function competitorCap(tier: AccountTier, demoMode: boolean): number {
