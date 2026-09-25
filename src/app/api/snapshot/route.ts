@@ -37,6 +37,11 @@ const SNAPSHOT_DAILY_RESEARCH_CAP = 100;
 // still shows pricing/hiring as usual, just without the activity signals.
 const SNAPSHOT_DAILY_ACTIVITY_CAP = 250;
 
+// The synthesis call (the "takeaway" paragraph) is cheap — no search tool,
+// just reasoning over what the other calls already found — so it gets the
+// same generous ceiling as the activity search rather than a stricter one.
+const SNAPSHOT_DAILY_VERDICT_CAP = 250;
+
 const VALID_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(request: Request) {
@@ -72,7 +77,11 @@ export async function POST(request: Request) {
   const activityAllowed = activityUsed === null || activityUsed < SNAPSHOT_DAILY_ACTIVITY_CAP;
   if (!activityAllowed) console.warn(`snapshot activity cap (${SNAPSHOT_DAILY_ACTIVITY_CAP}/24h) reached, skipping activity research`);
 
-  const result = await buildSnapshot(domain, { llmAllowed, researchAllowed, activityAllowed });
+  const verdictUsed = await countUnattributedLlmCalls("generateSnapshotVerdict", 24);
+  const verdictAllowed = verdictUsed === null || verdictUsed < SNAPSHOT_DAILY_VERDICT_CAP;
+  if (!verdictAllowed) console.warn(`snapshot verdict cap (${SNAPSHOT_DAILY_VERDICT_CAP}/24h) reached, skipping takeaway synthesis`);
+
+  const result = await buildSnapshot(domain, { llmAllowed, researchAllowed, activityAllowed, verdictAllowed });
 
   // Recorded whether or not we found anything (see recordSnapshotLead).
   // Awaited, not fire-and-forget: on a serverless function the work can be

@@ -107,6 +107,8 @@ export function CompetitorSnapshotTool() {
             <p className="mt-2 text-sm text-muted-foreground">&ldquo;{result.title}&rdquo;</p>
           ) : null}
 
+          <VerdictBlock result={result} />
+
           <div className="mt-4 space-y-3">
             {result.reachability === "no_such_site" ? (
               <InfoRow icon={<Globe className="size-4" />} title={`We couldn't find a website at ${result.domain}`}>
@@ -259,6 +261,23 @@ function InfoRow({ icon, title, children }: { icon: React.ReactNode; title: stri
         <p className="font-medium">{title}</p>
         <div className="mt-0.5 space-y-1 text-muted-foreground">{children}</div>
       </div>
+    </div>
+  );
+}
+
+// The actual teaser. Everything below this (activity, pricing, hiring) is
+// supporting evidence; this is the one thing a visitor should read even if
+// they skim nothing else. Deliberately styled apart from the InfoRow cards
+// below it, so it reads as a conclusion, not another line item.
+function VerdictBlock({ result }: { result: SnapshotResult }) {
+  if (!result.verdict) return null;
+  return (
+    <div className="mt-4 rounded-xl border border-primary/30 bg-primary/[0.06] p-4">
+      <p className="flex items-center gap-1.5 text-xs font-medium tracking-wide text-primary uppercase">
+        <Sparkles className="size-3.5" />
+        The takeaway
+      </p>
+      <p className="mt-1.5 text-sm leading-relaxed">{result.verdict}</p>
     </div>
   );
 }
@@ -496,11 +515,11 @@ function ResearchBlock({ result }: { result: SnapshotResult }) {
 // slow site just sits on it a little longer.
 const CHECK_STEPS: { after: number; label: (domain: string) => string }[] = [
   { after: 0, label: (d) => `Opening ${d || "the site"}` },
-  { after: 2000, label: () => "Looking for the pricing page" },
-  { after: 4500, label: () => "Checking their careers page and job boards" },
-  { after: 8000, label: () => "Searching for recent funding, hiring, and news" },
-  { after: 14000, label: () => "Cross-checking sources" },
-  { after: 20000, label: () => "Putting your snapshot together" },
+  { after: 2000, label: () => "Pulling their pricing and careers pages" },
+  { after: 5000, label: () => "Scanning funding, hiring, and press activity" },
+  { after: 11000, label: () => "Cross-checking every source we found" },
+  { after: 17000, label: () => "Weighing what's actually notable" },
+  { after: 21000, label: () => "Synthesizing your read" },
 ];
 
 function CheckingOverlay({ domain }: { domain: string }) {
