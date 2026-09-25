@@ -838,3 +838,158 @@ export async function sendInviteEmail(to: string, inviterCompanyName: string, ac
   });
   if (result.error) throw new Error(result.error.message);
 }
+
+// ---------------------------------------------------------------------------
+// Ripplewatch Connect
+// ---------------------------------------------------------------------------
+
+const CONNECT_EMAIL_BUTTON =
+  "display:inline-block;margin-top:16px;padding:10px 20px;background:#0f5f56;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;";
+
+// After a Connect purchase clears. Connect has no dashboard to send anyone to,
+// so this is the whole onboarding: how to connect an assistant and what to say
+// first. Company name is customer-supplied, so it's escaped.
+export async function sendConnectWelcomeEmail(to: string, companyName: string, appUrl: string) {
+  if (!isResendConfigured()) return;
+
+  const result = await getResend().emails.send({
+    from: getFromEmail(),
+    to,
+    subject: "You're in. Here's how to connect Ripplewatch to your assistant",
+    html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+      <h2 style="margin:0 0 12px;">You're set up, ${escapeHtml(companyName)}.</h2>
+      <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+        Ripplewatch Connect lives inside the assistant you already use. Two minutes to connect it:
+      </p>
+      <ol style="color:#3a3a3a;font-size:14px;line-height:1.7;padding-left:20px;">
+        <li>In Claude or ChatGPT, add a custom connector with this URL: <strong>${appUrl}/api/mcp</strong></li>
+        <li>Sign in to Ripplewatch when prompted and approve.</li>
+        <li>Say <em>"Add my top competitor to Ripplewatch"</em> and give it a name and website. From there it will
+          ask you for the few things that make its answers specific to your business.</li>
+      </ol>
+      <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+        Your usage balance, auto-reload and connector details are under Settings.
+      </p>
+      <a href="${appUrl}/app/settings?tab=connect" style="${CONNECT_EMAIL_BUTTON}">Open Settings</a>
+      <p style="color:#888;font-size:12px;margin-top:24px;">Questions? Just reply; a person reads every one.</p>
+    </div>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
+// An auto-reload charge was declined, so reload is switched off. Says what
+// happened and the one thing to do, before answers actually stop.
+export async function sendConnectReloadFailedEmail(to: string, companyName: string, appUrl: string) {
+  if (!isResendConfigured()) return;
+
+  const result = await getResend().emails.send({
+    from: getAlertsFromEmail(),
+    to,
+    subject: "Your Ripplewatch Connect auto-reload didn't go through",
+    html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+      <h2 style="margin:0 0 12px;">Auto-reload failed for ${escapeHtml(companyName)}</h2>
+      <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+        We tried to add to your usage balance and your card was declined, so auto-reload is now off. Nothing is wrong
+        with your account. Answers and monitoring keep working until your balance runs out.
+      </p>
+      <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+        Update your card under Manage billing, then turn auto-reload back on, or add funds by hand.
+      </p>
+      <a href="${appUrl}/app/settings?tab=connect" style="${CONNECT_EMAIL_BUTTON}">Fix it in Settings</a>
+    </div>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
+// Balance is low and auto-reload can't be relied on (off, or it failed). The
+// paused variant is for a balance too low to run anything.
+export async function sendConnectLowBalanceEmail(
+  to: string,
+  companyName: string,
+  balanceUsd: number,
+  paused: boolean,
+  appUrl: string
+) {
+  if (!isResendConfigured()) return;
+
+  const result = await getResend().emails.send({
+    from: getAlertsFromEmail(),
+    to,
+    subject: paused
+      ? "Ripplewatch Connect is paused: add funds to keep going"
+      : "Your Ripplewatch Connect balance is running low",
+    html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+      <h2 style="margin:0 0 12px;">${paused ? "Answers and monitoring are paused" : "Your balance is running low"}</h2>
+      <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+        ${escapeHtml(companyName)}'s usage balance is <strong>$${balanceUsd.toFixed(2)}</strong>.
+        ${
+          paused
+            ? "That's below what's needed to answer questions or watch your competitors, so both are paused until you add funds."
+            : "Auto-reload is off, so answers and monitoring will pause when it reaches zero."
+        }
+      </p>
+      <a href="${appUrl}/app/settings?tab=connect" style="${CONNECT_EMAIL_BUTTON}">Add funds</a>
+    </div>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
+// The weekly read for a Connect account: the verdict, plus a one-line balance.
+// Deliberately no usage breakdown: it's a briefing, not a statement. Verdict is
+// model-written, so it's escaped.
+export async function sendConnectWeeklyEmail(
+  to: string,
+  companyName: string,
+  verdict: string,
+  balanceUsd: number,
+  appUrl: string
+) {
+  if (!isResendConfigured()) return;
+
+  const result = await getResend().emails.send({
+    from: getAlertsFromEmail(),
+    to,
+    subject: `Your competitive read for the week, ${companyName}`,
+    html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+      <p style="color:#888;font-size:12px;letter-spacing:0.05em;text-transform:uppercase;margin:0 0 8px;">This week</p>
+      <p style="color:#1a1a1a;font-size:15px;line-height:1.65;margin:0 0 16px;">${escapeHtml(verdict)}</p>
+      <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+        Want the detail? Ask your assistant: <em>"What changed with my competitors this week, and what should I worry about?"</em>
+      </p>
+      <p style="color:#888;font-size:12px;margin-top:24px;">
+        Usage balance: $${balanceUsd.toFixed(2)}. <a href="${appUrl}/app/settings?tab=connect" style="color:#888;">Manage</a>
+      </p>
+    </div>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
+// A customer disputed a charge. Internal alert: a dispute can claw back money
+// that has already been spent, so someone should look promptly. Values come
+// from Stripe but are escaped anyway.
+export async function sendDisputeAlertEmail(
+  to: string[],
+  detail: { disputeId: string; amountUsd: number; reason: string; accountName: string | null; froze: boolean; walletBalanceUsd: number | null }
+) {
+  if (!isResendConfigured() || to.length === 0) return;
+
+  const result = await getResend().emails.send({
+    from: getAlertsFromEmail(),
+    to,
+    subject: `Dispute: $${detail.amountUsd.toFixed(2)}${detail.accountName ? ` from ${detail.accountName}` : ""}`,
+    html: `<p>A charge was disputed.</p>
+      <table style="border-collapse:collapse;font-size:14px">
+        <tr><td style="padding:2px 12px 2px 0;color:#888">Account</td><td>${escapeHtml(detail.accountName ?? "Unknown (not matched to an account)")}</td></tr>
+        <tr><td style="padding:2px 12px 2px 0;color:#888">Amount</td><td>$${detail.amountUsd.toFixed(2)}</td></tr>
+        <tr><td style="padding:2px 12px 2px 0;color:#888">Reason</td><td>${escapeHtml(detail.reason)}</td></tr>
+        ${detail.walletBalanceUsd !== null ? `<tr><td style="padding:2px 12px 2px 0;color:#888">Wallet balance</td><td>$${detail.walletBalanceUsd.toFixed(2)}</td></tr>` : ""}
+      </table>
+      <p>${
+        detail.froze
+          ? "This is a Ripplewatch Connect account: it has been put on hold and auto-reload switched off so no further credits are spent or added while you respond."
+          : "This account was not changed automatically."
+      }</p>
+      <p><a href="https://dashboard.stripe.com/disputes/${escapeHtml(detail.disputeId)}">Open the dispute in Stripe</a></p>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}

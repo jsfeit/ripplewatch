@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { chargeDailyUsage, previousUtcDay } from "@/lib/connect-usage";
 import { maybeAutoReload } from "@/lib/connect-billing";
+import { notifyIfLowBalance } from "@/lib/connect-notifications";
 
 // Runs once a day, before the crawl. For every active Ripplewatch Connect
 // account: charge the previous UTC day's monitoring and background LLM usage
@@ -22,6 +23,7 @@ export async function GET(request: Request) {
       const result = await chargeDailyUsage(supabase, account.id, day);
       summary.push({ accountId: account.id, charged: result.charged, chargeUsd: result.chargeUsd });
       await maybeAutoReload(supabase, account.id);
+      await notifyIfLowBalance(supabase, account.id);
     } catch (err) {
       console.error(`connect daily usage failed for ${account.id}:`, err);
     }

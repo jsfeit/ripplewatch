@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getStripe, TIER_BY_PRICE } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendPlanChangeEmail, sendPaymentReceivedEmail, sendReferralWelcomeEmail, sendReferralSignedUpEmail } from "@/lib/resend";
+import { sendPlanChangeEmail, sendPaymentReceivedEmail, sendReferralWelcomeEmail, sendReferralSignedUpEmail, sendConnectWelcomeEmail } from "@/lib/resend";
 import { creditWalletFromCheckout, creditWalletFromReloadInvoice, saveDefaultPaymentMethod } from "@/lib/connect-billing";
+import { handleDispute } from "@/lib/connect-disputes";
 
 export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
@@ -55,7 +56,23 @@ export async function POST(request: Request) {
               console.error("saving default payment method failed:", err)
             );
           }
-          await creditWalletFromCheckout(supabase, session);
+          const credit = await creditWalletFromCheckout(supabase, session);
+
+          // Welcome only the first time the signup payment is credited, so a
+          // redelivered webhook doesn't email again. Best-effort.
+          if (credit.credited && connectPurpose === "connect_signup") {
+            const { data: connectAccount } = await supabase
+              .from("accounts")
+              .select("name, contact_email")
+              .eq("id", accountId)
+              .single();
+            if (connectAccount?.contact_email) {
+              const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
+              sendConnectWelcomeEmail(connectAccount.contact_email, connectAccount.name, appUrl).catch((err) =>
+                console.error("connect welcome email failed:", err)
+              );
+            }
+          }
           break;
         }
 
@@ -260,6 +277,13 @@ export async function POST(request: Request) {
             .eq("id", accountId);
           if (error) throw new Error(`customer.subscription.deleted account update failed: ${error.message}`);
         }
+        break;
+      }
+
+      // A customer disputed a charge: alert the admins, and freeze the account
+      // if it's a Connect account (see connect-disputes.ts).
+      case "charge.dispute.created": {
+        await handleDispute(supabase, event.data.object as Stripe.Dispute);
         break;
       }
 

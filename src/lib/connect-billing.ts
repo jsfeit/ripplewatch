@@ -6,6 +6,7 @@ import { getStripe, getConnectPriceId } from "@/lib/stripe";
 import { PRODUCT_TAX_CODE } from "@/lib/pricing";
 import { CONNECT_FUNDING_OPTIONS_USD, CONNECT_MIN_FUNDING_USD, usdToMicros } from "@/lib/connect-pricing";
 import { applyToWallet } from "@/lib/wallet-ledger";
+import { notifyReloadFailed } from "@/lib/connect-notifications";
 
 type Admin = SupabaseClient<Database>;
 
@@ -234,6 +235,7 @@ export async function maybeAutoReload(supabase: Admin, accountId: string): Promi
         .from("connect_wallets")
         .update({ auto_reload_enabled: false, reload_failed_at: new Date().toISOString() })
         .eq("account_id", accountId);
+      await notifyReloadFailed(supabase, accountId);
     }
   } finally {
     await releaseClaim();

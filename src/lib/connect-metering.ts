@@ -4,6 +4,7 @@ import { runMetered } from "@/lib/usage-meter";
 import { chargeUsage, hasMinimumBalance } from "@/lib/connect-wallet";
 import { CONNECT_MIN_BALANCE_TO_RUN_USD } from "@/lib/connect-pricing";
 import { maybeAutoReload } from "@/lib/connect-billing";
+import { notifyIfLowBalance } from "@/lib/connect-notifications";
 
 // LLM functions charged at the moment they run (see runMetered below) rather
 // than folded into the daily usage charge, so one call is never charged twice.
@@ -40,7 +41,10 @@ export async function meteredForConnect<T>(
     meta: { tool: input.toolName },
   });
 
-  const reload = () => maybeAutoReload(supabase, input.accountId).catch((err) => console.error("auto-reload error:", err));
+  const reload = async () => {
+    await maybeAutoReload(supabase, input.accountId).catch((err) => console.error("auto-reload error:", err));
+    await notifyIfLowBalance(supabase, input.accountId);
+  };
   if (input.schedule) input.schedule(reload);
   else void reload();
 

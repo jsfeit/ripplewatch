@@ -30,6 +30,17 @@ type LlmUsageByFunction = { functionName: string; tokens: number; costUsd: numbe
 const TIER_LABELS: Record<string, string> = {
   starter: "Starter",
   plus: "Plus",
+  connect: "Connect",
+};
+
+export type ConnectAdminData = {
+  balanceUsd: number;
+  autoReload: { enabled: boolean; amountUsd: number; thresholdUsd: number; failed: boolean } | null;
+  // Last 30 days.
+  fundedUsd30: number;
+  chargedUsd30: number;
+  llmCostUsd30: number;
+  ledger: { id: string; kind: string; amountUsd: number; balanceUsd: number; description: string | null; createdAt: string }[];
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -58,6 +69,7 @@ export function AccountAdminView({
   llmUsageByFunction = [],
   llmUsageTotalUsd = 0,
   llmUsageWindowDays,
+  connect = null,
 }: {
   account: Account;
   // "Account #N" (oldest = 1), same rank shown in the accounts list —
@@ -78,6 +90,8 @@ export function AccountAdminView({
   llmUsageByFunction?: LlmUsageByFunction[];
   llmUsageTotalUsd?: number;
   llmUsageWindowDays?: number;
+  // Present only for Ripplewatch Connect accounts.
+  connect?: ConnectAdminData | null;
 }) {
   const router = useRouter();
   const [tier, setTier] = useState(account.tier);
@@ -413,6 +427,73 @@ export function AccountAdminView({
           </p>
         </div>
       </div>
+
+      {connect ? (
+        <Card>
+          <CardHeader>
+            <h2 className="font-medium">Ripplewatch Connect wallet</h2>
+            <p className="text-sm text-muted-foreground">
+              Prepaid balance and whether usage is covering its cost. Platform fee revenue isn&apos;t included here.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid gap-4 sm:grid-cols-4">
+              {[
+                { label: "Balance", value: `$${connect.balanceUsd.toFixed(2)}` },
+                { label: "Funded, 30d", value: `$${connect.fundedUsd30.toFixed(2)}` },
+                { label: "Charged for usage, 30d", value: `$${connect.chargedUsd30.toFixed(2)}` },
+                {
+                  label: "Usage margin, 30d",
+                  value: `$${(connect.chargedUsd30 - connect.llmCostUsd30).toFixed(2)}`,
+                  note: `vs $${connect.llmCostUsd30.toFixed(2)} LLM cost`,
+                },
+              ].map((stat) => (
+                <div key={stat.label}>
+                  <p className="text-xs text-muted-foreground">{stat.label}</p>
+                  <p className="text-lg font-semibold tabular-nums">{stat.value}</p>
+                  {"note" in stat && stat.note ? <p className="text-xs text-muted-foreground">{stat.note}</p> : null}
+                </div>
+              ))}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Auto-reload:{" "}
+              {connect.autoReload
+                ? connect.autoReload.failed
+                  ? "failed, switched off"
+                  : connect.autoReload.enabled
+                    ? `on, adds $${connect.autoReload.amountUsd} below $${connect.autoReload.thresholdUsd}`
+                    : "off"
+                : "not set up"}
+            </p>
+            {connect.ledger.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No wallet activity yet.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>When</TableHead>
+                    <TableHead>What</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="text-right">Balance</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {connect.ledger.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell className="text-muted-foreground">{timeAgo(row.createdAt)}</TableCell>
+                      <TableCell>{row.description ?? row.kind}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {row.amountUsd < 0 ? "-" : "+"}${Math.abs(row.amountUsd).toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">${row.balanceUsd.toFixed(2)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {llmUsageWindowDays !== undefined ? (
         <Card>
