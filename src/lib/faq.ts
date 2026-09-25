@@ -41,7 +41,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "How do I get win/loss data into Ripplewatch?",
         answer:
-          'Whichever fits how your team already works: paste a CSV export or sync HubSpot deals from the dashboard\'s Win/loss section, push outcomes programmatically via <a href="/docs/api">POST /api/v1/win-loss</a> the moment a deal closes, or just forward or CC a "we lost this deal" email to your personal address shown in Settings → Developer (Plus/Advanced plans). All three feed the same pipeline, and update each competitor\'s Momentum win-rate trend immediately.',
+          'Whichever fits how your team already works: paste a CSV export or sync HubSpot deals from the dashboard\'s Win/loss section, push outcomes programmatically via <a href="/docs/api">POST /api/v1/win-loss</a> the moment a deal closes, or just forward or CC a "we lost this deal" email to your personal address shown in Settings → Developer (Plus plan). All three feed the same pipeline, and update each competitor\'s Momentum win-rate trend immediately.',
       },
       {
         question: "Can I use Ripplewatch from Claude, ChatGPT, or another AI assistant?",

@@ -19,7 +19,7 @@ export function PricingCards() {
         <BillingPeriodToggle period={period} onChange={setPeriod} discountPercent={ANNUAL_DISCOUNT_PERCENT} />
       </div>
 
-      <div className="mt-10 grid gap-6 sm:grid-cols-3">
+      <div className="mx-auto mt-10 grid max-w-3xl gap-6 sm:grid-cols-2">
         {TIERS.map((tier) => {
           const displayMonthly = period === "annual" ? annualPriceUsd(tier.monthlyUsd) / 12 : tier.monthlyUsd;
           const href = tier.selfServe ? `/onboarding?plan=${tier.id}&period=${period}` : "/pricing";

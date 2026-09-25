@@ -12,9 +12,9 @@ import { trackEvent } from "@/lib/analytics";
 
 export function ReactivateView({ companyName }: { companyName: string }) {
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
-  const [checkoutTier, setCheckoutTier] = useState<"starter" | "plus" | "advanced" | null>(null);
+  const [checkoutTier, setCheckoutTier] = useState<"starter" | "plus" | null>(null);
 
-  function pickTier(tier: "starter" | "plus" | "advanced") {
+  function pickTier(tier: "starter" | "plus") {
     const monthlyUsd = TIERS.find((t) => t.id === tier)?.monthlyUsd ?? 0;
     const value = billingPeriod === "annual" ? annualPriceUsd(monthlyUsd) : monthlyUsd;
     trackEvent("begin_checkout", { currency: "USD", value, item_name: tier, item_variant: billingPeriod });

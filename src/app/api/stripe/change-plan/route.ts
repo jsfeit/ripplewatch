@@ -14,10 +14,10 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const requestedTier: unknown = body?.tier;
 
-  if (requestedTier !== "starter" && requestedTier !== "plus" && requestedTier !== "advanced") {
+  if (requestedTier !== "starter" && requestedTier !== "plus") {
     return NextResponse.json({ error: "Unknown tier." }, { status: 400 });
   }
-  const tier: "starter" | "plus" | "advanced" = requestedTier;
+  const tier: "starter" | "plus" = requestedTier;
 
   const supabase = await createClient();
   const {

@@ -1,6 +1,6 @@
 import { MONTHLY_PRICE_USD, annualPriceUsd, ANNUAL_DISCOUNT_PERCENT } from "./pricing";
 
-export type TierId = "starter" | "plus" | "advanced";
+export type TierId = "starter" | "plus";
 
 export type Tier = {
   id: TierId;
@@ -60,27 +60,7 @@ export const TIERS: Tier[] = [
     annualNote: annualNote(MONTHLY_PRICE_USD.plus),
     monthlyUsd: MONTHLY_PRICE_USD.plus,
     selfServe: true,
-    tagline: "Everything in Starter, on up to 7 competitors, plus HubSpot and API access.",
-    competitors: "Up to 7 competitors",
-    signalSources: "Pricing, job postings, news, funding, product changes",
-    relevanceScoring: "Full scoring + Momentum score",
-    delivery: "Slack + email",
-    crm: "HubSpot (read-only pull)",
-    apiAccess: "Read-only API access",
-    visualDiff: "Visual change detection",
-    seats: "Up to 10 seats",
-    cta: "Start with Plus",
-    highlight: true,
-  },
-  {
-    id: "advanced",
-    name: "Advanced",
-    price: `$${MONTHLY_PRICE_USD.advanced}`,
-    priceNote: "/mo",
-    annualNote: annualNote(MONTHLY_PRICE_USD.advanced),
-    monthlyUsd: MONTHLY_PRICE_USD.advanced,
-    selfServe: true,
-    tagline: "Everything in Plus, with more room and a guided setup.",
+    tagline: "Everything in Starter, on up to 20 competitors, plus HubSpot, call insights, API access, and a guided setup.",
     competitors: "Up to 20 competitors",
     signalSources: "Pricing, job postings, news, funding, product changes",
     relevanceScoring: "Full scoring + Momentum score",
@@ -93,6 +73,7 @@ export const TIERS: Tier[] = [
     apiAccess: "Read-only API access",
     visualDiff: "Visual change detection",
     seats: "Unlimited",
-    cta: "Start with Advanced",
+    cta: "Start with Plus",
+    highlight: true,
   },
 ];

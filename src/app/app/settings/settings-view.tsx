@@ -87,14 +87,14 @@ export function SettingsView({
   const [billingLoading, setBillingLoading] = useState<string | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
   const [checkoutModal, setCheckoutModal] = useState<{
-    tier: "starter" | "plus" | "advanced";
+    tier: "starter" | "plus";
     period: "monthly" | "annual";
   } | null>(null);
 
   const currentTier = TIERS.find((t) => t.id === account.tier) ?? TIERS[0];
   const isConnected = (provider: string) => integrations.some((i) => i.provider === provider && i.connected);
   // demo_mode accounts get the exact same app as any real account (full
-  // Advanced-tier access, see effectiveTier below) — the only restriction
+  // Plus-tier access, see effectiveTier below) — the only restriction
   // is billing, blocked server-side in the Stripe routes and reflected in
   // the Plan tab UI below. No tabs are hidden and no data is faked.
   const demoMode = account.demo_mode;
@@ -151,7 +151,7 @@ export function SettingsView({
   // changing the one they have. Brand-new customers (no subscription yet)
   // open the embedded Checkout modal instead — there's nothing to "change"
   // for them, and this is their first payment, not a plan switch.
-  async function handleUpgrade(tier: "starter" | "plus" | "advanced") {
+  async function handleUpgrade(tier: "starter" | "plus") {
     const hasActiveSubscription = Boolean(account.stripe_customer_id && account.stripe_subscription_id);
 
     if (!hasActiveSubscription) {
@@ -280,7 +280,7 @@ export function SettingsView({
               description={
                 CRM_ALLOWED[gatingTier]
                   ? "Read-only pull of closed-lost deal reasons"
-                  : "Read-only pull of closed-lost deal reasons, Plus and above"
+                  : "Read-only pull of closed-lost deal reasons, Plus only"
               }
               connected={isConnected("hubspot")}
               connectHref="/api/integrations/hubspot/connect"
@@ -294,7 +294,7 @@ export function SettingsView({
               description={
                 INTERCOM_ALLOWED[gatingTier]
                   ? "Read-only pull of churn and cancellation reasons"
-                  : "Read-only pull of churn and cancellation reasons, Advanced only"
+                  : "Read-only pull of churn and cancellation reasons, Plus only"
               }
               connected={isConnected("intercom")}
               connectHref="/api/integrations/intercom/connect"
@@ -327,7 +327,7 @@ export function SettingsView({
               description={
                 CALL_INTEL_ALLOWED[gatingTier]
                   ? "Pull competitor mentions from recorded meeting transcripts"
-                  : "Pull competitor mentions from recorded meeting transcripts, Advanced only"
+                  : "Pull competitor mentions from recorded meeting transcripts, Plus only"
               }
               connected={isConnected("zoom")}
               connectHref="/api/integrations/zoom/connect"
@@ -569,7 +569,7 @@ export function SettingsView({
               <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-400">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0" />
                 <p>
-                  API access is a Plus/Advanced feature.{" "}
+                  API access is a Plus feature.{" "}
                   <button
                     type="button"
                     onClick={() => selectTab("plan")}

@@ -41,7 +41,7 @@ export async function authenticateApiKey(token: string): Promise<ApiKeyAuth> {
   // block creating new keys going forward.
   const { data: account } = await supabase.from("accounts").select("tier").eq("id", key.account_id).single();
   if (!account || !API_ACCESS_ALLOWED[account.tier]) {
-    return { ok: false, status: 403, error: "API access requires the Plus or Advanced plan." };
+    return { ok: false, status: 403, error: "API access requires the Plus plan." };
   }
 
   const now = Date.now();

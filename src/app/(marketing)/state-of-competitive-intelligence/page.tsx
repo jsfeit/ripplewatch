@@ -100,7 +100,7 @@ export default function MarketResearchPage() {
             <div className="flex items-baseline justify-between gap-2">
               <h3 className="font-medium text-primary">Ripplewatch</h3>
               <span className="text-xs text-muted-foreground">
-                ${MONTHLY_PRICE_USD.starter}–${MONTHLY_PRICE_USD.advanced}/mo, self-serve
+                ${MONTHLY_PRICE_USD.starter}–${MONTHLY_PRICE_USD.plus}/mo, self-serve
               </span>
             </div>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">

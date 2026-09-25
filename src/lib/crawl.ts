@@ -351,7 +351,7 @@ export async function crawlOneCompetitor(
       : null,
     // Real visual diffing (screenshot + Claude vision comparison) is a
     // paid API call, unlike everything else in this array — gated to
-    // Plus/Advanced (VISUAL_DIFF_ALLOWED) rather than uniform across
+    // Plus (VISUAL_DIFF_ALLOWED) rather than uniform across
     // tiers. Also self-gates on SCREENSHOTONE_ACCESS_KEY being unset (see
     // checkVisualChange), so this is a no-op today until that's added.
     visualDiffAllowed ? checkVisualChange(supabase, competitor).then((s) => (s ? [s] : [])) : null,

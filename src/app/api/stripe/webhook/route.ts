@@ -36,7 +36,7 @@ export async function POST(request: Request) {
             .update({
               stripe_customer_id: String(session.customer),
               stripe_subscription_id: String(session.subscription),
-              tier: tier as "starter" | "plus" | "advanced",
+              tier: tier as "starter" | "plus",
             })
             .eq("id", accountId);
           if (error) throw new Error(`checkout.session.completed account update failed: ${error.message}`);
