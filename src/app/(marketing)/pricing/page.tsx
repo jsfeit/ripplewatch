@@ -46,7 +46,7 @@ export default function PricingPage() {
       <div className="mx-auto max-w-2xl text-center">
         <h1 className="text-4xl font-semibold tracking-tight">Pricing that scales with your team, not your headcount</h1>
         <p className="mt-4 text-muted-foreground">
-          No dedicated CI analyst required. Pick self-serve or bring in ours.
+          No dedicated CI analyst required. Use the dashboard, or skip it and use Ripplewatch inside Claude or ChatGPT.
         </p>
       </div>
 
@@ -68,8 +68,9 @@ export default function PricingPage() {
         <h3 className="text-lg font-semibold">Not sure which tier fits?</h3>
         <p className="mt-2 text-sm text-muted-foreground">
           Most self-serve teams start on Starter and move to Plus once they&apos;re tracking more
-          than 3 competitors, or want HubSpot and API access. Every tier gets full scoring and
-          Momentum from day one.
+          than 3 competitors, or want HubSpot, API access and the Claude and ChatGPT connector. Every
+          plan gets full scoring and Momentum from day one. Prefer to skip the dashboard entirely?
+          Ripplewatch Connect is in early access.
         </p>
         <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link href="/onboarding?plan=starter&period=monthly" className={buttonVariants()}>

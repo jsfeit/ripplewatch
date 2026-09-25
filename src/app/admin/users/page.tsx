@@ -16,6 +16,7 @@ const CAPTURE_POINT_LABELS: Record<string, string> = {
   quiz: "Quiz",
   blog: "Blog",
   snapshot: "Competitor snapshot",
+  connect: "Connect early access",
 };
 
 // Same context each capture point already sends via metadata (see
@@ -53,6 +54,10 @@ function leadDetails(capturePoint: string | null, metadata: Record<string, unkno
     const weakest = typeof metadata.weakestTopic === "string" ? metadata.weakestTopic : null;
     parts.push([metadata.tier, score, weakest ? `weak: ${weakest}` : null].filter(Boolean).join(" · "));
   }
+  // Connect interest: as the lead's own capture point, or recorded on a lead
+  // that first arrived some other way (see /api/leads).
+  const connect = capturePoint === "connect" ? metadata : (metadata.connectInterest as Record<string, unknown> | undefined);
+  if (connect && typeof connect.assistant === "string") parts.push(`wants Connect for ${connect.assistant}`);
   const lookups = existingLookups(capturePoint, metadata);
   if (lookups.length > 0) {
     parts.push(lookups.map(describeLookup).join(" · "));

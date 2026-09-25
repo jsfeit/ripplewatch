@@ -44,15 +44,35 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
           'Whichever fits how your team already works: paste a CSV export or sync HubSpot deals from the dashboard\'s Win/loss section, push outcomes programmatically via <a href="/docs/api">POST /api/v1/win-loss</a> the moment a deal closes, or just forward or CC a "we lost this deal" email to your personal address shown in Settings → Developer (Plus plan). All three feed the same pipeline, and update each competitor\'s Momentum win-rate trend immediately.',
       },
       {
+        question: "What is Ripplewatch Connect?",
+        answer:
+          'Ripplewatch Connect is a way to use Ripplewatch without opening a dashboard. You add Ripplewatch to Claude or ChatGPT as a connector, then ask what changed with your competitors, what it means for your deals, and tell it how deals went, all in the chat. It\'s in early access: <a href="/connect">request access here</a>. The same connector is included in the Plus plan today.',
+      },
+      {
         question: "Can I use Ripplewatch from Claude, ChatGPT, or another AI assistant?",
         answer:
-          'Yes, through our MCP server (see <a href="/docs/api">the docs</a>). It works with assistants that support remote MCP servers over HTTP, including Claude (web, desktop, and Claude Code) and developer tools like Cursor. ChatGPT supports custom MCP connectors through its developer mode, which is in beta and has to be enabled by a workspace admin. Gemini supports MCP in Gemini CLI, but we haven\'t confirmed support in the Gemini app. You can connect by signing in and approving the connection, or with an API key for developer tools. Both need the Plus plan.',
+          'Yes, through our MCP server (see <a href="/docs/api">the docs</a>). It works with assistants that support remote MCP servers over HTTP, including Claude (web, desktop, and Claude Code) and developer tools like Cursor. ChatGPT supports custom MCP connectors through its developer mode, which is in beta and has to be enabled by a workspace admin. Gemini supports MCP in Gemini CLI, but we haven\'t confirmed support in the Gemini app. You can connect by signing in and approving the connection, or with an API key for developer tools. Both need the Plus plan today.',
+      },
+      {
+        question: "What can an AI assistant do with my Ripplewatch account?",
+        answer:
+          "It can read your competitors, momentum, signals and trends, ask questions answered against your positioning, and, only when you tell it to, add a competitor, log a won or lost deal, log customer feedback, or update your positioning and ICP. It can't change billing or team settings, and you approve every connection and can disconnect it in Settings → Developer.",
       },
     ],
   },
   {
     title: "Pricing & billing",
     items: [
+      {
+        question: "How much does Ripplewatch Connect cost?",
+        answer:
+          "Connect will be a small platform fee plus usage, with no dashboard seat to pay for. It's in early access and we haven't set the numbers yet, so we'll share pricing before it opens and you won't be charged anything by requesting access. If you want to use it now, the connector is included in the Plus plan.",
+      },
+      {
+        question: "Do I need the dashboard to use Ripplewatch Connect?",
+        answer:
+          "No. The dashboard and Connect run on the same data, but Connect is meant for people who'd rather ask Claude or ChatGPT than log in. Starter and Plus stay fixed-price with no usage bill; Connect is the usage-based option.",
+      },
       {
         question: "Can I cancel anytime?",
         answer:

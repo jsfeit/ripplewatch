@@ -7,6 +7,7 @@ import { PricingCards } from "@/components/marketing/pricing-cards";
 import { QuizCta } from "@/components/marketing/quiz-cta";
 import { DemoLink } from "@/components/marketing/demo-link";
 import { cn, avatarColor } from "@/lib/utils";
+import { CONNECT_NAME } from "@/lib/connect";
 
 export const metadata = { alternates: { canonical: "/" } };
 
@@ -223,6 +224,30 @@ export default function HomePage() {
               <ArrowUp className="ml-auto size-3.5 shrink-0 rounded-full bg-primary p-0.5 text-primary-foreground" />
             </div>
           </Panel>
+        </div>
+      </section>
+
+      <section className="border-t border-border bg-secondary/40">
+        <div className="mx-auto max-w-4xl px-6 py-20 text-center">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+            <Sparkles className="size-3.5" />
+            {CONNECT_NAME} · early access
+          </span>
+          <h2 className="mx-auto mt-4 max-w-xl text-3xl font-semibold tracking-tight">
+            Or skip the dashboard. Ask from Claude or ChatGPT.
+          </h2>
+          <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
+            Connect Ripplewatch to the assistant you already use. Ask what changed, get the read on what it means for
+            your deals, and log wins and losses by just saying so. Included in Plus today.
+          </p>
+          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Link href="/connect" className={buttonVariants()}>
+              See how it works <ArrowRight className="size-4" />
+            </Link>
+            <Link href="/connect#early-access" className={buttonVariants({ variant: "outline" })}>
+              Request early access
+            </Link>
+          </div>
         </div>
       </section>
 
