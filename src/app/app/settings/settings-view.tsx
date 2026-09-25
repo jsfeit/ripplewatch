@@ -9,6 +9,7 @@ import { IntegrationConnector } from "@/components/app/integration-connector";
 import { SlackDigestSchedule } from "@/components/app/slack-digest-schedule";
 import { TeamManager } from "@/components/app/team-manager";
 import { ApiKeysManager } from "@/components/app/api-keys-manager";
+import { ConnectedApps } from "@/components/app/connected-apps";
 import { WinLossEmailAddress } from "@/components/app/win-loss-email-address";
 import { ReferralCodeManager } from "@/components/app/referral-code-manager";
 import { CompetitorManager } from "@/components/app/competitor-manager";
@@ -583,6 +584,20 @@ export function SettingsView({
             )}
           </CardContent>
         </Card>
+
+        {API_ACCESS_ALLOWED[account.tier] && (
+          <Card className="mt-6">
+            <CardHeader>
+              <h2 className="font-medium">Connected AI assistants</h2>
+              <p className="text-sm text-muted-foreground">
+                Let Claude or ChatGPT read your competitive intel and log deals and feedback for you.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <ConnectedApps />
+            </CardContent>
+          </Card>
+        )}
 
         {API_ACCESS_ALLOWED[account.tier] && (
           <Card className="mt-6">

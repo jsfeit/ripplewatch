@@ -303,8 +303,9 @@ export default function ApiDocsPage() {
       <Code>{`claude mcp add --transport http ripplewatch https://www.ripplewatch.ai/api/mcp \\
   --header "Authorization: Bearer rw_live_..."`}</Code>
       <p>
-        Clients that only support signing in through a browser (adding a custom connector in Claude or ChatGPT
-        without pasting a key) need OAuth, which we haven&apos;t shipped yet.
+        In Claude or ChatGPT you don&apos;t need a key: add <code>https://www.ripplewatch.ai/api/mcp</code> as a
+        custom connector, sign in to Ripplewatch when prompted, and approve the connection. Manage connected apps
+        under Settings → Developer. Both paths are limited to accounts on the Plus plan.
       </p>
       <p>The tools it exposes:</p>
       <ul>
