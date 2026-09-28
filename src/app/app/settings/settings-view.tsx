@@ -97,7 +97,7 @@ export function SettingsView({
   const [billingLoading, setBillingLoading] = useState<string | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
   const [checkoutModal, setCheckoutModal] = useState<{
-    tier: "starter" | "plus";
+    tier: "plus";
     period: "monthly" | "annual";
   } | null>(null);
 
@@ -162,7 +162,7 @@ export function SettingsView({
   // changing the one they have. Brand-new customers (no subscription yet)
   // open the embedded Checkout modal instead — there's nothing to "change"
   // for them, and this is their first payment, not a plan switch.
-  async function handleUpgrade(tier: "starter" | "plus") {
+  async function handleUpgrade(tier: "plus") {
     const hasActiveSubscription = Boolean(account.stripe_customer_id && account.stripe_subscription_id);
 
     if (!hasActiveSubscription) {
@@ -199,7 +199,7 @@ export function SettingsView({
         onOpenChange={(open) => {
           if (!open) setCheckoutModal(null);
         }}
-        tier={checkoutModal?.tier ?? "starter"}
+        tier={checkoutModal?.tier ?? "plus"}
         period={checkoutModal?.period ?? "monthly"}
       />
       <Tabs value={activeTab} onValueChange={selectTab}>
@@ -380,7 +380,7 @@ export function SettingsView({
             <div className="flex items-center justify-between">
               <h2 className="font-medium">Current plan</h2>
               <span
-                className={`rounded-full px-2.5 py-1 text-xs font-semibold ${TIER_BADGE[account.tier] ?? TIER_BADGE.starter}`}
+                className={`rounded-full px-2.5 py-1 text-xs font-semibold ${TIER_BADGE[account.tier] ?? TIER_BADGE.plus}`}
               >
                 {currentTier.name}
               </span>

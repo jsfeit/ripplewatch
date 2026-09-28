@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ArrowUp, Radar, Sparkles, Send, Waves, CircleDashed } from "lucide-react";
+import { ArrowRight, ArrowUp, LayoutDashboard, Radar, Sparkles, Send, Waves, CircleDashed } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/panel";
@@ -8,6 +8,8 @@ import { QuizCta } from "@/components/marketing/quiz-cta";
 import { DemoLink } from "@/components/marketing/demo-link";
 import { cn, avatarColor } from "@/lib/utils";
 import { CONNECT_NAME } from "@/lib/connect";
+import { CONNECT_BASE_FEE_USD } from "@/lib/connect-pricing";
+import { MONTHLY_PRICE_USD } from "@/lib/pricing";
 
 export const metadata = { alternates: { canonical: "/" } };
 
@@ -23,11 +25,17 @@ export const metadata = { alternates: { canonical: "/" } };
 // unscored signals render in the actual product.
 const PRICE_HIKE_TITLE = "Northlane raised its Growth plan from $149 to $199/mo";
 
+const ASK_EXCHANGE = {
+  question: "What has Parano.ai changed recently that actually matters to us?",
+  answer:
+    "Two things worth acting on. They cut their entry tier from $99 to $69/mo, which directly narrows the price gap you've lost two deals to this month. They also removed the competitor-count cap on their top tier, which undercuts the \"scales with you\" pitch you lead with in upmarket conversations.",
+};
+
 const STEPS = [
   {
     icon: Radar,
     title: "Connect your context",
-    body: "Tell us your positioning, your ICP, and why deals don't close and customers churn, not simply who direct competitors are.",
+    body: "In Claude or ChatGPT, or the dashboard if you'd rather: tell it your positioning, your ICP, and why deals don't close and customers churn, not simply who direct competitors are.",
   },
   {
     icon: Sparkles,
@@ -36,16 +44,10 @@ const STEPS = [
   },
   {
     icon: Send,
-    title: "You see who's actually moving",
-    body: "Every competitor gets a Momentum score — Heating up, Steady, or Cooling — synthesized from hiring, pricing, press, and product activity, not a pile of change notifications to sort through yourself.",
+    title: "You get the read, not a pile of alerts",
+    body: "Every competitor gets a Momentum score — Heating up, Steady, or Cooling — synthesized from hiring, pricing, press, and product activity. Ask for it directly, or check the dashboard.",
   },
 ];
-
-const ASK_EXCHANGE = {
-  question: "What has Parano.ai changed recently that actually matters to us?",
-  answer:
-    "Two things worth acting on. They cut their entry tier from $99 to $69/mo, which directly narrows the price gap you've lost two deals to this month. They also removed the competitor-count cap on their top tier, which undercuts the \"scales with you\" pitch you lead with in upmarket conversations.",
-};
 
 const STRUCTURED_DATA = {
   "@context": "https://schema.org",
@@ -56,8 +58,8 @@ const STRUCTURED_DATA = {
   description:
     "Not alerts. Not data. Answers. Ripplewatch tracks hiring, pricing, press, and product activity across your competitors and tells small tech companies which ones are becoming a real threat.",
   offers: [
-    { "@type": "Offer", name: "Starter", price: "69", priceCurrency: "USD" },
-    { "@type": "Offer", name: "Plus", price: "149", priceCurrency: "USD" },
+    { "@type": "Offer", name: CONNECT_NAME, price: String(CONNECT_BASE_FEE_USD), priceCurrency: "USD" },
+    { "@type": "Offer", name: "Ripplewatch Dashboard", price: String(MONTHLY_PRICE_USD.plus), priceCurrency: "USD" },
   ],
 };
 
@@ -70,8 +72,9 @@ export default function HomePage() {
       />
       <section className="mx-auto max-w-6xl px-6 pb-20 pt-20 sm:pt-28">
         <div className="mx-auto max-w-3xl text-center">
-          <span className="inline-flex items-center rounded-full border border-border bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground">
-            Built for small tech companies, not a fractional hire
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+            <Sparkles className="size-3.5" />
+            Now inside Claude and ChatGPT
           </span>
           <h1 className="mt-6 text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
             Not alerts. Not data.
@@ -79,26 +82,70 @@ export default function HomePage() {
             <span className="text-primary">Answers.</span>
           </h1>
           <p className="mt-6 text-lg leading-relaxed text-muted-foreground text-balance">
-            Ripplewatch tracks hiring, pricing, press, and product activity across your
-            competitors and tells you which ones are becoming a real threat — scored against
-            your own positioning, ICP, lost-deal reasons, and churn.
+            Ask Claude or ChatGPT what your competitors are doing and what it actually means for your deals.
+            Ripplewatch reads their pricing, hiring, press, and product changes and scores it against your own
+            positioning, ICP, and lost-deal reasons, no dashboard required.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link href="/pricing" className={buttonVariants({ size: "lg" })}>
-              Get started
+            <Link href="/onboarding?path=connect" className={buttonVariants({ size: "lg" })}>
+              Get {CONNECT_NAME}
               <ArrowRight className="size-4" />
             </Link>
-            <Link href="/onboarding" className={buttonVariants({ size: "lg", variant: "outline" })}>
-              See it in action
+            <Link href="/connect" className={buttonVariants({ size: "lg", variant: "outline" })}>
+              See how it works
             </Link>
           </div>
-          <DemoLink label="Prefer to talk it through first? Book a demo" className="mt-5" />
+          <p className="mt-5 text-sm text-muted-foreground">
+            ${CONNECT_BASE_FEE_USD}/month plus usage you prepay for.{" "}
+            <Link href="/pricing" className="font-medium text-primary hover:underline">
+              Prefer a shared dashboard?
+            </Link>{" "}
+            <DemoLink label="Or book a demo" />
+          </p>
+        </div>
+      </section>
+
+      <section className="border-t border-border">
+        <div className="mx-auto max-w-4xl px-6 py-20">
+          <div className="mx-auto max-w-xl text-center">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+              <Sparkles className="size-3.5" />
+              This is {CONNECT_NAME}
+            </span>
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight">
+              Don&apos;t wait for the next update. Just ask.
+            </h2>
+            <p className="mt-3 text-muted-foreground">
+              Once you connect Ripplewatch, this is the conversation, right inside Claude or ChatGPT: scoped to your
+              competitors, your positioning, and the last 90 days of signals.
+            </p>
+          </div>
+          <Panel className="mx-auto mt-10 max-w-2xl p-5 shadow-sm">
+            <div className="ml-auto max-w-[85%] rounded-lg bg-primary px-4 py-3 text-sm leading-relaxed text-primary-foreground">
+              {ASK_EXCHANGE.question}
+            </div>
+            <div className="mr-auto mt-4 max-w-[85%] rounded-lg border border-primary/20 bg-accent/60 px-4 py-3 text-sm leading-relaxed text-foreground">
+              {ASK_EXCHANGE.answer}
+            </div>
+            <div className="mt-4 flex items-center gap-2 rounded-lg border border-border bg-secondary/40 px-4 py-2.5 text-sm text-muted-foreground">
+              Ask about a competitor, a trend, or what&apos;s changed…
+              <ArrowUp className="ml-auto size-3.5 shrink-0 rounded-full bg-primary p-0.5 text-primary-foreground" />
+            </div>
+          </Panel>
+          <div className="mt-8 text-center">
+            <Link href="/connect" className={buttonVariants()}>
+              See how {CONNECT_NAME} works <ArrowRight className="size-4" />
+            </Link>
+          </div>
         </div>
       </section>
 
       <section className="border-y border-border bg-secondary/40">
         <div className="mx-auto max-w-6xl px-6 py-16">
-          <div className="grid gap-10 sm:grid-cols-2">
+          <p className="text-center text-sm text-muted-foreground">
+            The read is only as good as the analyst behind it. Here&apos;s the difference:
+          </p>
+          <div className="mt-8 grid gap-10 sm:grid-cols-2">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Generic monitoring tool
@@ -161,10 +208,9 @@ export default function HomePage() {
                   {PRICE_HIKE_TITLE}
                 </p>
                 <p className="mt-2 text-sm leading-relaxed text-foreground">
-                  This closes the gap between Northlane and your Plus plan to just $25/mo. Northlane
-                  came up as the price comparison in 20 of your last 100 lost deals. Worth revisiting
-                  how you frame value at this price point, and reaching out to those lost deals given
-                  this change.
+                  This closes the gap between Northlane and your plan to just $25/mo. Northlane came up as the price
+                  comparison in 20 of your last 100 lost deals. Worth revisiting how you frame value at this price
+                  point, and reaching out to those lost deals given this change.
                 </p>
                 <p className="mt-3 text-xs text-muted-foreground">
                   All features within the Growth plan are the same, outside of the new AI chat feature
@@ -197,55 +243,25 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="border-t border-border">
-        <div className="mx-auto max-w-4xl px-6 py-20">
-          <div className="mx-auto max-w-xl text-center">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-              <Sparkles className="size-3.5" />
-              Ask
-            </span>
-            <h2 className="mt-4 text-3xl font-semibold tracking-tight">
-              Don&apos;t wait for the next update. Just ask.
-            </h2>
-            <p className="mt-3 text-muted-foreground">
-              Ripplewatch isn&apos;t only a feed, it&apos;s an analyst you can question directly, scoped to
-              your competitors, your positioning, and the last 90 days of signals.
-            </p>
-          </div>
-          <Panel className="mx-auto mt-10 max-w-2xl p-5 shadow-sm">
-            <div className="ml-auto max-w-[85%] rounded-lg bg-primary px-4 py-3 text-sm leading-relaxed text-primary-foreground">
-              {ASK_EXCHANGE.question}
-            </div>
-            <div className="mr-auto mt-4 max-w-[85%] rounded-lg border border-primary/20 bg-accent/60 px-4 py-3 text-sm leading-relaxed text-foreground">
-              {ASK_EXCHANGE.answer}
-            </div>
-            <div className="mt-4 flex items-center gap-2 rounded-lg border border-border bg-secondary/40 px-4 py-2.5 text-sm text-muted-foreground">
-              Ask about a competitor, a trend, or what&apos;s changed…
-              <ArrowUp className="ml-auto size-3.5 shrink-0 rounded-full bg-primary p-0.5 text-primary-foreground" />
-            </div>
-          </Panel>
-        </div>
-      </section>
-
       <section className="border-t border-border bg-secondary/40">
         <div className="mx-auto max-w-4xl px-6 py-20 text-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-            <Sparkles className="size-3.5" />
-            {CONNECT_NAME}
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-muted-foreground">
+            <LayoutDashboard className="size-3.5" />
+            Ripplewatch Dashboard
           </span>
           <h2 className="mx-auto mt-4 max-w-xl text-3xl font-semibold tracking-tight">
-            Or skip the dashboard. Ask from Claude or ChatGPT.
+            Prefer a shared view your whole team can check?
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-            Connect Ripplewatch to the assistant you already use. Ask what changed, get the read on what it means for
-            your deals, and log wins and losses by just saying so. $29 a month plus usage you prepay for.
+            The dashboard is the same competitive intelligence, in a workspace your team logs into together: Slack
+            and email delivery, HubSpot, call insights, and unlimited seats, for one fixed monthly price.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link href="/connect" className={buttonVariants()}>
-              See how it works <ArrowRight className="size-4" />
+            <Link href="/pricing" className={buttonVariants()}>
+              See dashboard pricing <ArrowRight className="size-4" />
             </Link>
-            <Link href="/onboarding?path=connect" className={buttonVariants({ variant: "outline" })}>
-              Get {CONNECT_NAME}
+            <Link href="/how-it-works" className={buttonVariants({ variant: "outline" })}>
+              See the walkthrough
             </Link>
           </div>
         </div>
@@ -258,18 +274,18 @@ export default function HomePage() {
       <section className="border-t border-border bg-secondary/40">
         <div className="mx-auto max-w-6xl px-6 py-20">
           <h2 className="text-center text-3xl font-semibold tracking-tight">
-            Pick the tier that matches how you sell
+            Two ways to use Ripplewatch
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-center text-muted-foreground">
-            Every tier gets full scoring and the Momentum score. Higher tiers just mean more
-            competitors tracked and more integrations.
+            {CONNECT_NAME} is the cheapest way in: no dashboard, pay only for what you use. The Dashboard is one
+            fixed price for a team that wants a shared view.
           </p>
           <div className="mt-10">
             <PricingCards />
           </div>
           <div className="mt-8 text-center">
-            <Link href="/pricing" className={buttonVariants()}>
-              See full pricing details
+            <Link href="/pricing" className={buttonVariants({ variant: "link" })}>
+              See full pricing details <ArrowRight className="size-4" />
             </Link>
           </div>
         </div>
@@ -278,12 +294,15 @@ export default function HomePage() {
       <section className="mx-auto max-w-3xl px-6 py-20 text-center">
         <h2 className="text-3xl font-semibold tracking-tight">Ready to stop guessing what matters?</h2>
         <p className="mt-3 text-muted-foreground">
-          Set up your account and start scoring competitive signals in minutes.
+          Connect Ripplewatch to Claude or ChatGPT and ask your first question in minutes.
         </p>
-        <div className="mt-8">
-          <Link href="/pricing" className={buttonVariants({ size: "lg" })}>
-            Get started
+        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Link href="/onboarding?path=connect" className={buttonVariants({ size: "lg" })}>
+            Get {CONNECT_NAME}
             <ArrowRight className="size-4" />
+          </Link>
+          <Link href="/pricing" className={buttonVariants({ size: "lg", variant: "outline" })}>
+            See dashboard pricing
           </Link>
         </div>
       </section>

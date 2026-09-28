@@ -53,7 +53,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .select("id", { count: "exact", head: true })
     .eq("account_id", accountId);
 
-  const tier = account?.tier ?? "starter";
+  const tier = account?.tier ?? "plus";
   const limit = competitorCap(tier, account?.demo_mode ?? false);
   if ((count ?? 0) >= limit) {
     return NextResponse.json(

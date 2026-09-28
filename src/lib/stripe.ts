@@ -18,15 +18,11 @@ export function getStripe(): Stripe {
   return cachedStripe;
 }
 
-export type SelfServeTier = "starter" | "plus";
+export type SelfServeTier = "plus";
 export type BillingPeriod = "monthly" | "annual";
 
 // Both tiers are self-serve checkout.
 const PRICE_BY_TIER_AND_PERIOD: Record<SelfServeTier, Record<BillingPeriod, string | undefined>> = {
-  starter: {
-    monthly: process.env.STRIPE_PRICE_STARTER,
-    annual: process.env.STRIPE_PRICE_STARTER_ANNUAL,
-  },
   plus: {
     monthly: process.env.STRIPE_PRICE_PLUS,
     annual: process.env.STRIPE_PRICE_PLUS_ANNUAL,

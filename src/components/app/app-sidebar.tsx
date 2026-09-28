@@ -21,7 +21,6 @@ const NAV = [
 ];
 
 const TIER_LABELS: Record<string, string> = {
-  starter: "Starter",
   plus: "Plus",
   connect: "Connect",
 };
@@ -133,7 +132,7 @@ export function AppSidebar({ tier }: { tier: string }) {
           <div className="flex items-center justify-between rounded-lg border border-sidebar-border bg-sidebar-accent/40 px-3 py-2.5">
             <span className="text-xs font-medium text-sidebar-foreground/60">Plan</span>
             <span className="flex items-center gap-1.5 text-xs font-semibold text-sidebar-foreground">
-              <span className={cn("size-1.5 rounded-full", TIER_DOT[tier] ?? TIER_DOT.starter)} />
+              <span className={cn("size-1.5 rounded-full", TIER_DOT[tier] ?? TIER_DOT.plus)} />
               {TIER_LABELS[tier] ?? tier}
             </span>
           </div>

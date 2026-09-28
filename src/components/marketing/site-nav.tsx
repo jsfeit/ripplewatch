@@ -9,6 +9,7 @@ import { DemoLink } from "@/components/marketing/demo-link";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
+  { href: "/connect", label: "Ripplewatch Connect" },
   { href: "/how-it-works", label: "How it works" },
   { href: "/pricing", label: "Pricing" },
 ];
@@ -16,12 +17,10 @@ const LINKS = [
 export function SiteNav() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  // Everywhere else, "Get started" sends people to /pricing to pick a tier
-  // first, which is the right funnel. But a Link to the page you're already
-  // on doesn't navigate at all — no reload, no scroll, nothing — so on
-  // /pricing itself it just looks dead. There, skip straight to onboarding
-  // with the same default tier/period the pricing page's own CTA uses.
-  const getStartedHref = pathname === "/pricing" ? "/onboarding?plan=starter&period=monthly" : "/pricing";
+  // "Get started" leads with Connect (the cheapest, self-serve way in) from
+  // anywhere on the site, including /pricing itself, where a Link to the page
+  // you're already on wouldn't navigate at all.
+  const getStartedHref = "/onboarding?path=connect";
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur">

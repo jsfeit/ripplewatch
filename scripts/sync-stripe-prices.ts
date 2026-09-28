@@ -23,8 +23,7 @@ import {
 } from "../src/lib/pricing";
 
 const DISPLAY_NAMES: Record<TierKey, string> = {
-  starter: "Starter",
-  plus: "Plus",
+  plus: "Dashboard",
 };
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2026-06-24.dahlia" });
@@ -86,13 +85,10 @@ async function main() {
 
   const envPath = join(process.cwd(), ".env.local");
   let env = readFileSync(envPath, "utf-8");
-  env = env.replace(/^STRIPE_PRICE_STARTER=.*$/m, `STRIPE_PRICE_STARTER=${results.starter.monthly}`);
   env = env.replace(/^STRIPE_PRICE_PLUS=.*$/m, `STRIPE_PRICE_PLUS=${results.plus.monthly}`);
-  if (!env.includes("STRIPE_PRICE_STARTER_ANNUAL")) {
-    env += `\nSTRIPE_PRICE_STARTER_ANNUAL=${results.starter.annual}`;
+  if (!env.includes("STRIPE_PRICE_PLUS_ANNUAL")) {
     env += `\nSTRIPE_PRICE_PLUS_ANNUAL=${results.plus.annual}\n`;
   } else {
-    env = env.replace(/^STRIPE_PRICE_STARTER_ANNUAL=.*$/m, `STRIPE_PRICE_STARTER_ANNUAL=${results.starter.annual}`);
     env = env.replace(/^STRIPE_PRICE_PLUS_ANNUAL=.*$/m, `STRIPE_PRICE_PLUS_ANNUAL=${results.plus.annual}`);
   }
   writeFileSync(envPath, env);

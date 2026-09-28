@@ -4,9 +4,11 @@ import { buttonVariants } from "@/components/ui/button";
 import { PricingCards } from "@/components/marketing/pricing-cards";
 import { DemoLink } from "@/components/marketing/demo-link";
 import { TIERS } from "@/lib/tiers";
+import { CONNECT_NAME } from "@/lib/connect";
+import { CONNECT_BASE_FEE_USD } from "@/lib/connect-pricing";
 
 const description =
-  "Not alerts. Not data. Answers. Ripplewatch tracks hiring, pricing, press, and product activity across your competitors, starting at $69/mo. Every tier includes full scoring and the Momentum score.";
+  "Not alerts. Not data. Answers. Ripplewatch tracks hiring, pricing, press, and product activity across your competitors. Connect it to Claude or ChatGPT from $29/mo, or use the shared dashboard.";
 
 export const metadata = {
   title: "Pricing",
@@ -16,10 +18,9 @@ export const metadata = {
   twitter: { card: "summary_large_image", title: "Pricing | Ripplewatch", description },
 };
 
-// Derived from TIERS (the same data PricingCards renders) rather than
-// hardcoded a second time, so this can't silently drift from the real
-// prices the way a copy-pasted schema block would the next time a price
-// changes.
+// Derived from TIERS/Connect's own constants (the same data PricingCards
+// renders) rather than hardcoded a second time, so this can't silently drift
+// from the real prices the way a copy-pasted schema block would.
 const STRUCTURED_DATA = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
@@ -27,13 +28,22 @@ const STRUCTURED_DATA = {
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   description,
-  offers: TIERS.map((tier) => ({
-    "@type": "Offer",
-    name: tier.name,
-    price: String(tier.monthlyUsd),
-    priceCurrency: "USD",
-    description: tier.tagline,
-  })),
+  offers: [
+    {
+      "@type": "Offer",
+      name: CONNECT_NAME,
+      price: String(CONNECT_BASE_FEE_USD),
+      priceCurrency: "USD",
+      description: "Use Ripplewatch inside Claude or ChatGPT, plus usage you prepay for.",
+    },
+    ...TIERS.map((tier) => ({
+      "@type": "Offer",
+      name: tier.name,
+      price: String(tier.monthlyUsd),
+      priceCurrency: "USD",
+      description: tier.tagline,
+    })),
+  ],
 };
 
 export default function PricingPage() {
@@ -44,9 +54,10 @@ export default function PricingPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA) }}
       />
       <div className="mx-auto max-w-2xl text-center">
-        <h1 className="text-4xl font-semibold tracking-tight">Pricing that scales with your team, not your headcount</h1>
+        <h1 className="text-4xl font-semibold tracking-tight">Two ways to use Ripplewatch</h1>
         <p className="mt-4 text-muted-foreground">
-          No dedicated CI analyst required. Use the dashboard, or skip it and use Ripplewatch inside Claude or ChatGPT.
+          No dedicated CI analyst required. Connect it to Claude or ChatGPT and pay only for what you use, or run it
+          as a shared dashboard for the whole team.
         </p>
       </div>
 
@@ -57,24 +68,23 @@ export default function PricingPage() {
       <div className="mx-auto mt-16 flex max-w-2xl items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 p-6">
         <ShieldCheck className="mt-0.5 size-5 shrink-0 text-primary" />
         <p className="text-sm leading-relaxed text-foreground">
-          <span className="font-semibold">30-day money-back guarantee, on every plan.</span>{" "}
-          Use Ripplewatch for real, against your real competitors. If it&apos;s not for you, email us
-          within 30 days of any charge for a full refund. Cancel anytime from Settings, no penalty
-          or lock-in; it takes effect at the end of your current billing period.
+          <span className="font-semibold">30-day money-back guarantee.</span> On the Dashboard, use Ripplewatch for
+          real, against your real competitors; if it&apos;s not for you, email us within 30 days of any charge for a
+          full refund. On {CONNECT_NAME}, the platform fee and any unused balance are refundable the same way; usage
+          you&apos;ve already spent isn&apos;t. Cancel anytime from Settings, no penalty or lock-in.
         </p>
       </div>
 
       <div className="mx-auto mt-8 max-w-2xl rounded-xl border border-border bg-secondary/40 p-8 text-center">
-        <h3 className="text-lg font-semibold">Not sure which tier fits?</h3>
+        <h3 className="text-lg font-semibold">Not sure which fits?</h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          Most self-serve teams start on Starter and move to Plus once they&apos;re tracking more
-          than 3 competitors, or want HubSpot and API access. Every plan gets full scoring and Momentum
-          from day one. Prefer to skip the dashboard and use Ripplewatch inside Claude or ChatGPT?
-          Ripplewatch Connect is a separate product: $29 a month plus usage you prepay for.
+          If you&apos;d rather ask Claude or ChatGPT than log into another tool, start with {CONNECT_NAME}: it&apos;s
+          the cheapest way in, and you only pay for what you actually use. Reach for the Dashboard once you want a
+          shared view a whole team logs into, with Slack and email delivery built in.
         </p>
         <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link href="/onboarding?plan=starter&period=monthly" className={buttonVariants()}>
-            Get started
+          <Link href="/onboarding?path=connect" className={buttonVariants()}>
+            Get {CONNECT_NAME}
           </Link>
           <DemoLink variant="button" />
         </div>

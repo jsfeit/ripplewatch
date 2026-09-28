@@ -28,8 +28,7 @@ type Signal = Database["public"]["Tables"]["signals"]["Row"];
 type LlmUsageByFunction = { functionName: string; tokens: number; costUsd: number; calls: number };
 
 const TIER_LABELS: Record<string, string> = {
-  starter: "Starter",
-  plus: "Plus",
+  plus: "Dashboard",
   connect: "Connect",
 };
 

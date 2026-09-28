@@ -10,7 +10,6 @@ export const ANNUAL_DISCOUNT_PERCENT = 20;
 export const PRODUCT_TAX_CODE = "txcd_10103001";
 
 export const MONTHLY_PRICE_USD = {
-  starter: 69,
   plus: 149,
 } as const;
 

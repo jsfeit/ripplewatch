@@ -83,6 +83,22 @@ export function OnboardingEntry({ initiallySignedIn, hasAccount }: { initiallySi
       <div className="grid gap-4 sm:grid-cols-2">
         <button
           type="button"
+          onClick={() => pick("connect")}
+          className="relative flex flex-col items-start gap-3 rounded-2xl border border-primary/50 bg-card p-6 text-left shadow-sm shadow-primary/10 transition-colors hover:border-primary"
+        >
+          <span className="absolute -top-3 left-6 rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-semibold text-primary-foreground">
+            Cheapest way in
+          </span>
+          <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <MessagesSquare className="size-5" />
+          </span>
+          <span className="text-base font-semibold">My AI assistant</span>
+          <span className="text-sm text-muted-foreground">
+            Use Ripplewatch inside Claude or ChatGPT, no dashboard. {CONNECT_NAME} is $29/month plus usage you prepay for.
+          </span>
+        </button>
+        <button
+          type="button"
           onClick={() => pick("dashboard")}
           className="flex flex-col items-start gap-3 rounded-2xl border border-border bg-card p-6 text-left transition-colors hover:border-primary/50"
         >
@@ -92,19 +108,6 @@ export function OnboardingEntry({ initiallySignedIn, hasAccount }: { initiallySi
           <span className="text-base font-semibold">The Ripplewatch dashboard</span>
           <span className="text-sm text-muted-foreground">
             Set up your workspace in a few minutes and see a live preview. Fixed monthly price, Slack and email delivery.
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => pick("connect")}
-          className="flex flex-col items-start gap-3 rounded-2xl border border-border bg-card p-6 text-left transition-colors hover:border-primary/50"
-        >
-          <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <MessagesSquare className="size-5" />
-          </span>
-          <span className="text-base font-semibold">My AI assistant</span>
-          <span className="text-sm text-muted-foreground">
-            Use Ripplewatch inside Claude or ChatGPT, no dashboard. {CONNECT_NAME} is $29/month plus usage you prepay for.
           </span>
         </button>
       </div>
