@@ -88,7 +88,7 @@ export function OnboardingFlow({
       ? COMPETITOR_LIMIT[finalPlan as keyof typeof COMPETITOR_LIMIT]
       : COMPETITOR_LIMIT.plus;
   const [checkoutModal, setCheckoutModal] = useState<{
-    tier: "starter" | "plus";
+    tier: "plus";
     period: "monthly" | "annual";
   } | null>(null);
 
@@ -327,7 +327,7 @@ export function OnboardingFlow({
       // this render, since the setChosenPlanId() a few lines up hasn't
       // taken effect yet.
       const tier = payload.tier;
-      if (tier === "starter" || tier === "plus") {
+      if (tier === "plus") {
         // Opens the embedded Checkout modal right over this step — the
         // account already exists at this point regardless of payment
         // outcome, so closing the modal (see the modal's onOpenChange
@@ -508,7 +508,7 @@ export function OnboardingFlow({
             router.refresh();
           }
         }}
-        tier={checkoutModal?.tier ?? "starter"}
+        tier={checkoutModal?.tier ?? "plus"}
         period={checkoutModal?.period ?? "monthly"}
         returnPath="/app/dashboard"
       />
@@ -852,7 +852,7 @@ export function OnboardingFlow({
                 {initiallySignedIn ? "By continuing, you agree to our" : "By creating an account, you agree to our"}{" "}
                 <Link href="/terms" className="text-primary hover:underline">Terms of Service</Link> and{" "}
                 <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>.
-                {finalPlan === "starter" || finalPlan === "plus"
+                {finalPlan === "plus"
                   ? " You'll complete payment on the next step."
                   : null}
               </p>

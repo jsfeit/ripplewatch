@@ -14,7 +14,7 @@ export function EmbeddedCheckoutModal({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  tier: "starter" | "plus";
+  tier: "plus";
   period: "monthly" | "annual";
   // Where Stripe sends the browser after payment completes. Omit to keep
   // the default (Settings) — pass "/app/dashboard" for a brand-new account

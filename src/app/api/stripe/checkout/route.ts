@@ -20,10 +20,10 @@ export async function POST(request: Request) {
     ? (requestedReturnPath as (typeof ALLOWED_RETURN_PATHS)[number])
     : "/app/settings";
 
-  if (requestedTier !== "starter" && requestedTier !== "plus") {
+  if (requestedTier !== "plus") {
     return NextResponse.json({ error: "Unknown tier." }, { status: 400 });
   }
-  const tier: "starter" | "plus" = requestedTier;
+  const tier: "plus" = requestedTier;
 
   const period: BillingPeriod = requestedPeriod === "annual" ? "annual" : "monthly";
 

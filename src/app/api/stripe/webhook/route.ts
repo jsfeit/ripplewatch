@@ -82,7 +82,7 @@ export async function POST(request: Request) {
             .update({
               stripe_customer_id: String(session.customer),
               stripe_subscription_id: String(session.subscription),
-              tier: tier as "starter" | "plus",
+              tier: tier as "plus",
             })
             .eq("id", accountId);
           if (error) throw new Error(`checkout.session.completed account update failed: ${error.message}`);
@@ -262,14 +262,13 @@ export async function POST(request: Request) {
           // new subscription via checkout) sets tier/subscription_status
           // again below (customer.subscription.created) but does not
           // touch status, so also flip it back to "active" there.
-          // A cancelled Connect account stays a Connect account (on hold) so
-          // it can resubscribe; falling back to "starter" would leave it looking
-          // like a dashboard customer with a plan it never bought.
-          const { data: current } = await supabase.from("accounts").select("tier").eq("id", accountId).single();
+          // A cancelled Connect account stays a Connect account, and a cancelled
+          // dashboard account stays "plus" — it's the only dashboard tier now,
+          // so there's nothing lower to fall back to. status: "hold" is what
+          // actually blocks access (see middleware); tier is just identity.
           const { error } = await supabase
             .from("accounts")
             .update({
-              ...(current?.tier === "connect" ? {} : { tier: "starter" as const }),
               stripe_subscription_id: null,
               subscription_status: "canceled",
               status: "hold",

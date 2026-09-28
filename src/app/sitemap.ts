@@ -8,9 +8,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const posts = await getAllPosts();
   const routes: { path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"] }[] = [
     { path: "/", priority: 1, changeFrequency: "weekly" },
+    { path: "/connect", priority: 0.9, changeFrequency: "weekly" },
     { path: "/pricing", priority: 0.9, changeFrequency: "weekly" },
     { path: "/how-it-works", priority: 0.8, changeFrequency: "monthly" },
-    { path: "/connect", priority: 0.7, changeFrequency: "monthly" },
     { path: "/faq", priority: 0.6, changeFrequency: "monthly" },
     { path: "/about", priority: 0.5, changeFrequency: "monthly" },
     { path: "/careers", priority: 0.4, changeFrequency: "monthly" },

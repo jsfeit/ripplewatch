@@ -14,8 +14,7 @@ export const metadata = { title: "Accounts | Admin" };
 export const dynamic = "force-dynamic";
 
 const TIER_LABELS: Record<string, string> = {
-  starter: "Starter",
-  plus: "Plus",
+  plus: "Dashboard",
   connect: "Connect",
 };
 

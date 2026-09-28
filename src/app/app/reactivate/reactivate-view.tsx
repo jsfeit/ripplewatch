@@ -12,9 +12,9 @@ import { trackEvent } from "@/lib/analytics";
 
 export function ReactivateView({ companyName }: { companyName: string }) {
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
-  const [checkoutTier, setCheckoutTier] = useState<"starter" | "plus" | null>(null);
+  const [checkoutTier, setCheckoutTier] = useState<"plus" | null>(null);
 
-  function pickTier(tier: "starter" | "plus") {
+  function pickTier(tier: "plus") {
     const monthlyUsd = TIERS.find((t) => t.id === tier)?.monthlyUsd ?? 0;
     const value = billingPeriod === "annual" ? annualPriceUsd(monthlyUsd) : monthlyUsd;
     trackEvent("begin_checkout", { currency: "USD", value, item_name: tier, item_variant: billingPeriod });
@@ -28,7 +28,7 @@ export function ReactivateView({ companyName }: { companyName: string }) {
         onOpenChange={(open) => {
           if (!open) setCheckoutTier(null);
         }}
-        tier={checkoutTier ?? "starter"}
+        tier={checkoutTier ?? "plus"}
         period={billingPeriod}
         returnPath="/app/dashboard"
       />
@@ -43,9 +43,9 @@ export function ReactivateView({ companyName }: { companyName: string }) {
         <BillingPeriodToggle period={billingPeriod} onChange={setBillingPeriod} discountPercent={ANNUAL_DISCOUNT_PERCENT} />
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+      <div className="mx-auto mt-6 grid max-w-sm gap-4">
         {TIERS.map((t) => (
-          <Card key={t.id} className={t.highlight ? "border-primary" : undefined}>
+          <Card key={t.id}>
             <CardHeader>
               <h2 className="font-medium">{t.name}</h2>
               <p className="text-2xl font-semibold tracking-tight">

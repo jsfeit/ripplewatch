@@ -51,7 +51,7 @@ export async function addCompetitor(
 
   const { count } = await db.from("competitors").select("id", { count: "exact", head: true }).eq("account_id", accountId);
 
-  const tier = account?.tier ?? "starter";
+  const tier = account?.tier ?? "plus";
   const limit = competitorCap(tier, account?.demo_mode ?? false);
   if ((count ?? 0) >= limit) {
     return {

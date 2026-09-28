@@ -85,8 +85,8 @@ export default async function AdminSignalsPage() {
       // should normally read empty — a nonzero count here means something
       // is scoring-failing faster than that pass can keep up, worth a look
       // rather than relying on someone noticing bad-looking dashboard data.
-      // Starter is excluded: its unscored backlog is the teaser design,
-      // not a failure.
+      // Every tier scores its full backlog now (no more Starter teaser
+      // throttle, see crawl.ts), so nothing is excluded here anymore.
       supabase.from("signals").select("id, competitor_id").eq("scored", false).lt("created_at", oneDayAgo),
     ]);
 
@@ -120,7 +120,7 @@ export default async function AdminSignalsPage() {
       for (const s of staleUnscored ?? []) {
         const competitor = competitorById.get(s.competitor_id);
         const account = competitor?.account_id ? accountById.get(competitor.account_id) : undefined;
-        if (!account || account.tier === "starter") continue;
+        if (!account) continue;
         const entry = stuckByAccount.get(account.id) ?? { accountId: account.id, accountName: account.name, count: 0 };
         entry.count += 1;
         stuckByAccount.set(account.id, entry);

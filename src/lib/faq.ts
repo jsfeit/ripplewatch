@@ -41,7 +41,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "How do I get win/loss data into Ripplewatch?",
         answer:
-          'Whichever fits how your team already works: paste a CSV export or sync HubSpot deals from the dashboard\'s Win/loss section, push outcomes programmatically via <a href="/docs/api">POST /api/v1/win-loss</a> the moment a deal closes, or just forward or CC a "we lost this deal" email to your personal address shown in Settings → Developer (Plus plan). All three feed the same pipeline, and update each competitor\'s Momentum win-rate trend immediately.',
+          'Whichever fits how your team already works: paste a CSV export or sync HubSpot deals from the dashboard\'s Win/loss section, push outcomes programmatically via <a href="/docs/api">POST /api/v1/win-loss</a> the moment a deal closes, or just forward or CC a "we lost this deal" email to your personal address shown in Settings → Developer (Dashboard plan, or via the assistant if you use Ripplewatch Connect). All three feed the same pipeline, and update each competitor\'s Momentum win-rate trend immediately.',
       },
       {
         question: "What is Ripplewatch Connect?",
@@ -81,7 +81,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "Do I need the dashboard to use Ripplewatch Connect?",
         answer:
-          "No, and you don\'t get one: Connect is a separate product for people who\'d rather ask Claude or ChatGPT than log in. Your account has Ask and Settings (billing, balance, connector, competitors). The dashboard plans (Starter and Plus) are separate, fixed-price, with no usage bill.",
+          "No, and you don\'t get one: Connect is a separate product for people who\'d rather ask Claude or ChatGPT than log in. Your account has Ask and Settings (billing, balance, connector, competitors). The Ripplewatch Dashboard is a separate product: one fixed-price plan with no usage bill.",
       },
       {
         question: "Can I cancel anytime?",

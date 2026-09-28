@@ -16,7 +16,7 @@ export default async function AppShellLayout({ children }: { children: React.Rea
     ? await resolveAccountContext(supabase, user.id)
     : { accountId: null, db: supabase, impersonation: null };
 
-  let tier = "starter";
+  let tier = "plus";
   let demoMode = false;
   let competitorNames: string[] = [];
   if (accountId) {

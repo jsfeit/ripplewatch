@@ -6,7 +6,6 @@ import type { Tier as AccountTier } from "./supabase/types";
 import type { SignalType } from "./mock-data";
 
 export const COMPETITOR_LIMIT: Record<AccountTier, number> = {
-  starter: 3,
   plus: 20,
   // Connect isn't capped by count: each competitor draws from the prepaid
   // wallet, so what limits it is the balance.
@@ -14,8 +13,8 @@ export const COMPETITOR_LIMIT: Record<AccountTier, number> = {
 };
 
 // Signal sources are uniform across every tier — differentiation is
-// competitor count, scoring depth (Starter's teaser cadence), and
-// onboarding type instead of gating which sources are scraped at all.
+// competitor count and onboarding type, not gating which sources are
+// scraped or how deeply signals get scored.
 // Reviews aren't scraped yet (admin-manual only, no ToS-safe free source).
 // SEO/traffic tracking was removed entirely (2026-09) — traffic estimates
 // don't indicate whether a competitor actually threatens a deal, and the
@@ -23,7 +22,6 @@ export const COMPETITOR_LIMIT: Record<AccountTier, number> = {
 // for src/lib/seo-data.ts if this ever needs resurrecting behind a real
 // provider account.
 export const TIER_SIGNAL_SOURCES: Record<AccountTier, SignalType[]> = {
-  starter: ["pricing", "job_posting", "news", "funding", "product_change"],
   plus: ["pricing", "job_posting", "news", "funding", "product_change"],
   connect: ["pricing", "job_posting", "news", "funding", "product_change"],
 };
@@ -31,7 +29,6 @@ export const TIER_SIGNAL_SOURCES: Record<AccountTier, SignalType[]> = {
 // CRM (HubSpot) read-only pull is a Plus feature — same gate shape as
 // CALL_INTEL_ALLOWED below.
 export const CRM_ALLOWED: Record<AccountTier, boolean> = {
-  starter: false,
   plus: true,
   connect: false,
 };
@@ -39,7 +36,6 @@ export const CRM_ALLOWED: Record<AccountTier, boolean> = {
 // Team seats: Starter cap encourages upgrading once a team grows past a
 // single marketer; Plus is unlimited.
 export const SEAT_LIMIT: Record<AccountTier, number> = {
-  starter: 3,
   plus: Infinity,
   connect: Infinity,
 };
@@ -52,7 +48,6 @@ export function seatLimitLabel(tier: AccountTier): string {
 // Zoom call-intelligence is Plus-only (Gong isn't connectable at all
 // yet — see "comingSoon" in settings-view.tsx, tier-independent).
 export const CALL_INTEL_ALLOWED: Record<AccountTier, boolean> = {
-  starter: false,
   plus: true,
   connect: false,
 };
@@ -60,7 +55,6 @@ export const CALL_INTEL_ALLOWED: Record<AccountTier, boolean> = {
 // Intercom (churn/cancellation reasons) is Plus-only, matching the
 // pricing page's "Intercom (coming soon)" line item under Plus.
 export const INTERCOM_ALLOWED: Record<AccountTier, boolean> = {
-  starter: false,
   plus: true,
   connect: false,
 };
@@ -69,7 +63,6 @@ export const INTERCOM_ALLOWED: Record<AccountTier, boolean> = {
 // intel into their own agents/tools — a Plus feature, not a Starter-tier
 // expectation.
 export const API_ACCESS_ALLOWED: Record<AccountTier, boolean> = {
-  starter: false,
   plus: true,
   connect: true,
 };
@@ -78,7 +71,6 @@ export const API_ACCESS_ALLOWED: Record<AccountTier, boolean> = {
 // Ripplewatch Connect's product, not part of the dashboard plans. Demo
 // accounts keep it so the whole product can be shown.
 export const MCP_ACCESS_ALLOWED: Record<AccountTier, boolean> = {
-  starter: false,
   plus: false,
   connect: true,
 };
@@ -92,7 +84,6 @@ export function canUseMcp(tier: AccountTier, demoMode: boolean): boolean {
 // which is free scraping, this has a real per-account cost, so it's gated
 // the same shape as CRM/API access above rather than uniform across tiers.
 export const VISUAL_DIFF_ALLOWED: Record<AccountTier, boolean> = {
-  starter: false,
   plus: true,
   connect: false,
 };
