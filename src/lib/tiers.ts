@@ -45,7 +45,12 @@ export const TIERS: Tier[] = [
     priceNote: "/mo",
     annualNote: annualNote(MONTHLY_PRICE_USD.plus),
     monthlyUsd: MONTHLY_PRICE_USD.plus,
-    selfServe: true,
+    // Sales-assisted only. Gates: hides this tier from onboarding-flow.tsx's
+    // plan picker, signup-form.tsx's ?plan= handling, and — the one that
+    // actually matters — /api/stripe/checkout/route.ts, which rejects a
+    // checkout request for any non-self-serve tier regardless of how the
+    // request got there. Flip to true to restore self-serve checkout.
+    selfServe: false,
     tagline:
       "Same scoring and competitive intelligence as Ripplewatch Connect, delivered as a shared dashboard your whole team logs into.",
     competitors: "Up to 20 competitors",
@@ -59,6 +64,11 @@ export const TIERS: Tier[] = [
       "API access + visual change detection",
       "Unlimited seats, guided setup",
     ],
-    cta: "Start with the Dashboard",
+    // Sales-assisted for now, not instant self-serve checkout — see
+    // pricing-cards.tsx, which links this CTA to booking a demo rather than
+    // /onboarding. The checkout flow itself (onboarding-flow.tsx) is
+    // untouched and still reachable directly, so turning self-serve back on
+    // is a one-line link change, not a rebuild.
+    cta: "Book a demo",
   },
 ];

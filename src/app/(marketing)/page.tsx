@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { ArrowRight, ArrowUp, LayoutDashboard, Radar, Sparkles, Send, Waves, CircleDashed } from "lucide-react";
+import { ArrowRight, ArrowUp, Radar, Sparkles, Send, Waves, CircleDashed } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/panel";
 import { PricingCards } from "@/components/marketing/pricing-cards";
-import { DemoLink } from "@/components/marketing/demo-link";
 import { cn, avatarColor } from "@/lib/utils";
 import { CONNECT_NAME } from "@/lib/connect";
 import { CONNECT_BASE_FEE_USD } from "@/lib/connect-pricing";
@@ -34,7 +33,7 @@ const STEPS = [
   {
     icon: Radar,
     title: "Connect your context",
-    body: "In Claude or ChatGPT, or the dashboard if you'd rather: tell it your positioning, your ICP, and why deals don't close and customers churn, not simply who direct competitors are.",
+    body: "In Claude or ChatGPT, tell it your positioning, your ICP, and why deals don't close and customers churn, not simply who direct competitors are.",
   },
   {
     icon: Sparkles,
@@ -44,7 +43,7 @@ const STEPS = [
   {
     icon: Send,
     title: "You get the read, not a pile of alerts",
-    body: "Every competitor gets a Momentum score — Heating up, Steady, or Cooling — synthesized from hiring, pricing, press, and product activity. Ask for it directly, or check the dashboard.",
+    body: "Every competitor gets a Momentum score — Heating up, Steady, or Cooling — synthesized from hiring, pricing, press, and product activity. Just ask for it.",
   },
 ];
 
@@ -55,7 +54,7 @@ const STRUCTURED_DATA = {
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   description:
-    "Not alerts. Not data. Answers. Ripplewatch tracks hiring, pricing, press, and product activity across your competitors and tells small tech companies which ones are becoming a real threat.",
+    "Not alerts. Not data. Answers. Ripplewatch is an AI competitive intelligence analyst built into Claude and ChatGPT, always with you, tracking hiring, pricing, press, and product activity across your competitors and telling small tech companies which ones are becoming a real threat.",
   offers: [
     { "@type": "Offer", name: CONNECT_NAME, price: String(CONNECT_BASE_FEE_USD), priceCurrency: "USD" },
     { "@type": "Offer", name: "Ripplewatch Dashboard", price: String(MONTHLY_PRICE_USD.plus), priceCurrency: "USD" },
@@ -81,9 +80,10 @@ export default function HomePage() {
             <span className="text-primary">Answers.</span>
           </h1>
           <p className="mt-6 text-lg leading-relaxed text-muted-foreground text-balance">
-            Ask Claude or ChatGPT what your competitors are doing and what it actually means for your deals.
-            Ripplewatch reads their pricing, hiring, press, and product changes and scores it against your own
-            positioning, ICP, and lost-deal reasons, no dashboard required.
+            Ripplewatch is the AI competitive intelligence analyst that&apos;s with you all the time, built right into
+            Claude or ChatGPT. Ask what your competitors are doing and what it actually means for your deals; it
+            reads their pricing, hiring, press, and product changes and scores it against your own positioning, ICP,
+            and lost-deal reasons, no dashboard required.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link href="/onboarding?path=connect" className={buttonVariants({ size: "lg" })}>
@@ -98,8 +98,7 @@ export default function HomePage() {
             ${CONNECT_BASE_FEE_USD}/month plus usage you prepay for.{" "}
             <Link href="/pricing" className="font-medium text-primary hover:underline">
               Prefer a shared dashboard?
-            </Link>{" "}
-            <DemoLink label="Or book a demo" />
+            </Link>
           </p>
         </div>
       </section>
@@ -239,30 +238,6 @@ export default function HomePage() {
           <Link href="/how-it-works" className={buttonVariants({ variant: "link" })}>
             See the full walkthrough <ArrowRight className="size-4" />
           </Link>
-        </div>
-      </section>
-
-      <section className="border-t border-border bg-secondary/40">
-        <div className="mx-auto max-w-4xl px-6 py-20 text-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-muted-foreground">
-            <LayoutDashboard className="size-3.5" />
-            Ripplewatch Dashboard
-          </span>
-          <h2 className="mx-auto mt-4 max-w-xl text-3xl font-semibold tracking-tight">
-            Prefer a shared view your whole team can check?
-          </h2>
-          <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-            The dashboard is the same competitive intelligence, in a workspace your team logs into together: Slack
-            and email delivery, HubSpot, call insights, and unlimited seats, for one fixed monthly price.
-          </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link href="/pricing" className={buttonVariants()}>
-              See dashboard pricing <ArrowRight className="size-4" />
-            </Link>
-            <Link href="/how-it-works" className={buttonVariants({ variant: "outline" })}>
-              See the walkthrough
-            </Link>
-          </div>
         </div>
       </section>
 

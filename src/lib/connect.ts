@@ -4,7 +4,7 @@
 // rename is a one-line change.
 
 export const CONNECT_NAME = "Ripplewatch Connect";
-export const CONNECT_TAGLINE = "Use Ripplewatch inside Claude or ChatGPT. No dashboard to check.";
+export const CONNECT_TAGLINE = "Your AI competitive intelligence analyst, built into Claude or ChatGPT.";
 export const CONNECT_MCP_URL = "https://www.ripplewatch.ai/api/mcp";
 
 export const CONNECT_ASSISTANTS = ["Claude", "ChatGPT", "Cursor", "Something else"] as const;

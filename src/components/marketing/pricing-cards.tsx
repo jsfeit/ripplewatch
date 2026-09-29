@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check, Sparkles } from "lucide-react";
+import { Calendar, Check, Sparkles } from "lucide-react";
+import { DEMO_URL } from "@/lib/demo";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { TIERS } from "@/lib/tiers";
@@ -87,13 +88,18 @@ export function PricingCards() {
               <FeatureRow key={f} label={f} />
             ))}
           </ul>
-          <Link
-            href={`/onboarding?plan=${dashboard.id}&period=${period}`}
+          {/* Sales-assisted for now, not instant checkout — see the cta
+              field's comment in tiers.ts for why and how to revert. */}
+          <a
+            href={DEMO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
             className={buttonVariants({ variant: "outline", className: "w-full" })}
           >
+            <Calendar className="size-4" />
             {dashboard.cta}
-          </Link>
-          <p className="text-center text-xs text-muted-foreground">Cancel anytime, 30-day guarantee.</p>
+          </a>
+          <p className="text-center text-xs text-muted-foreground">30-day money-back guarantee once you&apos;re set up.</p>
         </CardContent>
       </Card>
     </div>

@@ -25,6 +25,16 @@ export async function POST(request: Request) {
   }
   const tier: "plus" = requestedTier;
 
+  // The actual enforcement point for "dashboard is sales-assisted only" —
+  // the UI no longer links here for this tier, but this rejection is what
+  // stops a direct API call regardless of how the request got made.
+  if (!TIERS.find((t) => t.id === tier)?.selfServe) {
+    return NextResponse.json(
+      { error: "This plan is sales-assisted. Book a demo to get set up." },
+      { status: 403 }
+    );
+  }
+
   const period: BillingPeriod = requestedPeriod === "annual" ? "annual" : "monthly";
 
   const priceId = getPriceId(tier, period);
