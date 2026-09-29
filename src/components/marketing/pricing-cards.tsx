@@ -21,7 +21,7 @@ export function PricingCards() {
   const dashboardMonthly = period === "annual" ? annualPriceUsd(dashboard.monthlyUsd) / 12 : dashboard.monthlyUsd;
 
   return (
-    <div className="mx-auto grid max-w-4xl gap-6 sm:grid-cols-2 sm:items-start">
+    <div className="mx-auto grid max-w-4xl items-stretch gap-6 sm:grid-cols-2">
       <div className="relative">
         <span className="absolute -top-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
           Most flexible
@@ -71,6 +71,9 @@ export function PricingCards() {
             </span>
             <span className="text-sm text-muted-foreground">/mo</span>
           </div>
+          <div className="pt-1">
+            <BillingPeriodToggle period={period} onChange={setPeriod} discountPercent={ANNUAL_DISCOUNT_PERCENT} />
+          </div>
           <p className="text-xs text-muted-foreground">
             {period === "annual"
               ? `billed $${annualPriceUsd(dashboard.monthlyUsd).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/yr`
@@ -90,9 +93,7 @@ export function PricingCards() {
           >
             {dashboard.cta}
           </Link>
-          <div className="flex justify-center pt-1">
-            <BillingPeriodToggle period={period} onChange={setPeriod} discountPercent={ANNUAL_DISCOUNT_PERCENT} />
-          </div>
+          <p className="text-center text-xs text-muted-foreground">Cancel anytime, 30-day guarantee.</p>
         </CardContent>
       </Card>
     </div>
