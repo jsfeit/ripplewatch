@@ -697,7 +697,7 @@ export function OnboardingFlow({
                       id="lostDealReasons"
                       value={lostDealReasons}
                       onChange={(e) => setLostDealReasons(e.target.value)}
-                      placeholder="Lost to Parano.ai, they were $30/mo cheaper on the entry tier"
+                      placeholder="Lost to Northlane, they were $30/mo cheaper on the entry tier"
                       rows={3}
                     />
                   </div>
@@ -726,7 +726,7 @@ export function OnboardingFlow({
                       id="churnReasons"
                       value={churnReasons}
                       onChange={(e) => setChurnReasons(e.target.value)}
-                      placeholder="Churned after 2 months, said RivalSense's onboarding was easier to get started with"
+                      placeholder="Churned after 2 months, said Beaconly's onboarding was easier to get started with"
                       rows={3}
                     />
                   </div>

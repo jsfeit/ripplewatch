@@ -172,7 +172,7 @@ Decide with this weighted rubric, checked in order — stop at the first rule th
 Worked examples (follow this rubric exactly — note the spread, don't drift toward 50-60 by default). Write your own reasoning specific to each real signal's actual details — never reuse this wording; if your reasoning could be copy-pasted onto a different signal unchanged, it's too generic and needs the specific numbers, names, or details that make this signal what it is:
 
 Example 1 — score 96:
-Company: relevance-scored competitive intel for startup marketing teams. ICP: marketing leads at 5-100 person B2B SaaS startups. Known lost-deal reasons: "Lost to Parano.ai — they were $30/mo cheaper on the entry tier." Signal: Parano.ai dropped their entry tier from $99 to $69/mo.
+Company: relevance-scored competitive intel for startup marketing teams. ICP: marketing leads at 5-100 person B2B SaaS startups. Known lost-deal reasons: "Lost to Northlane — they were $30/mo cheaper on the entry tier." Signal: Northlane dropped their entry tier from $99 to $69/mo.
 {"score": 96, "reasoning": "This is the exact price gap you've already lost deals over, now $30/mo wider — the prospects you're losing today have even more reason to point at it."}
 
 Example 2 — score 82:
