@@ -17,18 +17,15 @@ export type Tier = {
   monthlyUsd: number;
   selfServe: boolean;
   tagline: string;
+  // Used by the reactivate page's own compact summary (not the pricing
+  // card, which reads `features` below).
   competitors: string;
   signalSources: string;
   relevanceScoring: string;
-  onboarding?: string;
-  delivery: string;
-  crm?: string;
-  callIntel?: string;
-  gong?: string;
-  intercom?: string;
-  apiAccess?: string;
-  visualDiff?: string;
-  seats: string;
+  // The pricing card's bullet list — short, one idea per line, and the same
+  // count as Connect's own pricing-card list (see CONNECT_PRICING_FEATURES)
+  // so the two cards land at the same height.
+  features: string[];
   cta: string;
 };
 
@@ -49,19 +46,19 @@ export const TIERS: Tier[] = [
     annualNote: annualNote(MONTHLY_PRICE_USD.plus),
     monthlyUsd: MONTHLY_PRICE_USD.plus,
     selfServe: true,
-    tagline: "A shared dashboard for the whole team: up to 20 competitors, HubSpot, call insights, and a guided setup.",
+    tagline:
+      "Same scoring and competitive intelligence as Ripplewatch Connect, delivered as a shared dashboard your whole team logs into.",
     competitors: "Up to 20 competitors",
     signalSources: "Pricing, job postings, news, funding, product changes",
     relevanceScoring: "Full scoring + Momentum score",
-    onboarding: "Onboarding support",
-    delivery: "Slack + email",
-    crm: "HubSpot (read-only pull)",
-    callIntel: "Zoom call insights",
-    gong: "Gong (coming soon)",
-    intercom: "Intercom (coming soon)",
-    apiAccess: "Read-only API access",
-    visualDiff: "Visual change detection",
-    seats: "Unlimited",
+    features: [
+      "Up to 20 competitors tracked",
+      "Full scoring + Momentum score",
+      "Slack + email delivery",
+      "HubSpot + call insights (Zoom, Gong soon)",
+      "API access + visual change detection",
+      "Unlimited seats, guided setup",
+    ],
     cta: "Start with the Dashboard",
   },
 ];

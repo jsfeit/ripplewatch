@@ -4,7 +4,6 @@ import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/panel";
 import { PricingCards } from "@/components/marketing/pricing-cards";
-import { QuizCta } from "@/components/marketing/quiz-cta";
 import { DemoLink } from "@/components/marketing/demo-link";
 import { cn, avatarColor } from "@/lib/utils";
 import { CONNECT_NAME } from "@/lib/connect";
@@ -267,17 +266,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="border-t border-border px-6 py-20">
-        <QuizCta />
-      </section>
-
       <section className="border-t border-border bg-secondary/40">
         <div className="mx-auto max-w-6xl px-6 py-20">
           <h2 className="text-center text-3xl font-semibold tracking-tight">
             Two ways to use Ripplewatch
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-center text-muted-foreground">
-            {CONNECT_NAME} is the cheapest way in: no dashboard, pay only for what you use. The Dashboard is one
+            {CONNECT_NAME} is the most flexible way in: no dashboard, pay only for what you use. The Dashboard is one
             fixed price for a team that wants a shared view.
           </p>
           <div className="mt-10">

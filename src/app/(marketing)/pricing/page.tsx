@@ -79,7 +79,7 @@ export default function PricingPage() {
         <h3 className="text-lg font-semibold">Not sure which fits?</h3>
         <p className="mt-2 text-sm text-muted-foreground">
           If you&apos;d rather ask Claude or ChatGPT than log into another tool, start with {CONNECT_NAME}: it&apos;s
-          the cheapest way in, and you only pay for what you actually use. Reach for the Dashboard once you want a
+          the most flexible way in, and you only pay for what you actually use. Reach for the Dashboard once you want a
           shared view a whole team logs into, with Slack and email delivery built in.
         </p>
         <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
