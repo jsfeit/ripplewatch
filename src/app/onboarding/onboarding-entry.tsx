@@ -119,7 +119,8 @@ export function OnboardingEntry({ initiallySignedIn, hasAccount }: { initiallySi
           </span>
           <span className="text-base font-semibold">My AI assistant</span>
           <span className="text-sm text-muted-foreground">
-            Use Ripplewatch inside Claude or ChatGPT, no dashboard. {CONNECT_NAME} is $29/month plus usage you prepay for.
+            An AI analyst built into Claude or ChatGPT, with you at all times, no dashboard. {CONNECT_NAME} is
+            $29/month plus usage you prepay for.
           </span>
         </button>
         <a

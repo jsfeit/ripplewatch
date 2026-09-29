@@ -5,10 +5,10 @@ import { CONNECT_EXAMPLES, CONNECT_FEATURES, CONNECT_NAME, CONNECT_TAGLINE } fro
 import { CONNECT_BASE_FEE_USD, CONNECT_MIN_FUNDING_USD } from "@/lib/connect-pricing";
 
 const description =
-  "Ripplewatch Connect brings competitive intelligence into Claude and ChatGPT. Ask what changed, get the read on what it means for your deals, and log outcomes by just telling your assistant. $29 a month plus usage you prepay for.";
+  "Ripplewatch Connect is an AI competitive intelligence analyst built into Claude and ChatGPT, with you at all times instead of a dashboard you have to remember to check. Ask what changed, get the read on what it means for your deals, and log outcomes by just telling your assistant. $29 a month plus usage you prepay for.";
 
 export const metadata = {
-  title: `${CONNECT_NAME}: Ripplewatch inside Claude and ChatGPT`,
+  title: `${CONNECT_NAME}: Your AI competitive intelligence analyst`,
   description,
   alternates: { canonical: "/connect" },
   openGraph: { title: `${CONNECT_NAME} | Ripplewatch`, description, images: ["/opengraph-image"] },
@@ -43,10 +43,10 @@ export default function ConnectPage() {
           <Sparkles className="size-3.5" />
           New
         </span>
-        <h1 className="mt-4 text-4xl font-semibold tracking-tight">Ripplewatch, inside the assistant you already use</h1>
+        <h1 className="mt-4 text-4xl font-semibold tracking-tight">An AI analyst that&apos;s with you at all times</h1>
         <p className="mt-4 text-muted-foreground">
           {CONNECT_TAGLINE} Ask what your competitors did this week, what it means for your deals, and tell it how deals
-          went, all in the chat.
+          went, all in the chat, no dashboard to remember to open.
         </p>
         <div className="mt-8 flex justify-center">
           <Link href={GET_STARTED} className={buttonVariants({ size: "lg" })}>

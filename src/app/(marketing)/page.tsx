@@ -55,7 +55,7 @@ const STRUCTURED_DATA = {
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   description:
-    "Not alerts. Not data. Answers. Ripplewatch tracks hiring, pricing, press, and product activity across your competitors and tells small tech companies which ones are becoming a real threat.",
+    "Not alerts. Not data. Answers. Ripplewatch is an AI competitive intelligence analyst built into Claude and ChatGPT, always with you, tracking hiring, pricing, press, and product activity across your competitors and telling small tech companies which ones are becoming a real threat.",
   offers: [
     { "@type": "Offer", name: CONNECT_NAME, price: String(CONNECT_BASE_FEE_USD), priceCurrency: "USD" },
     { "@type": "Offer", name: "Ripplewatch Dashboard", price: String(MONTHLY_PRICE_USD.plus), priceCurrency: "USD" },
@@ -81,9 +81,10 @@ export default function HomePage() {
             <span className="text-primary">Answers.</span>
           </h1>
           <p className="mt-6 text-lg leading-relaxed text-muted-foreground text-balance">
-            Ask Claude or ChatGPT what your competitors are doing and what it actually means for your deals.
-            Ripplewatch reads their pricing, hiring, press, and product changes and scores it against your own
-            positioning, ICP, and lost-deal reasons, no dashboard required.
+            Ripplewatch is the AI competitive intelligence analyst that&apos;s with you all the time, built right into
+            Claude or ChatGPT. Ask what your competitors are doing and what it actually means for your deals; it
+            reads their pricing, hiring, press, and product changes and scores it against your own positioning, ICP,
+            and lost-deal reasons, no dashboard required.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link href="/onboarding?path=connect" className={buttonVariants({ size: "lg" })}>

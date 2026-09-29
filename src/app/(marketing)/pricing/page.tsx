@@ -8,7 +8,7 @@ import { CONNECT_NAME } from "@/lib/connect";
 import { CONNECT_BASE_FEE_USD } from "@/lib/connect-pricing";
 
 const description =
-  "Not alerts. Not data. Answers. Ripplewatch tracks hiring, pricing, press, and product activity across your competitors. Connect it to Claude or ChatGPT from $29/mo, or use the shared dashboard.";
+  "Not alerts. Not data. Answers. Ripplewatch is an AI competitive intelligence analyst built into Claude and ChatGPT, tracking hiring, pricing, press, and product activity across your competitors. From $29/mo, or use the shared dashboard.";
 
 export const metadata = {
   title: "Pricing",
@@ -56,8 +56,8 @@ export default function PricingPage() {
       <div className="mx-auto max-w-2xl text-center">
         <h1 className="text-4xl font-semibold tracking-tight">Two ways to use Ripplewatch</h1>
         <p className="mt-4 text-muted-foreground">
-          No dedicated CI analyst required. Connect it to Claude or ChatGPT and pay only for what you use, or run it
-          as a shared dashboard for the whole team.
+          No dedicated CI analyst to hire, Ripplewatch is the AI one. Connect it to Claude or ChatGPT and pay only
+          for what you use, or run it as a shared dashboard for the whole team.
         </p>
       </div>
 

@@ -24,7 +24,7 @@ const geistMono = Geist_Mono({
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 const TITLE = "Ripplewatch | Not alerts. Not data. Answers.";
 const DESCRIPTION =
-  "Ripplewatch tracks hiring, pricing, press, and product activity across your competitors and tells early-stage SaaS founders which ones are becoming a real threat.";
+  "Ripplewatch is an AI competitive intelligence analyst built into Claude and ChatGPT, with you at all times, tracking hiring, pricing, press, and product activity across your competitors and telling early-stage SaaS founders which ones are becoming a real threat.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),

@@ -66,7 +66,7 @@ export function SiteFooter() {
               Ripplewatch
             </div>
             <p className="max-w-[22ch] text-sm text-muted-foreground">
-              Competitive intelligence for small tech companies.
+              The AI competitive intelligence analyst in Claude and ChatGPT.
             </p>
             <Link
               href="/login"
