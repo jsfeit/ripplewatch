@@ -87,7 +87,7 @@ export function OnboardingEntry({ initiallySignedIn, hasAccount }: { initiallySi
           className="relative flex flex-col items-start gap-3 rounded-2xl border border-primary/50 bg-card p-6 text-left shadow-sm shadow-primary/10 transition-colors hover:border-primary"
         >
           <span className="absolute -top-3 left-6 rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-semibold text-primary-foreground">
-            Cheapest way in
+            Most flexible
           </span>
           <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <MessagesSquare className="size-5" />

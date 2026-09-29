@@ -11,6 +11,7 @@ export const CONNECT_ASSISTANTS = ["Claude", "ChatGPT", "Cursor", "Something els
 export type ConnectAssistant = (typeof CONNECT_ASSISTANTS)[number];
 
 // What it actually does today, matching the tools the MCP server exposes.
+// The fuller phrasing used on /connect, which has room for it.
 export const CONNECT_FEATURES = [
   "Ask about your competitors in plain language, answered against your positioning",
   "A weekly briefing of what changed and what it means for your deals",
@@ -18,6 +19,18 @@ export const CONNECT_FEATURES = [
   "It tells you what to share next to make answers sharper",
   "Unlimited teammates on one account",
   "Sign in once, disconnect any time",
+] as const;
+
+// Same list, tightened for the pricing card: same count as the Dashboard
+// tier's own card features (see tiers.ts) so the two cards land at the same
+// height without empty space or a stretched one.
+export const CONNECT_PRICING_FEATURES = [
+  "Ask about competitors in plain language",
+  "A weekly briefing on what changed and why",
+  "Log deals and feedback by just telling it",
+  "Gets sharper the more you use it",
+  "Unlimited teammates, one account",
+  "Pay only for what you use, never on credit",
 ] as const;
 
 // Example prompts for the marketing page. Each maps to something the tools

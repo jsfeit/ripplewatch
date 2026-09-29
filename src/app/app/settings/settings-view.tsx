@@ -410,7 +410,7 @@ export function SettingsView({
                 <span className="text-sm font-normal text-muted-foreground">{currentTier.priceNote}</span>
               </p>
               <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
-                {[currentTier.competitors, currentTier.signalSources, currentTier.relevanceScoring, currentTier.delivery].map(
+                {[currentTier.competitors, currentTier.signalSources, currentTier.relevanceScoring, "Slack + email delivery"].map(
                   (line) => (
                     <li key={line} className="flex items-start gap-2">
                       <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-primary" />

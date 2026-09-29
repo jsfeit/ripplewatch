@@ -7,7 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { TIERS } from "@/lib/tiers";
 import { ANNUAL_DISCOUNT_PERCENT, annualPriceUsd } from "@/lib/pricing";
-import { CONNECT_FEATURES, CONNECT_NAME, CONNECT_TAGLINE } from "@/lib/connect";
+import { CONNECT_PRICING_FEATURES, CONNECT_NAME, CONNECT_TAGLINE } from "@/lib/connect";
 import { CONNECT_BASE_FEE_USD, CONNECT_MIN_FUNDING_USD } from "@/lib/connect-pricing";
 import { BillingPeriodToggle, type BillingPeriod } from "./billing-period-toggle";
 
@@ -24,7 +24,7 @@ export function PricingCards() {
     <div className="mx-auto grid max-w-4xl gap-6 sm:grid-cols-2 sm:items-start">
       <div className="relative">
         <span className="absolute -top-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
-          Cheapest way in
+          Most flexible
         </span>
         <Card className="flex h-full flex-col border-primary shadow-md shadow-primary/10">
           <CardHeader>
@@ -41,10 +41,9 @@ export function PricingCards() {
           </CardHeader>
           <CardContent className="flex flex-1 flex-col gap-3">
             <ul className="flex-1 space-y-3 text-sm">
-              {CONNECT_FEATURES.map((f) => (
+              {CONNECT_PRICING_FEATURES.map((f) => (
                 <FeatureRow key={f} label={f} />
               ))}
-              <FeatureRow label="Pay only for what you use, never on credit" />
             </ul>
             <Link href="/onboarding?path=connect" className={buttonVariants({ className: "w-full" })}>
               Get {CONNECT_NAME}
@@ -81,18 +80,9 @@ export function PricingCards() {
         </CardHeader>
         <CardContent className="flex flex-1 flex-col gap-3">
           <ul className="flex-1 space-y-3 text-sm">
-            <FeatureRow label={dashboard.competitors} />
-            <FeatureRow label={dashboard.signalSources} />
-            <FeatureRow label={dashboard.relevanceScoring} />
-            {dashboard.onboarding ? <FeatureRow label={dashboard.onboarding} /> : null}
-            <FeatureRow label={dashboard.delivery} />
-            {dashboard.crm ? <FeatureRow label={dashboard.crm} /> : null}
-            {dashboard.callIntel ? <FeatureRow label={dashboard.callIntel} /> : null}
-            {dashboard.gong ? <FeatureRow label={dashboard.gong} /> : null}
-            {dashboard.intercom ? <FeatureRow label={dashboard.intercom} /> : null}
-            {dashboard.apiAccess ? <FeatureRow label={dashboard.apiAccess} /> : null}
-            {dashboard.visualDiff ? <FeatureRow label={dashboard.visualDiff} /> : null}
-            <FeatureRow label="Unlimited logins" />
+            {dashboard.features.map((f) => (
+              <FeatureRow key={f} label={f} />
+            ))}
           </ul>
           <Link
             href={`/onboarding?plan=${dashboard.id}&period=${period}`}
