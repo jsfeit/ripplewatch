@@ -22,11 +22,11 @@ const scoredExample = MOCK_SIGNALS.find((s) => s.id === "sig-2")!;
 const rawExample = MOCK_SIGNALS.find((s) => s.id === "sig-8")!;
 const competitorFor = (id: string) => MOCK_COMPETITORS.find((c) => c.id === id)!;
 
-// Compttr, from MOCK_COMPETITORS (src/lib/mock-data.ts) — a fictional
-// stand-in, kept distinct from RivalSense/SignalStack above so the same
+// Trackline, from MOCK_COMPETITORS (src/lib/mock-data.ts) — a fictional
+// stand-in, kept distinct from Beaconly/SignalStack above so the same
 // page doesn't show one invented competitor's name twice.
 const MOMENTUM_EXAMPLE = {
-  competitorName: "Compttr",
+  competitorName: "Trackline",
   score: 42,
   label: "Heating up" as const,
   components: [

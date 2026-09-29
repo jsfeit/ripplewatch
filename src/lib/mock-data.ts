@@ -38,18 +38,18 @@ export const SIGNAL_TYPE_LABELS: Record<SignalType, string> = {
 };
 
 export const MOCK_COMPETITORS: Competitor[] = [
-  { id: "parano", name: "Parano.ai", domain: "parano.ai", initial: "P", colorClass: "bg-chart-1" },
-  { id: "rivalsense", name: "RivalSense", domain: "rivalsense.io", initial: "R", colorClass: "bg-chart-2" },
-  { id: "compttr", name: "Compttr", domain: "compttr.com", initial: "C", colorClass: "bg-chart-3" },
+  { id: "northlane", name: "Northlane", domain: "northlane.io", initial: "N", colorClass: "bg-chart-1" },
+  { id: "beaconly", name: "Beaconly", domain: "beaconly.io", initial: "B", colorClass: "bg-chart-2" },
+  { id: "trackline", name: "Trackline", domain: "trackline.com", initial: "T", colorClass: "bg-chart-3" },
   { id: "signalstack", name: "SignalStack", domain: "signalstack.com", initial: "S", colorClass: "bg-chart-4" },
 ];
 
 export const MOCK_SIGNALS: Signal[] = [
   {
     id: "sig-1",
-    competitorId: "parano",
+    competitorId: "northlane",
     type: "pricing",
-    title: "Parano.ai dropped their entry tier from $99 to $69/mo",
+    title: "Northlane dropped their entry tier from $99 to $69/mo",
     summary:
       "Entry-tier price cut of ~30%, still capped at 5 competitors tracked. Landing page now leads with \"cheapest AI competitive intel.\"",
     date: "2026-07-13",
@@ -60,9 +60,9 @@ export const MOCK_SIGNALS: Signal[] = [
   },
   {
     id: "sig-2",
-    competitorId: "rivalsense",
+    competitorId: "beaconly",
     type: "review",
-    title: "New G2 review calls out RivalSense's onboarding as 'confusing'",
+    title: "New G2 review calls out Beaconly's onboarding as 'confusing'",
     summary:
       "3-star review, 2nd this month citing onboarding friction. Reviewer specifically mentions not understanding what a 'signal' means without support help.",
     date: "2026-07-12",
@@ -73,9 +73,9 @@ export const MOCK_SIGNALS: Signal[] = [
   },
   {
     id: "sig-3",
-    competitorId: "compttr",
+    competitorId: "trackline",
     type: "job_posting",
-    title: "Compttr posted 2 openings for 'Competitive Intelligence Analyst'",
+    title: "Trackline posted 2 openings for 'Competitive Intelligence Analyst'",
     summary:
       "Roles are analyst-facing, reporting into a new 'Customer Success' lead. Both listings mention supporting an 'enterprise tier' rollout.",
     date: "2026-07-11",
@@ -95,18 +95,18 @@ export const MOCK_SIGNALS: Signal[] = [
   },
   {
     id: "sig-5",
-    competitorId: "parano",
+    competitorId: "northlane",
     type: "news",
-    title: "Parano.ai featured in a roundup: 'Best AI tools for startup marketers'",
+    title: "Northlane featured in a roundup: 'Best AI tools for startup marketers'",
     summary: "Listicle placement, no direct quote from their team. Fifth of seven tools mentioned.",
     date: "2026-07-09",
     scored: false,
   },
   {
     id: "sig-6",
-    competitorId: "rivalsense",
+    competitorId: "beaconly",
     type: "pricing",
-    title: "RivalSense added a 14-day free trial to all tiers",
+    title: "Beaconly added a 14-day free trial to all tiers",
     summary: "Previously demo-gated; now self-serve trial with a credit card required after day 14.",
     date: "2026-07-08",
     scored: true,
@@ -116,9 +116,9 @@ export const MOCK_SIGNALS: Signal[] = [
   },
   {
     id: "sig-7",
-    competitorId: "compttr",
+    competitorId: "trackline",
     type: "review",
-    title: "Compttr's average G2 rating ticked up to 4.6",
+    title: "Trackline's average G2 rating ticked up to 4.6",
     summary: "Two new 5-star reviews this week, both praising 'fast Slack alerts.'",
     date: "2026-07-07",
     scored: false,
@@ -134,9 +134,9 @@ export const MOCK_SIGNALS: Signal[] = [
   },
   {
     id: "sig-9",
-    competitorId: "parano",
+    competitorId: "northlane",
     type: "pricing",
-    title: "Parano.ai removed competitor-count caps on their top tier",
+    title: "Northlane removed competitor-count caps on their top tier",
     summary: "Top tier now says 'unlimited competitors' where it previously capped at 15.",
     date: "2026-07-03",
     scored: true,
@@ -146,9 +146,9 @@ export const MOCK_SIGNALS: Signal[] = [
   },
   {
     id: "sig-10",
-    competitorId: "rivalsense",
+    competitorId: "beaconly",
     type: "news",
-    title: "RivalSense mentioned in a VC newsletter's 'tools to watch' section",
+    title: "Beaconly mentioned in a VC newsletter's 'tools to watch' section",
     summary: "Brief mention, no direct competitive claims made.",
     date: "2026-07-01",
     scored: false,

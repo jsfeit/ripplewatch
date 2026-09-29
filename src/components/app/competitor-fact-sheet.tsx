@@ -411,7 +411,7 @@ export function CompetitorFactSheet({
             <div className="w-full space-y-2">
               <p className="text-xs font-medium text-foreground">Log a churn reason</p>
               <Textarea
-                placeholder="e.g. Churned after 2 months, said RivalSense's onboarding was easier to get started with"
+                placeholder="e.g. Churned after 2 months, said Beaconly's onboarding was easier to get started with"
                 value={churnReason}
                 onChange={(e) => setChurnReason(e.target.value)}
                 rows={2}

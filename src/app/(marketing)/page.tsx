@@ -25,7 +25,7 @@ export const metadata = { alternates: { canonical: "/" } };
 const PRICE_HIKE_TITLE = "Northlane raised its Growth plan from $149 to $199/mo";
 
 const ASK_EXCHANGE = {
-  question: "What has Parano.ai changed recently that actually matters to us?",
+  question: "What has Northlane changed recently that actually matters to us?",
   answer:
     "Two things worth acting on. They cut their entry tier from $99 to $69/mo, which directly narrows the price gap you've lost two deals to this month. They also removed the competitor-count cap on their top tier, which undercuts the \"scales with you\" pitch you lead with in upmarket conversations.",
 };
