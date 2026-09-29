@@ -8,7 +8,7 @@ import { cn, avatarColor } from "@/lib/utils";
 import Link from "next/link";
 
 const description =
-  "Not alerts. Not data. Answers. See exactly how a raw competitor signal turns into a Momentum score, scored against your positioning, ICP, and the real reasons deals were lost. No fractional hire, no one on your team distracted tracking this on the side.";
+  "Not alerts. Not data. Answers. See exactly how a raw competitor signal turns into a Momentum score, delivered in Claude, ChatGPT, or Slack, no new tool to check, scored against your positioning, ICP, and the real reasons deals were lost.";
 
 export const metadata = {
   title: "How it works",
@@ -42,7 +42,7 @@ const STAGES = [
     accentText: "text-chart-1",
     accentBg: "bg-chart-1/10",
     title: "1. You give us context, not just competitor names",
-    body: "Most tools ask “who are your competitors?” and stop there. In your onboarding you tell us your positioning, your ICP, and, critically, the actual reasons deals were lost or customers churned. Nobody has to carve time out of their real job to compile that; it's a 10-minute form.",
+    body: "Most tools ask “who are your competitors?” and stop there. You tell us your positioning, your ICP, and, critically, the actual reasons deals were lost or customers churned, in a quick form, or just by telling your assistant as it comes up. Nobody has to carve time out of their real job to compile that up front.",
   },
   {
     icon: Sparkles,
@@ -63,11 +63,16 @@ const STAGES = [
     accentText: "text-chart-4",
     accentBg: "bg-chart-4/10",
     title: "4. You find out where it actually matters",
-    body: "Scored updates show up in Slack and email with the reasoning attached, and every competitor's Momentum score updates on your dashboard in real time. Whoever used to half-own this as a side of their job gets to go back to their actual job.",
+    body: "Ask Claude or ChatGPT what changed, or get scored updates in Slack the moment there's something worth acting on, no new tab, no dashboard to remember to open. Prefer a shared dashboard your team logs into together? That works too. Whoever used to half-own this as a side of their job gets to go back to their actual job.",
   },
 ];
 
 const BUILT_FOR = [
+  {
+    icon: Clock,
+    title: "No new tool to check",
+    body: "Nothing new to log into. Ask from Claude or ChatGPT, or get it in Slack, exactly where you already spend your day.",
+  },
   {
     icon: Users,
     title: "No fractional hire",
@@ -77,11 +82,6 @@ const BUILT_FOR = [
     icon: Wallet,
     title: "No analyst budget",
     body: "Enterprise CI platforms price for teams with a dedicated function. Ripplewatch is priced for a company where tracking competitors is nobody's full-time job.",
-  },
-  {
-    icon: Clock,
-    title: "No distractions",
-    body: "No weekly competitive review to run or prep for. Scored updates land where you already work, when there's actually something worth acting on, not a recurring task on someone's list.",
   },
   {
     icon: Eye,
@@ -123,14 +123,14 @@ export default function HowItWorksPage() {
     <div className="mx-auto max-w-5xl px-6 py-20">
       <div className="mx-auto max-w-2xl text-center">
         <span className="inline-flex items-center rounded-full border border-border bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground">
-          Built for small tech companies, not a fractional hire
+          Lives in Claude, ChatGPT, or Slack
         </span>
         <h1 className="mt-6 text-4xl font-semibold tracking-tight text-balance">
-          From a raw signal to a Momentum score, in four steps.
+          Not another tool to check. The answer, where you already are.
         </h1>
         <p className="mt-4 text-muted-foreground">
-          No one on your team has to carve out part of their job to track competitors. Just the
-          read on which ones are actually becoming a threat, delivered where you already work.
+          No new tab, no dashboard to remember to open. Ask Claude or ChatGPT what your competitors are doing, or get
+          it in Slack, and here&apos;s exactly how a raw signal turns into that answer.
         </p>
       </div>
 
@@ -241,21 +241,19 @@ export default function HowItWorksPage() {
         ))}
       </div>
 
-      <div className="mx-auto mt-16 max-w-2xl rounded-xl border border-border bg-secondary/40 p-6 text-center">
-        <h3 className="text-lg font-semibold">Read it where you already work</h3>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Everything above shows up in the dashboard, Slack and email. You can also connect Ripplewatch to Claude or
-          ChatGPT and ask it directly, no dashboard needed.
-        </p>
-        <Link href="/connect" className={buttonVariants({ variant: "outline", className: "mt-4" })}>
-          See Ripplewatch Connect
-        </Link>
-      </div>
-
       <div className="mt-20 text-center">
-        <Link href="/onboarding" className={buttonVariants({ size: "lg" })}>
-          Try the live preview
-        </Link>
+        <h2 className="text-2xl font-semibold tracking-tight">Ready to stop checking another tab?</h2>
+        <p className="mt-3 text-muted-foreground">
+          Connect Ripplewatch to Claude or ChatGPT and ask your first question in minutes.
+        </p>
+        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Link href="/onboarding?path=connect" className={buttonVariants({ size: "lg" })}>
+            Get Ripplewatch Connect
+          </Link>
+          <Link href="/pricing" className={buttonVariants({ size: "lg", variant: "outline" })}>
+            See dashboard pricing
+          </Link>
+        </div>
         <p className="mt-3 text-xs text-muted-foreground">No sales call, no one to hire or free up. Just your context.</p>
       </div>
     </div>
