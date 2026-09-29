@@ -4,7 +4,6 @@ import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/panel";
 import { PricingCards } from "@/components/marketing/pricing-cards";
-import { DemoLink } from "@/components/marketing/demo-link";
 import { cn, avatarColor } from "@/lib/utils";
 import { CONNECT_NAME } from "@/lib/connect";
 import { CONNECT_BASE_FEE_USD } from "@/lib/connect-pricing";
@@ -99,8 +98,7 @@ export default function HomePage() {
             ${CONNECT_BASE_FEE_USD}/month plus usage you prepay for.{" "}
             <Link href="/pricing" className="font-medium text-primary hover:underline">
               Prefer a shared dashboard?
-            </Link>{" "}
-            <DemoLink label="Or book a demo" />
+            </Link>
           </p>
         </div>
       </section>
