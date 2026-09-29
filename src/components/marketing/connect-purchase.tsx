@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ConnectCheckoutModal } from "@/components/app/connect-checkout-modal";
-import { ConnectFundingPicker, fundingFromPicker } from "@/components/app/connect-funding-picker";
 import { createClient } from "@/lib/supabase/client";
 import { trackEvent } from "@/lib/analytics";
 import { CONNECT_BASE_FEE_USD, CONNECT_DEFAULT_RELOAD_USD } from "@/lib/connect-pricing";
@@ -16,7 +15,11 @@ import { CONNECT_NAME } from "@/lib/connect";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DRAFT_KEY = "ripplewatch-connect-draft";
 
-type Draft = { companyName: string; fundingUsd: number };
+type Draft = { companyName: string };
+
+// Every signup opens with this balance; Settings offers other amounts when
+// reloading later, once someone has an actual sense of their own usage.
+const OPENING_BALANCE_USD = CONNECT_DEFAULT_RELOAD_USD;
 
 // Buying Ripplewatch Connect end to end: account, then Stripe Checkout for the
 // platform fee plus the opening balance. Kept separate from the dashboard
@@ -28,17 +31,13 @@ export function ConnectPurchase({ initiallySignedIn }: { initiallySignedIn: bool
   const [companyName, setCompanyName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [picker, setPicker] = useState<number | "custom">(CONNECT_DEFAULT_RELOAD_USD);
-  const [custom, setCustom] = useState("");
   const [status, setStatus] = useState<"idle" | "working" | "confirm-email">("idle");
   const [error, setError] = useState("");
   const [checkout, setCheckout] = useState<number | null>(null);
   const startedRef = useRef(false);
 
-  const funding = fundingFromPicker(picker, custom);
   const canSubmit =
     Boolean(companyName.trim()) &&
-    funding !== null &&
     (initiallySignedIn || (EMAIL_PATTERN.test(email.trim()) && password.length >= 6));
 
   // Creates the Connect account (idempotent) and opens payment.
@@ -75,7 +74,7 @@ export function ConnectPurchase({ initiallySignedIn }: { initiallySignedIn: bool
       setCompanyName(draft.companyName);
       setStatus("working");
       /* eslint-enable react-hooks/set-state-in-effect */
-      void createAccountAndPay(draft.fundingUsd, draft.companyName);
+      void createAccountAndPay(OPENING_BALANCE_USD, draft.companyName);
     } catch {
       // unreadable draft: the visible form still works
     }
@@ -83,14 +82,14 @@ export function ConnectPurchase({ initiallySignedIn }: { initiallySignedIn: bool
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!canSubmit || funding === null || status === "working") return;
+    if (!canSubmit || status === "working") return;
     setStatus("working");
     setError("");
 
     if (!initiallySignedIn) {
       // Saved before signUp so it survives the reload an email-confirmation
       // link causes.
-      sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ companyName: companyName.trim(), fundingUsd: funding } satisfies Draft));
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ companyName: companyName.trim() } satisfies Draft));
       const { data, error: signUpError } = await createClient().auth.signUp({
         email: email.trim(),
         password,
@@ -108,7 +107,7 @@ export function ConnectPurchase({ initiallySignedIn }: { initiallySignedIn: bool
       }
       sessionStorage.removeItem(DRAFT_KEY);
     }
-    await createAccountAndPay(funding, companyName.trim());
+    await createAccountAndPay(OPENING_BALANCE_USD, companyName.trim());
   }
 
   if (status === "confirm-email") {
@@ -167,14 +166,6 @@ export function ConnectPurchase({ initiallySignedIn }: { initiallySignedIn: bool
           </>
         ) : null}
 
-        <div className="space-y-2">
-          <Label>Opening usage balance</Label>
-          <ConnectFundingPicker value={picker} onChange={setPicker} custom={custom} onCustomChange={setCustom} />
-          <p className="text-xs text-muted-foreground">
-            Answers and competitor monitoring draw from this balance, so you only ever pay for what you use.
-          </p>
-        </div>
-
         <div className="rounded-lg border border-border bg-secondary/40 p-3 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">{CONNECT_NAME} platform fee</span>
@@ -182,13 +173,17 @@ export function ConnectPurchase({ initiallySignedIn }: { initiallySignedIn: bool
           </div>
           <div className="mt-1 flex justify-between">
             <span className="text-muted-foreground">Opening balance</span>
-            <span>{funding ? `$${funding}` : "-"}</span>
+            <span>${OPENING_BALANCE_USD}</span>
           </div>
           <div className="mt-2 flex justify-between border-t border-border pt-2 font-medium">
             <span>Due today</span>
-            <span>{funding ? `$${CONNECT_BASE_FEE_USD + funding}` : "-"}</span>
+            <span>${CONNECT_BASE_FEE_USD + OPENING_BALANCE_USD}</span>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">Tax is added at checkout. The platform fee is refundable within 30 days; balance already used is not.</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Answers and competitor monitoring draw from this balance, so you only ever pay for what you use. Add more
+            anytime from Settings. Tax is added at checkout. The platform fee is refundable within 30 days; balance
+            already used is not.
+          </p>
         </div>
 
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
