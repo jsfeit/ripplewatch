@@ -5,6 +5,6 @@ export { size, contentType };
 export default function Image() {
   return renderOgImage(
     "Pricing that scales with your team",
-    "Relevance-scored competitive intelligence starting at $69/mo, self-serve on every tier."
+    "Your AI competitive intelligence analyst, self-serve from $29/mo. Or a shared dashboard for the whole team."
   );
 }

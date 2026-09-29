@@ -153,7 +153,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "How do I get started?",
         answer:
-          "Sign up, then walk through a short onboarding flow: tell us your positioning, your ICP, and the competitors you want tracked. From there, scored updates start showing up as soon as the first crawl runs.",
+          'With Ripplewatch Connect, sign up and walk through a short onboarding flow: tell us your positioning, your ICP, and the competitors you want tracked, and scored updates start showing up as soon as the first crawl runs. Prefer the Dashboard? <a href="/pricing">Book a demo</a> and we\'ll set it up with you.',
       },
       {
         question: "What integrations do you support?",

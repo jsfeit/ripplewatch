@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ArrowUp, LayoutDashboard, Radar, Sparkles, Send, Waves, CircleDashed } from "lucide-react";
+import { ArrowRight, ArrowUp, Radar, Sparkles, Send, Waves, CircleDashed } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/panel";
@@ -33,7 +33,7 @@ const STEPS = [
   {
     icon: Radar,
     title: "Connect your context",
-    body: "In Claude or ChatGPT, or the dashboard if you'd rather: tell it your positioning, your ICP, and why deals don't close and customers churn, not simply who direct competitors are.",
+    body: "In Claude or ChatGPT, tell it your positioning, your ICP, and why deals don't close and customers churn, not simply who direct competitors are.",
   },
   {
     icon: Sparkles,
@@ -43,7 +43,7 @@ const STEPS = [
   {
     icon: Send,
     title: "You get the read, not a pile of alerts",
-    body: "Every competitor gets a Momentum score — Heating up, Steady, or Cooling — synthesized from hiring, pricing, press, and product activity. Ask for it directly, or check the dashboard.",
+    body: "Every competitor gets a Momentum score — Heating up, Steady, or Cooling — synthesized from hiring, pricing, press, and product activity. Just ask for it.",
   },
 ];
 
@@ -238,30 +238,6 @@ export default function HomePage() {
           <Link href="/how-it-works" className={buttonVariants({ variant: "link" })}>
             See the full walkthrough <ArrowRight className="size-4" />
           </Link>
-        </div>
-      </section>
-
-      <section className="border-t border-border bg-secondary/40">
-        <div className="mx-auto max-w-4xl px-6 py-20 text-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-muted-foreground">
-            <LayoutDashboard className="size-3.5" />
-            Ripplewatch Dashboard
-          </span>
-          <h2 className="mx-auto mt-4 max-w-xl text-3xl font-semibold tracking-tight">
-            Prefer a shared view your whole team can check?
-          </h2>
-          <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-            The dashboard is the same competitive intelligence, in a workspace your team logs into together: Slack
-            and email delivery, HubSpot, call insights, and unlimited seats, for one fixed monthly price.
-          </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link href="/pricing" className={buttonVariants()}>
-              See dashboard pricing <ArrowRight className="size-4" />
-            </Link>
-            <Link href="/how-it-works" className={buttonVariants({ variant: "outline" })}>
-              See the walkthrough
-            </Link>
-          </div>
         </div>
       </section>
 

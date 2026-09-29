@@ -91,23 +91,23 @@ export default function MarketResearchPage() {
         </div>
         <p className="mt-3 max-w-2xl leading-relaxed text-foreground">
           Ripplewatch is built for the SMB and early-stage teams the mid-market tier below was never
-          priced for: self-serve setup, transparent per-seat pricing, and no minimum contract or sales
-          call, while still scoring every signal against your own context instead of just surfacing
-          raw changes.
+          priced for: transparent pricing and, via Ripplewatch Connect, self-serve setup with no
+          minimum contract or sales call, while still scoring every signal against your own context
+          instead of just surfacing raw changes.
         </p>
         <div className="mt-6 grid gap-5 sm:grid-cols-2">
           <div className="rounded-xl border border-primary/40 bg-card p-5 shadow-sm shadow-primary/10">
             <div className="flex items-baseline justify-between gap-2">
               <h3 className="font-medium text-primary">Ripplewatch</h3>
               <span className="text-xs text-muted-foreground">
-                $29/mo (Connect) or ${MONTHLY_PRICE_USD.plus}/mo (Dashboard), self-serve
+                $29/mo (Connect, self-serve) or ${MONTHLY_PRICE_USD.plus}/mo (Dashboard)
               </span>
             </div>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               Every signal scored against your own positioning, ICP, and actual lost-deal and churn
-              history, not a generic severity scale. No sales call, no onboarding project: connect
-              your competitors and you&apos;re live in minutes, at a fraction of what the tools below
-              charge.
+              history, not a generic severity scale. With Ripplewatch Connect, there&apos;s no sales
+              call and no onboarding project: connect your competitors and you&apos;re live in
+              minutes, at a fraction of what the tools below charge.
             </p>
           </div>
           {midMarket.map((tool) => (
