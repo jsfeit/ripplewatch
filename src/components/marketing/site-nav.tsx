@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, Waves, X } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import { DemoLink } from "@/components/marketing/demo-link";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
@@ -37,7 +36,6 @@ export function SiteNav() {
               {link.label}
             </Link>
           ))}
-          <DemoLink />
         </nav>
         <div className="flex items-center gap-3">
           <Link
@@ -79,10 +77,6 @@ export function SiteNav() {
               {link.label}
             </Link>
           ))}
-          <DemoLink
-            variant="text"
-            className="rounded-md px-2 py-2.5 text-sm font-medium text-foreground hover:bg-secondary hover:text-foreground"
-          />
           <Link
             href="/onboarding"
             className="rounded-md px-2 py-2.5 text-sm font-medium text-foreground hover:bg-secondary"
