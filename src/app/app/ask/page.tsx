@@ -16,6 +16,12 @@ export default async function AskPage() {
   const { accountId, db } = await resolveAccountContext(supabase, user.id);
   if (!accountId) redirect("/onboarding");
 
+  // Connect already is the assistant (Claude, ChatGPT, or Slack) — an in-app
+  // chat here would just be a second, worse copy of the same thing. Dashboard
+  // has no assistant of its own, so it keeps this page.
+  const { data: account } = await db.from("accounts").select("tier").eq("id", accountId).single();
+  if (account?.tier === "connect") redirect("/app/settings");
+
   const { data: competitors } = await db
     .from("competitors")
     .select("name")

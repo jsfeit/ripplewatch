@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getStripe, TIER_BY_PRICE } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendPlanChangeEmail, sendPaymentReceivedEmail, sendReferralWelcomeEmail, sendReferralSignedUpEmail, sendConnectWelcomeEmail } from "@/lib/resend";
+import { sendPlanChangeEmail, sendPaymentReceivedEmail, sendPaymentFailedEmail, sendReferralWelcomeEmail, sendReferralSignedUpEmail, sendConnectWelcomeEmail } from "@/lib/resend";
 import { creditWalletFromCheckout, creditWalletFromReloadInvoice, saveDefaultPaymentMethod } from "@/lib/connect-billing";
 import { handleDispute } from "@/lib/connect-disputes";
 
@@ -242,6 +242,33 @@ export async function POST(request: Request) {
               amountUsd: invoice.amount_paid / 100,
               currency: invoice.currency,
             }).catch((err) => console.error("payment-received email failed:", err));
+          }
+        }
+        break;
+      }
+
+      // A recurring charge (the platform fee, Dashboard or Connect) failed.
+      // Not a Connect wallet reload — that's a separate purpose, handled
+      // synchronously in maybeAutoReload with its own dedicated email, and
+      // it turns auto-reload off rather than letting Stripe keep retrying.
+      // Access stays on through Stripe's retries (see customer.subscription.
+      // updated's past_due handling); this just makes sure the customer
+      // actually hears about it instead of finding out when access stops.
+      case "invoice.payment_failed": {
+        const invoice = event.data.object as Stripe.Invoice;
+        if (invoice.metadata?.purpose === "connect_reload") break;
+        const customerId = typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id;
+        if (customerId) {
+          const { data: account } = await supabase
+            .from("accounts")
+            .select("name, contact_email")
+            .eq("stripe_customer_id", customerId)
+            .maybeSingle();
+          if (account?.contact_email) {
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
+            sendPaymentFailedEmail(account.contact_email, account.name, appUrl).catch((err) =>
+              console.error("payment-failed email failed:", err)
+            );
           }
         }
         break;

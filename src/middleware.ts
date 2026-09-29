@@ -100,12 +100,13 @@ export async function middleware(request: NextRequest) {
       .eq("id", user.id)
       .single();
     const account = Array.isArray(profile?.accounts) ? profile.accounts[0] : profile?.accounts;
-    // Ripplewatch Connect accounts have no dashboard: their web app is
-    // Ask and Settings (billing, balance, connector). A cancelled one lands on
-    // the same Settings tab, which offers to resubscribe, rather than the
-    // dashboard-plan reactivation page.
+    // Ripplewatch Connect accounts have no dashboard and no in-app Ask
+    // (Connect already is the assistant, inside Claude, ChatGPT, or Slack):
+    // their web app is just Settings (billing, balance, connector). A
+    // cancelled one lands on the same Settings tab, which offers to
+    // resubscribe, rather than the dashboard-plan reactivation page.
     if (account?.tier === "connect") {
-      const allowed = pathname === "/app/ask" || pathname.startsWith("/app/ask/") || pathname.startsWith("/app/settings");
+      const allowed = pathname.startsWith("/app/settings");
       if (!allowed) {
         const url = request.nextUrl.clone();
         url.pathname = "/app/settings";
