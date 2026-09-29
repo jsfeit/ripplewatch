@@ -2,17 +2,24 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, LayoutDashboard, MessagesSquare } from "lucide-react";
+import { ArrowLeft, Calendar, LayoutDashboard, MessagesSquare } from "lucide-react";
 import { ConnectPurchase } from "@/components/marketing/connect-purchase";
 import { trackEvent } from "@/lib/analytics";
 import { CONNECT_NAME } from "@/lib/connect";
+import { DEMO_URL } from "@/lib/demo";
 import { OnboardingFlow } from "./onboarding-flow";
 
 type Path = "choose" | "dashboard" | "connect";
 
 // The front door of onboarding: dashboard or your own AI assistant. The
-// dashboard path is the existing flow, unchanged. The assistant path is an
-// purchase of Ripplewatch Connect (account, then Stripe Checkout).
+// dashboard path is the existing flow, unchanged — still reachable by
+// someone resuming a signup already in progress (see alreadyDecided below),
+// just not offered as a fresh choice in the chooser UI anymore: the
+// "dashboard" button there links out to booking a demo instead of calling
+// pick("dashboard"), since the dashboard is sales-assisted for now, not
+// instant self-serve checkout (see tiers.ts's cta field for why/how to
+// revert). The assistant path is a purchase of Ripplewatch Connect (account,
+// then Stripe Checkout).
 //
 // The choice is skipped whenever the visitor has already decided or is
 // already inside the flow: they arrived from a pricing-page plan button
@@ -97,9 +104,11 @@ export function OnboardingEntry({ initiallySignedIn, hasAccount }: { initiallySi
             Use Ripplewatch inside Claude or ChatGPT, no dashboard. {CONNECT_NAME} is $29/month plus usage you prepay for.
           </span>
         </button>
-        <button
-          type="button"
-          onClick={() => pick("dashboard")}
+        <a
+          href={DEMO_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => trackEvent("onboarding_path", { path: "dashboard_demo" })}
           className="flex flex-col items-start gap-3 rounded-2xl border border-border bg-card p-6 text-left transition-colors hover:border-primary/50"
         >
           <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -107,9 +116,13 @@ export function OnboardingEntry({ initiallySignedIn, hasAccount }: { initiallySi
           </span>
           <span className="text-base font-semibold">The Ripplewatch dashboard</span>
           <span className="text-sm text-muted-foreground">
-            Set up your workspace in a few minutes and see a live preview. Fixed monthly price, Slack and email delivery.
+            A shared workspace your whole team logs into. Fixed monthly price, Slack and email delivery. Book a demo to get set up.
           </span>
-        </button>
+          <span className="mt-1 flex items-center gap-1.5 text-sm font-medium text-primary">
+            <Calendar className="size-3.5" />
+            Book a demo
+          </span>
+        </a>
       </div>
     </div>
   );

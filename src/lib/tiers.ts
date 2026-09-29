@@ -59,6 +59,11 @@ export const TIERS: Tier[] = [
       "API access + visual change detection",
       "Unlimited seats, guided setup",
     ],
-    cta: "Start with the Dashboard",
+    // Sales-assisted for now, not instant self-serve checkout — see
+    // pricing-cards.tsx, which links this CTA to booking a demo rather than
+    // /onboarding. The checkout flow itself (onboarding-flow.tsx) is
+    // untouched and still reachable directly, so turning self-serve back on
+    // is a one-line link change, not a rebuild.
+    cta: "Book a demo",
   },
 ];
