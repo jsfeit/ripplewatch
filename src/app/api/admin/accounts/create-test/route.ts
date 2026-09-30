@@ -84,7 +84,13 @@ export async function POST(request: Request) {
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
-  const redirectTo = tier === "connect" ? `${appUrl}/app/get-started` : `${appUrl}/app/dashboard`;
+  const next = tier === "connect" ? "/app/get-started" : "/app/dashboard";
+  // Routed through /auth/login-link rather than straight to `next`: a
+  // generateLink() magiclink verifies on Supabase's domain and redirects
+  // back with the session as #access_token=... in the URL hash (implicit
+  // flow), which no server render ever sees — login-link-handler.tsx reads
+  // that hash client-side and calls setSession() before forwarding on.
+  const redirectTo = `${appUrl}/auth/login-link?next=${encodeURIComponent(next)}`;
   const { data: link, error: linkError } = await admin.auth.admin.generateLink({
     type: "magiclink",
     email,
