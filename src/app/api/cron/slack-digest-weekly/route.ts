@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSlackWeeklyDigest } from "@/lib/slack";
 import { generateWeeklyAccountIntelligence } from "@/lib/digest";
 import { mapWithConcurrency } from "@/lib/crawl";
+import { meteredForConnect } from "@/lib/connect-metering";
 import type { Database } from "@/lib/supabase/types";
 
 type Account = Database["public"]["Tables"]["accounts"]["Row"];
@@ -54,11 +55,10 @@ export async function GET(request: Request) {
 
   const supabase = createAdminClient();
   // Connect accounts are included now that Connect can connect Slack (see
-  // /app/get-started and the Connect Settings tab) — this digest's own LLM
-  // call isn't metered from the wallet the way Ask/MCP calls are, so it's
-  // effectively a free weekly perk for Connect today, unlike everything
-  // else in the product. Flagged, not silently decided: worth metering it
-  // the same way if that's not the intended trade-off.
+  // /app/get-started and the Connect Settings tab). The digest's own LLM
+  // call is metered from the wallet for them, same as Ask/MCP calls — see
+  // the meteredForConnect wrap below — so this stays "pay only for what
+  // you use" rather than a free perk unique to this one feature.
   const { data: accounts } = await supabase.from("accounts").select("*").eq("status", "active");
 
   const summary = await mapWithConcurrency(accounts ?? [], ACCOUNT_CONCURRENCY, async (account: Account) => {
@@ -104,8 +104,19 @@ export async function GET(request: Request) {
     // Shared with the weekly email cron — see generateWeeklyAccountIntelligence
     // for why this regenerates rather than reading back whatever the email
     // cron's own Monday run last cached (this account's chosen send time
-    // may be days away from that).
-    const { verdict, trendsDigest } = await generateWeeklyAccountIntelligence(supabase, account, competitors);
+    // may be days away from that). Metered for Connect accounts (a no-op
+    // wrapper for everyone else, see meteredForConnect) — refused below the
+    // minimum balance rather than run for free, same rule as any other
+    // Connect usage.
+    const metered = await meteredForConnect(
+      { accountId: account.id, tier: account.tier, toolName: "slack_weekly_digest" },
+      () => generateWeeklyAccountIntelligence(supabase, account, competitors)
+    );
+    if (!metered.ok) {
+      console.error(`weekly Slack digest skipped for ${account.name}: ${metered.message}`);
+      return { account: account.name, sent: false, skipped: "insufficient_balance" };
+    }
+    const { verdict, trendsDigest } = metered.value;
 
     try {
       await sendSlackWeeklyDigest(slackIntegration.credentials as Parameters<typeof sendSlackWeeklyDigest>[0], {
