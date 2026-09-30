@@ -42,7 +42,7 @@ export default async function SettingsPage() {
     db
       .from("accounts")
       .select(
-        "id, tier, status, subscription_status, contact_email, demo_mode, referral_code, slack_digest_day, slack_digest_hour, stripe_customer_id, stripe_subscription_id, timezone"
+        "id, tier, status, subscription_status, contact_email, demo_mode, referral_code, slack_digest_day, slack_digest_hour, stripe_customer_id, stripe_subscription_id, timezone, mcp_last_connected_at"
       )
       .eq("id", accountId)
       .single(),
@@ -82,6 +82,7 @@ export default async function SettingsPage() {
     hasSubscription: boolean;
     ledger: ConnectLedgerRow[];
     autoReload: { enabled: boolean; amountUsd: number; thresholdUsd: number; failed: boolean };
+    mcpLastConnectedAt: string | null;
   } | null = null;
   if (account.tier === "connect") {
     const [{ data: wallet }, { data: ledgerRows }] = await Promise.all([
@@ -114,6 +115,7 @@ export default async function SettingsPage() {
         description: r.description,
         createdAt: r.created_at,
       })),
+      mcpLastConnectedAt: account.mcp_last_connected_at,
     };
   }
 

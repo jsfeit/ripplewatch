@@ -25,8 +25,10 @@ const TIER_LABELS: Record<string, string> = {
   connect: "Connect",
 };
 
-// Ripplewatch Connect has no dashboard: the web app is Ask and Settings.
-const CONNECT_NAV = NAV.filter((item) => item.href !== "/app/dashboard");
+// Ripplewatch Connect has no dashboard and no in-app Ask: Connect already is
+// the assistant, inside Claude, ChatGPT, or Slack, so the web app is just
+// Settings. Dashboard has no assistant of its own, so it keeps both.
+const CONNECT_NAV = NAV.filter((item) => item.href !== "/app/dashboard" && item.href !== "/app/ask");
 
 export function AppSidebar({ tier }: { tier: string }) {
   const pathname = usePathname();

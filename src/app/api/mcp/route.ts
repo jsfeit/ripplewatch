@@ -5,6 +5,7 @@ import { looksLikeApiKey } from "@/lib/api-keys";
 import { authenticateOAuthAccessToken, bearerChallenge } from "@/lib/mcp-oauth";
 import { canUseMcp } from "@/lib/tier-limits";
 import { registerRipplewatchTools } from "@/lib/mcp-tools";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // Add-competitor and Ask can each take several seconds (domain check, URL
 // discovery, an LLM call), same budget as their REST equivalents.
@@ -69,6 +70,15 @@ async function handle(req: Request): Promise<Response> {
   if (!canUseMcp(auth.tier, auth.demoMode)) {
     return Response.json({ error: "Connecting an AI assistant requires Ripplewatch Connect." }, { status: 403 });
   }
+
+  // Fire-and-forget: Settings reads this to show a real "connected" status
+  // instead of assuming a copied URL was ever pasted anywhere. Never worth
+  // adding latency to an actual tool call for.
+  void createAdminClient()
+    .from("accounts")
+    .update({ mcp_last_connected_at: new Date().toISOString() })
+    .eq("id", auth.accountId)
+    .then(undefined, () => {});
 
   verified.set(req, {
     token,

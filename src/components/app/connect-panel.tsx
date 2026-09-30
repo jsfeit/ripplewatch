@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Copy, Check, CreditCard, Loader2, Wallet } from "lucide-react";
+import { CheckCircle2, Circle, Copy, Check, CreditCard, Loader2, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConnectCheckoutModal } from "@/components/app/connect-checkout-modal";
 import { ConnectFundingPicker, fundingFromPicker } from "@/components/app/connect-funding-picker";
 import { CONNECT_BASE_FEE_USD, CONNECT_DEFAULT_RELOAD_USD } from "@/lib/connect-pricing";
 import { CONNECT_MCP_URL, CONNECT_NAME } from "@/lib/connect";
 import { timeAgo } from "@/lib/date";
+import { cn } from "@/lib/utils";
 
 export type ConnectLedgerRow = {
   id: string;
@@ -31,11 +32,16 @@ export function ConnectPanel({
   hasSubscription,
   ledger,
   autoReload,
+  mcpLastConnectedAt,
 }: {
   balanceUsd: number;
   hasSubscription: boolean;
   ledger: ConnectLedgerRow[];
   autoReload: AutoReloadSettings;
+  // Set from an actually-authenticated MCP request (see /api/mcp/route.ts),
+  // never just from copying the URL below — so this reflects whether an
+  // assistant has really connected, not whether someone glanced at this page.
+  mcpLastConnectedAt: string | null;
 }) {
   const router = useRouter();
   const [picker, setPicker] = useState<number | "custom">(CONNECT_DEFAULT_RELOAD_USD);
@@ -103,6 +109,77 @@ export function ConnectPanel({
     else setError(data.error ?? "Could not open billing.");
   }
 
+  const connected = Boolean(mcpLastConnectedAt);
+
+  const connectAssistantCard = (
+    <div className="rounded-xl border border-border bg-card p-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-base font-semibold">Connect your assistant</h2>
+        <span
+          className={cn(
+            "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+            connected ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"
+          )}
+        >
+          {connected ? <CheckCircle2 className="size-3.5" /> : <Circle className="size-3.5" />}
+          {connected ? `Connected · active ${timeAgo(mcpLastConnectedAt!)}` : "Not connected yet"}
+        </span>
+      </div>
+      <p className="mt-1 text-sm text-muted-foreground">
+        {connected
+          ? "Your assistant is talking to Ripplewatch. Add it to another one (or disconnect an old one) from the Developer tab."
+          : "This is the one thing left to do. Three steps, about a minute."}
+      </p>
+
+      {connected ? (
+        <div className="mt-3 flex items-center gap-2">
+          <code className="min-w-0 flex-1 truncate rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs">
+            {CONNECT_MCP_URL}
+          </code>
+          <Button variant="outline" size="sm" onClick={copyUrl}>
+            {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+            {copied ? "Copied" : "Copy"}
+          </Button>
+        </div>
+      ) : (
+        <ol className="mt-4 space-y-3 text-sm">
+          <li className="flex gap-3">
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+              1
+            </span>
+            <div className="min-w-0 flex-1">
+              <p>Copy this URL.</p>
+              <div className="mt-1.5 flex items-center gap-2">
+                <code className="min-w-0 flex-1 truncate rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs">
+                  {CONNECT_MCP_URL}
+                </code>
+                <Button variant="outline" size="sm" onClick={copyUrl}>
+                  {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                  {copied ? "Copied" : "Copy"}
+                </Button>
+              </div>
+            </div>
+          </li>
+          <li className="flex gap-3">
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+              2
+            </span>
+            <p>
+              In Claude, go to Settings → Connectors → Add custom connector. In ChatGPT, go to Settings → Connectors →
+              Advanced → Add custom connector.
+            </p>
+          </li>
+          <li className="flex gap-3">
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+              3
+            </span>
+            <p>Paste the URL, then sign in and approve when it asks. Come back here and this card updates itself.</p>
+          </li>
+        </ol>
+      )}
+    </div>
+  );
+
   return (
     <div className="min-w-0 space-y-6">
       {justPaid ? (
@@ -111,6 +188,8 @@ export function ConnectPanel({
           <p>Payment received. Your balance can take a few seconds to show up here.</p>
         </div>
       ) : null}
+
+      {hasSubscription ? connectAssistantCard : null}
 
       {!hasSubscription ? (
         <div className="rounded-xl border border-border bg-card p-6">
@@ -229,23 +308,6 @@ export function ConnectPanel({
           </div>
         </div>
       ) : null}
-
-      <div className="rounded-xl border border-border bg-card p-6">
-        <h2 className="text-base font-semibold">Connect your assistant</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          In Claude or ChatGPT, add a custom connector with this URL, then sign in and approve. Apps you approve appear
-          under the Developer tab, where you can disconnect them.
-        </p>
-        <div className="mt-3 flex items-center gap-2">
-          <code className="min-w-0 flex-1 truncate rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs">
-            {CONNECT_MCP_URL}
-          </code>
-          <Button variant="outline" size="sm" onClick={copyUrl}>
-            {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-            {copied ? "Copied" : "Copy"}
-          </Button>
-        </div>
-      </div>
 
       <div className="rounded-xl border border-border bg-card p-6">
         <h2 className="text-base font-semibold">Balance history</h2>

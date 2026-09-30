@@ -49,7 +49,7 @@ export default async function AppShellLayout({ children }: { children: React.Rea
         </div>
         <div className="flex-1 overflow-x-hidden">{children}</div>
         {user && !impersonation ? <ActivityBeacon /> : null}
-        {user && !impersonation ? (
+        {user && !impersonation && tier !== "connect" ? (
           <div className="print:hidden">
             <AskBubble competitorNames={competitorNames} />
           </div>

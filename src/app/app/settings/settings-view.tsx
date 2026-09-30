@@ -91,6 +91,7 @@ export function SettingsView({
     hasSubscription: boolean;
     ledger: ConnectLedgerRow[];
     autoReload: { enabled: boolean; amountUsd: number; thresholdUsd: number; failed: boolean };
+    mcpLastConnectedAt: string | null;
   } | null;
 }) {
   const [error, setError] = useState("");
@@ -241,6 +242,7 @@ export function SettingsView({
             hasSubscription={connect.hasSubscription}
             ledger={connect.ledger}
             autoReload={connect.autoReload}
+            mcpLastConnectedAt={connect.mcpLastConnectedAt}
           />
         </TabsContent>
       ) : null}

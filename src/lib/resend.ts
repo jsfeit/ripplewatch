@@ -382,6 +382,38 @@ export async function sendPlanChangeEmail(to: string, fromTier: string, toTier: 
   if (result.error) throw new Error(result.error.message);
 }
 
+// A subscription renewal charge failed — the platform fee itself (Dashboard
+// or Connect), not a Connect wallet reload (that has its own dedicated
+// email, sendConnectReloadFailedEmail, and turns itself off rather than
+// retrying). Stripe keeps retrying this one on its own schedule and access
+// stays on through past_due, but the customer would otherwise have no idea
+// anything was wrong until access actually got cut off.
+export async function sendPaymentFailedEmail(to: string, companyName: string, appUrl: string) {
+  if (!isResendConfigured()) return;
+
+  const result = await getResend().emails.send({
+    from: getAlertsFromEmail(),
+    to,
+    subject: "Your Ripplewatch payment didn't go through",
+    html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+      <h2 style="margin:0 0 12px;">Payment failed for ${escapeHtml(companyName)}</h2>
+      <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+        We tried to charge your card for this billing period and it was declined. Nothing is wrong with your
+        account yet, we'll retry automatically over the next several days, but if the card stays bad your
+        access will pause.
+      </p>
+      <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">Update your card under Manage billing so the next retry goes through.</p>
+      <a href="${appUrl}/app/settings" style="display:inline-block;margin-top:8px;padding:10px 20px;background:#0f5f56;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">
+        Update payment method
+      </a>
+      <p style="color:#888;font-size:12px;margin-top:24px;">
+        Questions? Just reply; a person reads every one.
+      </p>
+    </div>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
 // Distinct from the transactional digest/invite emails above — a one-time
 // send right after onboarding completes, so a new signup doesn't churn
 // before their first real (scored) signal shows up days later.

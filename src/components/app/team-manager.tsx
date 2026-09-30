@@ -3,9 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Loader2, Mail, UserMinus, X } from "lucide-react";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 import { SEAT_LIMIT, seatLimitLabel } from "@/lib/tier-limits";
 import type { Database } from "@/lib/supabase/types";
 
@@ -148,12 +147,6 @@ export function TeamManager({ tier, currentUserId }: { tier: Tier; currentUserId
       {members === null ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : null}
-
-      {atLimit ? null : (
-        <Link href="/app/settings?tab=plan" className={cn(buttonVariants({ variant: "link", size: "sm" }), "px-0")}>
-          Compare seat limits by plan
-        </Link>
-      )}
     </div>
   );
 }
