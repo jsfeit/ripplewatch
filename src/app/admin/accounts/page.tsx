@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/is-configured";
 import { SupabaseNotConfigured } from "@/components/admin/not-configured";
+import { CreateTestAccountForm } from "@/components/admin/create-test-account-form";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { Database } from "@/lib/supabase/types";
@@ -92,12 +93,18 @@ export default async function AdminAccountsPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-8 py-10">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Accounts</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {accounts?.length ?? 0} account{accounts?.length === 1 ? "" : "s"}; click one to manage its
+            competitors and signals.
+          </p>
+        </div>
+      </div>
+
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Accounts</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {accounts?.length ?? 0} account{accounts?.length === 1 ? "" : "s"}; click one to manage its
-          competitors and signals.
-        </p>
+        <CreateTestAccountForm />
       </div>
 
       {!configured ? (
