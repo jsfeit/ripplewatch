@@ -417,4 +417,23 @@ export function registerRipplewatchTools(server: McpServer) {
       return result({ updated: Object.keys(update) }, next);
     }
   );
+
+  server.registerTool(
+    "get_slack_setup_link",
+    {
+      title: "Get the Slack connect link",
+      description:
+        "Returns the link to connect Slack for a weekly Momentum digest delivered to a channel, on top of asking here directly. The link requires being signed in to the Ripplewatch account in a browser — tell the user to open it there, not paste it back here.",
+      inputSchema: z.object({}),
+      annotations: READ_ONLY,
+    },
+    async (_args, ctx) => {
+      accountIdFrom(ctx as Ctx);
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.ripplewatch.ai";
+      return result({
+        connect_url: `${appUrl}/api/integrations/slack/connect`,
+        note: "Open this in a browser while signed in to Ripplewatch, then approve the Slack workspace it asks for.",
+      });
+    }
+  );
 }

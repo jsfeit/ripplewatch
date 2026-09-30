@@ -53,7 +53,13 @@ export async function GET(request: Request) {
   const now = new Date();
 
   const supabase = createAdminClient();
-  const { data: accounts } = await supabase.from("accounts").select("*").neq("tier", "connect").eq("status", "active");
+  // Connect accounts are included now that Connect can connect Slack (see
+  // /app/get-started and the Connect Settings tab) — this digest's own LLM
+  // call isn't metered from the wallet the way Ask/MCP calls are, so it's
+  // effectively a free weekly perk for Connect today, unlike everything
+  // else in the product. Flagged, not silently decided: worth metering it
+  // the same way if that's not the intended trade-off.
+  const { data: accounts } = await supabase.from("accounts").select("*").eq("status", "active");
 
   const summary = await mapWithConcurrency(accounts ?? [], ACCOUNT_CONCURRENCY, async (account: Account) => {
     const local = localDayAndHour(account.timezone, now);
@@ -108,7 +114,8 @@ export async function GET(request: Request) {
         trendsDigest,
         highCount,
         mediumCount,
-        dashboardUrl: `${appUrl}/app/dashboard`,
+        openUrl: account.tier === "connect" ? `${appUrl}/app/settings?tab=connect` : `${appUrl}/app/dashboard`,
+        openLabel: account.tier === "connect" ? "Ask Ripplewatch" : "Open dashboard",
       });
     } catch (err) {
       console.error(`weekly Slack digest send failed for ${account.name}:`, err);

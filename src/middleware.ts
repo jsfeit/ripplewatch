@@ -106,7 +106,11 @@ export async function middleware(request: NextRequest) {
     // cancelled one lands on the same Settings tab, which offers to
     // resubscribe, rather than the dashboard-plan reactivation page.
     if (account?.tier === "connect") {
-      const allowed = pathname.startsWith("/app/settings");
+      // /app/get-started is the one-time post-checkout context step (see
+      // /app/get-started/page.tsx) — it redirects itself to Settings once
+      // an account already has positioning or a competitor, so it's safe
+      // to always allow rather than needing its own status check here.
+      const allowed = pathname.startsWith("/app/settings") || pathname.startsWith("/app/get-started");
       if (!allowed) {
         const url = request.nextUrl.clone();
         url.pathname = "/app/settings";

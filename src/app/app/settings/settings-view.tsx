@@ -92,6 +92,10 @@ export function SettingsView({
     ledger: ConnectLedgerRow[];
     autoReload: { enabled: boolean; amountUsd: number; thresholdUsd: number; failed: boolean };
     mcpLastConnectedAt: string | null;
+    slackConnected: boolean;
+    timezone: string;
+    slackDigestDay: number;
+    slackDigestHour: number;
   } | null;
 }) {
   const [error, setError] = useState("");
@@ -243,6 +247,11 @@ export function SettingsView({
             ledger={connect.ledger}
             autoReload={connect.autoReload}
             mcpLastConnectedAt={connect.mcpLastConnectedAt}
+            slackConnected={connect.slackConnected}
+            timezone={connect.timezone}
+            slackDigestDay={connect.slackDigestDay}
+            slackDigestHour={connect.slackDigestHour}
+            disconnectIntegrationAction={disconnectIntegrationAction}
           />
         </TabsContent>
       ) : null}

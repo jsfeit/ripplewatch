@@ -73,7 +73,11 @@ export async function createConnectSignupSession(
       funding_cents: String(input.fundingUsd * 100),
     },
     subscription_data: { metadata: { account_id: account.id, tier: "connect" } },
-    return_url: `${input.origin}/app/settings?tab=connect&checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+    // Straight to the context step (positioning, ICP, competitors), not
+    // Settings — see /app/get-started/page.tsx for why: checkout itself
+    // only ever asks for a company name, so without this a brand-new
+    // account has nothing for its first question to draw on.
+    return_url: `${input.origin}/app/get-started?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
   });
   if (!session.client_secret) throw new Error("Stripe returned no client secret.");
   return { clientSecret: session.client_secret };

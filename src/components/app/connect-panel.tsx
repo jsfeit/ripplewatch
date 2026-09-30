@@ -6,6 +6,8 @@ import { CheckCircle2, Circle, Copy, Check, CreditCard, Loader2, Wallet } from "
 import { Button } from "@/components/ui/button";
 import { ConnectCheckoutModal } from "@/components/app/connect-checkout-modal";
 import { ConnectFundingPicker, fundingFromPicker } from "@/components/app/connect-funding-picker";
+import { IntegrationConnector } from "@/components/app/integration-connector";
+import { SlackDigestSchedule } from "@/components/app/slack-digest-schedule";
 import { CONNECT_BASE_FEE_USD, CONNECT_DEFAULT_RELOAD_USD } from "@/lib/connect-pricing";
 import { CONNECT_MCP_URL, CONNECT_NAME } from "@/lib/connect";
 import { timeAgo } from "@/lib/date";
@@ -33,6 +35,11 @@ export function ConnectPanel({
   ledger,
   autoReload,
   mcpLastConnectedAt,
+  slackConnected,
+  timezone,
+  slackDigestDay,
+  slackDigestHour,
+  disconnectIntegrationAction,
 }: {
   balanceUsd: number;
   hasSubscription: boolean;
@@ -42,6 +49,11 @@ export function ConnectPanel({
   // never just from copying the URL below — so this reflects whether an
   // assistant has really connected, not whether someone glanced at this page.
   mcpLastConnectedAt: string | null;
+  slackConnected: boolean;
+  timezone: string;
+  slackDigestDay: number;
+  slackDigestHour: number;
+  disconnectIntegrationAction: (formData: FormData) => void;
 }) {
   const router = useRouter();
   const [picker, setPicker] = useState<number | "custom">(CONNECT_DEFAULT_RELOAD_USD);
@@ -180,6 +192,30 @@ export function ConnectPanel({
     </div>
   );
 
+  const slackCard = (
+    <div className="rounded-xl border border-border bg-card p-6">
+      <h2 className="text-base font-semibold">Slack delivery</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Get a weekly Momentum digest in a channel, on top of asking your assistant directly.
+      </p>
+      <div className="mt-3">
+        <IntegrationConnector
+          name="Slack"
+          description="Deliver a weekly digest to a channel"
+          connected={slackConnected}
+          connectHref="/api/integrations/slack/connect"
+          provider="slack"
+          disconnectAction={disconnectIntegrationAction}
+        />
+      </div>
+      {slackConnected ? (
+        <div className="mt-4">
+          <SlackDigestSchedule initialTimezone={timezone} initialDay={slackDigestDay} initialHour={slackDigestHour} />
+        </div>
+      ) : null}
+    </div>
+  );
+
   return (
     <div className="min-w-0 space-y-6">
       {justPaid ? (
@@ -190,6 +226,7 @@ export function ConnectPanel({
       ) : null}
 
       {hasSubscription ? connectAssistantCard : null}
+      {hasSubscription ? slackCard : null}
 
       {!hasSubscription ? (
         <div className="rounded-xl border border-border bg-card p-6">

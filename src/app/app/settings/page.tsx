@@ -83,6 +83,10 @@ export default async function SettingsPage() {
     ledger: ConnectLedgerRow[];
     autoReload: { enabled: boolean; amountUsd: number; thresholdUsd: number; failed: boolean };
     mcpLastConnectedAt: string | null;
+    slackConnected: boolean;
+    timezone: string;
+    slackDigestDay: number;
+    slackDigestHour: number;
   } | null = null;
   if (account.tier === "connect") {
     const [{ data: wallet }, { data: ledgerRows }] = await Promise.all([
@@ -116,6 +120,10 @@ export default async function SettingsPage() {
         createdAt: r.created_at,
       })),
       mcpLastConnectedAt: account.mcp_last_connected_at,
+      slackConnected: (integrations ?? []).some((i) => i.provider === "slack" && i.connected),
+      timezone: account.timezone,
+      slackDigestDay: account.slack_digest_day,
+      slackDigestHour: account.slack_digest_hour,
     };
   }
 

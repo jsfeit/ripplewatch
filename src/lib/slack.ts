@@ -136,7 +136,11 @@ export type SlackWeeklyDigestInput = {
   trendsDigest: string | null;
   highCount: number;
   mediumCount: number;
-  dashboardUrl: string;
+  // Dashboard accounts get a real dashboard to open; Connect accounts have
+  // no dashboard page at all (see middleware.ts), so this points at
+  // Settings instead, with a label that doesn't promise a dashboard.
+  openUrl: string;
+  openLabel: string;
 };
 
 // This is the one Slack message every account is guaranteed to get every
@@ -186,7 +190,7 @@ export async function sendSlackWeeklyDigest(
   blocks.push({
     type: "actions",
     elements: [
-      { type: "button", text: { type: "plain_text", text: "Open dashboard", emoji: true }, url: input.dashboardUrl, style: "primary" },
+      { type: "button", text: { type: "plain_text", text: input.openLabel, emoji: true }, url: input.openUrl, style: "primary" },
     ],
   });
   blocks.push({
