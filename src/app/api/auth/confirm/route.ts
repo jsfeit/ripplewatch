@@ -18,7 +18,13 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const { error } = await supabase.auth.verifyOtp({ type, token_hash });
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      // Every signUp() call site passes emailRedirectTo as a full absolute
+      // URL (window.location.origin + path), so `next` here is already
+      // absolute — prefixing it with `origin` again produced a mangled,
+      // unparseable URL (e.g. "https://a.comhttps://b.com/path"). Only a
+      // bare relative path needs `origin` prepended.
+      const target = /^https?:\/\//.test(next) ? next : `${origin}${next}`;
+      return NextResponse.redirect(target);
     }
   }
 
