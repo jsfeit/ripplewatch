@@ -11,10 +11,20 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CompetitorRow, type CompetitorInput } from "@/components/app/competitor-row";
 import { IntegrationConnector } from "@/components/app/integration-connector";
+import { McpConnectStep } from "@/components/app/mcp-connect-step";
 
+// Step 0 (MCP connect) isn't counted in "Step X of Y" — it's the thing that
+// makes the purchase work at all, not one item in a setup checklist. The
+// checklist starts after it, and is entirely skippable: see skipRest().
 const STEP_TITLES = ["Tell it about your business", "Add competitors", "Connect Slack (optional)"];
 
-export function GetStartedFlow({ companyName }: { companyName: string }) {
+export function GetStartedFlow({
+  companyName,
+  mcpLastConnectedAt,
+}: {
+  companyName: string;
+  mcpLastConnectedAt: string | null;
+}) {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [positioning, setPositioning] = useState("");
@@ -66,23 +76,52 @@ export function GetStartedFlow({ companyName }: { companyName: string }) {
     router.refresh();
   }
 
+  async function skipRest() {
+    setSubmitting(true);
+    setError("");
+    const res = await fetch("/api/connect/onboarding/skip", { method: "POST" });
+    if (!res.ok) {
+      setSubmitting(false);
+      setError("Something went wrong. Try again.");
+      return;
+    }
+    router.push("/app/settings?tab=connect");
+    router.refresh();
+  }
+
+  if (step === 0) {
+    return <McpConnectStep mcpLastConnectedAt={mcpLastConnectedAt} onContinue={() => setStep(1)} />;
+  }
+
+  const wizardStep = step - 1;
+
   return (
     <Card>
       <CardHeader>
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Step {step + 1} of {STEP_TITLES.length}
-        </p>
-        <h1 className="text-xl font-semibold tracking-tight">{STEP_TITLES[step]}</h1>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Step {wizardStep + 1} of {STEP_TITLES.length} · optional
+          </p>
+          <button
+            type="button"
+            onClick={skipRest}
+            disabled={submitting}
+            className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          >
+            Skip, I&apos;ll do this later
+          </button>
+        </div>
+        <h1 className="text-xl font-semibold tracking-tight">{STEP_TITLES[wizardStep]}</h1>
         <p className="text-sm text-muted-foreground">
-          {step === 0
+          {wizardStep === 0
             ? `A few things so ${companyName}'s first question to Ripplewatch already has a real answer, not a blank slate.`
-            : step === 1
+            : wizardStep === 1
               ? "Name at least one competitor. Add more any time by just telling your assistant."
               : "Get a weekly digest in a channel, on top of asking directly. Skip this if you'd rather set it up later."}
         </p>
       </CardHeader>
       <CardContent>
-        {step === 0 && (
+        {wizardStep === 0 && (
           <div className="space-y-5">
             <div className="space-y-2">
               <Label htmlFor="positioning">One-line positioning</Label>
@@ -147,7 +186,7 @@ export function GetStartedFlow({ companyName }: { companyName: string }) {
           </div>
         )}
 
-        {step === 1 && (
+        {wizardStep === 1 && (
           <div className="space-y-4">
             <div className="space-y-2">
               {competitors.map((c, i) => (
@@ -167,7 +206,7 @@ export function GetStartedFlow({ companyName }: { companyName: string }) {
           </div>
         )}
 
-        {step === 2 ? (
+        {wizardStep === 2 ? (
           <IntegrationConnector
             name="Slack"
             description="Deliver a weekly digest to a channel"
@@ -180,17 +219,17 @@ export function GetStartedFlow({ companyName }: { companyName: string }) {
         {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
 
         <div className="mt-6 flex items-center justify-between">
-          <Button type="button" variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>
+          <Button type="button" variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))}>
             <ArrowLeft className="size-4" />
             Back
           </Button>
-          {step < STEP_TITLES.length - 1 ? (
-            <Button type="button" onClick={() => setStep((s) => s + 1)} disabled={step === 1 && !canContinueStep1}>
+          {wizardStep < STEP_TITLES.length - 1 ? (
+            <Button type="button" onClick={() => setStep((s) => s + 1)} disabled={wizardStep === 1 && !canContinueStep1}>
               Continue
               <ArrowRight className="size-4" />
             </Button>
           ) : (
-            <Button type="button" onClick={finish} disabled={submitting}>
+            <Button type="button" onClick={finish} disabled={submitting || !canContinueStep1}>
               {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
               Done, take me to Settings
             </Button>

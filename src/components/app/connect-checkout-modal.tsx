@@ -31,7 +31,7 @@ export function ConnectCheckoutModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl sm:max-w-xl">
+      <DialogContent className="max-w-xl sm:max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogTitle className="sr-only">Checkout</DialogTitle>
         {open ? (
           <EmbeddedCheckoutProvider stripe={getClientStripe()} options={{ fetchClientSecret }}>

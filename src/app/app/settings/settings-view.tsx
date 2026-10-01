@@ -672,18 +672,24 @@ export function SettingsView({
             </CardContent>
           </Card>
 
-          <Card className="mt-6">
-            <CardHeader>
-              <h2 className="font-medium">Product tour</h2>
-              <p className="text-sm text-muted-foreground">
-                The 3-step walkthrough you saw right after signing up: your tracked competitors, relevance
-                scoring, and Ask.
-              </p>
-            </CardHeader>
-            <CardContent>
-              <ReplayTourButton />
-            </CardContent>
-          </Card>
+          {!isConnectAccount && (
+            // The tour walks through dashboard DOM (competitor cards, relevance
+            // badges, Ask) that a Connect account's middleware redirect never
+            // lets it reach, so "Replay tour" would just bounce it straight
+            // back here — not shown at all rather than offering a dead link.
+            <Card className="mt-6">
+              <CardHeader>
+                <h2 className="font-medium">Product tour</h2>
+                <p className="text-sm text-muted-foreground">
+                  The 3-step walkthrough you saw right after signing up: your tracked competitors, relevance
+                  scoring, and Ask.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <ReplayTourButton />
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </>
