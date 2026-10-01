@@ -444,7 +444,11 @@ export function OnboardingFlow({
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { emailRedirectTo: `${window.location.origin}/app/dashboard` },
+      // See signup-form.tsx for why this is a bare origin: the confirm
+      // email template builds the /auth/confirm link from
+      // {{ .RedirectTo }} directly, so the real destination travels as
+      // custom data instead, read back as {{ .Data.next }}.
+      options: { emailRedirectTo: window.location.origin, data: { next: "/app/dashboard" } },
     });
 
     if (error) {
