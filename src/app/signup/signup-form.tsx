@@ -42,7 +42,13 @@ export function SignupForm() {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: `${window.location.origin}${onboardingPath}` },
+      // emailRedirectTo is a bare origin, not the final destination: the
+      // confirm-signup email template builds the /auth/confirm link from
+      // {{ .RedirectTo }} directly, and appending a path there would splice
+      // into whatever query string onboardingPath already carries. The real
+      // destination travels separately as custom data, read back in the
+      // template as {{ .Data.next }}.
+      options: { emailRedirectTo: window.location.origin, data: { next: onboardingPath } },
     });
 
     if (error) {

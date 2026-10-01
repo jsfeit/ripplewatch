@@ -93,7 +93,11 @@ export function ConnectPurchase({ initiallySignedIn }: { initiallySignedIn: bool
       const { data, error: signUpError } = await createClient().auth.signUp({
         email: email.trim(),
         password,
-        options: { emailRedirectTo: `${window.location.origin}/onboarding?path=connect` },
+        // See signup-form.tsx for why this is a bare origin: the confirm
+        // email template builds the /auth/confirm link from
+        // {{ .RedirectTo }} directly, so the real destination travels as
+        // custom data instead, read back as {{ .Data.next }}.
+        options: { emailRedirectTo: window.location.origin, data: { next: "/onboarding?path=connect" } },
       });
       if (signUpError) {
         sessionStorage.removeItem(DRAFT_KEY);
