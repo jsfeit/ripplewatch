@@ -159,7 +159,7 @@ export function ConnectPurchase({
       <div className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-card p-8 text-center">
         <CheckCircle2 className="size-8 text-primary" />
         <div>
-          <p className="font-medium">Email confirmed — you&apos;re in, {companyName}.</p>
+          <p className="font-medium">Email confirmed. You&apos;re in, {companyName}.</p>
           <p className="mt-1 text-sm text-muted-foreground">One payment step and {CONNECT_NAME} is live.</p>
         </div>
         <div className="w-full rounded-lg border border-border bg-secondary/40 p-3 text-sm">
