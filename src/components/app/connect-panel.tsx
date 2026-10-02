@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Circle, Copy, Check, CreditCard, Loader2, Wallet } from "lucide-react";
+import { CheckCircle2, Circle, Copy, Check, CreditCard, Loader2, Upload, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConnectCheckoutModal } from "@/components/app/connect-checkout-modal";
 import { ConnectFundingPicker, fundingFromPicker } from "@/components/app/connect-funding-picker";
@@ -12,6 +12,7 @@ import { CONNECT_BASE_FEE_USD, CONNECT_DEFAULT_RELOAD_USD } from "@/lib/connect-
 import { CONNECT_MCP_URL, CONNECT_NAME } from "@/lib/connect";
 import { timeAgo } from "@/lib/date";
 import { cn } from "@/lib/utils";
+import { formatWinLossImportMessage, type ImportMessageData } from "@/lib/win-loss-import";
 
 export type ConnectLedgerRow = {
   id: string;
@@ -69,6 +70,30 @@ export function ConnectPanel({
   const [justPaid, setJustPaid] = useState(false);
   const [reload, setReload] = useState(autoReload);
   const [savingReload, setSavingReload] = useState(false);
+  const winLossFileInputRef = useRef<HTMLInputElement>(null);
+  const [winLossUploading, setWinLossUploading] = useState(false);
+  const [winLossMessage, setWinLossMessage] = useState<string | null>(null);
+
+  async function handleWinLossFile(file: File) {
+    setWinLossUploading(true);
+    setWinLossMessage(null);
+    try {
+      const text = await file.text();
+      const res = await fetch("/api/competitors/win-loss/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Import failed.");
+      setWinLossMessage(formatWinLossImportMessage("Upload", data as ImportMessageData, false));
+    } catch (err) {
+      setWinLossMessage(err instanceof Error ? err.message : "Import failed.");
+    } finally {
+      setWinLossUploading(false);
+      if (winLossFileInputRef.current) winLossFileInputRef.current.value = "";
+    }
+  }
 
   async function saveReload(next: Partial<{ autoReloadEnabled: boolean; reloadAmountUsd: number; reloadThresholdUsd: number }>) {
     setSavingReload(true);
@@ -220,6 +245,48 @@ export function ConnectPanel({
     </div>
   );
 
+  const winLossCard = (
+    <div id="connect-win-loss" className="scroll-mt-6 rounded-xl border border-border bg-card p-6">
+      <h2 className="text-base font-semibold">Win/loss data</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Upload a CRM export or a plain list of deals and we&apos;ll pull out the win/loss and churn reasons for each
+        competitor. You can also just tell your assistant directly as deals happen.
+      </p>
+      {competitorCount === 0 ? (
+        <p className="mt-3 text-sm text-muted-foreground">Add a competitor first, then come back to upload here.</p>
+      ) : (
+        <div className="mt-3">
+          <input
+            ref={winLossFileInputRef}
+            type="file"
+            accept=".csv,text/csv,text/plain"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void handleWinLossFile(file);
+            }}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => winLossFileInputRef.current?.click()}
+            disabled={winLossUploading}
+          >
+            {winLossUploading ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
+            Upload a file
+          </Button>
+          {winLossUploading ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Reading it now. A large file can take a minute or two.
+            </p>
+          ) : winLossMessage ? (
+            <p className="mt-2 text-xs text-muted-foreground">{winLossMessage}</p>
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+
   // The one obvious step after checkout is connecting an assistant — nothing
   // else here is. This card names everything else that's still worth doing
   // and how, then disappears once it's all done rather than lingering as
@@ -286,6 +353,7 @@ export function ConnectPanel({
 
       {checklistCard}
       {hasSubscription ? connectAssistantCard : null}
+      {hasSubscription ? winLossCard : null}
       {hasSubscription ? slackCard : null}
 
       {!hasSubscription ? (

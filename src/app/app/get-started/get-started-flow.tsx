@@ -13,10 +13,20 @@ import { CompetitorRow, type CompetitorInput } from "@/components/app/competitor
 import { IntegrationConnector } from "@/components/app/integration-connector";
 import { McpConnectStep } from "@/components/app/mcp-connect-step";
 
-// Step 0 (MCP connect) isn't counted in "Step X of Y" — it's the thing that
-// makes the purchase work at all, not one item in a setup checklist. The
-// checklist starts after it, and is entirely skippable: see skipRest().
-const STEP_TITLES = ["Tell it about your business", "Add competitors", "Connect Slack (optional)"];
+const TOTAL_STEPS = 4;
+
+// Only the Slack step is genuinely optional. Business context (positioning,
+// ICP, how the team sells) is soft: the fields aren't required, but there's
+// no "skip all of this" shortcut anymore, because that shortcut used to let
+// someone reach Settings with zero competitors tracked, and an assistant
+// with nothing to compare you against can't produce anything useful. See
+// /api/connect/onboarding/complete, which has rejected a competitor-less
+// submission since before this restructure.
+const WIZARD_STEPS = [
+  { title: "Tell it about your business", optional: true },
+  { title: "Add your competitors", optional: false },
+  { title: "Connect Slack", optional: true },
+];
 
 export function GetStartedFlow({
   companyName,
@@ -31,14 +41,12 @@ export function GetStartedFlow({
   const [icp, setIcp] = useState("");
   const [hasSalesCrm, setHasSalesCrm] = useState(false);
   const [hasPlg, setHasPlg] = useState(false);
-  const [lostDealReasons, setLostDealReasons] = useState("");
-  const [churnReasons, setChurnReasons] = useState("");
   const [competitors, setCompetitors] = useState<CompetitorInput[]>([{ name: "", domain: "" }]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   const filledCompetitors = competitors.filter((c) => c.name.trim());
-  const canContinueStep1 = filledCompetitors.length >= 1;
+  const hasCompetitor = filledCompetitors.length >= 1;
 
   function updateCompetitor(index: number, field: keyof CompetitorInput, value: string) {
     setCompetitors((prev) => prev.map((c, i) => (i === index ? { ...c, [field]: value } : c)));
@@ -61,8 +69,6 @@ export function GetStartedFlow({
         icp,
         hasSalesCrm,
         hasPlg,
-        lostDealReasons,
-        churnReasons,
         competitors: filledCompetitors,
       }),
     });
@@ -76,47 +82,28 @@ export function GetStartedFlow({
     router.refresh();
   }
 
-  async function skipRest() {
-    setSubmitting(true);
-    setError("");
-    const res = await fetch("/api/connect/onboarding/skip", { method: "POST" });
-    if (!res.ok) {
-      setSubmitting(false);
-      setError("Something went wrong. Try again.");
-      return;
-    }
-    router.push("/app/settings?tab=connect");
-    router.refresh();
-  }
-
   if (step === 0) {
-    return <McpConnectStep mcpLastConnectedAt={mcpLastConnectedAt} onContinue={() => setStep(1)} />;
+    return (
+      <McpConnectStep mcpLastConnectedAt={mcpLastConnectedAt} onContinue={() => setStep(1)} />
+    );
   }
 
   const wizardStep = step - 1;
+  const { title, optional } = WIZARD_STEPS[wizardStep];
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Step {wizardStep + 1} of {STEP_TITLES.length} · optional
-          </p>
-          <button
-            type="button"
-            onClick={skipRest}
-            disabled={submitting}
-            className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-          >
-            Skip, I&apos;ll do this later
-          </button>
-        </div>
-        <h1 className="text-xl font-semibold tracking-tight">{STEP_TITLES[wizardStep]}</h1>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Step {step + 1} of {TOTAL_STEPS}
+          {optional ? " · optional" : ""}
+        </p>
+        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
         <p className="text-sm text-muted-foreground">
           {wizardStep === 0
-            ? `A few things so ${companyName}'s first question to Ripplewatch already has a real answer, not a blank slate.`
+            ? `This is what your assistant uses to judge whether something is actually relevant to ${companyName}, not just noise. Skip it and every answer defaults to generic.`
             : wizardStep === 1
-              ? "Name at least one competitor. Add more any time by just telling your assistant."
+              ? "Required. Your assistant can't compare you to anyone until it knows who to compare you to, and this is the one piece of setup nothing else substitutes for."
               : "Get a weekly digest in a channel, on top of asking directly. Skip this if you'd rather set it up later."}
         </p>
       </CardHeader>
@@ -159,29 +146,11 @@ export function GetStartedFlow({
                 </div>
               </label>
             </div>
-            {hasSalesCrm ? (
-              <div className="space-y-2">
-                <Label htmlFor="lostDealReasons">A few recent lost-deal reasons</Label>
-                <Textarea
-                  id="lostDealReasons"
-                  value={lostDealReasons}
-                  onChange={(e) => setLostDealReasons(e.target.value)}
-                  placeholder="Lost to Northlane, they were $30/mo cheaper on the entry tier"
-                  rows={3}
-                />
-              </div>
-            ) : null}
-            {hasPlg ? (
-              <div className="space-y-2">
-                <Label htmlFor="churnReasons">A few recent churn reasons</Label>
-                <Textarea
-                  id="churnReasons"
-                  value={churnReasons}
-                  onChange={(e) => setChurnReasons(e.target.value)}
-                  placeholder="Churned after 2 months, said Beaconly's onboarding was easier to get started with"
-                  rows={3}
-                />
-              </div>
+            {hasSalesCrm || hasPlg ? (
+              <p className="text-xs text-muted-foreground">
+                Add win/loss and churn reasons once you&apos;re set up: tell your assistant directly, or upload a CRM
+                export from Settings → Connect.
+              </p>
             ) : null}
           </div>
         )}
@@ -223,13 +192,13 @@ export function GetStartedFlow({
             <ArrowLeft className="size-4" />
             Back
           </Button>
-          {wizardStep < STEP_TITLES.length - 1 ? (
-            <Button type="button" onClick={() => setStep((s) => s + 1)} disabled={wizardStep === 1 && !canContinueStep1}>
+          {wizardStep < WIZARD_STEPS.length - 1 ? (
+            <Button type="button" onClick={() => setStep((s) => s + 1)} disabled={wizardStep === 1 && !hasCompetitor}>
               Continue
               <ArrowRight className="size-4" />
             </Button>
           ) : (
-            <Button type="button" onClick={finish} disabled={submitting || !canContinueStep1}>
+            <Button type="button" onClick={finish} disabled={submitting || !hasCompetitor}>
               {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
               Done, take me to Settings
             </Button>

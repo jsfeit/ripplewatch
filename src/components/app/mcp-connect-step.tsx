@@ -78,7 +78,7 @@ export function McpConnectStep({
     <Card>
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h1 className="text-xl font-semibold tracking-tight">Connect your assistant</h1>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Step 1 of 4</p>
           <span
             className={cn(
               "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
@@ -89,8 +89,10 @@ export function McpConnectStep({
             {connected ? `Connected · active ${timeAgo(mcpLastConnectedAt!)}` : "Not connected yet"}
           </span>
         </div>
+        <h1 className="text-xl font-semibold tracking-tight">Connect your assistant</h1>
         <p className="text-sm text-muted-foreground">
-          This is what you paid for, so pick where you work and wire it up. Takes about a minute.
+          Required to continue. This is what makes the rest of Ripplewatch work, so pick where you work and wire it
+          up. Takes about a minute.
         </p>
       </CardHeader>
       <CardContent>
@@ -196,9 +198,11 @@ export function McpConnectStep({
 
         <div className="mt-8 flex items-center justify-between">
           <p className="text-xs text-muted-foreground">
-            {connected ? "You're set. The rest is optional." : "You can finish this later from Settings → Connect."}
+            {connected
+              ? "You're set."
+              : "Waiting for the connection. This updates on its own, no need to refresh."}
           </p>
-          <Button onClick={onContinue}>
+          <Button onClick={onContinue} disabled={!connected}>
             Continue
             <ArrowRight className="size-4" />
           </Button>
