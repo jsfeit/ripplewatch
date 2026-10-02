@@ -7,14 +7,14 @@ export const metadata = { title: "Get started" };
 // Where a Connect signup lands right after checkout (see the return_url in
 // createConnectSignupSession) — before /app/settings, not after. Checkout
 // itself only asks for a company name and a card, on purpose, to keep
-// signup fast. The first thing shown here is connecting an assistant (the
-// one step that makes the purchase do anything); positioning, ICP, and
-// competitors follow as optional, skippable context. An account only stops
-// landing here once it's explicitly finished or skipped that — see
-// connect_get_started_dismissed_at, set by /api/connect/onboarding/complete
-// or /api/connect/onboarding/skip — not based on whether any field happens
-// to be filled in, since connecting the assistant alone is a complete,
-// valid stopping point.
+// signup fast. Four required-feeling steps follow: connecting an
+// assistant and adding a competitor are both mandatory (see
+// get-started-flow.tsx — the assistant step blocks Continue until it's
+// actually connected, and the server rejects a competitor-less submit in
+// /api/connect/onboarding/complete), since neither the product nor the
+// rest of this wizard means anything without them. Business context and
+// Slack stay optional. An account only stops landing here once
+// connect_get_started_dismissed_at is set, by that same complete route.
 export default async function GetStartedPage() {
   const supabase = await createClient();
   const {

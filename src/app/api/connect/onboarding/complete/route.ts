@@ -39,16 +39,12 @@ export async function POST(request: Request) {
     competitors,
     hasSalesCrm,
     hasPlg,
-    lostDealReasons,
-    churnReasons,
   }: {
     positioning?: string;
     icp?: string;
     competitors: CompetitorInput[];
     hasSalesCrm?: boolean;
     hasPlg?: boolean;
-    lostDealReasons?: string;
-    churnReasons?: string;
   } = body;
 
   const namedCompetitors = (competitors ?? []).filter((c) => c.name?.trim());
@@ -63,8 +59,6 @@ export async function POST(request: Request) {
       icp: icp?.trim() || null,
       has_sales_crm: Boolean(hasSalesCrm),
       has_plg: Boolean(hasPlg),
-      lost_deal_notes: lostDealReasons?.trim() || null,
-      churn_notes: churnReasons?.trim() || null,
       connect_get_started_dismissed_at: new Date().toISOString(),
     })
     .eq("id", accountId);
