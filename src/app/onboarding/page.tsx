@@ -27,6 +27,13 @@ export default async function OnboardingPage() {
     hasAccount = Boolean(profile?.account_id);
   }
 
+  // Set at signUp() time (see connect-purchase.tsx) so the company name
+  // survives even when the confirmation link is opened in a different
+  // tab/window than the one that filled the form — the common case, and
+  // the reason people were landing back on a blank "company name" field
+  // after already typing it once.
+  const pendingCompanyName = (user?.user_metadata?.company_name as string | undefined) ?? null;
+
   return (
     <div className="min-h-screen bg-secondary/30">
       <header className="border-b border-border bg-background">
@@ -41,7 +48,11 @@ export default async function OnboardingPage() {
       </header>
       <main className="mx-auto max-w-3xl px-6 py-12">
         <Suspense>
-          <OnboardingEntry initiallySignedIn={Boolean(user)} hasAccount={hasAccount} />
+          <OnboardingEntry
+            initiallySignedIn={Boolean(user)}
+            hasAccount={hasAccount}
+            pendingCompanyName={pendingCompanyName}
+          />
         </Suspense>
       </main>
     </div>

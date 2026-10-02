@@ -23,7 +23,15 @@ type Path = "choose" | "dashboard" | "connect";
 // /api/stripe/checkout/route.ts, which is what actually stops a direct API
 // call). The assistant path is a purchase of Ripplewatch Connect (account,
 // then Stripe Checkout) and is unaffected.
-export function OnboardingEntry({ initiallySignedIn, hasAccount }: { initiallySignedIn: boolean; hasAccount: boolean }) {
+export function OnboardingEntry({
+  initiallySignedIn,
+  hasAccount,
+  pendingCompanyName,
+}: {
+  initiallySignedIn: boolean;
+  hasAccount: boolean;
+  pendingCompanyName: string | null;
+}) {
   const searchParams = useSearchParams();
   const requestedPath = searchParams.get("path");
   const alreadyDecided = initiallySignedIn || hasAccount || Boolean(searchParams.get("plan")) || requestedPath === "dashboard";
@@ -94,7 +102,7 @@ export function OnboardingEntry({ initiallySignedIn, hasAccount }: { initiallySi
             only pay for what you use.
           </p>
         </div>
-        <ConnectPurchase initiallySignedIn={initiallySignedIn} />
+        <ConnectPurchase initiallySignedIn={initiallySignedIn} pendingCompanyName={pendingCompanyName} />
       </div>
     );
   }
