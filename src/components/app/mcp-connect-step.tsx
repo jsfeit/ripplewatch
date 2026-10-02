@@ -109,8 +109,10 @@ export function McpConnectStep({
               onCopy={() => copyText(CONNECT_MCP_URL, setCopiedUrl)}
               clientSteps={[
                 "Go to Settings → Connectors → Add custom connector.",
-                "Paste the URL, then sign in to Ripplewatch and approve when it asks.",
+                "Paste the URL. If it shows Authentication/OAuth client options, leave the detected defaults and continue.",
+                "Sign in to Ripplewatch and approve when it asks.",
               ]}
+              note="Already added this once and it's not prompting you to sign in? Remove the existing connector first, then add it fresh — editing an existing one can reuse a stale login."
             />
           </TabsContent>
 
@@ -121,8 +123,10 @@ export function McpConnectStep({
               onCopy={() => copyText(CONNECT_MCP_URL, setCopiedUrl)}
               clientSteps={[
                 "Go to Settings → Connectors → Advanced → Add custom connector.",
-                "Paste the URL, then sign in to Ripplewatch and approve when it asks.",
+                "Paste the URL. If it shows Authentication/OAuth client options, leave the detected defaults and continue.",
+                "Sign in to Ripplewatch and approve when it asks.",
               ]}
+              note="Already added this once and it's not prompting you to sign in? Remove the existing connector first, then add it fresh — editing an existing one can reuse a stale login."
             />
           </TabsContent>
 
@@ -209,40 +213,45 @@ function Steps({
   copied,
   onCopy,
   clientSteps,
+  note,
 }: {
   url: string;
   copied: boolean;
   onCopy: () => void;
   clientSteps: string[];
+  note?: string;
 }) {
   return (
-    <ol className="space-y-3 text-sm">
-      <li className="flex gap-3">
-        <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-          1
-        </span>
-        <div className="min-w-0 flex-1">
-          <p>Copy this URL.</p>
-          <div className="mt-1.5 flex items-center gap-2">
-            <code className="min-w-0 flex-1 truncate rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs">
-              {url}
-            </code>
-            <Button variant="outline" size="sm" onClick={onCopy}>
-              {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-              {copied ? "Copied" : "Copy"}
-            </Button>
-          </div>
-        </div>
-      </li>
-      {clientSteps.map((step, i) => (
-        <li key={step} className="flex gap-3">
+    <>
+      <ol className="space-y-3 text-sm">
+        <li className="flex gap-3">
           <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-            {i + 2}
+            1
           </span>
-          <p>{step}</p>
+          <div className="min-w-0 flex-1">
+            <p>Copy this URL.</p>
+            <div className="mt-1.5 flex items-center gap-2">
+              <code className="min-w-0 flex-1 truncate rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs">
+                {url}
+              </code>
+              <Button variant="outline" size="sm" onClick={onCopy}>
+                {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                {copied ? "Copied" : "Copy"}
+              </Button>
+            </div>
+          </div>
         </li>
-      ))}
-    </ol>
+        {clientSteps.map((step, i) => (
+          <li key={step} className="flex gap-3">
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+              {i + 2}
+            </span>
+            <p>{step}</p>
+          </li>
+        ))}
+      </ol>
+      {note ? <p className="mt-4 text-xs text-muted-foreground">{note}</p> : null}
+    </>
   );
 }
 
