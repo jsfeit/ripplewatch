@@ -42,7 +42,7 @@ export default async function SettingsPage() {
     db
       .from("accounts")
       .select(
-        "id, tier, status, subscription_status, contact_email, demo_mode, referral_code, slack_digest_day, slack_digest_hour, stripe_customer_id, stripe_subscription_id, timezone, mcp_last_connected_at"
+        "id, tier, status, subscription_status, contact_email, demo_mode, referral_code, slack_digest_day, slack_digest_hour, stripe_customer_id, stripe_subscription_id, timezone, mcp_last_connected_at, positioning, icp"
       )
       .eq("id", accountId)
       .single(),
@@ -87,6 +87,8 @@ export default async function SettingsPage() {
     timezone: string;
     slackDigestDay: number;
     slackDigestHour: number;
+    hasPositioning: boolean;
+    competitorCount: number;
   } | null = null;
   if (account.tier === "connect") {
     const [{ data: wallet }, { data: ledgerRows }] = await Promise.all([
@@ -124,6 +126,8 @@ export default async function SettingsPage() {
       timezone: account.timezone,
       slackDigestDay: account.slack_digest_day,
       slackDigestHour: account.slack_digest_hour,
+      hasPositioning: Boolean(account.positioning?.trim() || account.icp?.trim()),
+      competitorCount: (competitors ?? []).length,
     };
   }
 

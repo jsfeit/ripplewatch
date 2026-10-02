@@ -39,6 +39,8 @@ export function ConnectPanel({
   timezone,
   slackDigestDay,
   slackDigestHour,
+  hasPositioning,
+  competitorCount,
   disconnectIntegrationAction,
 }: {
   balanceUsd: number;
@@ -53,6 +55,8 @@ export function ConnectPanel({
   timezone: string;
   slackDigestDay: number;
   slackDigestHour: number;
+  hasPositioning: boolean;
+  competitorCount: number;
   disconnectIntegrationAction: (formData: FormData) => void;
 }) {
   const router = useRouter();
@@ -124,7 +128,7 @@ export function ConnectPanel({
   const connected = Boolean(mcpLastConnectedAt);
 
   const connectAssistantCard = (
-    <div className="rounded-xl border border-border bg-card p-6">
+    <div id="connect-assistant" className="scroll-mt-6 rounded-xl border border-border bg-card p-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-base font-semibold">Connect your assistant</h2>
         <span
@@ -193,7 +197,7 @@ export function ConnectPanel({
   );
 
   const slackCard = (
-    <div className="rounded-xl border border-border bg-card p-6">
+    <div id="connect-slack" className="scroll-mt-6 rounded-xl border border-border bg-card p-6">
       <h2 className="text-base font-semibold">Slack delivery</h2>
       <p className="mt-1 text-sm text-muted-foreground">
         Get a weekly Momentum digest in a channel, on top of asking your assistant directly.
@@ -216,6 +220,61 @@ export function ConnectPanel({
     </div>
   );
 
+  // The one obvious step after checkout is connecting an assistant — nothing
+  // else here is. This card names everything else that's still worth doing
+  // and how, then disappears once it's all done rather than lingering as
+  // permanent clutter for an account that's fully set up.
+  const checklistItems = [
+    {
+      label: "Connect your assistant",
+      done: connected,
+      hint: <a href="#connect-assistant" className="underline underline-offset-2 hover:text-foreground">See steps below</a>,
+    },
+    {
+      label: "Tell it about your business",
+      done: hasPositioning,
+      hint: `Ask it: "We help [who] do [what]. Our main competitors are..."`,
+    },
+    {
+      label: "Add your competitors",
+      done: competitorCount > 0,
+      hint: `Ask it: "Start tracking [competitor name], [their website]."`,
+    },
+    {
+      label: "Connect Slack (optional)",
+      done: slackConnected,
+      hint: <a href="#connect-slack" className="underline underline-offset-2 hover:text-foreground">See below</a>,
+    },
+  ];
+  const doneCount = checklistItems.filter((i) => i.done).length;
+
+  const checklistCard =
+    hasSubscription && doneCount < checklistItems.length ? (
+      <div className="rounded-xl border border-border bg-card p-6">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-base font-semibold">Getting the most out of {CONNECT_NAME}</h2>
+          <span className="text-xs text-muted-foreground">
+            {doneCount} of {checklistItems.length} done
+          </span>
+        </div>
+        <ul className="mt-4 space-y-3 text-sm">
+          {checklistItems.map((item) => (
+            <li key={item.label} className="flex items-start gap-3">
+              {item.done ? (
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
+              ) : (
+                <Circle className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+              )}
+              <div className="min-w-0">
+                <p className={item.done ? "text-muted-foreground line-through" : ""}>{item.label}</p>
+                {!item.done ? <p className="mt-0.5 text-xs text-muted-foreground">{item.hint}</p> : null}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ) : null;
+
   return (
     <div className="min-w-0 space-y-6">
       {justPaid ? (
@@ -225,6 +284,7 @@ export function ConnectPanel({
         </div>
       ) : null}
 
+      {checklistCard}
       {hasSubscription ? connectAssistantCard : null}
       {hasSubscription ? slackCard : null}
 

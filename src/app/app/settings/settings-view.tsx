@@ -96,6 +96,8 @@ export function SettingsView({
     timezone: string;
     slackDigestDay: number;
     slackDigestHour: number;
+    hasPositioning: boolean;
+    competitorCount: number;
   } | null;
 }) {
   const [error, setError] = useState("");
@@ -251,6 +253,8 @@ export function SettingsView({
             timezone={connect.timezone}
             slackDigestDay={connect.slackDigestDay}
             slackDigestHour={connect.slackDigestHour}
+            hasPositioning={connect.hasPositioning}
+            competitorCount={connect.competitorCount}
             disconnectIntegrationAction={disconnectIntegrationAction}
           />
         </TabsContent>
