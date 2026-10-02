@@ -65,6 +65,7 @@ export async function POST(request: Request) {
       has_plg: Boolean(hasPlg),
       lost_deal_notes: lostDealReasons?.trim() || null,
       churn_notes: churnReasons?.trim() || null,
+      connect_get_started_dismissed_at: new Date().toISOString(),
     })
     .eq("id", accountId);
   if (accountError) {

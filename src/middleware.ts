@@ -108,8 +108,11 @@ export async function middleware(request: NextRequest) {
     if (account?.tier === "connect") {
       // /app/get-started is the one-time post-checkout context step (see
       // /app/get-started/page.tsx) — it redirects itself to Settings once
-      // an account already has positioning or a competitor, so it's safe
-      // to always allow rather than needing its own status check here.
+      // connect_get_started_dismissed_at is set, so it's safe to always
+      // allow rather than needing its own status check here. The dashboard
+      // being unreachable here also means the dashboard's product tour
+      // (gated on reaching /app/dashboard, not on tier) can never fire for
+      // a Connect account.
       const allowed = pathname.startsWith("/app/settings") || pathname.startsWith("/app/get-started");
       if (!allowed) {
         const url = request.nextUrl.clone();
