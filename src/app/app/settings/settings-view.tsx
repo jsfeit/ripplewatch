@@ -10,7 +10,7 @@ import { SlackDigestSchedule } from "@/components/app/slack-digest-schedule";
 import { TeamManager } from "@/components/app/team-manager";
 import { ApiKeysManager } from "@/components/app/api-keys-manager";
 import { ConnectedApps } from "@/components/app/connected-apps";
-import { ConnectPanel, type ConnectLedgerRow } from "@/components/app/connect-panel";
+import { ConnectPanel, type ConnectFirstLook, type ConnectLedgerRow } from "@/components/app/connect-panel";
 import { WinLossEmailAddress } from "@/components/app/win-loss-email-address";
 import { ReferralCodeManager } from "@/components/app/referral-code-manager";
 import { CompetitorManager } from "@/components/app/competitor-manager";
@@ -98,6 +98,7 @@ export function SettingsView({
     slackDigestHour: number;
     hasPositioning: boolean;
     competitorCount: number;
+    firstLook: ConnectFirstLook;
   } | null;
 }) {
   const [error, setError] = useState("");
@@ -255,6 +256,7 @@ export function SettingsView({
             slackDigestHour={connect.slackDigestHour}
             hasPositioning={connect.hasPositioning}
             competitorCount={connect.competitorCount}
+            firstLook={connect.firstLook}
             disconnectIntegrationAction={disconnectIntegrationAction}
           />
         </TabsContent>

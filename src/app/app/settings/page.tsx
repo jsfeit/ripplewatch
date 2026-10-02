@@ -5,6 +5,8 @@ import { computeMomentum, type MomentumResult } from "@/lib/momentum";
 import { SettingsView } from "./settings-view";
 import type { ConnectLedgerRow } from "@/components/app/connect-panel";
 import { FeedbackButton } from "@/components/app/feedback-button";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { loadFirstLook, type FirstLook } from "@/lib/first-look";
 
 export const metadata = { title: "Settings" };
 export const dynamic = "force-dynamic";
@@ -89,9 +91,10 @@ export default async function SettingsPage() {
     slackDigestHour: number;
     hasPositioning: boolean;
     competitorCount: number;
+    firstLook: Pick<FirstLook, "companyName" | "crawl" | "topSignals" | "starterPrompts">;
   } | null = null;
   if (account.tier === "connect") {
-    const [{ data: wallet }, { data: ledgerRows }] = await Promise.all([
+    const [{ data: wallet }, { data: ledgerRows }, firstLook] = await Promise.all([
       db
         .from("connect_wallets")
         .select("balance_micros, auto_reload_enabled, reload_amount_cents, reload_threshold_cents, reload_failed_at")
@@ -103,6 +106,9 @@ export default async function SettingsPage() {
         .eq("account_id", accountId)
         .order("created_at", { ascending: false })
         .limit(25),
+      // Admin client: crawl_runs/crawl_jobs aren't customer-readable, and
+      // accountId here is already resolved server-side, so this stays scoped.
+      loadFirstLook(createAdminClient(), accountId),
     ]);
     connect = {
       balanceUsd: Number(wallet?.balance_micros ?? 0) / 1_000_000,
@@ -128,6 +134,12 @@ export default async function SettingsPage() {
       slackDigestHour: account.slack_digest_hour,
       hasPositioning: Boolean(account.positioning?.trim() || account.icp?.trim()),
       competitorCount: (competitors ?? []).length,
+      firstLook: {
+        companyName: firstLook.companyName,
+        crawl: firstLook.crawl,
+        topSignals: firstLook.topSignals,
+        starterPrompts: firstLook.starterPrompts,
+      },
     };
   }
 
