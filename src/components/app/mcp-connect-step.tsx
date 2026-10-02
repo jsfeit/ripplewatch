@@ -13,8 +13,8 @@ import { cn } from "@/lib/utils";
 // The first thing a Connect account sees after checkout: get the assistant
 // talking to Ripplewatch before anything else, the way Firecrawl and other
 // MCP-first products lead with "connect your agent" rather than a form.
-// Everything else (positioning, competitors, Slack) is useful but optional —
-// this is the one step that makes the purchase actually do something.
+// Everything else (positioning, competitors, Slack) is useful but optional.
+// This is the one step that makes the purchase actually do something.
 export function McpConnectStep({
   mcpLastConnectedAt,
   onContinue,
@@ -90,7 +90,7 @@ export function McpConnectStep({
           </span>
         </div>
         <p className="text-sm text-muted-foreground">
-          This is what you paid for — pick where you work and wire it up. Takes about a minute.
+          This is what you paid for, so pick where you work and wire it up. Takes about a minute.
         </p>
       </CardHeader>
       <CardContent>
@@ -112,7 +112,7 @@ export function McpConnectStep({
                 "Paste the URL. If it shows Authentication/OAuth client options, leave the detected defaults and continue.",
                 "Sign in to Ripplewatch and approve when it asks.",
               ]}
-              note="Already added this once and it's not prompting you to sign in? Remove the existing connector first, then add it fresh — editing an existing one can reuse a stale login."
+              note="Already added this once and it's not prompting you to sign in? Remove the existing connector first, then add it fresh. Editing an existing one can reuse a stale login."
             />
           </TabsContent>
 
@@ -126,14 +126,14 @@ export function McpConnectStep({
                 "Paste the URL. If it shows Authentication/OAuth client options, leave the detected defaults and continue.",
                 "Sign in to Ripplewatch and approve when it asks.",
               ]}
-              note="Already added this once and it's not prompting you to sign in? Remove the existing connector first, then add it fresh — editing an existing one can reuse a stale login."
+              note="Already added this once and it's not prompting you to sign in? Remove the existing connector first, then add it fresh. Editing an existing one can reuse a stale login."
             />
           </TabsContent>
 
           <TabsContent value="claude-code" className="mt-4 space-y-4">
             <div>
               <p className="text-sm">
-                Run this in your terminal. It needs an API key — generate one below if you haven&apos;t yet.
+                Run this in your terminal. It needs an API key, so generate one below if you haven&apos;t yet.
               </p>
               <div className="mt-2 flex items-start gap-2">
                 <pre className="min-w-0 flex-1 overflow-x-auto rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs">
@@ -196,7 +196,7 @@ export function McpConnectStep({
 
         <div className="mt-8 flex items-center justify-between">
           <p className="text-xs text-muted-foreground">
-            {connected ? "You're set — the rest is optional." : "You can finish this later from Settings → Connect."}
+            {connected ? "You're set. The rest is optional." : "You can finish this later from Settings → Connect."}
           </p>
           <Button onClick={onContinue}>
             Continue
@@ -283,7 +283,7 @@ function ApiKeyBlock({
   }
   return (
     <div>
-      <p className="text-xs text-muted-foreground">Copy this now — it won&apos;t be shown again.</p>
+      <p className="text-xs text-muted-foreground">Copy this now, it won&apos;t be shown again.</p>
       <div className="mt-1.5 flex items-center gap-2">
         <code className="min-w-0 flex-1 truncate rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs">
           {apiKey}
