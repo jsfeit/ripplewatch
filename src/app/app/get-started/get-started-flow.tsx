@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Loader2, Plus } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CompetitorRow, type CompetitorInput } from "@/components/app/competitor-row";
 import { IntegrationConnector } from "@/components/app/integration-connector";
 import { McpConnectStep } from "@/components/app/mcp-connect-step";
+import { ONBOARDING_VALUE, type OnboardingStepKey } from "@/lib/onboarding-value";
 
 const TOTAL_STEPS = 4;
 
@@ -22,10 +23,10 @@ const TOTAL_STEPS = 4;
 // with nothing to compare you against can't produce anything useful. See
 // /api/connect/onboarding/complete, which has rejected a competitor-less
 // submission since before this restructure.
-const WIZARD_STEPS = [
-  { title: "Tell it about your business", optional: true },
-  { title: "Add your competitors", optional: false },
-  { title: "Connect Slack", optional: true },
+const WIZARD_STEPS: { title: string; optional: boolean; key: OnboardingStepKey }[] = [
+  { title: "Tell it about your business", optional: true, key: "business" },
+  { title: "Add your competitors", optional: false, key: "competitors" },
+  { title: "Connect Slack", optional: true, key: "slack" },
 ];
 
 export function GetStartedFlow({
@@ -37,6 +38,8 @@ export function GetStartedFlow({
 }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
+  // What the step just finished made better, shown at the top of the next one.
+  const [justUnlocked, setJustUnlocked] = useState<string | null>(null);
   const [positioning, setPositioning] = useState("");
   const [icp, setIcp] = useState("");
   const [hasSalesCrm, setHasSalesCrm] = useState(false);
@@ -84,16 +87,38 @@ export function GetStartedFlow({
 
   if (step === 0) {
     return (
-      <McpConnectStep mcpLastConnectedAt={mcpLastConnectedAt} onContinue={() => setStep(1)} />
+      <McpConnectStep
+        mcpLastConnectedAt={mcpLastConnectedAt}
+        onContinue={() => {
+          setJustUnlocked(ONBOARDING_VALUE.connect.unlocked());
+          setStep(1);
+        }}
+      />
     );
   }
 
   const wizardStep = step - 1;
-  const { title, optional } = WIZARD_STEPS[wizardStep];
+  const { title, optional, key } = WIZARD_STEPS[wizardStep];
+
+  function advance() {
+    // Only celebrate what actually happened: a blank business step unlocked nothing.
+    if (wizardStep === 0) {
+      setJustUnlocked(positioning.trim() || icp.trim() ? ONBOARDING_VALUE.business.unlocked() : null);
+    } else if (wizardStep === 1) {
+      setJustUnlocked(ONBOARDING_VALUE.competitors.unlocked(filledCompetitors.length));
+    }
+    setStep((s) => s + 1);
+  }
 
   return (
     <Card>
       <CardHeader>
+        {justUnlocked ? (
+          <p className="mb-1 flex items-start gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm text-primary">
+            <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
+            {justUnlocked}
+          </p>
+        ) : null}
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Step {step + 1} of {TOTAL_STEPS}
           {optional ? " · optional" : ""}
@@ -106,6 +131,7 @@ export function GetStartedFlow({
               ? "Required. Your assistant can't compare you to anyone until it knows who to compare you to, and this is the one piece of setup nothing else substitutes for."
               : "Get a weekly digest in a channel, on top of asking directly. Skip this if you'd rather set it up later."}
         </p>
+        <p className="mt-1 rounded-md bg-primary/[0.06] px-3 py-2 text-sm">{ONBOARDING_VALUE[key].unlocks}</p>
       </CardHeader>
       <CardContent>
         {wizardStep === 0 && (
@@ -188,12 +214,15 @@ export function GetStartedFlow({
         {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
 
         <div className="mt-6 flex items-center justify-between">
-          <Button type="button" variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))}>
+          <Button type="button" variant="ghost" onClick={() => {
+              setJustUnlocked(null);
+              setStep((s) => Math.max(0, s - 1));
+            }}>
             <ArrowLeft className="size-4" />
             Back
           </Button>
           {wizardStep < WIZARD_STEPS.length - 1 ? (
-            <Button type="button" onClick={() => setStep((s) => s + 1)} disabled={wizardStep === 1 && !hasCompetitor}>
+            <Button type="button" onClick={advance} disabled={wizardStep === 1 && !hasCompetitor}>
               Continue
               <ArrowRight className="size-4" />
             </Button>

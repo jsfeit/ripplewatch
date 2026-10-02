@@ -909,6 +909,60 @@ export async function sendConnectWelcomeEmail(to: string, companyName: string, a
   if (result.error) throw new Error(result.error.message);
 }
 
+export type ConnectOnboardingEmail = {
+  subject: string;
+  headline: string;
+  paragraphs: string[];
+  // Customer-facing facts pulled from scraped sources are escaped here.
+  findings?: { competitor: string | null; title: string; why: string | null }[];
+  tryAsking?: string[];
+  ctaLabel: string;
+  ctaPath: string;
+};
+
+// Day-2 and day-7 emails for Connect accounts. The content is decided by the
+// cron from the account's actual state; this only renders it. Everything
+// interpolated is escaped, since competitor names and signal titles come from
+// customers and public web pages.
+export async function sendConnectOnboardingEmail(
+  to: string,
+  appUrl: string,
+  unsubscribeUrl: string,
+  email: ConnectOnboardingEmail
+) {
+  if (!isResendConfigured()) return;
+
+  const findings = (email.findings ?? [])
+    .map(
+      (f) =>
+        `<li style="margin-bottom:8px;"><strong>${escapeHtml(f.competitor ?? "")}${f.competitor ? ": " : ""}</strong>${escapeHtml(f.title)}${
+          f.why ? `<br /><span style="color:#666;font-size:13px;">${escapeHtml(f.why)}</span>` : ""
+        }</li>`
+    )
+    .join("");
+  const tryAsking = (email.tryAsking ?? []).map((p) => `<li style="margin-bottom:4px;">${escapeHtml(p)}</li>`).join("");
+
+  const result = await getResend().emails.send({
+    from: getFromEmail(),
+    to,
+    subject: email.subject,
+    html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+      <h2 style="margin:0 0 12px;">${escapeHtml(email.headline)}</h2>
+      ${email.paragraphs.map((p) => `<p style="color:#3a3a3a;font-size:14px;line-height:1.6;">${escapeHtml(p)}</p>`).join("")}
+      ${findings ? `<ul style="color:#3a3a3a;font-size:14px;line-height:1.6;padding-left:20px;">${findings}</ul>` : ""}
+      ${
+        tryAsking
+          ? `<p style="color:#3a3a3a;font-size:14px;margin:16px 0 4px;">Things to try asking your assistant:</p><ul style="color:#3a3a3a;font-size:14px;line-height:1.6;padding-left:20px;">${tryAsking}</ul>`
+          : ""
+      }
+      <a href="${appUrl}${email.ctaPath}" style="${CONNECT_EMAIL_BUTTON}">${escapeHtml(email.ctaLabel)}</a>
+      <p style="color:#888;font-size:12px;margin-top:24px;">Just reply if you want a hand; a person reads every one.
+        <br /><a href="${unsubscribeUrl}" style="color:#888;">Stop these setup emails</a></p>
+    </div>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
 // An auto-reload charge was declined, so reload is switched off. Says what
 // happened and the one thing to do, before answers actually stop.
 export async function sendConnectReloadFailedEmail(to: string, companyName: string, appUrl: string) {
