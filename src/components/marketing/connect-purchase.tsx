@@ -26,12 +26,25 @@ const OPENING_BALANCE_USD = CONNECT_DEFAULT_RELOAD_USD;
 // onboarding because it asks for far less (no competitors or positioning: the
 // assistant collects those as you use it). The account is created on hold and
 // only switched on by the Stripe webhook after the payment clears.
-export function ConnectPurchase({ initiallySignedIn }: { initiallySignedIn: boolean }) {
+export function ConnectPurchase({
+  initiallySignedIn,
+  pendingCompanyName,
+}: {
+  initiallySignedIn: boolean;
+  // Set when a signed-in user's account carries a company name from
+  // signUp() but has no Connect account yet — i.e. they're back from
+  // confirming their email. Read server-side from auth user_metadata
+  // rather than the sessionStorage draft below, which is empty whenever
+  // the confirm link opens in a different tab/window than the one that
+  // filled the form (the common case: webmail and most mail clients open
+  // links in a new tab). See /onboarding/page.tsx.
+  pendingCompanyName?: string | null;
+}) {
   const router = useRouter();
   const [companyName, setCompanyName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [status, setStatus] = useState<"idle" | "working" | "confirm-email">("idle");
+  const [status, setStatus] = useState<"idle" | "working" | "confirm-email" | "ready">("idle");
   const [error, setError] = useState("");
   const [checkout, setCheckout] = useState<number | null>(null);
   const startedRef = useRef(false);
@@ -60,25 +73,28 @@ export function ConnectPurchase({ initiallySignedIn }: { initiallySignedIn: bool
   }
 
   // Coming back from the email-confirmation link: signed in, no account yet,
-  // and a saved draft. Pick up where the form left off.
+  // and a name to confirm — from the same-tab sessionStorage draft when
+  // available, else from pendingCompanyName (the cross-tab case). Show a
+  // quick "welcome back" screen rather than silently firing the payment
+  // request: jumping straight into a Stripe modal with no transition reads
+  // as the page doing something unprompted.
   useEffect(() => {
     if (!initiallySignedIn || startedRef.current) return;
     const raw = sessionStorage.getItem(DRAFT_KEY);
-    if (!raw) return;
-    startedRef.current = true;
-    sessionStorage.removeItem(DRAFT_KEY);
-    try {
-      const draft = JSON.parse(raw) as Draft;
-      // Restoring a form saved before an external redirect.
-      /* eslint-disable react-hooks/set-state-in-effect */
-      setCompanyName(draft.companyName);
-      setStatus("working");
-      /* eslint-enable react-hooks/set-state-in-effect */
-      void createAccountAndPay(OPENING_BALANCE_USD, draft.companyName);
-    } catch {
-      // unreadable draft: the visible form still works
+    let name = pendingCompanyName?.trim() || "";
+    if (raw) {
+      sessionStorage.removeItem(DRAFT_KEY);
+      try {
+        name = (JSON.parse(raw) as Draft).companyName || name;
+      } catch {
+        // unreadable draft: fall through to pendingCompanyName, if any
+      }
     }
-  }, [initiallySignedIn]);
+    if (!name) return;
+    startedRef.current = true;
+    setCompanyName(name);
+    setStatus("ready");
+  }, [initiallySignedIn, pendingCompanyName]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -97,7 +113,10 @@ export function ConnectPurchase({ initiallySignedIn }: { initiallySignedIn: bool
         // email template builds the /auth/confirm link from
         // {{ .RedirectTo }} directly, so the real destination travels as
         // custom data instead, read back as {{ .Data.next }}.
-        options: { emailRedirectTo: window.location.origin, data: { next: "/onboarding?path=connect" } },
+        options: {
+          emailRedirectTo: window.location.origin,
+          data: { next: "/onboarding?path=connect", company_name: companyName.trim() },
+        },
       });
       if (signUpError) {
         sessionStorage.removeItem(DRAFT_KEY);
@@ -131,6 +150,42 @@ export function ConnectPurchase({ initiallySignedIn }: { initiallySignedIn: bool
       <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card p-8 text-center">
         <Loader2 className="size-8 animate-spin text-primary" />
         <p className="font-medium">Setting up your account…</p>
+      </div>
+    );
+  }
+
+  if (status === "ready") {
+    return (
+      <div className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-card p-8 text-center">
+        <CheckCircle2 className="size-8 text-primary" />
+        <div>
+          <p className="font-medium">Email confirmed — you&apos;re in, {companyName}.</p>
+          <p className="mt-1 text-sm text-muted-foreground">One payment step and {CONNECT_NAME} is live.</p>
+        </div>
+        <div className="w-full rounded-lg border border-border bg-secondary/40 p-3 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">{CONNECT_NAME} platform fee</span>
+            <span>${CONNECT_BASE_FEE_USD}/month</span>
+          </div>
+          <div className="mt-1 flex justify-between">
+            <span className="text-muted-foreground">Opening balance</span>
+            <span>${OPENING_BALANCE_USD}</span>
+          </div>
+          <div className="mt-2 flex justify-between border-t border-border pt-2 font-medium">
+            <span>Due today</span>
+            <span>${CONNECT_BASE_FEE_USD + OPENING_BALANCE_USD}</span>
+          </div>
+        </div>
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        <Button
+          className="w-full"
+          onClick={() => {
+            setStatus("working");
+            void createAccountAndPay(OPENING_BALANCE_USD, companyName);
+          }}
+        >
+          Continue to payment
+        </Button>
       </div>
     );
   }
