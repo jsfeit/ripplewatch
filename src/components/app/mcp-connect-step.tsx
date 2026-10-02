@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Circle, Copy, Check, Loader2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CONNECT_MCP_URL } from "@/lib/connect";
 import { timeAgo } from "@/lib/date";
@@ -74,24 +75,25 @@ export function McpConnectStep({
   const claudeCodeCommand = `claude mcp add --transport http ripplewatch ${CONNECT_MCP_URL} \\\n  --header "Authorization: Bearer ${apiKey ?? "<generate a key below>"}"`;
 
   return (
-    <div>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold tracking-tight">Connect your assistant</h1>
-        <span
-          className={cn(
-            "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
-            connected ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"
-          )}
-        >
-          {connected ? <CheckCircle2 className="size-3.5" /> : <Circle className="size-3.5" />}
-          {connected ? `Connected · active ${timeAgo(mcpLastConnectedAt!)}` : "Not connected yet"}
-        </span>
-      </div>
-      <p className="mt-1 text-sm text-muted-foreground">
-        This is what you paid for — pick where you work and wire it up. Takes about a minute.
-      </p>
-
-      <div className="mt-6">
+    <Card>
+      <CardHeader>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h1 className="text-xl font-semibold tracking-tight">Connect your assistant</h1>
+          <span
+            className={cn(
+              "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+              connected ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"
+            )}
+          >
+            {connected ? <CheckCircle2 className="size-3.5" /> : <Circle className="size-3.5" />}
+            {connected ? `Connected · active ${timeAgo(mcpLastConnectedAt!)}` : "Not connected yet"}
+          </span>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          This is what you paid for — pick where you work and wire it up. Takes about a minute.
+        </p>
+      </CardHeader>
+      <CardContent>
         <Tabs defaultValue="claude">
           <TabsList>
             <TabsTrigger value="claude">Claude</TabsTrigger>
@@ -137,13 +139,20 @@ export function McpConnectStep({
                   variant="outline"
                   size="sm"
                   className="shrink-0"
+                  disabled={keyLoading}
                   onClick={async () => {
                     const key = apiKey ?? (await ensureApiKey());
                     if (key) copyText(claudeCodeCommand.replace("<generate a key below>", key), setCopiedCommand);
                   }}
                 >
-                  {copiedCommand ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-                  {copiedCommand ? "Copied" : "Copy"}
+                  {keyLoading ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : copiedCommand ? (
+                    <Check className="size-3.5" />
+                  ) : (
+                    <Copy className="size-3.5" />
+                  )}
+                  {keyLoading ? "Generating" : copiedCommand ? "Copied" : "Copy"}
                 </Button>
               </div>
             </div>
@@ -180,18 +189,18 @@ export function McpConnectStep({
             />
           </TabsContent>
         </Tabs>
-      </div>
 
-      <div className="mt-8 flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
-          {connected ? "You're set — the rest is optional." : "You can finish this later from Settings → Connect."}
-        </p>
-        <Button onClick={onContinue}>
-          Continue
-          <ArrowRight className="size-4" />
-        </Button>
-      </div>
-    </div>
+        <div className="mt-8 flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            {connected ? "You're set — the rest is optional." : "You can finish this later from Settings → Connect."}
+          </p>
+          <Button onClick={onContinue}>
+            Continue
+            <ArrowRight className="size-4" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
