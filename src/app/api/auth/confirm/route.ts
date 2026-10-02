@@ -24,9 +24,15 @@ export async function POST(request: NextRequest) {
       // unparseable URL (e.g. "https://a.comhttps://b.com/path"). Only a
       // bare relative path needs `origin` prepended.
       const target = /^https?:\/\//.test(next) ? next : `${origin}${next}`;
-      return NextResponse.redirect(target);
+      // 303, not the default 307: this request is a POST (the form above),
+      // and a 307 preserves the method on redirect — the browser would
+      // replay the POST against `target`, a plain page with no POST
+      // handler, and get a 405 instead of actually landing there. 303
+      // forces the follow-up request to GET, which is what we want for a
+      // post-form-submission redirect regardless of where it points.
+      return NextResponse.redirect(target, 303);
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=confirmation-failed`);
+  return NextResponse.redirect(`${origin}/login?error=confirmation-failed`, 303);
 }
