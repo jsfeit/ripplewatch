@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveAccountContext } from "@/lib/impersonation";
 import { computeMomentum, type MomentumResult } from "@/lib/momentum";
 import { SettingsView } from "./settings-view";
+import { winLossInboxAddress } from "@/lib/win-loss-inbox";
 import type { ConnectLedgerRow } from "@/components/app/connect-panel";
 import { FeedbackButton } from "@/components/app/feedback-button";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -212,6 +213,7 @@ export default async function SettingsPage() {
         referrals={referrals ?? []}
         currentUserId={user.id}
         connect={connect}
+        winLossInbox={winLossInboxAddress(accountId)}
       />
     </div>
   );

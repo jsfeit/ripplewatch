@@ -4,13 +4,15 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { extractWinLossEntries } from "@/lib/anthropic";
 import { applyExtractedWinLossEntries } from "@/lib/win-loss-import";
 import { API_ACCESS_ALLOWED } from "@/lib/tier-limits";
+import { INBOX_PATTERN, inboxTokenAccepted } from "@/lib/win-loss-inbox";
 
 // Each account gets a personal inbox address, winloss+<accountId>@in.ripplewatch.ai
 // — forwarding a deal-closed email there (or CC'ing it, or a CRM automation
 // sending to it) needs no login, no CSV export, nothing to remember beyond
-// one email address. The +accountId token is how a single shared inbox
-// address routes to the right account with no signup step of its own.
-const RECIPIENT_PATTERN = /^winloss\+([0-9a-f-]{36})@in\.ripplewatch\.ai$/i;
+// one email address. The +accountId tag is how a single shared inbox
+// address routes to the right account with no signup step of its own. A signed
+// suffix (.<token>) is optional; see win-loss-inbox.ts.
+const RECIPIENT_PATTERN = INBOX_PATTERN;
 
 function stripHtml(html: string): string {
   return html
@@ -55,9 +57,13 @@ export async function POST(request: Request) {
   }
 
   const recipient = event.data.to.find((addr) => RECIPIENT_PATTERN.test(addr));
-  const accountId = recipient?.match(RECIPIENT_PATTERN)?.[1];
+  const match = recipient?.match(RECIPIENT_PATTERN);
+  const accountId = match?.[1];
   if (!accountId) {
     return NextResponse.json({ ok: true, ignored: "no matching account address" });
+  }
+  if (!inboxTokenAccepted(accountId, match?.[2])) {
+    return NextResponse.json({ ok: true, ignored: "address token missing or wrong" });
   }
 
   const supabase = createAdminClient();

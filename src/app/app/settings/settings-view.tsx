@@ -76,6 +76,7 @@ export function SettingsView({
   referrals,
   currentUserId,
   connect,
+  winLossInbox,
 }: {
   account: Account;
   competitors: Competitor[];
@@ -86,6 +87,7 @@ export function SettingsView({
   apiKeys: ApiKey[];
   referrals: Referral[];
   currentUserId: string;
+  winLossInbox: string;
   // Present only for Ripplewatch Connect accounts (see the Connect tab).
   connect: {
     balanceUsd: number;
@@ -269,7 +271,7 @@ export function SettingsView({
       {connect ? (
         <TabsContent value="data" className="mt-6">
           <ConnectDataPanel
-            accountId={account.id}
+            inboxAddress={winLossInbox}
             competitors={competitors.map((c) => ({ id: c.id, name: c.name }))}
           />
         </TabsContent>
@@ -672,7 +674,7 @@ export function SettingsView({
               </p>
             </CardHeader>
             <CardContent>
-              <WinLossEmailAddress accountId={account.id} />
+              <WinLossEmailAddress address={winLossInbox} />
             </CardContent>
           </Card>
         )}
