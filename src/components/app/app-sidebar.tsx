@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, LogOut, Menu, Settings, Sparkles, Waves, X } from "lucide-react";
+import { ListChecks, LayoutDashboard, LogOut, Menu, Settings, Sparkles, Waves, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
@@ -30,7 +30,13 @@ const TIER_LABELS: Record<string, string> = {
 // Settings. Dashboard has no assistant of its own, so it keeps both.
 const CONNECT_NAV = NAV.filter((item) => item.href !== "/app/dashboard" && item.href !== "/app/ask");
 
-export function AppSidebar({ tier }: { tier: string }) {
+export function AppSidebar({
+  tier,
+  setup,
+}: {
+  tier: string;
+  setup?: { done: number; total: number; wizardOpen: boolean } | null;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -129,6 +135,25 @@ export function AppSidebar({ tier }: { tier: string }) {
               </Link>
             );
           })}
+          {setup ? (
+            // Where someone lands if they wandered off mid-setup: back into the
+            // guided steps if those aren't finished, otherwise to the checklist.
+            <Link
+              href={setup.wizardOpen ? "/app/get-started" : "/app/settings?tab=connect#setup"}
+              className={cn(
+                "relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                pathname.startsWith("/app/get-started")
+                  ? "bg-primary/10 text-primary"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+              )}
+            >
+              <ListChecks className="size-4" />
+              Finish setup
+              <span className="ml-auto rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">
+                {setup.done}/{setup.total}
+              </span>
+            </Link>
+          ) : null}
         </nav>
         <div className="border-t border-sidebar-border p-4">
           <div className="flex items-center justify-between rounded-lg border border-sidebar-border bg-sidebar-accent/40 px-3 py-2.5">
