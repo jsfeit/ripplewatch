@@ -5,6 +5,7 @@ import { ActivityBeacon } from "@/components/app/activity-beacon";
 import { DemoBanner } from "@/components/app/demo-banner";
 import { createClient } from "@/lib/supabase/server";
 import { resolveAccountContext } from "@/lib/impersonation";
+import { setupProgress } from "@/lib/connect-setup";
 
 export default async function AppShellLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -19,9 +20,16 @@ export default async function AppShellLayout({ children }: { children: React.Rea
   let tier = "plus";
   let demoMode = false;
   let competitorNames: string[] = [];
+  // Only Connect accounts get a "Finish setup" shortcut in the sidebar; null
+  // once everything is done, so it disappears instead of nagging.
+  let setup: { done: number; total: number; wizardOpen: boolean } | null = null;
   if (accountId) {
     const [{ data: account }, { data: competitors }] = await Promise.all([
-      db.from("accounts").select("tier, demo_mode").eq("id", accountId).single(),
+      db
+        .from("accounts")
+        .select("tier, demo_mode, mcp_last_connected_at, positioning, icp, connect_get_started_dismissed_at")
+        .eq("id", accountId)
+        .single(),
       db.from("competitors").select("name").eq("account_id", accountId).order("created_at", { ascending: true }),
     ]);
     if (account) {
@@ -29,6 +37,25 @@ export default async function AppShellLayout({ children }: { children: React.Rea
       demoMode = account.demo_mode;
     }
     competitorNames = (competitors ?? []).map((c) => c.name);
+
+    if (account?.tier === "connect") {
+      const { data: slack } = await db
+        .from("integrations")
+        .select("connected")
+        .eq("account_id", accountId)
+        .eq("provider", "slack")
+        .eq("connected", true)
+        .limit(1);
+      const progress = setupProgress({
+        connected: Boolean(account.mcp_last_connected_at),
+        hasPositioning: Boolean(account.positioning?.trim() || account.icp?.trim()),
+        competitorCount: competitorNames.length,
+        slackConnected: (slack ?? []).length > 0,
+      });
+      if (progress.done < progress.total) {
+        setup = { ...progress, wizardOpen: !account.connect_get_started_dismissed_at };
+      }
+    }
   }
 
   return (
@@ -45,7 +72,7 @@ export default async function AppShellLayout({ children }: { children: React.Rea
       ) : null}
       <div className="flex flex-1 flex-col lg:flex-row">
         <div className="print:hidden">
-          <AppSidebar tier={tier} />
+          <AppSidebar tier={tier} setup={setup} />
         </div>
         <div className="flex-1 overflow-x-hidden">{children}</div>
         {user && !impersonation ? <ActivityBeacon /> : null}

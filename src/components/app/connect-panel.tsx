@@ -12,6 +12,7 @@ import { CONNECT_BASE_FEE_USD, CONNECT_DEFAULT_RELOAD_USD } from "@/lib/connect-
 import { CONNECT_MCP_URL, CONNECT_NAME } from "@/lib/connect";
 import { timeAgo } from "@/lib/date";
 import { cn } from "@/lib/utils";
+import { setupProgress } from "@/lib/connect-setup";
 import { ONBOARDING_VALUE } from "@/lib/onboarding-value";
 import { formatWinLossImportMessage, type ImportMessageData } from "@/lib/win-loss-import";
 
@@ -412,11 +413,11 @@ export function ConnectPanel({
       hint: <a href="#connect-slack" className="underline underline-offset-2 hover:text-foreground">See below</a>,
     },
   ];
-  const doneCount = checklistItems.filter((i) => i.done).length;
+  const { done: doneCount } = setupProgress({ connected, hasPositioning, competitorCount, slackConnected });
 
   const checklistCard =
     hasSubscription && doneCount < checklistItems.length ? (
-      <div className="rounded-xl border border-border bg-card p-6">
+      <div id="setup" className="scroll-mt-6 rounded-xl border border-border bg-card p-6">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-base font-semibold">Getting the most out of {CONNECT_NAME}</h2>
           <span className="text-xs text-muted-foreground">
