@@ -3,9 +3,8 @@
 import { useState } from "react";
 import { Copy, Check } from "lucide-react";
 
-export function WinLossEmailAddress({ accountId }: { accountId: string }) {
+export function WinLossEmailAddress({ address }: { address: string }) {
   const [copied, setCopied] = useState(false);
-  const address = `winloss+${accountId}@in.ripplewatch.ai`;
 
   async function copy() {
     await navigator.clipboard.writeText(address);

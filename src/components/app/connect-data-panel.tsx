@@ -19,7 +19,7 @@ const NOT_SURE = "none";
 // upload a file, or have their assistant pull it from a tool it can already
 // reach. There is deliberately no OAuth here: the assistant reads the other
 // tool through that tool's own MCP and hands the rows to Ripplewatch.
-export function ConnectDataPanel({ accountId, competitors }: { accountId: string; competitors: Competitor[] }) {
+export function ConnectDataPanel({ inboxAddress, competitors }: { inboxAddress: string; competitors: Competitor[] }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -183,7 +183,7 @@ export function ConnectDataPanel({ accountId, competitors }: { accountId: string
           Paste or forward a list of deals to this address and I&apos;ll pull out the reasons. Any layout works.
         </p>
         <div className="mt-3">
-          <WinLossEmailAddress accountId={accountId} />
+          <WinLossEmailAddress address={inboxAddress} />
         </div>
       </div>
 
