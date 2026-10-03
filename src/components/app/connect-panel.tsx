@@ -23,6 +23,13 @@ export type ConnectLedgerRow = {
   createdAt: string;
 };
 
+export type ConnectFirstLook = {
+  companyName: string;
+  crawl: { state: "none" | "running" | "ready"; done: number; total: number };
+  topSignals: { competitor: string | null; title: string; why: string | null; date: string }[];
+  starterPrompts: string[];
+};
+
 const money = (n: number) =>
   `${n < 0 ? "-" : ""}$${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -42,6 +49,7 @@ export function ConnectPanel({
   slackDigestHour,
   hasPositioning,
   competitorCount,
+  firstLook,
   disconnectIntegrationAction,
 }: {
   balanceUsd: number;
@@ -58,6 +66,7 @@ export function ConnectPanel({
   slackDigestHour: number;
   hasPositioning: boolean;
   competitorCount: number;
+  firstLook: ConnectFirstLook;
   disconnectIntegrationAction: (formData: FormData) => void;
 }) {
   const router = useRouter();
@@ -287,6 +296,91 @@ export function ConnectPanel({
     </div>
   );
 
+  // While the very first competitor check runs, say so (a brand-new account
+  // with an empty page and no explanation reads as broken) and keep the page
+  // fresh until it finishes. Voiced as the assistant, since that's who the
+  // customer will actually be talking to.
+  const crawlRunning = firstLook.crawl.state === "running";
+  // Scoring finishes a little after the crawl itself does, so a "ready" check
+  // with no findings yet gets a few more refreshes before settling on "nothing
+  // moved".
+  const awaitingFindings = firstLook.crawl.state === "ready" && firstLook.topSignals.length === 0;
+  useEffect(() => {
+    if (!crawlRunning && !awaitingFindings) return;
+    let ticks = 0;
+    const timer = setInterval(() => {
+      ticks += 1;
+      router.refresh();
+      if (!crawlRunning && ticks >= 4) clearInterval(timer);
+    }, 8000);
+    return () => clearInterval(timer);
+  }, [crawlRunning, awaitingFindings, router]);
+
+  const [copiedPrompt, setCopiedPrompt] = useState<string | null>(null);
+  async function copyPrompt(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedPrompt(text);
+      setTimeout(() => setCopiedPrompt(null), 1800);
+    } catch {
+      // clipboard blocked: the prompt is still readable on screen
+    }
+  }
+
+  const firstLookCard = (
+    <div className="rounded-xl border border-primary/25 bg-primary/[0.04] p-6">
+      <h2 className="text-base font-semibold">
+        {crawlRunning ? `I'm looking into ${firstLook.companyName}'s competitors now` : `Here's where we are, ${firstLook.companyName}`}
+      </h2>
+      {crawlRunning ? (
+        <div className="mt-2">
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-3.5 animate-spin" />
+            Checked {firstLook.crawl.done} of {firstLook.crawl.total}. This usually takes a few minutes, and this page
+            updates by itself.
+          </p>
+        </div>
+      ) : firstLook.topSignals.length > 0 ? (
+        <div className="mt-2">
+          <p className="text-sm text-muted-foreground">The first things worth your attention:</p>
+          <ul className="mt-2 space-y-2 text-sm">
+            {firstLook.topSignals.map((s, i) => (
+              <li key={i}>
+                <span className="font-medium">{s.competitor ? `${s.competitor}: ` : ""}</span>
+                {s.title}
+                {s.why ? <span className="block text-xs text-muted-foreground">{s.why}</span> : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <p className="mt-2 text-sm text-muted-foreground">
+          The first check is done and nothing big has moved. That&apos;s normal. I&apos;ll flag it as soon as something does.
+        </p>
+      )}
+
+      <p className="mt-4 text-sm font-medium">Try asking your assistant</p>
+      <ul className="mt-2 space-y-1.5">
+        {firstLook.starterPrompts.map((prompt) => (
+          <li key={prompt}>
+            <button
+              type="button"
+              onClick={() => void copyPrompt(prompt)}
+              className="flex w-full items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2 text-left text-sm hover:border-primary/50"
+            >
+              <span>{prompt}</span>
+              {copiedPrompt === prompt ? (
+                <Check className="size-3.5 shrink-0 text-primary" />
+              ) : (
+                <Copy className="size-3.5 shrink-0 text-muted-foreground" />
+              )}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+
   // The one obvious step after checkout is connecting an assistant — nothing
   // else here is. This card names everything else that's still worth doing
   // and how, then disappears once it's all done rather than lingering as
@@ -351,6 +445,7 @@ export function ConnectPanel({
         </div>
       ) : null}
 
+      {hasSubscription && competitorCount > 0 ? firstLookCard : null}
       {checklistCard}
       {hasSubscription ? connectAssistantCard : null}
       {hasSubscription ? winLossCard : null}

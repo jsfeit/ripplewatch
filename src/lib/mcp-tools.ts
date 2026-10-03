@@ -12,6 +12,7 @@ import { logWinLoss } from "@/lib/win-loss-log";
 import { logCustomerFeedback } from "@/lib/feedback-log";
 import { computeNextBestActions, type NextBestActions } from "@/lib/next-best-action";
 import { meteredForConnect, type UsageNote } from "@/lib/connect-metering";
+import { loadFirstLook } from "@/lib/first-look";
 
 // Signal titles and summaries come from public third-party pages, so they can
 // contain text written by anyone. Every tool that returns them says so, so an
@@ -57,6 +58,64 @@ const READ_ONLY = { readOnlyHint: true, destructiveHint: false, openWorldHint: f
 const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const;
 
 export function registerRipplewatchTools(server: McpServer) {
+  server.registerPrompt(
+    "get-started",
+    {
+      title: "Get started with Ripplewatch",
+      description: "A guided first run: what's been found on your competitors and what to try first.",
+    },
+    () => ({
+      messages: [
+        {
+          role: "user" as const,
+          content: {
+            type: "text" as const,
+            text: "I'm new to Ripplewatch. Use start_here and walk me through getting set up, one step at a time.",
+          },
+        },
+      ],
+    })
+  );
+
+  server.registerTool(
+    "start_here",
+    {
+      title: "Welcome and first steps",
+      description:
+        "Call this first in a new conversation, or whenever the user seems new, asks what Ripplewatch can do, or asks what to do next. Returns this customer's company name, whether their first competitor check has finished, the best early findings, prompts tailored to their competitors, and the single most useful next step. Use it to guide them like a friendly onboarding partner.",
+      inputSchema: z.object({}),
+      annotations: READ_ONLY,
+    },
+    async (_args, ctx) => {
+      const accountId = accountIdFrom(ctx as Ctx);
+      const look = await loadFirstLook(createAdminClient(), accountId);
+      const checking =
+        look.crawl.state === "running"
+          ? `First check is still running (${look.crawl.done} of ${look.crawl.total} competitors done). Say so honestly and offer something useful in the meantime, like sharpening their context.`
+          : look.crawl.state === "ready"
+            ? "First check is done. Lead with what was found."
+            : "No competitors are being watched yet. The first job is getting one named.";
+      return result(
+        {
+          note: UNTRUSTED_NOTE,
+          company: look.companyName,
+          competitors_tracked: look.competitors,
+          first_check: look.crawl,
+          early_findings: look.topSignals,
+          try_asking: look.starterPrompts,
+          how_to_guide: [
+            `Greet them warmly by company name (${look.companyName}), once, in one short sentence.`,
+            checking,
+            "Offer at most three things to try, phrased the way a colleague would, then let them choose. One step at a time; never dump this whole list.",
+            "If next_best_action is present, ask for it conversationally and use the matching tool to record only what they actually tell you.",
+            "After a successful step, say what just got better for them, then offer the next one.",
+          ],
+        },
+        look.next
+      );
+    }
+  );
+
   server.registerTool(
     "get_briefing",
     {
