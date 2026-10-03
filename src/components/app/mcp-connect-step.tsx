@@ -31,6 +31,7 @@ export function McpConnectStep({
   const [keyError, setKeyError] = useState("");
   const [copiedKey, setCopiedKey] = useState(false);
   const [copiedCommand, setCopiedCommand] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   useEffect(() => {
     // Poll for the moment /api/mcp records a real authenticated request,
@@ -48,6 +49,16 @@ export function McpConnectStep({
       setTimeout(() => setCopied(false), 1800);
     } catch {
       // clipboard blocked: the text is still selectable on screen
+    }
+  }
+
+  async function copyField(label: string, value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedField(label);
+      setTimeout(() => setCopiedField(null), 1800);
+    } catch {
+      // clipboard blocked: the value is still selectable on screen
     }
   }
 
@@ -120,6 +131,40 @@ export function McpConnectStep({
               ]}
               note="Already added this once and it's not prompting you to sign in? Remove the existing connector first, then add it fresh. Editing an existing one can reuse a stale login."
             />
+            <details className="mt-4 rounded-md border border-border p-3 text-sm">
+              <summary className="cursor-pointer font-medium">Sign-in not working? Connect with a key instead</summary>
+              <div className="mt-3 space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  In the same dialog, open the advanced options, set Authentication to &quot;No sign-in&quot;, then fill
+                  in the fields below. Nothing to approve afterwards.
+                </p>
+                {apiKey ? (
+                  <>
+                    <CopyField label="Name" value="Ripplewatch" copiedField={copiedField} onCopy={copyField} />
+                    <CopyField label="URL" value={CONNECT_MCP_URL} copiedField={copiedField} onCopy={copyField} />
+                    <CopyField label="Header name (Add header)" value="Authorization" copiedField={copiedField} onCopy={copyField} />
+                    <CopyField
+                      label="Header value"
+                      value={`Bearer ${apiKey}`}
+                      copiedField={copiedField}
+                      onCopy={copyField}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Copy the header value now, it won&apos;t be shown again. Tip: set Ripplewatch&apos;s tools to
+                      &quot;Always allow&quot; in the connector&apos;s settings so you aren&apos;t asked before every step.
+                    </p>
+                  </>
+                ) : (
+                  <div>
+                    <Button type="button" variant="outline" size="sm" onClick={ensureApiKey} disabled={keyLoading}>
+                      {keyLoading ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                      Generate my key and fields
+                    </Button>
+                    {keyError ? <p className="mt-2 text-sm text-destructive">{keyError}</p> : null}
+                  </div>
+                )}
+              </div>
+            </details>
           </TabsContent>
 
           <TabsContent value="chatgpt" className="mt-4">
@@ -299,6 +344,33 @@ function ApiKeyBlock({
         <Button variant="outline" size="sm" onClick={onCopy}>
           {copiedKey ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
           {copiedKey ? "Copied" : "Copy"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function CopyField({
+  label,
+  value,
+  copiedField,
+  onCopy,
+}: {
+  label: string;
+  value: string;
+  copiedField: string | null;
+  onCopy: (label: string, value: string) => void;
+}) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <div className="mt-1 flex items-center gap-2">
+        <code className="min-w-0 flex-1 truncate rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs">
+          {value}
+        </code>
+        <Button type="button" variant="outline" size="sm" onClick={() => onCopy(label, value)}>
+          {copiedField === label ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+          {copiedField === label ? "Copied" : "Copy"}
         </Button>
       </div>
     </div>
