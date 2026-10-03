@@ -14,6 +14,7 @@ export type NextActionTool =
   | "add_competitor"
   | "set_context"
   | "log_win_loss"
+  | "import_win_loss"
   | "log_customer_feedback"
   | "ask";
 
@@ -159,6 +160,19 @@ export async function computeNextBestActions(supabase: Client, accountId: string
       payoff: `With 3 or more, I can say whether their move lines up with the deals you're losing.`,
       value: bestGap.score,
       args: { competitor_name: bestGap.name },
+    });
+  }
+
+  // Nothing logged at all: the fastest way in is usually not typing deals one by
+  // one but pulling them from wherever they already live.
+  if (totalWinLoss === 0 && competitorList.length > 0) {
+    candidates.push({
+      id: "import-deal-history",
+      tool: "import_win_loss",
+      headline: "Tell me about a few deals you've won or lost, or let me pull them from your CRM.",
+      why: "I have no deal history yet, so I can't tell which competitor moves actually cost you business.",
+      payoff: "Answers get tied to your real wins and losses instead of general competitor news.",
+      value: 65,
     });
   }
 

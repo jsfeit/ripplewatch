@@ -10,6 +10,7 @@ import { SlackDigestSchedule } from "@/components/app/slack-digest-schedule";
 import { TeamManager } from "@/components/app/team-manager";
 import { ApiKeysManager } from "@/components/app/api-keys-manager";
 import { ConnectedApps } from "@/components/app/connected-apps";
+import { ConnectDataPanel } from "@/components/app/connect-data-panel";
 import { ConnectPanel, type ConnectFirstLook, type ConnectLedgerRow } from "@/components/app/connect-panel";
 import { WinLossEmailAddress } from "@/components/app/win-loss-email-address";
 import { ReferralCodeManager } from "@/components/app/referral-code-manager";
@@ -62,7 +63,7 @@ type ApiKey = Pick<
 >;
 type Referral = Pick<Database["public"]["Tables"]["referrals"]["Row"], "id" | "referred_at" | "qualified_at">;
 
-const KNOWN_TABS = ["connect", "competitors", "integrations", "team", "plan", "referrals", "digest", "developer", "appearance"] as const;
+const KNOWN_TABS = ["connect", "data", "competitors", "integrations", "team", "plan", "referrals", "digest", "developer", "appearance"] as const;
 
 export function SettingsView({
   account,
@@ -98,6 +99,7 @@ export function SettingsView({
     slackDigestHour: number;
     hasPositioning: boolean;
     competitorCount: number;
+    hasDealHistory: boolean;
     firstLook: ConnectFirstLook;
   } | null;
 }) {
@@ -223,6 +225,7 @@ export function SettingsView({
           // referrals: just its own billing tab plus the shared ones.
           <TabsList>
             <TabsTrigger value="connect">Connect</TabsTrigger>
+            <TabsTrigger value="data">Data</TabsTrigger>
             <TabsTrigger value="competitors">Competitors</TabsTrigger>
             <TabsTrigger value="team">Team</TabsTrigger>
             <TabsTrigger value="developer">Developer</TabsTrigger>
@@ -256,8 +259,18 @@ export function SettingsView({
             slackDigestHour={connect.slackDigestHour}
             hasPositioning={connect.hasPositioning}
             competitorCount={connect.competitorCount}
+            hasDealHistory={connect.hasDealHistory}
             firstLook={connect.firstLook}
             disconnectIntegrationAction={disconnectIntegrationAction}
+          />
+        </TabsContent>
+      ) : null}
+
+      {connect ? (
+        <TabsContent value="data" className="mt-6">
+          <ConnectDataPanel
+            accountId={account.id}
+            competitors={competitors.map((c) => ({ id: c.id, name: c.name }))}
           />
         </TabsContent>
       ) : null}

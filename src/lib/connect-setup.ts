@@ -5,9 +5,16 @@ export type SetupInput = {
   hasPositioning: boolean;
   competitorCount: number;
   slackConnected: boolean;
+  hasDealHistory: boolean;
 };
 
 export function setupProgress(input: SetupInput): { done: number; total: number } {
-  const steps = [input.connected, input.hasPositioning, input.competitorCount > 0, input.slackConnected];
+  const steps = [
+    input.connected,
+    input.hasPositioning,
+    input.competitorCount > 0,
+    input.hasDealHistory,
+    input.slackConnected,
+  ];
   return { done: steps.filter(Boolean).length, total: steps.length };
 }

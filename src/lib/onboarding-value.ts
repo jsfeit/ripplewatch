@@ -2,7 +2,7 @@
 // wizard, the Settings checklist and the emails all say the same thing.
 // `unlocks` is shown before someone does the step (why bother), `unlocked`
 // right after (what just got better). Written in the assistant's voice.
-export type OnboardingStepKey = "connect" | "business" | "competitors" | "slack";
+export type OnboardingStepKey = "connect" | "business" | "competitors" | "dealHistory" | "slack";
 
 export const ONBOARDING_VALUE: Record<OnboardingStepKey, { unlocks: string; unlocked: (n?: number) => string }> = {
   connect: {
@@ -17,6 +17,10 @@ export const ONBOARDING_VALUE: Record<OnboardingStepKey, { unlocks: string; unlo
     unlocks: "The moment you add one, I start checking their pricing, hiring, product changes and press. First findings usually land within minutes.",
     unlocked: (n = 1) =>
       `Watching ${n} competitor${n === 1 ? "" : "s"} now. First findings usually land within a few minutes.`,
+  },
+  dealHistory: {
+    unlocks: "Even one deal tells me which competitor moves actually cost you business, so my answers stop being general.",
+    unlocked: () => "Deal history is in. I can now tie competitor moves to your real wins and losses.",
   },
   slack: {
     unlocks: "A short weekly digest lands in the channel you pick, so you don't have to remember to ask.",

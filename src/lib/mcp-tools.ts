@@ -13,6 +13,9 @@ import { logCustomerFeedback } from "@/lib/feedback-log";
 import { computeNextBestActions, type NextBestActions } from "@/lib/next-best-action";
 import { meteredForConnect, type UsageNote } from "@/lib/connect-metering";
 import { loadFirstLook } from "@/lib/first-look";
+import { importWinLossText } from "@/lib/win-loss-import-text";
+import { logCallMentions } from "@/lib/call-mentions";
+import { hasMinimumBalance } from "@/lib/connect-wallet";
 
 // Signal titles and summaries come from public third-party pages, so they can
 // contain text written by anyone. Every tool that returns them says so, so an
@@ -58,6 +61,25 @@ const READ_ONLY = { readOnlyHint: true, destructiveHint: false, openWorldHint: f
 const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const;
 
 export function registerRipplewatchTools(server: McpServer) {
+  server.registerPrompt(
+    "import-my-deals",
+    {
+      title: "Bring in my deal history",
+      description: "Pull closed-won and closed-lost deals from a connected CRM or file into Ripplewatch.",
+    },
+    () => ({
+      messages: [
+        {
+          role: "user" as const,
+          content: {
+            type: "text" as const,
+            text: "Pull my closed-won and closed-lost deals from the last 90 days from my CRM, with the reason for each, and add them to Ripplewatch using import_win_loss. Pass the rows exactly as you read them. Ask me first if you need access to something.",
+          },
+        },
+      ],
+    })
+  );
+
   server.registerPrompt(
     "get-started",
     {
@@ -108,6 +130,7 @@ export function registerRipplewatchTools(server: McpServer) {
             checking,
             "Offer at most three things to try, phrased the way a colleague would, then let them choose. One step at a time; never dump this whole list.",
             "If next_best_action is present, ask for it conversationally and use the matching tool to record only what they actually tell you.",
+            "If they use a CRM, call recorder or support inbox that you can also reach, offer to pull recent closed-lost deals (import_win_loss) or competitor mentions on calls (log_call_mentions) from it, and tell them what you will read first.",
             "After a successful step, say what just got better for them, then offer the next one.",
           ],
         },
@@ -424,6 +447,111 @@ export function registerRipplewatchTools(server: McpServer) {
         },
         next
       );
+    }
+  );
+
+  server.registerTool(
+    "import_win_loss",
+    {
+      title: "Import many won or lost deals at once",
+      description:
+        "Bring in deal history in bulk. Use this when the user has a CRM, spreadsheet or other connected tool holding closed-won/closed-lost deals: read the rows there, then pass them here as raw text, one deal per line, header row first if there is one, exactly as you read them (do not summarize or rewrite). Ripplewatch classifies every row, ties tracked competitors to their reasons, and suggests competitors it isn't tracking yet. Ask the user before pulling their data, and only pass rows you actually read. Up to about 600 rows per call.",
+      inputSchema: z.object({
+        text: z
+          .string()
+          .min(1)
+          .max(60000)
+          .describe("Raw deal rows, one per line (CSV or plain text), header first if present, verbatim from the source."),
+        source: z.string().max(60).optional().describe("Where the rows came from, e.g. 'HubSpot' or 'Salesforce export'."),
+      }),
+      annotations: WRITE,
+    },
+    async ({ text }, ctx) => {
+      const accountId = accountIdFrom(ctx as Ctx);
+      const supabase = createAdminClient();
+      try {
+        // Same guard Ask uses: an account with no balance left shouldn't start
+        // paid work. The cost itself is recorded and billed in the daily usage
+        // charge, like uploads and inbound email.
+        if (tierFrom(ctx as Ctx) === "connect") {
+          const funds = await hasMinimumBalance(supabase, accountId);
+          if (!funds.ok) {
+            return failure("Your usage balance is too low to import right now. Add funds in Settings, then try again.");
+          }
+        }
+        const imported = await importWinLossText(supabase, accountId, null, text, 20);
+        if (!imported.ok) return failure(imported.error);
+        const r = imported.result;
+        const next = await computeNextBestActions(supabase, accountId);
+        return result(
+          {
+            rows_read: r.rowsConsidered,
+            relevant_entries_found: r.totalExtracted,
+            imported: r.imported,
+            already_logged: r.skipped,
+            unattributed_reasons_added: r.generalReasonsAdded + r.generalWonReasonsAdded,
+            suggested_new_competitors: r.suggestedCompetitors,
+            only_part_read: r.truncated,
+            note: r.truncated
+              ? "Only the first rows were read. Call again with the remaining rows."
+              : r.totalExtracted === 0
+                ? "Nothing in those rows had enough signal to keep. Check that they include an outcome, a competitor or a reason."
+                : undefined,
+          },
+          next
+        );
+      } catch (err) {
+        console.error("mcp import_win_loss failed:", err);
+        return failure("Could not import those deals. Try again with fewer rows.");
+      }
+    }
+  );
+
+  server.registerTool(
+    "log_call_mentions",
+    {
+      title: "Log competitor mentions from sales calls",
+      description:
+        "Record times a tracked competitor came up on a sales call, when the user has a call tool (Gong, Zoom, etc.) connected. Read the calls there, then pass only short verbatim snippets (a sentence or two) of where the competitor was mentioned, never full transcripts. Mentions of competitors that aren't tracked are reported back, not guessed. Ask the user before pulling their calls, and never invent a quote. Repeats are ignored, so refreshing is safe.",
+      inputSchema: z.object({
+        mentions: z
+          .array(
+            z.object({
+              competitor_name: z.string().min(1).describe("The tracked competitor that was mentioned."),
+              quote: z.string().min(1).max(500).describe("A short verbatim snippet from the call where they came up."),
+              occurred_on: z.string().optional().describe("Date of the call, YYYY-MM-DD, if known."),
+            })
+          )
+          .min(1)
+          .max(25),
+      }),
+      annotations: WRITE,
+    },
+    async ({ mentions }, ctx) => {
+      const accountId = accountIdFrom(ctx as Ctx);
+      const supabase = createAdminClient();
+      try {
+        const logged = await logCallMentions(
+          supabase,
+          accountId,
+          mentions.map((m) => ({ competitorName: m.competitor_name, quote: m.quote, occurredOn: m.occurred_on }))
+        );
+        if (!logged.ok) return failure(logged.error);
+        const next = await computeNextBestActions(supabase, accountId);
+        return result(
+          {
+            logged: logged.imported,
+            already_logged: logged.alreadyLogged,
+            not_tracked: logged.unmatchedCompetitors,
+            competitor_momentum_now: logged.momentum,
+            note: "Call mentions move a competitor's momentum once there are readings in two different 30-day windows, so the effect builds over a few weeks of refreshes.",
+          },
+          next
+        );
+      } catch (err) {
+        console.error("mcp log_call_mentions failed:", err);
+        return failure("Could not log those mentions.");
+      }
     }
   );
 

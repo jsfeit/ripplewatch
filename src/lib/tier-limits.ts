@@ -26,8 +26,9 @@ export const TIER_SIGNAL_SOURCES: Record<AccountTier, SignalType[]> = {
   connect: ["pricing", "job_posting", "news", "funding", "product_change"],
 };
 
-// CRM (HubSpot) read-only pull is a Plus feature — same gate shape as
-// CALL_INTEL_ALLOWED below.
+// CRM (HubSpot) read-only pull is a Plus feature. Connect accounts bring the
+// same data in through their assistant instead (see import_win_loss and
+// log_call_mentions in mcp-tools.ts), so there is no OAuth for them.
 export const CRM_ALLOWED: Record<AccountTier, boolean> = {
   plus: true,
   connect: false,
@@ -45,15 +46,16 @@ export function seatLimitLabel(tier: AccountTier): string {
   return limit === Infinity ? "unlimited" : String(limit);
 }
 
-// Zoom call-intelligence is Plus-only (Gong isn't connectable at all
-// yet — see "comingSoon" in settings-view.tsx, tier-independent).
+// Zoom call-intelligence is Plus-only (Gong isn't connectable at all yet,
+// see "comingSoon" in settings-view.tsx). Connect logs call mentions through
+// its assistant instead, see CRM_ALLOWED.
 export const CALL_INTEL_ALLOWED: Record<AccountTier, boolean> = {
   plus: true,
   connect: false,
 };
 
-// Intercom (churn/cancellation reasons) is Plus-only, matching the
-// pricing page's "Intercom (coming soon)" line item under Plus.
+// Intercom (churn/cancellation reasons) is Plus-only, matching the pricing
+// page's "Intercom (coming soon)" line item under Plus.
 export const INTERCOM_ALLOWED: Record<AccountTier, boolean> = {
   plus: true,
   connect: false,

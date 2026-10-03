@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Circle, Copy, Check, CreditCard, Loader2, Upload, Wallet } from "lucide-react";
+import { CheckCircle2, Circle, Copy, Check, CreditCard, Loader2, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConnectCheckoutModal } from "@/components/app/connect-checkout-modal";
 import { ConnectFundingPicker, fundingFromPicker } from "@/components/app/connect-funding-picker";
@@ -14,7 +15,6 @@ import { timeAgo } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { setupProgress } from "@/lib/connect-setup";
 import { ONBOARDING_VALUE } from "@/lib/onboarding-value";
-import { formatWinLossImportMessage, type ImportMessageData } from "@/lib/win-loss-import";
 
 export type ConnectLedgerRow = {
   id: string;
@@ -51,6 +51,7 @@ export function ConnectPanel({
   slackDigestHour,
   hasPositioning,
   competitorCount,
+  hasDealHistory,
   firstLook,
   disconnectIntegrationAction,
 }: {
@@ -68,6 +69,7 @@ export function ConnectPanel({
   slackDigestHour: number;
   hasPositioning: boolean;
   competitorCount: number;
+  hasDealHistory: boolean;
   firstLook: ConnectFirstLook;
   disconnectIntegrationAction: (formData: FormData) => void;
 }) {
@@ -81,31 +83,6 @@ export function ConnectPanel({
   const [justPaid, setJustPaid] = useState(false);
   const [reload, setReload] = useState(autoReload);
   const [savingReload, setSavingReload] = useState(false);
-  const winLossFileInputRef = useRef<HTMLInputElement>(null);
-  const [winLossUploading, setWinLossUploading] = useState(false);
-  const [winLossMessage, setWinLossMessage] = useState<string | null>(null);
-
-  async function handleWinLossFile(file: File) {
-    setWinLossUploading(true);
-    setWinLossMessage(null);
-    try {
-      const text = await file.text();
-      const res = await fetch("/api/competitors/win-loss/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Import failed.");
-      setWinLossMessage(formatWinLossImportMessage("Upload", data as ImportMessageData, false));
-    } catch (err) {
-      setWinLossMessage(err instanceof Error ? err.message : "Import failed.");
-    } finally {
-      setWinLossUploading(false);
-      if (winLossFileInputRef.current) winLossFileInputRef.current.value = "";
-    }
-  }
-
   async function saveReload(next: Partial<{ autoReloadEnabled: boolean; reloadAmountUsd: number; reloadThresholdUsd: number }>) {
     setSavingReload(true);
     setError("");
@@ -256,48 +233,6 @@ export function ConnectPanel({
     </div>
   );
 
-  const winLossCard = (
-    <div id="connect-win-loss" className="scroll-mt-6 rounded-xl border border-border bg-card p-6">
-      <h2 className="text-base font-semibold">Win/loss data</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Upload a CRM export or a plain list of deals and we&apos;ll pull out the win/loss and churn reasons for each
-        competitor. You can also just tell your assistant directly as deals happen.
-      </p>
-      {competitorCount === 0 ? (
-        <p className="mt-3 text-sm text-muted-foreground">Add a competitor first, then come back to upload here.</p>
-      ) : (
-        <div className="mt-3">
-          <input
-            ref={winLossFileInputRef}
-            type="file"
-            accept=".csv,text/csv,text/plain"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void handleWinLossFile(file);
-            }}
-          />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => winLossFileInputRef.current?.click()}
-            disabled={winLossUploading}
-          >
-            {winLossUploading ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
-            Upload a file
-          </Button>
-          {winLossUploading ? (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Reading it now. A large file can take a minute or two.
-            </p>
-          ) : winLossMessage ? (
-            <p className="mt-2 text-xs text-muted-foreground">{winLossMessage}</p>
-          ) : null}
-        </div>
-      )}
-    </div>
-  );
-
   // While the very first competitor check runs, say so (a brand-new account
   // with an empty page and no explanation reads as broken) and keep the page
   // fresh until it finishes. Voiced as the assistant, since that's who the
@@ -407,13 +342,23 @@ export function ConnectPanel({
       hint: `Ask it: "Start tracking [competitor name], [their website]."`,
     },
     {
+      label: "Add deal history",
+      value: ONBOARDING_VALUE.dealHistory,
+      done: hasDealHistory,
+      hint: (
+        <Link href="/app/settings?tab=data" className="underline underline-offset-2 hover:text-foreground">
+          Add a deal, email a list, or upload a file
+        </Link>
+      ),
+    },
+    {
       label: "Connect Slack (optional)",
       value: ONBOARDING_VALUE.slack,
       done: slackConnected,
       hint: <a href="#connect-slack" className="underline underline-offset-2 hover:text-foreground">See below</a>,
     },
   ];
-  const { done: doneCount } = setupProgress({ connected, hasPositioning, competitorCount, slackConnected });
+  const { done: doneCount } = setupProgress({ connected, hasPositioning, competitorCount, slackConnected, hasDealHistory });
 
   const checklistCard =
     hasSubscription && doneCount < checklistItems.length ? (
@@ -461,7 +406,6 @@ export function ConnectPanel({
       {hasSubscription && competitorCount > 0 ? firstLookCard : null}
       {checklistCard}
       {hasSubscription ? connectAssistantCard : null}
-      {hasSubscription ? winLossCard : null}
       {hasSubscription ? slackCard : null}
 
       {!hasSubscription ? (
