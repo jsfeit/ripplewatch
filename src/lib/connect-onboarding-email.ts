@@ -18,6 +18,12 @@ type Input = {
 export function buildOnboardingEmail({ stage, companyName, connected, look }: Input): ConnectOnboardingEmail {
   const hasCompetitors = look.competitors.length > 0;
   const hasFindings = look.topSignals.length > 0;
+  // Deal history is what turns generic findings into answers about their own
+  // market, so until some is in, every email that has competitors to talk about
+  // points at the Data tab, where a deal can be typed, emailed or uploaded.
+  const dealLink = look.hasDealHistory
+    ? undefined
+    : { label: "Add a deal you won or lost, email a list, or upload a file", path: "/app/settings?tab=data" };
 
   if (!connected) {
     return {
@@ -51,11 +57,15 @@ export function buildOnboardingEmail({ stage, companyName, connected, look }: In
       ? {
           subject: `What I found on ${look.competitors[0]} so far`,
           headline: `Here's what I've found for ${companyName}`,
-          paragraphs: ["These are the moves most worth your attention from the first check:"],
+          paragraphs: [
+            "These are the moves most worth your attention from the first check:",
+            ...(dealLink ? ["I can tell you which of these actually threaten your deals once I know a few you've won or lost."] : []),
+          ],
           findings: look.topSignals,
           tryAsking: look.starterPrompts.slice(0, 3),
           ctaLabel: "See your first look",
           ctaPath: "/app/settings?tab=connect",
+          secondaryLink: dealLink,
         }
       : {
           subject: `Nothing big has moved at ${look.competitors[0]} yet`,
@@ -65,8 +75,8 @@ export function buildOnboardingEmail({ stage, companyName, connected, look }: In
             "In the meantime, the fastest way to make my answers sharper is to tell your assistant about a recent deal you won or lost.",
           ],
           tryAsking: look.starterPrompts.slice(0, 3),
-          ctaLabel: "Open Settings",
-          ctaPath: "/app/settings?tab=connect",
+          ctaLabel: dealLink ? "Add your deal history" : "Open Settings",
+          ctaPath: dealLink ? dealLink.path : "/app/settings?tab=connect",
         };
   }
 
@@ -82,7 +92,7 @@ export function buildOnboardingEmail({ stage, companyName, connected, look }: In
     ],
     findings: hasFindings ? look.topSignals : undefined,
     tryAsking: look.starterPrompts.slice(0, 3),
-    ctaLabel: "Open Settings",
-    ctaPath: "/app/settings?tab=connect",
+    ctaLabel: dealLink ? "Add your deal history" : "Open Settings",
+    ctaPath: dealLink ? dealLink.path : "/app/settings?tab=connect",
   };
 }
