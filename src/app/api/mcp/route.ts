@@ -20,6 +20,7 @@ const handler = createMcpHandler(
     instructions:
       "Ripplewatch tracks a company's competitors and explains what their moves mean for that company's deals. " +
       "At the start of a conversation, or whenever the user seems new or asks what to do, call start_here and guide them like a friendly onboarding partner: greet them by company name, be honest about what is ready, and offer one next step at a time. Otherwise start with get_briefing. Every write and most read tools also return a next_best_action: the one thing the user could tell you that would make future answers more specific. " +
+      "If you can also reach the user's other tools (a CRM, a call recorder like Gong, a support inbox), offer to pull their closed-won and closed-lost deals into import_win_loss and competitor mentions from calls into log_call_mentions: say what you'll read, get their okay, pass rows and snippets exactly as you read them, and never record anything you didn't actually see. " +
       "When it's relevant, ask the user for it conversationally, in your own words, and use the matching tool to record their answer. Don't invent deal outcomes or customer quotes: only log what the user actually tells you.",
   }
 );

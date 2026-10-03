@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { extractWinLossEntries } from "@/lib/anthropic";
-import { applyExtractedWinLossEntries } from "@/lib/win-loss-import";
-import { mapWithConcurrency } from "@/lib/crawl";
-import { chunkCsv } from "@/lib/csv-chunk";
+import { importWinLossText } from "@/lib/win-loss-import-text";
 
 // A 1,500-row real-world test took several minutes with no maxDuration set
 // (Vercel's default is far shorter) — bigger batches per call and more
@@ -12,23 +9,7 @@ import { chunkCsv } from "@/lib/csv-chunk";
 // returning a slow-but-honest result.
 export const maxDuration = 300;
 
-// extractWinLossEntries caps itself at WIN_LOSS_EXTRACT_LINE_LIMIT lines per
-// call to keep a single call cheap — a real CRM export can easily be
-// 1,000+ rows, so the route chunks the file itself (header repeated on each
-// chunk for column context) rather than silently only ever looking at the
-// first N rows.
-//
-// CHUNK_ROWS was 150 until real testing showed the model now extracts an
-// entry for nearly every row (per the anti-refusal prompt fix) — at 150
-// rows/call the response routinely blew past max_tokens and got cut off
-// mid-JSON, failing every single chunk. A failed real response measured
-// ~9,300 characters for just 18 entries before truncating at max_tokens
-// 4096 (~2.3 chars/token for this JSON shape) — at max_tokens 8192 (see
-// extractWinLossEntries), a near-1:1 row-to-entry chunk needs to stay
-// well under ~35-40 entries to have real margin.
-const CHUNK_ROWS = 30;
 const MAX_CHUNKS = 100; // bounds cost on a pathologically large paste (~3,000 rows)
-const CHUNK_CONCURRENCY = 8;
 
 // Accepts whatever raw text a customer pastes/uploads (CSV, any column
 // layout, plain list) — see extractWinLossEntries for why this doesn't try
@@ -54,46 +35,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No data to import." }, { status: 400 });
   }
 
-  const { data: competitors } = await supabase
-    .from("competitors")
-    .select("id, name")
-    .eq("account_id", profile.account_id);
-  if (!competitors || competitors.length === 0) {
-    return NextResponse.json({ error: "Add a competitor before importing win/loss data." }, { status: 400 });
-  }
-
-  const chunks = chunkCsv(rawText, CHUNK_ROWS, MAX_CHUNKS);
-  const competitorNames = competitors.map((c) => c.name);
-  const chunkResults = await mapWithConcurrency(chunks, CHUNK_CONCURRENCY, (chunk) =>
-    extractWinLossEntries(competitorNames, chunk, profile.account_id).catch((err) => {
-      console.error("win-loss import: chunk extraction failed", err);
-      return [];
-    })
-  );
-  const extracted = chunkResults.flat();
-
-  const totalRows = rawText.split("\n").filter((l) => l.trim()).length - 1;
-  const rowsConsidered = Math.min(totalRows, chunks.length * CHUNK_ROWS);
-  const truncated = rowsConsidered < totalRows;
-
-  if (extracted.length === 0) {
-    return NextResponse.json({
-      totalExtracted: 0,
-      imported: 0,
-      skipped: 0,
-      generalReasonsAdded: 0,
-      generalReasonsSkipped: 0,
-      generalWonReasonsAdded: 0,
-      generalWonReasonsSkipped: 0,
-      suggestedCompetitors: [],
-      untrackedAlreadySuggested: 0,
-      rowsConsidered,
-      totalRows,
-      truncated,
-    });
-  }
-
-  const result = await applyExtractedWinLossEntries(supabase, profile.account_id, user.id, competitors, extracted);
-
-  return NextResponse.json({ ...result, rowsConsidered, totalRows, truncated });
+  const imported = await importWinLossText(supabase, profile.account_id, user.id, rawText, MAX_CHUNKS);
+  if (!imported.ok) return NextResponse.json({ error: imported.error }, { status: imported.status });
+  return NextResponse.json(imported.result);
 }

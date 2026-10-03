@@ -264,6 +264,30 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["competitor_win_loss"]["Insert"]>;
         Relationships: [];
       };
+      call_mentions: {
+        Row: {
+          id: string;
+          account_id: string;
+          competitor_id: string;
+          quote: string;
+          occurred_on: string;
+          source: string;
+          dedupe_key: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_id: string;
+          competitor_id: string;
+          quote: string;
+          occurred_on?: string;
+          source?: string;
+          dedupe_key: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["call_mentions"]["Insert"]>;
+        Relationships: [];
+      };
       account_customer_feedback: {
         Row: {
           id: string;

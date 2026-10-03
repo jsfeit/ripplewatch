@@ -39,18 +39,22 @@ export default async function AppShellLayout({ children }: { children: React.Rea
     competitorNames = (competitors ?? []).map((c) => c.name);
 
     if (account?.tier === "connect") {
-      const { data: slack } = await db
-        .from("integrations")
-        .select("connected")
-        .eq("account_id", accountId)
-        .eq("provider", "slack")
-        .eq("connected", true)
-        .limit(1);
+      const [{ data: slack }, { count: dealCount }] = await Promise.all([
+        db
+          .from("integrations")
+          .select("connected")
+          .eq("account_id", accountId)
+          .eq("provider", "slack")
+          .eq("connected", true)
+          .limit(1),
+        db.from("competitor_win_loss").select("id", { count: "exact", head: true }).eq("account_id", accountId),
+      ]);
       const progress = setupProgress({
         connected: Boolean(account.mcp_last_connected_at),
         hasPositioning: Boolean(account.positioning?.trim() || account.icp?.trim()),
         competitorCount: competitorNames.length,
         slackConnected: (slack ?? []).length > 0,
+        hasDealHistory: (dealCount ?? 0) > 0,
       });
       if (progress.done < progress.total) {
         setup = { ...progress, wizardOpen: !account.connect_get_started_dismissed_at };

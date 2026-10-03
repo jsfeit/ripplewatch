@@ -99,6 +99,7 @@ export function SettingsView({
     slackDigestHour: number;
     hasPositioning: boolean;
     competitorCount: number;
+    hasDealHistory: boolean;
     firstLook: ConnectFirstLook;
   } | null;
 }) {
@@ -136,18 +137,14 @@ export function SettingsView({
     // both keep working rather than picking one and breaking the other.
     const hashTab = window.location.hash.slice(1);
     const queryTab = new URLSearchParams(window.location.search).get("tab");
-    let tab = [hashTab, queryTab].find((t) => t && (KNOWN_TABS as readonly string[]).includes(t));
-    // Returning from connecting an integration (the OAuth callbacks redirect to
-    // /app/settings?connected=<provider>): a Connect account's integrations live
-    // on the Data tab, so land there instead of its default.
-    if (!tab && isConnectAccount && new URLSearchParams(window.location.search).get("connected")) tab = "data";
+    const tab = [hashTab, queryTab].find((t) => t && (KNOWN_TABS as readonly string[]).includes(t));
     if (tab) {
       // Syncing one-time from an external system (the URL) on mount —
       // the case the rule's own guidance calls out as fine.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab(tab);
     }
-  }, [isConnectAccount]);
+  }, []);
 
   // Keeps the address bar's hash in sync with whichever tab is showing, so
   // switching to Referrals (say, via the "View referrals" button on Plan)
@@ -262,6 +259,7 @@ export function SettingsView({
             slackDigestHour={connect.slackDigestHour}
             hasPositioning={connect.hasPositioning}
             competitorCount={connect.competitorCount}
+            hasDealHistory={connect.hasDealHistory}
             firstLook={connect.firstLook}
             disconnectIntegrationAction={disconnectIntegrationAction}
           />
@@ -271,9 +269,8 @@ export function SettingsView({
       {connect ? (
         <TabsContent value="data" className="mt-6">
           <ConnectDataPanel
-            competitorCount={connect.competitorCount}
-            connected={{ hubspot: isConnected("hubspot"), intercom: isConnected("intercom"), zoom: isConnected("zoom") }}
-            disconnectIntegrationAction={disconnectIntegrationAction}
+            accountId={account.id}
+            competitors={competitors.map((c) => ({ id: c.id, name: c.name }))}
           />
         </TabsContent>
       ) : null}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Circle, Copy, Check, CreditCard, Loader2, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ export function ConnectPanel({
   slackDigestHour,
   hasPositioning,
   competitorCount,
+  hasDealHistory,
   firstLook,
   disconnectIntegrationAction,
 }: {
@@ -67,6 +69,7 @@ export function ConnectPanel({
   slackDigestHour: number;
   hasPositioning: boolean;
   competitorCount: number;
+  hasDealHistory: boolean;
   firstLook: ConnectFirstLook;
   disconnectIntegrationAction: (formData: FormData) => void;
 }) {
@@ -339,13 +342,23 @@ export function ConnectPanel({
       hint: `Ask it: "Start tracking [competitor name], [their website]."`,
     },
     {
+      label: "Add deal history",
+      value: ONBOARDING_VALUE.dealHistory,
+      done: hasDealHistory,
+      hint: (
+        <Link href="/app/settings?tab=data" className="underline underline-offset-2 hover:text-foreground">
+          Add a deal, email a list, or upload a file
+        </Link>
+      ),
+    },
+    {
       label: "Connect Slack (optional)",
       value: ONBOARDING_VALUE.slack,
       done: slackConnected,
       hint: <a href="#connect-slack" className="underline underline-offset-2 hover:text-foreground">See below</a>,
     },
   ];
-  const { done: doneCount } = setupProgress({ connected, hasPositioning, competitorCount, slackConnected });
+  const { done: doneCount } = setupProgress({ connected, hasPositioning, competitorCount, slackConnected, hasDealHistory });
 
   const checklistCard =
     hasSubscription && doneCount < checklistItems.length ? (
