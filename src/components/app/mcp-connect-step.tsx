@@ -8,6 +8,7 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CONNECT_MCP_URL } from "@/lib/connect";
 import { timeAgo } from "@/lib/date";
+import { ONBOARDING_VALUE } from "@/lib/onboarding-value";
 import { cn } from "@/lib/utils";
 
 // The first thing a Connect account sees after checkout: get the assistant
@@ -93,6 +94,9 @@ export function McpConnectStep({
         <p className="text-sm text-muted-foreground">
           Required to continue. This is what makes the rest of Ripplewatch work, so pick where you work and wire it
           up. Takes about a minute.
+        </p>
+        <p className="mt-2 rounded-md bg-primary/[0.06] px-3 py-2 text-sm">
+          {connected ? ONBOARDING_VALUE.connect.unlocked() : ONBOARDING_VALUE.connect.unlocks}
         </p>
       </CardHeader>
       <CardContent>

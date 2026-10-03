@@ -12,6 +12,7 @@ import { CONNECT_BASE_FEE_USD, CONNECT_DEFAULT_RELOAD_USD } from "@/lib/connect-
 import { CONNECT_MCP_URL, CONNECT_NAME } from "@/lib/connect";
 import { timeAgo } from "@/lib/date";
 import { cn } from "@/lib/utils";
+import { ONBOARDING_VALUE } from "@/lib/onboarding-value";
 import { formatWinLossImportMessage, type ImportMessageData } from "@/lib/win-loss-import";
 
 export type ConnectLedgerRow = {
@@ -388,21 +389,25 @@ export function ConnectPanel({
   const checklistItems = [
     {
       label: "Connect your assistant",
+      value: ONBOARDING_VALUE.connect,
       done: connected,
       hint: <a href="#connect-assistant" className="underline underline-offset-2 hover:text-foreground">See steps below</a>,
     },
     {
       label: "Tell it about your business",
+      value: ONBOARDING_VALUE.business,
       done: hasPositioning,
       hint: `Ask it: "We help [who] do [what]. Our main competitors are..."`,
     },
     {
       label: "Add your competitors",
+      value: ONBOARDING_VALUE.competitors,
       done: competitorCount > 0,
       hint: `Ask it: "Start tracking [competitor name], [their website]."`,
     },
     {
       label: "Connect Slack (optional)",
+      value: ONBOARDING_VALUE.slack,
       done: slackConnected,
       hint: <a href="#connect-slack" className="underline underline-offset-2 hover:text-foreground">See below</a>,
     },
@@ -428,7 +433,14 @@ export function ConnectPanel({
               )}
               <div className="min-w-0">
                 <p className={item.done ? "text-muted-foreground line-through" : ""}>{item.label}</p>
-                {!item.done ? <p className="mt-0.5 text-xs text-muted-foreground">{item.hint}</p> : null}
+                {item.done ? (
+                  <p className="mt-0.5 text-xs text-primary">{item.value.unlocked(competitorCount)}</p>
+                ) : (
+                  <>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{item.value.unlocks}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{item.hint}</p>
+                  </>
+                )}
               </div>
             </li>
           ))}

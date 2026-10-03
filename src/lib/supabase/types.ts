@@ -129,6 +129,9 @@ export interface Database {
           demo_mode: boolean;
           mcp_last_connected_at: string | null;
           connect_get_started_dismissed_at: string | null;
+          onboarding_email_day2_sent_at: string | null;
+          onboarding_email_day7_sent_at: string | null;
+          onboarding_emails_unsubscribed_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -167,6 +170,9 @@ export interface Database {
           demo_mode?: boolean;
           mcp_last_connected_at?: string | null;
           connect_get_started_dismissed_at?: string | null;
+          onboarding_email_day2_sent_at?: string | null;
+          onboarding_email_day7_sent_at?: string | null;
+          onboarding_emails_unsubscribed_at?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["accounts"]["Insert"]>;
