@@ -10,6 +10,7 @@ import { SlackDigestSchedule } from "@/components/app/slack-digest-schedule";
 import { TeamManager } from "@/components/app/team-manager";
 import { ApiKeysManager } from "@/components/app/api-keys-manager";
 import { ConnectedApps } from "@/components/app/connected-apps";
+import { ConnectDataPanel } from "@/components/app/connect-data-panel";
 import { ConnectPanel, type ConnectFirstLook, type ConnectLedgerRow } from "@/components/app/connect-panel";
 import { WinLossEmailAddress } from "@/components/app/win-loss-email-address";
 import { ReferralCodeManager } from "@/components/app/referral-code-manager";
@@ -62,7 +63,7 @@ type ApiKey = Pick<
 >;
 type Referral = Pick<Database["public"]["Tables"]["referrals"]["Row"], "id" | "referred_at" | "qualified_at">;
 
-const KNOWN_TABS = ["connect", "competitors", "integrations", "team", "plan", "referrals", "digest", "developer", "appearance"] as const;
+const KNOWN_TABS = ["connect", "data", "competitors", "integrations", "team", "plan", "referrals", "digest", "developer", "appearance"] as const;
 
 export function SettingsView({
   account,
@@ -135,14 +136,18 @@ export function SettingsView({
     // both keep working rather than picking one and breaking the other.
     const hashTab = window.location.hash.slice(1);
     const queryTab = new URLSearchParams(window.location.search).get("tab");
-    const tab = [hashTab, queryTab].find((t) => t && (KNOWN_TABS as readonly string[]).includes(t));
+    let tab = [hashTab, queryTab].find((t) => t && (KNOWN_TABS as readonly string[]).includes(t));
+    // Returning from connecting an integration (the OAuth callbacks redirect to
+    // /app/settings?connected=<provider>): a Connect account's integrations live
+    // on the Data tab, so land there instead of its default.
+    if (!tab && isConnectAccount && new URLSearchParams(window.location.search).get("connected")) tab = "data";
     if (tab) {
       // Syncing one-time from an external system (the URL) on mount —
       // the case the rule's own guidance calls out as fine.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab(tab);
     }
-  }, []);
+  }, [isConnectAccount]);
 
   // Keeps the address bar's hash in sync with whichever tab is showing, so
   // switching to Referrals (say, via the "View referrals" button on Plan)
@@ -223,6 +228,7 @@ export function SettingsView({
           // referrals: just its own billing tab plus the shared ones.
           <TabsList>
             <TabsTrigger value="connect">Connect</TabsTrigger>
+            <TabsTrigger value="data">Data</TabsTrigger>
             <TabsTrigger value="competitors">Competitors</TabsTrigger>
             <TabsTrigger value="team">Team</TabsTrigger>
             <TabsTrigger value="developer">Developer</TabsTrigger>
@@ -257,6 +263,16 @@ export function SettingsView({
             hasPositioning={connect.hasPositioning}
             competitorCount={connect.competitorCount}
             firstLook={connect.firstLook}
+            disconnectIntegrationAction={disconnectIntegrationAction}
+          />
+        </TabsContent>
+      ) : null}
+
+      {connect ? (
+        <TabsContent value="data" className="mt-6">
+          <ConnectDataPanel
+            competitorCount={connect.competitorCount}
+            connected={{ hubspot: isConnected("hubspot"), intercom: isConnected("intercom"), zoom: isConnected("zoom") }}
             disconnectIntegrationAction={disconnectIntegrationAction}
           />
         </TabsContent>

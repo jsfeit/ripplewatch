@@ -26,11 +26,12 @@ export const TIER_SIGNAL_SOURCES: Record<AccountTier, SignalType[]> = {
   connect: ["pricing", "job_posting", "news", "funding", "product_change"],
 };
 
-// CRM (HubSpot) read-only pull is a Plus feature — same gate shape as
-// CALL_INTEL_ALLOWED below.
+// CRM (HubSpot) read-only pull. Open to Connect too: the pull feeds the same
+// win/loss pipeline, and its LLM usage is recorded against the account and
+// billed through the daily Connect usage charge.
 export const CRM_ALLOWED: Record<AccountTier, boolean> = {
   plus: true,
-  connect: false,
+  connect: true,
 };
 
 // Team seats: Starter cap encourages upgrading once a team grows past a
@@ -45,18 +46,19 @@ export function seatLimitLabel(tier: AccountTier): string {
   return limit === Infinity ? "unlimited" : String(limit);
 }
 
-// Zoom call-intelligence is Plus-only (Gong isn't connectable at all
-// yet — see "comingSoon" in settings-view.tsx, tier-independent).
+// Zoom call-intelligence, open to Connect for the same reason as CRM_ALLOWED
+// (Gong isn't connectable at all yet — see "comingSoon" in the integration
+// cards, tier-independent).
 export const CALL_INTEL_ALLOWED: Record<AccountTier, boolean> = {
   plus: true,
-  connect: false,
+  connect: true,
 };
 
-// Intercom (churn/cancellation reasons) is Plus-only, matching the
-// pricing page's "Intercom (coming soon)" line item under Plus.
+// Intercom (churn/cancellation reasons), open to Connect for the same reason
+// as CRM_ALLOWED.
 export const INTERCOM_ALLOWED: Record<AccountTier, boolean> = {
   plus: true,
-  connect: false,
+  connect: true,
 };
 
 // Read-only REST API (see /api/v1/*) for customers wiring Ripplewatch's

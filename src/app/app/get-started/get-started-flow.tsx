@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CompetitorRow, type CompetitorInput } from "@/components/app/competitor-row";
 import { IntegrationConnector } from "@/components/app/integration-connector";
+import { Confetti } from "@/components/app/confetti";
 import { McpConnectStep } from "@/components/app/mcp-connect-step";
 import { ONBOARDING_VALUE, type OnboardingStepKey } from "@/lib/onboarding-value";
 
@@ -47,6 +48,7 @@ export function GetStartedFlow({
   const [competitors, setCompetitors] = useState<CompetitorInput[]>([{ name: "", domain: "" }]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [celebrating, setCelebrating] = useState(false);
 
   const filledCompetitors = competitors.filter((c) => c.name.trim());
   const hasCompetitor = filledCompetitors.length >= 1;
@@ -81,8 +83,13 @@ export function GetStartedFlow({
       setError(data.error ?? "Something went wrong. Try again.");
       return;
     }
-    router.push("/app/settings?tab=connect");
-    router.refresh();
+    // Let the confetti land before moving on, then go to where the next
+    // useful thing is: bringing their own deal data in.
+    setCelebrating(true);
+    setTimeout(() => {
+      router.push("/app/settings?tab=data");
+      router.refresh();
+    }, 2400);
   }
 
   if (step === 0) {
@@ -94,6 +101,28 @@ export function GetStartedFlow({
           setStep(1);
         }}
       />
+    );
+  }
+
+  if (celebrating) {
+    return (
+      <>
+        <Confetti />
+        <Card>
+          <CardHeader>
+            <h1 className="text-xl font-semibold tracking-tight">You&apos;re all set, {companyName}.</h1>
+            <p className="text-sm text-muted-foreground">
+              {`I'm checking ${filledCompetitors.length} competitor${filledCompetitors.length === 1 ? "" : "s"} now. Next, let's make the answers yours.`}
+            </p>
+          </CardHeader>
+          <CardContent>
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              Taking you there…
+            </p>
+          </CardContent>
+        </Card>
+      </>
     );
   }
 
@@ -229,7 +258,7 @@ export function GetStartedFlow({
           ) : (
             <Button type="button" onClick={finish} disabled={submitting || !hasCompetitor}>
               {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
-              Done, take me to Settings
+              Finish setup
             </Button>
           )}
         </div>
