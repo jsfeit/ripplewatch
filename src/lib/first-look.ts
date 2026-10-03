@@ -13,6 +13,7 @@ export type FirstLook = {
   crawl: { state: CrawlState; done: number; total: number };
   topSignals: { competitor: string | null; title: string; why: string | null; date: string }[];
   starterPrompts: string[];
+  hasDealHistory: boolean;
   next: NextBestActions;
 };
 
@@ -98,6 +99,7 @@ export async function loadFirstLook(supabase: Client, accountId: string): Promis
       competitorRows.map((c) => c.name),
       (winLossCount ?? 0) > 0
     ),
+    hasDealHistory: (winLossCount ?? 0) > 0,
     next,
   };
 }

@@ -918,6 +918,8 @@ export type ConnectOnboardingEmail = {
   tryAsking?: string[];
   ctaLabel: string;
   ctaPath: string;
+  // A quieter text link under the button, for a second thing worth doing.
+  secondaryLink?: { label: string; path: string };
 };
 
 // Day-2 and day-7 emails for Connect accounts. The content is decided by the
@@ -956,6 +958,11 @@ export async function sendConnectOnboardingEmail(
           : ""
       }
       <a href="${appUrl}${email.ctaPath}" style="${CONNECT_EMAIL_BUTTON}">${escapeHtml(email.ctaLabel)}</a>
+      ${
+        email.secondaryLink
+          ? `<p style="margin:16px 0 0;font-size:14px;"><a href="${appUrl}${email.secondaryLink.path}" style="color:#0f5f56;">${escapeHtml(email.secondaryLink.label)}</a></p>`
+          : ""
+      }
       <p style="color:#888;font-size:12px;margin-top:24px;">Just reply if you want a hand; a person reads every one.
         <br /><a href="${unsubscribeUrl}" style="color:#888;">Stop these setup emails</a></p>
     </div>`,
