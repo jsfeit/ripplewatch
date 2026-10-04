@@ -84,12 +84,38 @@ export function protectedResourceMetadata(request: Request): Response {
   return Response.json(
     {
       resource: `${origin}/api/mcp`,
-      authorization_servers: [supabaseAuthIssuer()],
+      authorization_servers: [discoveryOnOurOrigin() ? origin : supabaseAuthIssuer()],
       bearer_methods_supported: ["header"],
       resource_name: "Ripplewatch",
     },
     { headers: { "Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=300" } }
   );
+}
+
+// Supabase's issuer has a path (/auth/v1), and some clients (Claude's
+// connector, per Anthropic support) only look for authorization server
+// metadata at the root of the host and never try the path-inserted form that
+// RFC 8414 specifies, so sign-in stops after discovery. Serving the same
+// metadata from our own origin, with the issuer changed to match, gives those
+// clients a root URL to find. Only `issuer` changes: registration, authorize
+// and token still point at Supabase, and tokens are still verified against
+// Supabase's issuer above. MCP_OAUTH_DISCOVERY_ON_SUPABASE=1 turns this off.
+function discoveryOnOurOrigin(): boolean {
+  return process.env.MCP_OAUTH_DISCOVERY_ON_SUPABASE !== "1";
+}
+
+export async function authorizationServerMetadata(request: Request, doc: "oauth-authorization-server" | "openid-configuration"): Promise<Response> {
+  const origin = new URL(request.url).origin;
+  const headers = { "Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=300" };
+  try {
+    const res = await fetch(`${supabaseAuthIssuer()}/.well-known/${doc}`, { next: { revalidate: 300 } });
+    if (!res.ok) throw new Error(`Supabase returned ${res.status}`);
+    const meta = (await res.json()) as Record<string, unknown>;
+    return Response.json({ ...meta, issuer: origin }, { headers });
+  } catch (err) {
+    console.error("mcp oauth: could not load Supabase authorization server metadata", err);
+    return Response.json({ error: "temporarily_unavailable" }, { status: 503 });
+  }
 }
 
 export function metadataPreflight(): Response {
