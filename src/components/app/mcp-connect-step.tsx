@@ -173,11 +173,11 @@ export function McpConnectStep({
               copied={copiedUrl}
               onCopy={() => copyText(CONNECT_MCP_URL, setCopiedUrl)}
               clientSteps={[
-                "Go to Settings → Connectors → Advanced → Add custom connector.",
-                "Paste the URL. If it shows Authentication/OAuth client options, leave the detected defaults and continue.",
+                "Open Plugins and use the + button to add a custom MCP server.",
+                "Paste the URL and choose OAuth if it asks how to authenticate.",
                 "Sign in to Ripplewatch and approve when it asks.",
               ]}
-              note="Already added this once and it's not prompting you to sign in? Remove the existing connector first, then add it fresh. Editing an existing one can reuse a stale login."
+              note="Don't see the option? Your ChatGPT plan or workspace may not allow custom MCP servers yet, and on some plans connections are read-only, so logging deals won't work. Claude is the most complete way to use Ripplewatch today."
             />
           </TabsContent>
 

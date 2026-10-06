@@ -61,7 +61,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "Can I use Ripplewatch from Claude, ChatGPT, or another AI assistant?",
         answer:
-          'Yes, with Ripplewatch Connect, through our MCP server (see <a href="/docs/api">the docs</a>). It works with assistants that support remote MCP servers over HTTP, including Claude (web, desktop, and Claude Code) and developer tools like Cursor. ChatGPT supports custom MCP connectors through its developer mode, which is in beta and has to be enabled by a workspace admin. Gemini supports MCP in Gemini CLI, but we haven\'t confirmed support in the Gemini app. You connect by signing in and approving, or with an API key for developer tools. <a href="/connect/claude-and-chatgpt">Step-by-step setup</a>.',
+          'Yes, with Ripplewatch Connect, through our MCP server (see <a href="/docs/api">the docs</a>). It works with assistants that support remote MCP servers over HTTP, including Claude (web, desktop, and Claude Code) and developer tools like Cursor. ChatGPT can add custom MCP servers from its Plugins page, but it depends on your plan and workspace: OpenAI currently lists full support for Business, Enterprise and Edu, with more limited read access on some other plans, and an admin may need to enable it. Gemini supports MCP in Gemini CLI, but we haven\'t confirmed support in the Gemini app. You connect by signing in and approving, or with an API key for developer tools. <a href="/connect/claude-and-chatgpt">Step-by-step setup</a>.',
       },
       {
         question: "What can an AI assistant do with my Ripplewatch account?",
