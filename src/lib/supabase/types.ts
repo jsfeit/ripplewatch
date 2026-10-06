@@ -132,6 +132,9 @@ export interface Database {
           onboarding_email_day2_sent_at: string | null;
           onboarding_email_day7_sent_at: string | null;
           onboarding_emails_unsubscribed_at: string | null;
+          connect_daily_alert_enabled: boolean;
+          connect_monthly_recap_enabled: boolean;
+          connect_monthly_recap_sent_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -173,6 +176,9 @@ export interface Database {
           onboarding_email_day2_sent_at?: string | null;
           onboarding_email_day7_sent_at?: string | null;
           onboarding_emails_unsubscribed_at?: string | null;
+          connect_daily_alert_enabled?: boolean;
+          connect_monthly_recap_enabled?: boolean;
+          connect_monthly_recap_sent_at?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["accounts"]["Insert"]>;

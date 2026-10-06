@@ -63,3 +63,45 @@ export const CONNECT_QUICK_ANSWERS = [
       "Add https://www.ripplewatch.ai/api/mcp as a custom connector in Claude or another assistant that supports remote MCP servers, then sign in and approve. ChatGPT works through its developer mode, which is in beta.",
   },
 ] as const;
+
+// Every message a Connect account can receive, in one place so the Settings
+// card, the setup guide and the assistant's "how to use Ripplewatch" answer
+// can't drift apart from what the crons actually send. `control` says how a
+// person turns it off.
+export const CONNECT_NOTIFICATIONS = [
+  {
+    id: "daily",
+    cadence: "Daily",
+    name: "Daily alert",
+    when: "Once a day, after the overnight check, and only on days a High-relevance change was found. Nothing on quiet days.",
+    control: "Switch in Settings, or the link in the email.",
+  },
+  {
+    id: "weekly",
+    cadence: "Weekly",
+    name: "Weekly briefing",
+    when: "Mondays, by email: the week's verdict and your usage balance. Skipped on a quiet week.",
+    control: "Always on. The same briefing is available any time by asking your assistant.",
+  },
+  {
+    id: "slack",
+    cadence: "Weekly",
+    name: "Slack digest (optional)",
+    when: "Once a week in the Slack channel you pick, at the day and time you choose.",
+    control: "Connect or disconnect Slack in Settings.",
+  },
+  {
+    id: "monthly",
+    cadence: "Monthly",
+    name: "Monthly recap",
+    when: "The 1st of each month, by email: what changed in the last 30 days, who is heating up, deal results, and one thing that would sharpen next month. Starts after your account is three weeks old.",
+    control: "Switch in Settings, or the link in the email.",
+  },
+  {
+    id: "account",
+    cadence: "As needed",
+    name: "Balance and billing alerts",
+    when: "When your usage balance runs low, a reload fails, or answers are paused.",
+    control: "Always on.",
+  },
+] as const;

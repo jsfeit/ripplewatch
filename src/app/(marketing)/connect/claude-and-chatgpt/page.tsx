@@ -84,6 +84,13 @@ export default function ConnectGuidePage() {
       </pre>
 
       <h2 className="mt-12 text-xl font-semibold tracking-tight">What to ask first</h2>
+      <p className="mt-4 leading-relaxed text-muted-foreground">
+        For the full picture, including how to get your win/loss data in and what momentum means, see{" "}
+        <Link href="/connect/guide" className="text-primary hover:underline">
+          how to get the most out of Ripplewatch
+        </Link>
+        .
+      </p>
       <ul className="mt-4 space-y-3">
         {CONNECT_EXAMPLES.map((q) => (
           <li key={q} className="rounded-lg border border-border bg-secondary/40 px-4 py-3 text-sm">

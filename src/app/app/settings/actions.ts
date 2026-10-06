@@ -43,6 +43,32 @@ export async function disconnectIntegrationAction(formData: FormData) {
   revalidatePath("/app/settings");
 }
 
+export async function updateConnectNotificationsAction(input: {
+  dailyAlert: boolean;
+  monthlyRecap: boolean;
+}): Promise<{ ok: boolean; error?: string }> {
+  if (typeof input.dailyAlert !== "boolean" || typeof input.monthlyRecap !== "boolean") {
+    return { ok: false, error: "Invalid input" };
+  }
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in" };
+
+  const { data: profile } = await supabase.from("profiles").select("account_id").eq("id", user.id).single();
+  if (!profile?.account_id) return { ok: false, error: "No account" };
+
+  const { error } = await supabase
+    .from("accounts")
+    .update({ connect_daily_alert_enabled: input.dailyAlert, connect_monthly_recap_enabled: input.monthlyRecap })
+    .eq("id", profile.account_id);
+  if (error) return { ok: false, error: "Couldn't save that. Try again." };
+
+  revalidatePath("/app/settings");
+  return { ok: true };
+}
+
 export async function updateSlackDigestScheduleAction(input: {
   timezone: string;
   day: number;

@@ -90,12 +90,21 @@ export default async function SettingsPage() {
     timezone: string;
     slackDigestDay: number;
     slackDigestHour: number;
+    dailyAlertEnabled: boolean;
+    monthlyRecapEnabled: boolean;
     hasPositioning: boolean;
     competitorCount: number;
     hasDealHistory: boolean;
     firstLook: Pick<FirstLook, "companyName" | "crawl" | "topSignals" | "starterPrompts">;
   } | null = null;
   if (account.tier === "connect") {
+    // Read on its own so the page still loads if the notification columns
+    // haven't been migrated yet: an error here just means "both on".
+    const { data: notificationPrefs } = await db
+      .from("accounts")
+      .select("connect_daily_alert_enabled, connect_monthly_recap_enabled")
+      .eq("id", accountId)
+      .maybeSingle();
     const [{ data: wallet }, { data: ledgerRows }, firstLook, { count: dealCount }] = await Promise.all([
       db
         .from("connect_wallets")
@@ -135,6 +144,8 @@ export default async function SettingsPage() {
       timezone: account.timezone,
       slackDigestDay: account.slack_digest_day,
       slackDigestHour: account.slack_digest_hour,
+      dailyAlertEnabled: notificationPrefs?.connect_daily_alert_enabled ?? true,
+      monthlyRecapEnabled: notificationPrefs?.connect_monthly_recap_enabled ?? true,
       hasPositioning: Boolean(account.positioning?.trim() || account.icp?.trim()),
       competitorCount: (competitors ?? []).length,
       hasDealHistory: (dealCount ?? 0) > 0,
