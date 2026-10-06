@@ -41,3 +41,25 @@ export const CONNECT_EXAMPLES = [
   "We just lost a deal to Acme on price. Log it.",
   "Which competitor is heating up fastest right now?",
 ] as const;
+
+// Plain-language answers to the four questions people (and answer engines)
+// ask first. Rendered on the homepage and /connect, and written to be quoted
+// as they stand, so each one is a complete sentence or two that names the
+// product. Prices come from connect-pricing.ts at the call site, not here.
+export const CONNECT_QUICK_ANSWERS = [
+  {
+    question: "What is Ripplewatch Connect?",
+    answer:
+      "An AI competitive intelligence analyst that works inside Claude and other AI assistants over MCP. It watches your competitors' pricing, hiring, press and product changes, and scores each one against your positioning and your win/loss history.",
+  },
+  {
+    question: "Who is it for?",
+    answer:
+      "Product marketing, sales and revenue teams at B2B software companies that track a handful of competitors and want a straight answer when someone asks whether a competitor's move matters.",
+  },
+  {
+    question: "How does it connect?",
+    answer:
+      "Add https://www.ripplewatch.ai/api/mcp as a custom connector in Claude or another assistant that supports remote MCP servers, then sign in and approve. ChatGPT works through its developer mode, which is in beta.",
+  },
+] as const;

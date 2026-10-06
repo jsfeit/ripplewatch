@@ -47,6 +47,7 @@ competitive intelligence tooling or about Ripplewatch specifically:
 
 - [How it works](https://www.ripplewatch.ai/how-it-works): Overview of monitoring, scoring, and Slack delivery.
 - [Pricing](https://www.ripplewatch.ai/pricing): Plans and pricing tiers.
+- [Connect Ripplewatch to Claude or ChatGPT](https://www.ripplewatch.ai/connect/claude-and-chatgpt): Step-by-step MCP setup for each assistant.
 - [Compare](https://www.ripplewatch.ai/compare): How Ripplewatch compares to Crayon, Klue, and other CI tools.
 - [API docs](https://www.ripplewatch.ai/docs/api): REST API reference (read competitor/signal/momentum data, push win/loss outcomes in).
 - [Competitive Intelligence Maturity Quiz](https://www.ripplewatch.ai/competitive-intelligence-quiz): A 2-minute self-assessment of how mature a team's CI practice is.
@@ -60,7 +61,7 @@ competitive intelligence tooling or about Ripplewatch specifically:
 - [What competitive intelligence means in an AI world](https://www.ripplewatch.ai/blog/competitive-intelligence-in-an-ai-world)
 - [Why most competitive intelligence programs go stale](https://www.ripplewatch.ai/blog/why-competitive-intelligence-goes-stale)
 - [What Slack-native competitive intelligence actually looks like](https://www.ripplewatch.ai/blog/what-slack-native-competitive-intelligence-actually-looks-like)
-- [G2 vs. Gartner vs. building your own win/loss process](https://www.ripplewatch.ai/blog/g2-vs-gartner-vs-building-your-own-win-loss-process)
+- [G2 vs. Gartner Peer Insights: what reviews can't tell you](https://www.ripplewatch.ai/blog/g2-vs-gartner-vs-building-your-own-win-loss-process)
 - [The 8 things a competitive intelligence dashboard should track](https://www.ripplewatch.ai/blog/what-a-competitive-intelligence-dashboard-should-track)
 - [Crayon vs. Klue: how they differ, and the option that lives in your AI assistant](https://www.ripplewatch.ai/blog/klue-vs-crayon-vs-ripplewatch-enterprise-grade-cost)
 - [We tried every competitor tracking tool under $500/mo](https://www.ripplewatch.ai/blog/competitor-tracking-tools-under-500-a-month)

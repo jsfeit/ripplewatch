@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Check, MessageSquare, PlugZap, ShieldCheck, Sparkles, Wallet } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
+import { QuickAnswers } from "@/components/marketing/quick-answers";
 import { CONNECT_EXAMPLES, CONNECT_FEATURES, CONNECT_NAME, CONNECT_TAGLINE } from "@/lib/connect";
 import { CONNECT_BASE_FEE_USD, CONNECT_MIN_FUNDING_USD } from "@/lib/connect-pricing";
 
@@ -53,7 +54,16 @@ export default function ConnectPage() {
             Get {CONNECT_NAME} <ArrowRight className="size-4" />
           </Link>
         </div>
-        <p className="mt-3 text-xs text-muted-foreground">${CONNECT_BASE_FEE_USD}/month plus usage you prepay for.</p>
+        <p className="mt-3 text-xs text-muted-foreground">
+          ${CONNECT_BASE_FEE_USD}/month plus usage you prepay for.{" "}
+          <Link href="/connect/claude-and-chatgpt" className="font-medium text-primary hover:underline">
+            How to connect it
+          </Link>
+        </p>
+      </div>
+
+      <div className="mt-14">
+        <QuickAnswers />
       </div>
 
       <div className="mt-14 grid gap-6 sm:grid-cols-3">

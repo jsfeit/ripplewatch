@@ -16,16 +16,16 @@ const description =
   "A survey of 20+ competitive intelligence tools, what each one actually delivers, and what's still missing from the category: answers inside the AI assistant you already use, scored against your own positioning and deals.";
 
 export const metadata = {
-  title: "The State of Competitive Intelligence Tools",
+  title: "State of Competitive Intelligence Tools: 20+ compared",
   description,
   alternates: { canonical: "/state-of-competitive-intelligence" },
   openGraph: {
-    title: "The State of Competitive Intelligence Tools | Ripplewatch",
+    title: "State of Competitive Intelligence Tools: 20+ compared | Ripplewatch",
     description,
   },
   twitter: {
     card: "summary_large_image",
-    title: "The State of Competitive Intelligence Tools | Ripplewatch",
+    title: "State of Competitive Intelligence Tools: 20+ compared | Ripplewatch",
     description,
   },
 };
