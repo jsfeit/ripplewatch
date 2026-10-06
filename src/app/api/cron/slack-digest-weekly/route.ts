@@ -127,6 +127,7 @@ export async function GET(request: Request) {
         mediumCount,
         openUrl: account.tier === "connect" ? `${appUrl}/app/settings?tab=connect` : `${appUrl}/app/dashboard`,
         openLabel: account.tier === "connect" ? "Ask Ripplewatch" : "Open dashboard",
+        askPrompt: account.tier === "connect" ? "What changed with my competitors this week, and what should I worry about?" : undefined,
       });
     } catch (err) {
       console.error(`weekly Slack digest send failed for ${account.name}:`, err);

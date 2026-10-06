@@ -63,6 +63,20 @@ function blockquote(text: string): string {
     .join("\n");
 }
 
+// Slack mrkdwn treats & < > specially. Used for text that comes from outside
+// (signal titles are scraped from public pages).
+function slackEscape(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// A suggested next question and where to take it, for accounts that use
+// Ripplewatch through an assistant (Slack can't take questions itself).
+export type SlackAskHandoff = { prompt: string; url: string };
+
+function askContextBlock(prompt: string): Record<string, unknown> {
+  return { type: "context", elements: [{ type: "mrkdwn", text: `Dig in by asking your assistant: _${slackEscape(prompt)}_` }] };
+}
+
 export async function sendSlackAlert(
   credentials: SlackCredentials,
   message: {
@@ -72,6 +86,7 @@ export async function sendSlackAlert(
     reasoning: string;
     relevanceLevel: string;
     type: SignalType;
+    ask?: SlackAskHandoff;
   }
 ): Promise<void> {
   if (!credentials.incoming_webhook_url) return;
@@ -99,14 +114,15 @@ export async function sendSlackAlert(
     blocks.push({ type: "section", text: { type: "mrkdwn", text: blockquote(message.reasoning) } });
   }
 
+  const buttons: Record<string, unknown>[] = [];
   if (message.url) {
-    blocks.push({
-      type: "actions",
-      elements: [
-        { type: "button", text: { type: "plain_text", text: "View source", emoji: true }, url: message.url },
-      ],
-    });
+    buttons.push({ type: "button", text: { type: "plain_text", text: "View source", emoji: true }, url: message.url });
   }
+  if (message.ask) {
+    buttons.push({ type: "button", text: { type: "plain_text", text: "Ask Ripplewatch", emoji: true }, url: message.ask.url });
+  }
+  if (buttons.length > 0) blocks.push({ type: "actions", elements: buttons });
+  if (message.ask) blocks.push(askContextBlock(message.ask.prompt));
 
   blocks.push({
     type: "context",
@@ -141,6 +157,8 @@ export type SlackWeeklyDigestInput = {
   // Settings instead, with a label that doesn't promise a dashboard.
   openUrl: string;
   openLabel: string;
+  // Connect accounts get a suggested question to ask their assistant.
+  askPrompt?: string;
 };
 
 // This is the one Slack message every account is guaranteed to get every
@@ -193,6 +211,7 @@ export async function sendSlackWeeklyDigest(
       { type: "button", text: { type: "plain_text", text: input.openLabel, emoji: true }, url: input.openUrl, style: "primary" },
     ],
   });
+  if (input.askPrompt) blocks.push(askContextBlock(input.askPrompt));
   blocks.push({
     type: "context",
     elements: [{ type: "mrkdwn", text: "Sent by <https://ripplewatch.ai|Ripplewatch> · weekly recap" }],
@@ -217,6 +236,7 @@ export type SlackMonthlyRecapInput = {
   topSignals: { competitor: string; title: string; why: string | null }[];
   nextStep: string | null;
   openUrl: string;
+  askPrompt?: string;
 };
 
 // Pure, so it can be checked without a Slack workspace. Built from the same
@@ -252,6 +272,7 @@ export function buildSlackMonthlyRecapBlocks(input: SlackMonthlyRecapInput): Rec
     type: "actions",
     elements: [{ type: "button", text: { type: "plain_text", text: "Ask Ripplewatch", emoji: true }, url: input.openUrl, style: "primary" }],
   });
+  if (input.askPrompt) blocks.push(askContextBlock(input.askPrompt));
   blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: "Sent by <https://ripplewatch.ai|Ripplewatch> · monthly recap" }] });
   return blocks;
 }

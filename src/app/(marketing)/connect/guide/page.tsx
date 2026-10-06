@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { GUIDE_TOPICS } from "@/lib/connect-guide";
+import { HowItFits } from "@/components/app/how-it-fits";
 import { CONNECT_NAME } from "@/lib/connect";
 
 const description =
@@ -36,6 +37,10 @@ export default function ConnectGuidePage() {
         Ripplewatch works inside your AI assistant, so most of this is knowing what to say. Start with the path that
         fits how you work, then jump to whatever you&apos;re stuck on.
       </p>
+
+      <div className="mt-8">
+        <HowItFits />
+      </div>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
         {[

@@ -220,12 +220,13 @@ export function ConnectPanel({
     <div id="connect-slack" className="scroll-mt-6 rounded-xl border border-border bg-card p-6">
       <h2 className="text-base font-semibold">Slack delivery</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Get a weekly Momentum digest in a channel, on top of asking your assistant directly.
+        Alerts for important changes, the weekly digest and the monthly recap post to a channel your whole team sees. Your
+        assistant is where you dig in.
       </p>
       <div className="mt-3">
         <IntegrationConnector
           name="Slack"
-          description="Deliver a weekly digest to a channel"
+          description="Post alerts and recaps to a channel your team sees"
           connected={slackConnected}
           connectHref="/api/integrations/slack/connect"
           provider="slack"

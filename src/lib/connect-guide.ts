@@ -6,7 +6,7 @@
 // CONNECT_NOTIFICATIONS in connect.ts, and the competitor check runs daily.
 import { CONNECT_NOTIFICATIONS } from "@/lib/connect";
 
-export type GuideTopicId = "overview" | "win_loss" | "momentum" | "recent_events" | "notifications" | "prompts" | "team";
+export type GuideTopicId = "overview" | "slack" | "win_loss" | "momentum" | "recent_events" | "notifications" | "prompts" | "team";
 
 export type GuideTopic = {
   id: GuideTopicId;
@@ -30,18 +30,31 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     prompts: ["What can Ripplewatch do for me, and what should I do first?"],
   },
   {
+    id: "slack",
+    title: "Slack and your assistant",
+    summary: "What each is for, and how they work together.",
+    paragraphs: [
+      "They do different jobs. Slack is the feed: it posts what changed, to a channel your whole team sees, without anyone asking. Your assistant is the analyst: it's where you ask why a change matters and what to do about it.",
+      "Use them together. Something shows up in Slack, you take it to your assistant. Every Slack message from Ripplewatch has an Ask Ripplewatch button and a suggested question for exactly that. Slack can't answer questions itself yet, so the question goes to your assistant.",
+      "If you're the only one using Ripplewatch, you can skip Slack and just ask. If anyone else on your team needs to see what changed, connect Slack and pick a channel they're already in.",
+    ],
+    prompts: ["Slack just flagged a change at Notion. What does it mean for us, and what should we do?"],
+  },
+  {
     id: "win_loss",
     title: "Getting your win/loss data in",
     summary: "Five ways to add the deals you won and lost.",
     paragraphs: [
       "Win/loss is what turns competitor news into answers about your business. It lets Ripplewatch say which moves actually cost you deals, and it feeds each competitor's momentum. Even one deal helps. Patterns across your deals start to show once you've logged about five reasons, and a competitor's win/loss trend counts toward its momentum after about four.",
       "What to log: the competitor, whether you won or lost, and the reason in the customer's own words. Don't tidy it up. Say it the way the customer said it.",
-      "Five ways in, from easiest: (1) Tell your assistant in plain English. (2) Use the form under Settings, then Data. (3) Upload a CSV from your CRM under Settings, then Data. (4) Forward or paste a list of deals to the email address shown under Settings, then Data, and Ripplewatch pulls out the reasons. (5) If your assistant can also reach your CRM, call recorder or support inbox, ask it to read recent closed-lost deals or competitor mentions from there. It will tell you what it's about to read before it reads it.",
+      "Six ways in, from easiest: (1) Tell your assistant in plain English. (2) Use the form under Settings, then Data. (3) Upload a CSV from your CRM under Settings, then Data. (4) Forward or paste a list of deals to the email address shown under Settings, then Data, and Ripplewatch pulls out the reasons. (5) If your assistant can also reach your CRM, call recorder or support inbox, ask it to read recent closed-lost deals or competitor mentions from there. It will tell you what it's about to read before it reads it. (6) Make it automatic: if your assistant can run a recurring task, give it the Friday prompt below once and new lost deals arrive every week on their own.",
+      "HubSpot has an official connector for Claude and other assistants. Gong's connector is newer, read-only and returns call summaries instead of transcripts, so call mentions from Gong are logged as one-line summaries.",
     ],
     prompts: [
       "We lost a deal to Notion last week because they were cheaper for a team our size. Log it.",
       "Pull my closed-won and closed-lost deals from the last 90 days from my CRM, with the reason for each, and add them to Ripplewatch.",
       "In my call recorder, find calls from the last 30 days where Linear came up, and log those mentions in Ripplewatch.",
+      "Every Friday, pull the deals that closed lost this week from my CRM, with the reason for each, and add them to Ripplewatch.",
     ],
   },
   {

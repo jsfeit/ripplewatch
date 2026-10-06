@@ -682,6 +682,15 @@ async function scoreAccountSignals(supabase: AdminSupabase, account: Account): P
           reasoning: signal.relevance_reasoning ?? "",
           relevanceLevel: signal.relevance_level ?? "",
           type: signal.type,
+          // Connect accounts have no dashboard to open, so the message carries a
+          // question to take to their assistant instead.
+          ask:
+            account.tier === "connect"
+              ? {
+                  prompt: `Should we respond to this change at ${signal.competitorName}: "${signal.title.replace(/[.!?]+$/, "")}"?`,
+                  url: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://www.ripplewatch.ai"}/app/settings?tab=connect`,
+                }
+              : undefined,
         });
         await supabase.from("signals").update({ slack_sent_at: new Date().toISOString() }).eq("id", signal.id);
       }
