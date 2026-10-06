@@ -46,3 +46,7 @@ hubspot.config.yml
 # Sentry Config File
 .env.sentry-build-plugin
 supabase/.temp/
+
+# ChatGPT plugin: built zip and the reviewer login are local only.
+/chatgpt-plugin/dist/
+/chatgpt-plugin/.reviewer-credentials.local
