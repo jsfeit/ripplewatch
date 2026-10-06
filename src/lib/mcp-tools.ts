@@ -182,6 +182,7 @@ export function registerRipplewatchTools(server: McpServer) {
             "If next_best_action is present, ask for it conversationally and use the matching tool to record only what they actually tell you.",
             "If they use a CRM, call recorder or support inbox that you can also reach, offer to pull recent closed-lost deals (import_win_loss) or competitor mentions on calls (log_call_mentions) from it, and tell them what you will read first.",
             "After a successful step, say what just got better for them, then offer the next one.",
+            "Once their deal history is in and they have a CRM, call tool or support inbox you can reach, offer to put it on autopilot: say exactly what you would read each time and how often (for example every Friday for closed-lost deals), and suggest they ask you to run it on a schedule. Claude and ChatGPT can both run recurring tasks. Check a first run actually recorded a deal before calling it done.",
             "If they ask how any of it works (win/loss data, momentum, the emails they'll get, what to ask), use how_to_use instead of guessing.",
           ],
         },

@@ -6,7 +6,7 @@
 // CONNECT_NOTIFICATIONS in connect.ts, and the competitor check runs daily.
 import { CONNECT_NOTIFICATIONS } from "@/lib/connect";
 
-export type GuideTopicId = "overview" | "slack" | "win_loss" | "momentum" | "recent_events" | "notifications" | "prompts" | "team";
+export type GuideTopicId = "overview" | "slack" | "win_loss" | "autopilot" | "momentum" | "recent_events" | "notifications" | "prompts" | "team";
 
 export type GuideTopic = {
   id: GuideTopicId;
@@ -47,14 +47,27 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     paragraphs: [
       "Win/loss is what turns competitor news into answers about your business. It lets Ripplewatch say which moves actually cost you deals, and it feeds each competitor's momentum. Even one deal helps. Patterns across your deals start to show once you've logged about five reasons, and a competitor's win/loss trend counts toward its momentum after about four.",
       "What to log: the competitor, whether you won or lost, and the reason in the customer's own words. Don't tidy it up. Say it the way the customer said it.",
-      "Six ways in, from easiest: (1) Tell your assistant in plain English. (2) Use the form under Settings, then Data. (3) Upload a CSV from your CRM under Settings, then Data. (4) Forward or paste a list of deals to the email address shown under Settings, then Data, and Ripplewatch pulls out the reasons. (5) If your assistant can also reach your CRM, call recorder or support inbox, ask it to read recent closed-lost deals or competitor mentions from there. It will tell you what it's about to read before it reads it. (6) Make it automatic: if your assistant can run a recurring task, give it the Friday prompt below once and new lost deals arrive every week on their own.",
+      "Six ways in, from easiest: (1) Tell your assistant in plain English. (2) Use the form under Settings, then Data. (3) Upload a CSV from your CRM under Settings, then Data. (4) Forward or paste a list of deals to the email address shown under Settings, then Data, and Ripplewatch pulls out the reasons. (5) If your assistant can also reach your CRM, call recorder or support inbox, ask it to read recent closed-lost deals or competitor mentions from there. It will tell you what it's about to read before it reads it. (6) Put it on autopilot: Claude and ChatGPT can both run a prompt on a schedule, so a recurring task keeps new deals arriving without you (see Put it on autopilot).",
       "HubSpot has an official connector for Claude and other assistants. Gong's connector is newer, read-only and returns call summaries instead of transcripts, so call mentions from Gong are logged as one-line summaries.",
     ],
     prompts: [
       "We lost a deal to Notion last week because they were cheaper for a team our size. Log it.",
       "Pull my closed-won and closed-lost deals from the last 90 days from my CRM, with the reason for each, and add them to Ripplewatch.",
       "In my call recorder, find calls from the last 30 days where Linear came up, and log those mentions in Ripplewatch.",
-      "Every Friday, pull the deals that closed lost this week from my CRM, with the reason for each, and add them to Ripplewatch.",
+    ],
+  },
+  {
+    id: "autopilot",
+    title: "Put it on autopilot",
+    summary: "Have your assistant pull new deals on a schedule.",
+    paragraphs: [
+      "Your assistant can read your CRM, call recorder or support tool on a schedule and hand the results to Ripplewatch, so you never have to remember to log a deal. Claude and ChatGPT can both run a prompt on a recurring schedule: paste one of the prompts below, say how often, and it runs on its own.",
+      "Each prompt asks the assistant to tell you what it added, so nothing happens silently. The tool you're reading from has to be connected to your assistant first. On some ChatGPT plans a connection is read-only, which means it can read your CRM but can't save anything to Ripplewatch, so check that a test run actually records a deal.",
+      "A good rhythm: lost deals weekly, call mentions monthly, and a glance at the monthly recap to see whether the picture is getting sharper. The assistant won't invent anything: it only logs what it actually reads.",
+    ],
+    prompts: [
+      "Every Friday at 9am, pull the deals that closed lost this week from my CRM, with the reason for each, and add them to Ripplewatch. Tell me how many you added.",
+      "On the first of every month, find calls from the past month in my call recorder where a competitor I track came up, and log those mentions in Ripplewatch. A one-line summary of each is fine. Tell me how many you logged.",
     ],
   },
   {

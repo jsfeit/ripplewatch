@@ -86,7 +86,46 @@ export function promptForTool(toolId: string, competitor: string): { tool: strin
   };
 }
 
-// What to say to keep deal data flowing without logging it by hand: a recurring
-// task, if the person's assistant can run scheduled tasks.
-export const SCHEDULED_RECIPE =
-  "Every Friday, pull the deals that closed lost this week from my CRM, with the reason for each, and add them to Ripplewatch.";
+// Recurring prompts that keep deal data flowing without anyone logging it by
+// hand. Both Claude and ChatGPT can run a prompt on a schedule, so the person
+// pastes one in and says how often. Each names the tools they picked and asks
+// the assistant to report what it added, so nothing happens silently.
+export type ScheduledRecipe = { id: string; cadence: string; title: string; text: string };
+
+function namesOf(kind: DealToolKind, selected: string[], fallback: string): string {
+  const labels = DEAL_TOOLS.filter((t) => t.kind === kind && selected.includes(t.id)).map((t) => t.label);
+  if (labels.length === 0) return fallback;
+  return labels.length === 1 ? labels[0] : `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
+}
+
+// With no tools chosen, the CRM recipe is the useful default. Otherwise one
+// recipe per kind of tool they use.
+export function scheduledRecipes(selected: string[]): ScheduledRecipe[] {
+  const has = (kind: DealToolKind) => DEAL_TOOLS.some((t) => t.kind === kind && selected.includes(t.id));
+  const recipes: ScheduledRecipe[] = [];
+  if (has("crm") || selected.length === 0) {
+    recipes.push({
+      id: "crm",
+      cadence: "Every Friday",
+      title: "New lost deals",
+      text: `Every Friday at 9am, pull the deals that closed lost this week from ${namesOf("crm", selected, "my CRM")}, with the reason for each, and add them to Ripplewatch. Tell me how many you added.`,
+    });
+  }
+  if (has("calls")) {
+    recipes.push({
+      id: "calls",
+      cadence: "First of the month",
+      title: "Competitor mentions on calls",
+      text: `On the first of every month, find calls from the past month in ${namesOf("calls", selected, "my call recorder")} where a competitor I track came up, and log those mentions in Ripplewatch. A one-line summary of each is fine. Tell me how many you logged.`,
+    });
+  }
+  if (has("support")) {
+    recipes.push({
+      id: "support",
+      cadence: "Every Friday",
+      title: "Why customers left",
+      text: `Every Friday at 9am, find the cancellations from this week in ${namesOf("support", selected, "my support tool")} and why each customer left, and add them to Ripplewatch. Tell me how many you added.`,
+    });
+  }
+  return recipes;
+}

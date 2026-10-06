@@ -10,11 +10,11 @@ import { formatWinLossImportMessage, type ImportMessageData } from "@/lib/win-lo
 import { cn } from "@/lib/utils";
 import {
   DEAL_TOOLS,
-  SCHEDULED_RECIPE,
   dealToolsServerSnapshot,
   dealToolsSnapshot,
   parseDealTools,
   promptForTool,
+  scheduledRecipes,
   saveDealTools,
   subscribeDealTools,
 } from "@/lib/deal-tools";
@@ -291,24 +291,35 @@ export function ConnectDataPanel({ inboxAddress, competitors }: { inboxAddress: 
           Connect the tool to your assistant first, in its connectors settings. Don&apos;t see yours? If it offers a
           connector, this works with it.{selectedTools.includes("gong") ? " Gong shares call summaries rather than full transcripts, so those mentions are logged as one-line summaries." : ""}
         </p>
-        <div className="mt-5 border-t border-border pt-4">
-          <h4 className="text-sm font-medium">Keep it flowing without thinking about it</h4>
+        <div id="autopilot" className="mt-5 scroll-mt-6 border-t border-border pt-4">
+          <h4 className="text-sm font-medium">Put it on autopilot</h4>
           <p className="mt-1 text-xs text-muted-foreground">
-            If your assistant can run a recurring task, give it this once and new lost deals arrive every week on their
-            own.
+            Claude and ChatGPT can both run a prompt on a schedule. Paste one of these in once and new deals arrive on
+            their own, with a note each time on what was added. The tool still needs to be connected to your assistant,
+            and on some ChatGPT plans a connection is read-only, which means it can read your CRM but not save to
+            Ripplewatch.
           </p>
-          <button
-            type="button"
-            onClick={() => void copyPrompt(SCHEDULED_RECIPE)}
-            className="mt-2 flex w-full items-center justify-between gap-3 rounded-md border border-border bg-secondary/30 px-3 py-2 text-left text-sm hover:border-primary/50"
-          >
-            <span>{SCHEDULED_RECIPE}</span>
-            {copiedPrompt === SCHEDULED_RECIPE ? (
-              <Check className="size-3.5 shrink-0 text-primary" />
-            ) : (
-              <Copy className="size-3.5 shrink-0 text-muted-foreground" />
-            )}
-          </button>
+          <ul className="mt-3 space-y-3">
+            {scheduledRecipes(selectedTools).map((r) => (
+              <li key={r.id}>
+                <p className="text-xs font-medium text-muted-foreground">
+                  {r.title} · {r.cadence}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void copyPrompt(r.text)}
+                  className="mt-1 flex w-full items-center justify-between gap-3 rounded-md border border-border bg-secondary/30 px-3 py-2 text-left text-sm hover:border-primary/50"
+                >
+                  <span>{r.text}</span>
+                  {copiedPrompt === r.text ? (
+                    <Check className="size-3.5 shrink-0 text-primary" />
+                  ) : (
+                    <Copy className="size-3.5 shrink-0 text-muted-foreground" />
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </div>

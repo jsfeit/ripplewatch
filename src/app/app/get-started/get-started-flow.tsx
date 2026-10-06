@@ -267,6 +267,7 @@ export function GetStartedFlow({
               })}
             </div>
             <p className="text-xs text-muted-foreground">
+              Once you&apos;re set up, your assistant can pull from these on a schedule, so new deals arrive without you.
               Don&apos;t see yours, or don&apos;t use any? That&apos;s fine: you can always just tell your assistant how a
               deal went.
             </p>
