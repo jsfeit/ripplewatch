@@ -970,6 +970,108 @@ export async function sendConnectOnboardingEmail(
   if (result.error) throw new Error(result.error.message);
 }
 
+export type ConnectDailyAlertEmail = {
+  subject: string;
+  headline: string;
+  items: { competitor: string; title: string; why: string | null }[];
+  moreCount: number;
+  tryAsking: string;
+};
+
+// The daily alert for Connect accounts. Plain list from already-scored
+// signals; everything interpolated is escaped.
+export async function sendConnectDailyAlertEmail(
+  to: string,
+  appUrl: string,
+  unsubscribeUrl: string,
+  email: ConnectDailyAlertEmail
+) {
+  if (!isResendConfigured()) return;
+
+  const items = email.items
+    .map(
+      (i) =>
+        `<li style="margin-bottom:10px;"><strong>${escapeHtml(i.competitor)}:</strong> ${escapeHtml(i.title)}${
+          i.why ? `<br /><span style="color:#666;font-size:13px;">${escapeHtml(i.why)}</span>` : ""
+        }</li>`
+    )
+    .join("");
+
+  const result = await getResend().emails.send({
+    from: getAlertsFromEmail(),
+    to,
+    subject: email.subject,
+    html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+      <h2 style="margin:0 0 12px;">${escapeHtml(email.headline)}</h2>
+      <ul style="color:#3a3a3a;font-size:14px;line-height:1.6;padding-left:20px;">${items}</ul>
+      ${email.moreCount > 0 ? `<p style="color:#666;font-size:13px;">Plus ${email.moreCount} more. Ask your assistant for the full list.</p>` : ""}
+      <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">Want to dig in? Ask your assistant: <em>"${escapeHtml(email.tryAsking)}"</em></p>
+      <p style="color:#888;font-size:12px;margin-top:24px;">
+        You get this only on days something important changes. <a href="${appUrl}/app/settings?tab=connect" style="color:#888;">Manage</a>
+        &middot; <a href="${unsubscribeUrl}" style="color:#888;">Stop daily alerts</a>
+      </p>
+    </div>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
+export type ConnectMonthlyRecapEmail = {
+  subject: string;
+  headline: string;
+  summary: string[];
+  competitors: { name: string; label: string; highCount: number }[];
+  topSignals: { competitor: string; title: string; why: string | null }[];
+  nextStep: string | null;
+  tryAsking: string[];
+};
+
+// The monthly recap for Connect accounts, built from the account's own data
+// with no model call. Everything interpolated is escaped.
+export async function sendConnectMonthlyRecapEmail(
+  to: string,
+  appUrl: string,
+  unsubscribeUrl: string,
+  email: ConnectMonthlyRecapEmail
+) {
+  if (!isResendConfigured()) return;
+
+  const rows = email.competitors
+    .map(
+      (c) =>
+        `<tr><td style="padding:4px 12px 4px 0;">${escapeHtml(c.name)}</td><td style="padding:4px 12px 4px 0;color:#666;">${escapeHtml(c.label)}</td><td style="padding:4px 0;color:#666;">${c.highCount} high-relevance</td></tr>`
+    )
+    .join("");
+  const top = email.topSignals
+    .map(
+      (s) =>
+        `<li style="margin-bottom:8px;"><strong>${escapeHtml(s.competitor)}:</strong> ${escapeHtml(s.title)}${
+          s.why ? `<br /><span style="color:#666;font-size:13px;">${escapeHtml(s.why)}</span>` : ""
+        }</li>`
+    )
+    .join("");
+  const ask = email.tryAsking.map((p) => `<li style="margin-bottom:4px;">${escapeHtml(p)}</li>`).join("");
+
+  const result = await getResend().emails.send({
+    from: getAlertsFromEmail(),
+    to,
+    subject: email.subject,
+    html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+      <h2 style="margin:0 0 12px;">${escapeHtml(email.headline)}</h2>
+      ${email.summary.map((p) => `<p style="color:#3a3a3a;font-size:14px;line-height:1.6;">${escapeHtml(p)}</p>`).join("")}
+      ${rows ? `<table style="border-collapse:collapse;font-size:14px;margin:8px 0 16px;">${rows}</table>` : ""}
+      ${top ? `<p style="color:#3a3a3a;font-size:14px;margin:16px 0 4px;">What mattered most:</p><ul style="color:#3a3a3a;font-size:14px;line-height:1.6;padding-left:20px;">${top}</ul>` : ""}
+      ${email.nextStep ? `<p style="color:#3a3a3a;font-size:14px;line-height:1.6;"><strong>One thing that would sharpen next month:</strong> ${escapeHtml(email.nextStep)}</p>` : ""}
+      <p style="color:#3a3a3a;font-size:14px;margin:16px 0 4px;">Try asking your assistant:</p>
+      <ul style="color:#3a3a3a;font-size:14px;line-height:1.6;padding-left:20px;">${ask}</ul>
+      <p style="color:#888;font-size:12px;margin-top:24px;">
+        <a href="${appUrl}/app/settings?tab=connect" style="color:#888;">Manage</a>
+        &middot; <a href="${unsubscribeUrl}" style="color:#888;">Stop the monthly recap</a>
+      </p>
+    </div>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
 // An auto-reload charge was declined, so reload is switched off. Says what
 // happened and the one thing to do, before answers actually stop.
 export async function sendConnectReloadFailedEmail(to: string, companyName: string, appUrl: string) {

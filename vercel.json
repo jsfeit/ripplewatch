@@ -59,6 +59,14 @@
     {
       "path": "/api/cron/connect-onboarding",
       "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/cron/connect-daily-alert",
+      "schedule": "30 14 * * *"
+    },
+    {
+      "path": "/api/cron/connect-monthly-recap",
+      "schedule": "30 16 1 * *"
     }
   ]
 }

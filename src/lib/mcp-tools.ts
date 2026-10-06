@@ -16,6 +16,7 @@ import { loadFirstLook } from "@/lib/first-look";
 import { importWinLossText } from "@/lib/win-loss-import-text";
 import { logCallMentions } from "@/lib/call-mentions";
 import { hasMinimumBalance } from "@/lib/connect-wallet";
+import { GUIDE_TOPICS, getGuideTopic, guideTopicText, type GuideTopicId } from "@/lib/connect-guide";
 
 // Signal titles and summaries come from public third-party pages, so they can
 // contain text written by anyone. Every tool that returns them says so, so an
@@ -99,6 +100,55 @@ export function registerRipplewatchTools(server: McpServer) {
     })
   );
 
+  server.registerPrompt(
+    "how-to-use",
+    {
+      title: "How do I get the most out of Ripplewatch?",
+      description: "Explains win/loss data, momentum, the emails you'll get, and what to ask.",
+    },
+    () => ({
+      messages: [
+        {
+          role: "user" as const,
+          content: {
+            type: "text" as const,
+            text: "Use how_to_use to explain how I get the most out of Ripplewatch: how to get my win/loss data in, what momentum means, what I'll receive daily, weekly and monthly, how to see recent changes, and what to ask. Start with the overview and ask what I want to go deeper on.",
+          },
+        },
+      ],
+    })
+  );
+
+  server.registerTool(
+    "how_to_use",
+    {
+      title: "How to use Ripplewatch",
+      description:
+        "Call this when the user asks how Ripplewatch works, how to get their win/loss data in, what momentum means, what notifications or emails they will get, how to see recent changes, what to ask, or how a team should use it. With no topic it returns the list of topics so you can offer them; with a topic it returns that explanation. Explain it conversationally in your own words, one topic at a time.",
+      inputSchema: z.object({
+        topic: z
+          .enum(GUIDE_TOPICS.map((t) => t.id) as [GuideTopicId, ...GuideTopicId[]])
+          .optional()
+          .describe("Which topic to explain. Omit to list the topics."),
+      }),
+      annotations: READ_ONLY,
+    },
+    async ({ topic }) => {
+      const found = topic ? getGuideTopic(topic) : undefined;
+      if (found) {
+        return result({
+          topic: found.id,
+          explanation: guideTopicText(found),
+          note: "Explain this in your own words and offer the next topic. Don't read it out in full unless asked.",
+        });
+      }
+      return result({
+        topics: GUIDE_TOPICS.map((t) => ({ topic: t.id, title: t.title, summary: t.summary })),
+        note: "Offer these as options and let the user pick one. Call again with a topic to get the explanation.",
+      });
+    }
+  );
+
   server.registerTool(
     "start_here",
     {
@@ -132,6 +182,7 @@ export function registerRipplewatchTools(server: McpServer) {
             "If next_best_action is present, ask for it conversationally and use the matching tool to record only what they actually tell you.",
             "If they use a CRM, call recorder or support inbox that you can also reach, offer to pull recent closed-lost deals (import_win_loss) or competitor mentions on calls (log_call_mentions) from it, and tell them what you will read first.",
             "After a successful step, say what just got better for them, then offer the next one.",
+            "If they ask how any of it works (win/loss data, momentum, the emails they'll get, what to ask), use how_to_use instead of guessing.",
           ],
         },
         look.next

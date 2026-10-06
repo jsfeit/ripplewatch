@@ -209,3 +209,61 @@ export async function sendSlackWeeklyDigest(
     }),
   });
 }
+
+export type SlackMonthlyRecapInput = {
+  accountName: string;
+  summary: string[];
+  competitors: { name: string; label: string; highCount: number }[];
+  topSignals: { competitor: string; title: string; why: string | null }[];
+  nextStep: string | null;
+  openUrl: string;
+};
+
+// Pure, so it can be checked without a Slack workspace. Built from the same
+// recap the email uses; competitor names and titles come from public pages,
+// and Slack renders mrkdwn, so they're passed through as plain text blocks.
+export function buildSlackMonthlyRecapBlocks(input: SlackMonthlyRecapInput): Record<string, unknown>[] {
+  const blocks: Record<string, unknown>[] = [
+    { type: "header", text: { type: "plain_text", text: `Last 30 days at ${input.accountName}`, emoji: true } },
+    { type: "section", text: { type: "mrkdwn", text: input.summary.join("\n\n") } },
+  ];
+  if (input.competitors.length > 0) {
+    blocks.push({
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `*Momentum*\n${input.competitors.map((c) => `• ${c.name}: ${c.label} (${c.highCount} high-relevance)`).join("\n")}`,
+      },
+    });
+  }
+  if (input.topSignals.length > 0) {
+    blocks.push({
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `*What mattered most*\n${input.topSignals.map((s) => `• *${s.competitor}:* ${s.title}${s.why ? `\n${blockquote(s.why)}` : ""}`).join("\n")}`,
+      },
+    });
+  }
+  if (input.nextStep) {
+    blocks.push({ type: "section", text: { type: "mrkdwn", text: `*One thing that would sharpen next month*\n${input.nextStep}` } });
+  }
+  blocks.push({
+    type: "actions",
+    elements: [{ type: "button", text: { type: "plain_text", text: "Ask Ripplewatch", emoji: true }, url: input.openUrl, style: "primary" }],
+  });
+  blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: "Sent by <https://ripplewatch.ai|Ripplewatch> · monthly recap" }] });
+  return blocks;
+}
+
+export async function sendSlackMonthlyRecap(credentials: SlackCredentials, input: SlackMonthlyRecapInput): Promise<void> {
+  if (!credentials.incoming_webhook_url) return;
+  const res = await fetch(credentials.incoming_webhook_url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: `Last 30 days at ${input.accountName}: ${input.summary[0] ?? ""}`, blocks: buildSlackMonthlyRecapBlocks(input) }),
+  });
+  // Unlike the older senders, a failed post throws, so the cron doesn't mark a
+  // recap as sent that never reached the channel.
+  if (!res.ok) throw new Error(`Slack returned ${res.status}`);
+}

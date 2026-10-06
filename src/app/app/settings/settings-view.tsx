@@ -99,6 +99,9 @@ export function SettingsView({
     timezone: string;
     slackDigestDay: number;
     slackDigestHour: number;
+    dailyAlertEnabled: boolean;
+    monthlyRecapEnabled: boolean;
+    emailWithSlack: boolean;
     hasPositioning: boolean;
     competitorCount: number;
     hasDealHistory: boolean;
@@ -259,6 +262,9 @@ export function SettingsView({
             timezone={connect.timezone}
             slackDigestDay={connect.slackDigestDay}
             slackDigestHour={connect.slackDigestHour}
+            dailyAlertEnabled={connect.dailyAlertEnabled}
+            monthlyRecapEnabled={connect.monthlyRecapEnabled}
+            emailWithSlack={connect.emailWithSlack}
             hasPositioning={connect.hasPositioning}
             competitorCount={connect.competitorCount}
             hasDealHistory={connect.hasDealHistory}

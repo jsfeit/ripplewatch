@@ -56,7 +56,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "What is Ripplewatch Connect?",
         answer:
-          'Ripplewatch Connect is an AI competitive intelligence analyst built into Claude or ChatGPT, with you at all times instead of a dashboard you have to remember to open. You add Ripplewatch as a connector, then ask what changed with your competitors, what it means for your deals, and tell it how deals went, all in the chat. It\'s a separate product from the dashboard plans: $29 a month plus usage you prepay for. <a href="/connect">See how it works</a>.',
+          'Ripplewatch Connect is an AI competitive intelligence analyst built into Claude or ChatGPT, with you at all times instead of a dashboard you have to remember to open. You add Ripplewatch as a connector, then ask what changed with your competitors, what it means for your deals, and tell it how deals went, all in the chat. It\'s a separate product from the dashboard plans: $29 a month plus usage you prepay for. <a href="/connect">See how it works</a>, or <a href="/connect/guide">how to get the most out of it</a>.',
       },
       {
         question: "Can I use Ripplewatch from Claude, ChatGPT, or another AI assistant?",

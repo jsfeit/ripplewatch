@@ -9,6 +9,7 @@ import { ConnectCheckoutModal } from "@/components/app/connect-checkout-modal";
 import { ConnectFundingPicker, fundingFromPicker } from "@/components/app/connect-funding-picker";
 import { IntegrationConnector } from "@/components/app/integration-connector";
 import { SlackDigestSchedule } from "@/components/app/slack-digest-schedule";
+import { ConnectNotifications } from "@/components/app/connect-notifications";
 import { CONNECT_BASE_FEE_USD, CONNECT_DEFAULT_RELOAD_USD } from "@/lib/connect-pricing";
 import { CONNECT_MCP_URL, CONNECT_NAME } from "@/lib/connect";
 import { timeAgo } from "@/lib/date";
@@ -49,6 +50,9 @@ export function ConnectPanel({
   timezone,
   slackDigestDay,
   slackDigestHour,
+  dailyAlertEnabled,
+  monthlyRecapEnabled,
+  emailWithSlack,
   hasPositioning,
   competitorCount,
   hasDealHistory,
@@ -67,6 +71,9 @@ export function ConnectPanel({
   timezone: string;
   slackDigestDay: number;
   slackDigestHour: number;
+  dailyAlertEnabled: boolean;
+  monthlyRecapEnabled: boolean;
+  emailWithSlack: boolean;
   hasPositioning: boolean;
   competitorCount: number;
   hasDealHistory: boolean;
@@ -194,8 +201,8 @@ export function ConnectPanel({
               2
             </span>
             <p>
-              In Claude, go to Settings → Connectors → Add custom connector. In ChatGPT, go to Settings → Connectors →
-              Advanced → Add custom connector.
+              In Claude, go to Settings → Connectors → Add custom connector. In ChatGPT, open Plugins and use the + button
+              to add a custom MCP server (it depends on your ChatGPT plan).
             </p>
           </li>
           <li className="flex gap-3">
@@ -406,6 +413,14 @@ export function ConnectPanel({
       {hasSubscription && competitorCount > 0 ? firstLookCard : null}
       {checklistCard}
       {hasSubscription ? connectAssistantCard : null}
+      {hasSubscription ? (
+        <ConnectNotifications
+          initialDailyAlert={dailyAlertEnabled}
+          initialMonthlyRecap={monthlyRecapEnabled}
+          initialEmailWithSlack={emailWithSlack}
+          slackConnected={slackConnected}
+        />
+      ) : null}
       {hasSubscription ? slackCard : null}
 
       {!hasSubscription ? (

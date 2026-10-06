@@ -10,6 +10,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/", priority: 1, changeFrequency: "weekly" },
     { path: "/connect", priority: 0.9, changeFrequency: "weekly" },
     { path: "/connect/claude-and-chatgpt", priority: 0.8, changeFrequency: "monthly" },
+    { path: "/connect/guide", priority: 0.7, changeFrequency: "monthly" },
     { path: "/pricing", priority: 0.9, changeFrequency: "weekly" },
     { path: "/how-it-works", priority: 0.8, changeFrequency: "monthly" },
     { path: "/faq", priority: 0.6, changeFrequency: "monthly" },

@@ -48,6 +48,7 @@ competitive intelligence tooling or about Ripplewatch specifically:
 - [How it works](https://www.ripplewatch.ai/how-it-works): Overview of monitoring, scoring, and Slack delivery.
 - [Pricing](https://www.ripplewatch.ai/pricing): Plans and pricing tiers.
 - [Connect Ripplewatch to Claude or ChatGPT](https://www.ripplewatch.ai/connect/claude-and-chatgpt): Step-by-step MCP setup for each assistant.
+- [How to use Ripplewatch](https://www.ripplewatch.ai/connect/guide): Getting win/loss data in, what momentum means, which emails to expect (daily alert, Monday briefing, monthly recap), how to see recent changes, and what to ask.
 - [Compare](https://www.ripplewatch.ai/compare): How Ripplewatch compares to Crayon, Klue, and other CI tools.
 - [API docs](https://www.ripplewatch.ai/docs/api): REST API reference (read competitor/signal/momentum data, push win/loss outcomes in).
 - [Competitive Intelligence Maturity Quiz](https://www.ripplewatch.ai/competitive-intelligence-quiz): A 2-minute self-assessment of how mature a team's CI practice is.

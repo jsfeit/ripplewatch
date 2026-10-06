@@ -4,6 +4,8 @@ import { generateWeeklyAccountIntelligence } from "@/lib/digest";
 import { hasMinimumBalance } from "@/lib/connect-wallet";
 import { sendConnectWeeklyEmail } from "@/lib/resend";
 import { mapWithConcurrency } from "@/lib/crawl";
+import { connectDelivery } from "@/lib/connect-delivery";
+import { loadSlackCredentials } from "@/lib/connect-slack";
 import type { Database } from "@/lib/supabase/types";
 
 type Account = Database["public"]["Tables"]["accounts"]["Row"];
@@ -48,6 +50,12 @@ export async function GET(request: Request) {
 
       const { verdict } = await generateWeeklyAccountIntelligence(supabase, account, competitors);
       if (!verdict) return { account: account.name, sent: false, reason: "quiet week" };
+
+      // The verdict above is regenerated either way (the assistant's briefing
+      // reads it). The email only goes out when it's the channel: Slack
+      // accounts get the weekly digest there instead, unless they asked for both.
+      const delivery = connectDelivery(account, Boolean(await loadSlackCredentials(supabase, account.id)));
+      if (!delivery.email) return { account: account.name, sent: false, reason: "delivered in Slack" };
 
       await sendConnectWeeklyEmail(account.contact_email, account.name, verdict, funds.balanceUsd, appUrl);
       return { account: account.name, sent: true };

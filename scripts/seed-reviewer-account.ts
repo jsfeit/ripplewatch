@@ -59,7 +59,7 @@ async function main() {
     tier: "connect",
     status: "active",
     demo_mode: true,
-    contact_email: EMAIL,
+    contact_email: null, // no real mailbox: keeps the weekly, daily and monthly emails from bouncing
     created_by: userId,
     positioning: POSITIONING,
     icp: ICP,
