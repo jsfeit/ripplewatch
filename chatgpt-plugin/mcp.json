@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "ripplewatch": {
+      "type": "http",
+      "url": "https://www.ripplewatch.ai/api/mcp"
+    }
+  }
+}

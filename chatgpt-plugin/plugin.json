@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "ripplewatch",
+  "version": "0.1.0",
+  "description": "Ask about your competitors and log deal outcomes. Ripplewatch watches competitor pricing, hiring, press and product changes and scores each one against your own positioning and win/loss history.",
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Ripplewatch",
+        "category": "Research"
+      }
+    }
+  }
+}
