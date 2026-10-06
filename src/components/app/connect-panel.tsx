@@ -52,6 +52,7 @@ export function ConnectPanel({
   slackDigestHour,
   dailyAlertEnabled,
   monthlyRecapEnabled,
+  emailWithSlack,
   hasPositioning,
   competitorCount,
   hasDealHistory,
@@ -72,6 +73,7 @@ export function ConnectPanel({
   slackDigestHour: number;
   dailyAlertEnabled: boolean;
   monthlyRecapEnabled: boolean;
+  emailWithSlack: boolean;
   hasPositioning: boolean;
   competitorCount: number;
   hasDealHistory: boolean;
@@ -199,8 +201,8 @@ export function ConnectPanel({
               2
             </span>
             <p>
-              In Claude, go to Settings → Connectors → Add custom connector. In ChatGPT, go to Settings → Connectors →
-              Advanced → Add custom connector.
+              In Claude, go to Settings → Connectors → Add custom connector. In ChatGPT, open Plugins and use the + button
+              to add a custom MCP server (it depends on your ChatGPT plan).
             </p>
           </li>
           <li className="flex gap-3">
@@ -415,6 +417,7 @@ export function ConnectPanel({
         <ConnectNotifications
           initialDailyAlert={dailyAlertEnabled}
           initialMonthlyRecap={monthlyRecapEnabled}
+          initialEmailWithSlack={emailWithSlack}
           slackConnected={slackConnected}
         />
       ) : null}

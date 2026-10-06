@@ -3,6 +3,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { mapWithConcurrency } from "@/lib/crawl";
 import { buildMonthlyRecap } from "@/lib/connect-monthly-recap";
 import { sendConnectMonthlyRecapEmail } from "@/lib/resend";
+import { sendSlackMonthlyRecap } from "@/lib/slack";
+import { connectDelivery } from "@/lib/connect-delivery";
+import { loadSlackCredentials } from "@/lib/connect-slack";
 import { accountUnsubscribeUrl } from "@/lib/unsubscribe-token";
 import type { Database } from "@/lib/supabase/types";
 
@@ -12,6 +15,10 @@ type Account = Database["public"]["Tables"]["accounts"]["Row"];
 // last 30 days: how many changes were picked up and how many mattered, who is
 // heating up, deal results, and the one thing that would sharpen the next
 // month. Built from the account's own data with no model call.
+//
+// Slack is where the team sees it: with Slack connected the recap posts to the
+// channel, and email goes only to accounts without Slack or ones that asked for
+// both.
 //
 // Skipped for: accounts with the recap off, accounts under three weeks old
 // (their onboarding emails cover that stretch), a month already sent (so a
@@ -48,9 +55,31 @@ export async function GET(request: Request) {
     try {
       const recap = await buildMonthlyRecap(supabase, account.id, account.name);
       if (!recap) return { account: account.name, sent: false, reason: "nothing to report" };
-      await sendConnectMonthlyRecapEmail(account.contact_email, appUrl, accountUnsubscribeUrl(appUrl, account.id, "monthly"), recap);
+      const slack = await loadSlackCredentials(supabase, account.id);
+      const delivery = connectDelivery(account, Boolean(slack));
+      const sent: string[] = [];
+      if (delivery.slack && slack) {
+        try {
+          await sendSlackMonthlyRecap(slack as Parameters<typeof sendSlackMonthlyRecap>[0], {
+            accountName: account.name,
+            summary: recap.summary,
+            competitors: recap.competitors,
+            topSignals: recap.topSignals,
+            nextStep: recap.nextStep,
+            openUrl: `${appUrl}/app/settings?tab=connect`,
+          });
+          sent.push("slack");
+        } catch (err) {
+          console.error(`connect monthly recap Slack post failed for ${account.name}:`, err);
+        }
+      }
+      // Email also covers a Slack post that failed, so the recap isn't lost.
+      if (delivery.email || sent.length === 0) {
+        await sendConnectMonthlyRecapEmail(account.contact_email, appUrl, accountUnsubscribeUrl(appUrl, account.id, "monthly"), recap);
+        sent.push("email");
+      }
       await supabase.from("accounts").update({ connect_monthly_recap_sent_at: now.toISOString() }).eq("id", account.id);
-      return { account: account.name, sent: true };
+      return { account: account.name, sent: true, via: sent };
     } catch (err) {
       console.error(`connect monthly recap failed for ${account.name}:`, err);
       return { account: account.name, sent: false, reason: "error" };

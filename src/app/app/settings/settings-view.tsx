@@ -101,6 +101,7 @@ export function SettingsView({
     slackDigestHour: number;
     dailyAlertEnabled: boolean;
     monthlyRecapEnabled: boolean;
+    emailWithSlack: boolean;
     hasPositioning: boolean;
     competitorCount: number;
     hasDealHistory: boolean;
@@ -263,6 +264,7 @@ export function SettingsView({
             slackDigestHour={connect.slackDigestHour}
             dailyAlertEnabled={connect.dailyAlertEnabled}
             monthlyRecapEnabled={connect.monthlyRecapEnabled}
+            emailWithSlack={connect.emailWithSlack}
             hasPositioning={connect.hasPositioning}
             competitorCount={connect.competitorCount}
             hasDealHistory={connect.hasDealHistory}

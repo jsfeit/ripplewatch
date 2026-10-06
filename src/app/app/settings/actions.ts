@@ -46,8 +46,13 @@ export async function disconnectIntegrationAction(formData: FormData) {
 export async function updateConnectNotificationsAction(input: {
   dailyAlert: boolean;
   monthlyRecap: boolean;
+  emailWithSlack: boolean;
 }): Promise<{ ok: boolean; error?: string }> {
-  if (typeof input.dailyAlert !== "boolean" || typeof input.monthlyRecap !== "boolean") {
+  if (
+    typeof input.dailyAlert !== "boolean" ||
+    typeof input.monthlyRecap !== "boolean" ||
+    typeof input.emailWithSlack !== "boolean"
+  ) {
     return { ok: false, error: "Invalid input" };
   }
   const supabase = await createClient();
@@ -61,7 +66,11 @@ export async function updateConnectNotificationsAction(input: {
 
   const { error } = await supabase
     .from("accounts")
-    .update({ connect_daily_alert_enabled: input.dailyAlert, connect_monthly_recap_enabled: input.monthlyRecap })
+    .update({
+      connect_daily_alert_enabled: input.dailyAlert,
+      connect_monthly_recap_enabled: input.monthlyRecap,
+      connect_email_with_slack: input.emailWithSlack,
+    })
     .eq("id", profile.account_id);
   if (error) return { ok: false, error: "Couldn't save that. Try again." };
 

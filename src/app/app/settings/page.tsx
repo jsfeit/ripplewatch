@@ -92,6 +92,7 @@ export default async function SettingsPage() {
     slackDigestHour: number;
     dailyAlertEnabled: boolean;
     monthlyRecapEnabled: boolean;
+    emailWithSlack: boolean;
     hasPositioning: boolean;
     competitorCount: number;
     hasDealHistory: boolean;
@@ -102,7 +103,7 @@ export default async function SettingsPage() {
     // haven't been migrated yet: an error here just means "both on".
     const { data: notificationPrefs } = await db
       .from("accounts")
-      .select("connect_daily_alert_enabled, connect_monthly_recap_enabled")
+      .select("connect_daily_alert_enabled, connect_monthly_recap_enabled, connect_email_with_slack")
       .eq("id", accountId)
       .maybeSingle();
     const [{ data: wallet }, { data: ledgerRows }, firstLook, { count: dealCount }] = await Promise.all([
@@ -146,6 +147,7 @@ export default async function SettingsPage() {
       slackDigestHour: account.slack_digest_hour,
       dailyAlertEnabled: notificationPrefs?.connect_daily_alert_enabled ?? true,
       monthlyRecapEnabled: notificationPrefs?.connect_monthly_recap_enabled ?? true,
+      emailWithSlack: notificationPrefs?.connect_email_with_slack ?? false,
       hasPositioning: Boolean(account.positioning?.trim() || account.icp?.trim()),
       competitorCount: (competitors ?? []).length,
       hasDealHistory: (dealCount ?? 0) > 0,

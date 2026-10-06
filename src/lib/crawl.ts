@@ -661,7 +661,10 @@ async function scoreAccountSignals(supabase: AdminSupabase, account: Account): P
   // deliberately excluded from the real-time Slack push: Slack is for "this
   // just happened," and a backfilled article from months ago hasn't.
   const highRelevanceSignals = scoredSignals.filter((s) => s.relevance_level === "High" && s.source !== "backfill");
-  if (highRelevanceSignals.length > 0) {
+  // Connect accounts can switch High-relevance alerts off in Settings; that
+  // switch covers the Slack message too, so it means the same thing everywhere.
+  const alertsOn = !(account.tier === "connect" && account.connect_daily_alert_enabled === false);
+  if (highRelevanceSignals.length > 0 && alertsOn) {
     const { data: slackIntegration } = await supabase
       .from("integrations")
       .select("credentials")

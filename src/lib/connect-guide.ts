@@ -76,7 +76,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     paragraphs: [
       "You can always ask your assistant for the latest. These are the messages that come to you without asking.",
       ...CONNECT_NOTIFICATIONS.map((n) => `${n.name}: ${n.when} ${n.control}`),
-      "Emails go to the address on the account. If a team is using Ripplewatch, connect Slack so the weekly digest lands where everyone is.",
+      "Slack is where a team sees all of this, so connect it if more than one person uses Ripplewatch. Email goes only to the account owner: it's the fallback when Slack isn't connected, or an extra you can switch on.",
     ],
   },
   {
@@ -105,7 +105,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     summary: "Solo setup, and what's different with teammates.",
     paragraphs: [
       "Solo: connect your assistant, add your competitors, tell it how a few deals went, and ask when you need it. The weekly email keeps you current in between.",
-      "With a team: invite teammates under Settings. Everyone shares the same competitors and deal history, and each person connects their own assistant. Emails go to the account's email address only, so connect Slack to put the weekly digest in a shared channel. Anyone can log a deal, so agree on who does, and say reasons the way the customer said them.",
+      "With a team: invite teammates under Settings. Everyone shares the same competitors and deal history, and each person connects their own assistant. Email goes only to the account owner, so connect Slack: alerts, the weekly digest and the monthly recap then post to a channel everyone can see. Anyone can log a deal, so agree on who does, and say reasons the way the customer said them.",
     ],
     prompts: ["Which of our competitors should the whole team be watching, and who owns each?"],
   },

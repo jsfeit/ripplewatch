@@ -24,7 +24,7 @@ const SOLO = [
 const TEAM = [
   "Connect one assistant and add the competitors.",
   "Invite teammates under Settings. Everyone shares the same competitors and deals.",
-  "Connect Slack so the weekly digest lands in a shared channel.",
+  "Connect Slack so alerts and recaps land in a shared channel.",
   "Agree who logs deals, and ask from your own assistants.",
 ];
 

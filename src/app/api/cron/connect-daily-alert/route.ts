@@ -4,6 +4,8 @@ import { mapWithConcurrency } from "@/lib/crawl";
 import { buildDailyAlertEmail } from "@/lib/connect-alerts";
 import { sendConnectDailyAlertEmail } from "@/lib/resend";
 import { accountUnsubscribeUrl } from "@/lib/unsubscribe-token";
+import { connectDelivery } from "@/lib/connect-delivery";
+import { loadSlackCredentials } from "@/lib/connect-slack";
 import type { Database } from "@/lib/supabase/types";
 
 type Account = Database["public"]["Tables"]["accounts"]["Row"];
@@ -13,6 +15,10 @@ type Account = Database["public"]["Tables"]["accounts"]["Row"];
 // been emailed yet, and nothing on a quiet day. The dashboard daily digest
 // skips Connect accounts (its emails link to a dashboard they don't have), so
 // this is their equivalent, narrower on purpose: High only.
+//
+// Email is the fallback channel. With Slack connected, High-relevance changes
+// already post to the channel in real time (see the crawl), so this email only
+// goes out for accounts without Slack or ones that asked for both.
 //
 // Only changes from the last 36 hours qualify, so the first run for an
 // existing account can't dump its older history into one email. No model call:
@@ -41,6 +47,9 @@ export async function GET(request: Request) {
     // Undefined (column not migrated yet) counts as on, matching the default.
     if (account.connect_daily_alert_enabled === false) return { account: account.name, sent: 0, reason: "off" };
     try {
+      const delivery = connectDelivery(account, Boolean(await loadSlackCredentials(supabase, account.id)));
+      if (!delivery.email) return { account: account.name, sent: 0, reason: "delivered in Slack" };
+
       const { data: competitors } = await supabase.from("competitors").select("id, name").eq("account_id", account.id);
       if (!competitors || competitors.length === 0) return { account: account.name, sent: 0, reason: "no competitors" };
 

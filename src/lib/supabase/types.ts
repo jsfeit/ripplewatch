@@ -135,6 +135,7 @@ export interface Database {
           connect_daily_alert_enabled: boolean;
           connect_monthly_recap_enabled: boolean;
           connect_monthly_recap_sent_at: string | null;
+          connect_email_with_slack: boolean;
           created_at: string;
         };
         Insert: {
@@ -179,6 +180,7 @@ export interface Database {
           connect_daily_alert_enabled?: boolean;
           connect_monthly_recap_enabled?: boolean;
           connect_monthly_recap_sent_at?: string | null;
+          connect_email_with_slack?: boolean;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["accounts"]["Insert"]>;
