@@ -13,9 +13,12 @@ import { CompetitorRow, type CompetitorInput } from "@/components/app/competitor
 import { IntegrationConnector } from "@/components/app/integration-connector";
 import { Confetti } from "@/components/app/confetti";
 import { McpConnectStep } from "@/components/app/mcp-connect-step";
+import { HowItFits } from "@/components/app/how-it-fits";
+import { DEAL_TOOLS, loadDealTools, saveDealTools } from "@/lib/deal-tools";
+import { cn } from "@/lib/utils";
 import { ONBOARDING_VALUE, type OnboardingStepKey } from "@/lib/onboarding-value";
 
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 5;
 
 // Only the Slack step is genuinely optional. Business context (positioning,
 // ICP, how the team sells) is soft: the fields aren't required, but there's
@@ -27,6 +30,7 @@ const TOTAL_STEPS = 4;
 const WIZARD_STEPS: { title: string; optional: boolean; key: OnboardingStepKey }[] = [
   { title: "Tell it about your business", optional: true, key: "business" },
   { title: "Add your competitors", optional: false, key: "competitors" },
+  { title: "Where do your deals live?", optional: true, key: "tools" },
   { title: "Connect Slack", optional: true, key: "slack" },
 ];
 
@@ -49,6 +53,9 @@ export function GetStartedFlow({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [celebrating, setCelebrating] = useState(false);
+  // This browser's saved choice. Read lazily and only on the client; the chips
+  // that show it appear on a later step, so the server render never differs.
+  const [dealTools, setDealTools] = useState<string[]>(() => (typeof window === "undefined" ? [] : loadDealTools()));
 
   const filledCompetitors = competitors.filter((c) => c.name.trim());
   const hasCompetitor = filledCompetitors.length >= 1;
@@ -96,6 +103,7 @@ export function GetStartedFlow({
     return (
       <McpConnectStep
         mcpLastConnectedAt={mcpLastConnectedAt}
+        totalSteps={TOTAL_STEPS}
         onContinue={() => {
           setJustUnlocked(ONBOARDING_VALUE.connect.unlocked());
           setStep(1);
@@ -135,6 +143,10 @@ export function GetStartedFlow({
       setJustUnlocked(positioning.trim() || icp.trim() ? ONBOARDING_VALUE.business.unlocked() : null);
     } else if (wizardStep === 1) {
       setJustUnlocked(ONBOARDING_VALUE.competitors.unlocked(filledCompetitors.length));
+    } else if (wizardStep === 2) {
+      // Remembered in this browser so the Data tab can name these tools in its prompts.
+      saveDealTools(dealTools);
+      setJustUnlocked(dealTools.length > 0 ? ONBOARDING_VALUE.tools.unlocked() : null);
     }
     setStep((s) => s + 1);
   }
@@ -158,7 +170,9 @@ export function GetStartedFlow({
             ? `This is what your assistant uses to judge whether something is actually relevant to ${companyName}, not just noise. Skip it and every answer defaults to generic.`
             : wizardStep === 1
               ? "Required. Your assistant can't compare you to anyone until it knows who to compare you to, and this is the one piece of setup nothing else substitutes for."
-              : "Get a weekly digest in a channel, on top of asking directly. Skip this if you'd rather set it up later."}
+              : wizardStep === 2
+                ? "Your deals are what make answers specific to you. If they live in a tool your assistant can reach, it can pull them in for you."
+                : "Slack is the shared feed: alerts and recaps land in a channel your whole team sees. Skip it if you're the only one using Ripplewatch."}
         </p>
         <p className="mt-1 rounded-md bg-primary/[0.06] px-3 py-2 text-sm">{ONBOARDING_VALUE[key].unlocks}</p>
       </CardHeader>
@@ -231,13 +245,46 @@ export function GetStartedFlow({
         )}
 
         {wizardStep === 2 ? (
-          <IntegrationConnector
-            name="Slack"
-            description="Deliver a weekly digest to a channel"
-            connected={false}
-            connectHref="/api/integrations/slack/connect"
-            provider="slack"
-          />
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Pick any that apply. You can change this later in Settings, under Data.</p>
+            <div className="flex flex-wrap gap-2">
+              {DEAL_TOOLS.map((t) => {
+                const on = dealTools.includes(t.id);
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setDealTools((cur) => (on ? cur.filter((id) => id !== t.id) : [...cur, t.id]))}
+                    className={cn(
+                      "rounded-md border px-3 py-1.5 text-sm font-medium",
+                      on ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"
+                    )}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Once you&apos;re set up, your assistant can pull from these on a schedule, so new deals arrive without you.
+              Don&apos;t see yours, or don&apos;t use any? That&apos;s fine: you can always just tell your assistant how a
+              deal went.
+            </p>
+          </div>
+        ) : null}
+
+        {wizardStep === 3 ? (
+          <div className="space-y-4">
+            <HowItFits />
+            <IntegrationConnector
+              name="Slack"
+              description="Post alerts and recaps to a channel your team sees"
+              connected={false}
+              connectHref="/api/integrations/slack/connect"
+              provider="slack"
+            />
+          </div>
         ) : null}
 
         {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}

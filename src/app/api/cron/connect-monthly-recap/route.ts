@@ -67,6 +67,7 @@ export async function GET(request: Request) {
             topSignals: recap.topSignals,
             nextStep: recap.nextStep,
             openUrl: `${appUrl}/app/settings?tab=connect`,
+            askPrompt: recap.tryAsking[0],
           });
           sent.push("slack");
         } catch (err) {

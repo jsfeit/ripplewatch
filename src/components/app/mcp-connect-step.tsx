@@ -18,9 +18,12 @@ import { cn } from "@/lib/utils";
 // This is the one step that makes the purchase actually do something.
 export function McpConnectStep({
   mcpLastConnectedAt,
+  totalSteps,
   onContinue,
 }: {
   mcpLastConnectedAt: string | null;
+  // The wizard's step count, so this header can't fall behind when a step is added.
+  totalSteps: number;
   onContinue: () => void;
 }) {
   const router = useRouter();
@@ -90,7 +93,7 @@ export function McpConnectStep({
     <Card>
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Step 1 of 4</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Step 1 of {totalSteps}</p>
           <span
             className={cn(
               "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",

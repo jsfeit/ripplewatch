@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Copy, Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { WinLossEmailAddress } from "@/components/app/win-loss-email-address";
 import { formatWinLossImportMessage, type ImportMessageData } from "@/lib/win-loss-import";
 import { cn } from "@/lib/utils";
+import {
+  DEAL_TOOLS,
+  dealToolsServerSnapshot,
+  dealToolsSnapshot,
+  parseDealTools,
+  promptForTool,
+  scheduledRecipes,
+  saveDealTools,
+  subscribeDealTools,
+} from "@/lib/deal-tools";
 
 type Competitor = { id: string; name: string };
 
@@ -34,20 +44,30 @@ export function ConnectDataPanel({ inboxAddress, competitors }: { inboxAddress: 
   const [copiedPrompt, setCopiedPrompt] = useState<string | null>(null);
 
   const first = competitors[0]?.name ?? "my main competitor";
-  const toolPrompts = [
+  // The tools picked during setup (or here), read from this browser without
+  // a server/client mismatch.
+  const selectedTools = parseDealTools(
+    useSyncExternalStore(subscribeDealTools, dealToolsSnapshot, dealToolsServerSnapshot)
+  );
+  const genericPrompts = [
     {
       tool: "CRM (HubSpot, Salesforce)",
       text: "From my CRM, pull the deals I lost in the last 90 days with the reason for each, and add them to Ripplewatch.",
     },
     {
       tool: "Call recorder (Gong, Zoom)",
-      text: `In my call recorder, find calls from the last 30 days where ${first} came up, and log those mentions in Ripplewatch.`,
+      text: `In my call recorder, find calls from the last 30 days where ${first} came up, and log those mentions in Ripplewatch. A one-line summary of each is fine.`,
     },
     {
       tool: "Support inbox (Intercom, Zendesk)",
       text: "From my support tool, find recent cancellations and why customers left, and add them to Ripplewatch.",
     },
   ];
+  const tailored = selectedTools.flatMap((id) => {
+    const p = promptForTool(id, first);
+    return p ? [p] : [];
+  });
+  const toolPrompts = tailored.length > 0 ? tailored : genericPrompts;
 
   async function copyPrompt(text: string) {
     try {
@@ -226,6 +246,28 @@ export function ConnectDataPanel({ inboxAddress, competitors }: { inboxAddress: 
           hand the results to me. Nothing to connect here. Say one of these, and it will tell you what it&apos;s about to
           read before it does.
         </p>
+        <div className="mt-4">
+          <p className="text-xs font-medium text-muted-foreground">Which tools do you use?</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {DEAL_TOOLS.map((t) => {
+              const on = selectedTools.includes(t.id);
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => saveDealTools(on ? selectedTools.filter((id) => id !== t.id) : [...selectedTools, t.id])}
+                  className={cn(
+                    "rounded-md border px-3 py-1.5 text-sm font-medium",
+                    on ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"
+                  )}
+                >
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <ul className="mt-4 space-y-3">
           {toolPrompts.map((p) => (
             <li key={p.tool}>
@@ -246,8 +288,39 @@ export function ConnectDataPanel({ inboxAddress, competitors }: { inboxAddress: 
           ))}
         </ul>
         <p className="mt-3 text-xs text-muted-foreground">
-          Don&apos;t see your tool? If it offers a connector in Claude or ChatGPT, this works with it.
+          Connect the tool to your assistant first, in its connectors settings. Don&apos;t see yours? If it offers a
+          connector, this works with it.{selectedTools.includes("gong") ? " Gong shares call summaries rather than full transcripts, so those mentions are logged as one-line summaries." : ""}
         </p>
+        <div id="autopilot" className="mt-5 scroll-mt-6 border-t border-border pt-4">
+          <h4 className="text-sm font-medium">Put it on autopilot</h4>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Claude and ChatGPT can both run a prompt on a schedule. Paste one of these in once and new deals arrive on
+            their own, with a note each time on what was added. The tool still needs to be connected to your assistant,
+            and on some ChatGPT plans a connection is read-only, which means it can read your CRM but not save to
+            Ripplewatch.
+          </p>
+          <ul className="mt-3 space-y-3">
+            {scheduledRecipes(selectedTools).map((r) => (
+              <li key={r.id}>
+                <p className="text-xs font-medium text-muted-foreground">
+                  {r.title} · {r.cadence}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void copyPrompt(r.text)}
+                  className="mt-1 flex w-full items-center justify-between gap-3 rounded-md border border-border bg-secondary/30 px-3 py-2 text-left text-sm hover:border-primary/50"
+                >
+                  <span>{r.text}</span>
+                  {copiedPrompt === r.text ? (
+                    <Check className="size-3.5 shrink-0 text-primary" />
+                  ) : (
+                    <Copy className="size-3.5 shrink-0 text-muted-foreground" />
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </div>
   );

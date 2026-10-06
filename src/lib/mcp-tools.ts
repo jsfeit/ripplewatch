@@ -182,6 +182,7 @@ export function registerRipplewatchTools(server: McpServer) {
             "If next_best_action is present, ask for it conversationally and use the matching tool to record only what they actually tell you.",
             "If they use a CRM, call recorder or support inbox that you can also reach, offer to pull recent closed-lost deals (import_win_loss) or competitor mentions on calls (log_call_mentions) from it, and tell them what you will read first.",
             "After a successful step, say what just got better for them, then offer the next one.",
+            "Once their deal history is in and they have a CRM, call tool or support inbox you can reach, offer to put it on autopilot: say exactly what you would read each time and how often (for example every Friday for closed-lost deals), and suggest they ask you to run it on a schedule. Claude and ChatGPT can both run recurring tasks. Check a first run actually recorded a deal before calling it done.",
             "If they ask how any of it works (win/loss data, momentum, the emails they'll get, what to ask), use how_to_use instead of guessing.",
           ],
         },
@@ -566,13 +567,13 @@ export function registerRipplewatchTools(server: McpServer) {
     {
       title: "Log competitor mentions from sales calls",
       description:
-        "Record times a tracked competitor came up on a sales call, when the user has a call tool (Gong, Zoom, etc.) connected. Read the calls there, then pass only short verbatim snippets (a sentence or two) of where the competitor was mentioned, never full transcripts. Mentions of competitors that aren't tracked are reported back, not guessed. Ask the user before pulling their calls, and never invent a quote. Repeats are ignored, so refreshing is safe.",
+        "Record times a tracked competitor came up on a sales call, when the user has a call tool (Gong, Zoom, etc.) connected. Read the calls there, then pass only short verbatim snippets (a sentence or two) of where the competitor was mentioned, never full transcripts. Some call tools (Gong's connector, for one) return summaries instead of transcripts: in that case pass a one-sentence summary of where the competitor came up, exactly as the tool gave it, and say it is a summary. Mentions of competitors that aren't tracked are reported back, not guessed. Ask the user before pulling their calls, and never invent a quote or a mention. Repeats are ignored, so refreshing is safe.",
       inputSchema: z.object({
         mentions: z
           .array(
             z.object({
               competitor_name: z.string().min(1).describe("The tracked competitor that was mentioned."),
-              quote: z.string().min(1).max(500).describe("A short verbatim snippet from the call where they came up."),
+              quote: z.string().min(1).max(500).describe("A short verbatim snippet from the call where they came up, or a one-sentence summary if the call tool only returns summaries."),
               occurred_on: z.string().optional().describe("Date of the call, YYYY-MM-DD, if known."),
             })
           )
