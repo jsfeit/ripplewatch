@@ -22,8 +22,8 @@ export async function generateMetadata({
   const entry = getComparison(slug);
   if (!entry) return {};
 
-  const title = `${entry.name} Alternative`;
-  const description = `Considering a ${entry.name} alternative? Here's how Ripplewatch compares: ${entry.tagline}`;
+  const title = `${entry.name} alternative that works in your AI assistant`;
+  const description = `Looking for a ${entry.name} alternative? Ripplewatch is an AI analyst that works inside Claude and other assistants over MCP, with pricing published up front. How it compares to ${entry.name}.`;
 
   return {
     title,
@@ -54,7 +54,7 @@ export default async function AlternativePage({ params }: { params: Promise<{ sl
             name: "Ripplewatch",
             applicationCategory: "BusinessApplication",
             operatingSystem: "Web",
-            description: `Considering a ${entry.name} alternative? Here's how Ripplewatch compares: ${entry.tagline}`,
+            description: `Looking for a ${entry.name} alternative? Ripplewatch is an AI analyst that works inside Claude and other assistants over MCP, with pricing published up front.`,
             offers: TIERS.map((tier) => ({
               "@type": "Offer",
               name: tier.name,
