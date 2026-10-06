@@ -377,7 +377,7 @@ export function registerRipplewatchTools(server: McpServer) {
     {
       title: "Start tracking a competitor",
       description:
-        "Add a competitor to track. Ripplewatch will begin watching their pricing, hiring, product changes and press. Counts against the plan's competitor limit. If the domain looks dead or is a placeholder, it is not added and alternatives are returned; call again with force=true to add it anyway.",
+        "Add a competitor to track. Ripplewatch will begin watching their pricing, hiring, product changes and press. If the domain looks dead or is a placeholder, it is not added and alternatives are returned; call again with force=true to add it anyway.",
       inputSchema: z.object({
         name: z.string().min(1).describe("Company name."),
         domain: z.string().optional().describe("Website domain, e.g. acme.com. Strongly recommended."),
@@ -392,6 +392,9 @@ export function registerRipplewatchTools(server: McpServer) {
       // up by the daily usage charge along with the monitoring itself.
       const added = await addCompetitor(supabase, accountId, { name, domain: domain ?? "", force });
       if (!added.ok) {
+        // The shared error for a full plan tells the web app's user to upgrade.
+        // Assistants should report the limit without selling anything.
+        if (added.status === 403) return failure("This account has reached its competitor limit.");
         if (added.status === 409) {
           return failure(
             `${added.error} Did you mean: ${added.alternates.map((a) => a.domain).join(", ") || "no close matches found"}? Call again with force=true to add it anyway.`
@@ -476,7 +479,7 @@ export function registerRipplewatchTools(server: McpServer) {
         if (tierFrom(ctx as Ctx) === "connect") {
           const funds = await hasMinimumBalance(supabase, accountId);
           if (!funds.ok) {
-            return failure("Your usage balance is too low to import right now. Add funds in Settings, then try again.");
+            return failure("Your usage balance is too low to import right now. Check it in your Ripplewatch settings.");
           }
         }
         const imported = await importWinLossText(supabase, accountId, null, text, 20);
