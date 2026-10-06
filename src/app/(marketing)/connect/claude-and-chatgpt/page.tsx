@@ -62,16 +62,16 @@ export default function ConnectGuidePage() {
 
       <h2 className="mt-12 text-xl font-semibold tracking-tight">ChatGPT</h2>
       <ol className="mt-4 list-decimal space-y-2 pl-5 leading-relaxed text-muted-foreground">
-        <li>
-          Turn on developer mode in ChatGPT&apos;s settings. It&apos;s a beta feature, and on workspace plans an admin
-          may need to enable it.
-        </li>
-        <li>Add a custom MCP connector and paste the server URL above.</li>
-        <li>Choose OAuth when asked how to authenticate, then sign in to Ripplewatch and approve.</li>
+        <li>In ChatGPT, open Plugins and use the + button to add a custom MCP server.</li>
+        <li>Paste the server URL above and choose OAuth if it asks how to authenticate.</li>
+        <li>Sign in to Ripplewatch and approve the connection.</li>
       </ol>
       <p className="mt-4 leading-relaxed text-muted-foreground">
-        ChatGPT connects to custom MCP servers with OAuth or no authentication, so it signs in through Ripplewatch
-        instead of using an API key.
+        Whether you can add a custom MCP server depends on your ChatGPT plan and workspace settings. OpenAI&apos;s help
+        center currently lists full support for Business, Enterprise and Edu workspaces, with more limited read access on
+        some other plans, and an admin may need to enable it. On a read-only connection, logging deals won&apos;t work.
+        If you don&apos;t see the option, your plan or workspace may not allow it yet. ChatGPT signs in through
+        Ripplewatch instead of using an API key.
       </p>
 
       <h2 className="mt-12 text-xl font-semibold tracking-tight">Claude Code, Cursor and other developer tools</h2>
