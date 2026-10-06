@@ -4,6 +4,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/panel";
 import { PricingCards } from "@/components/marketing/pricing-cards";
+import { QuickAnswers } from "@/components/marketing/quick-answers";
 import { cn, avatarColor } from "@/lib/utils";
 import { CONNECT_NAME } from "@/lib/connect";
 import { CONNECT_BASE_FEE_USD } from "@/lib/connect-pricing";
@@ -43,7 +44,7 @@ const STEPS = [
   {
     icon: Send,
     title: "You get the read, not a pile of alerts",
-    body: "Every competitor gets a Momentum score — Heating up, Steady, or Cooling — synthesized from hiring, pricing, press, and product activity. Just ask for it.",
+    body: "Every competitor gets a Momentum score (Heating up, Steady, or Cooling) built from hiring, pricing, press, and product activity. Just ask for it.",
   },
 ];
 
@@ -102,6 +103,8 @@ export default function HomePage() {
           </p>
         </div>
       </section>
+
+      <QuickAnswers />
 
       <section className="border-t border-border">
         <div className="mx-auto max-w-4xl px-6 py-20">

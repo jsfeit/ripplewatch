@@ -14,6 +14,16 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
           "Not alerts. Not data. Answers. Ripplewatch is competitive intelligence built for small tech companies, not a fractional hire: it monitors the competitors you choose and scores every signal (a pricing change, a job posting, a news mention) against your own positioning, ICP, and the real reasons you've lost deals or churned customers, then rolls it all up into a single Momentum score per competitor.",
       },
       {
+        question: "Who is Ripplewatch for?",
+        answer:
+          "Product marketing, sales and revenue teams at B2B software companies that track a handful of competitors and want a straight answer when someone asks whether a competitor's move matters. If you already have a competitive intelligence program run by a dedicated team and want battlecards deployed into your CRM, a platform like Crayon or Klue may fit better; <a href=\"/blog/klue-vs-crayon-vs-ripplewatch-enterprise-grade-cost\">here is how they differ</a>.",
+      },
+      {
+        question: "How does Ripplewatch compare to Crayon and Klue?",
+        answer:
+          "Crayon and Klue are platforms your team logs into and adopts, sold through a sales cycle with no published pricing. Ripplewatch Connect runs inside Claude and other AI assistants over MCP, so you ask about your competitors where you already work, and its pricing is published: $29 a month plus usage you prepay for. It has no verified buyer-interview program like Klue's and no battlecard authoring like Crayon's. See <a href=\"/compare/crayon\">Ripplewatch vs. Crayon</a> and <a href=\"/compare/klue\">Ripplewatch vs. Klue</a>.",
+      },
+      {
         question: "How is this different from other competitive intelligence tools?",
         answer:
           "Most tools tell you what changed and stop there, leaving you to figure out whether it matters. Ripplewatch scores every signal against your specific business context using a fixed, ordered rubric: the same signal can be High relevance for one company and Low for another, because it's judged against what actually affects that business, not a generic severity scale.",
@@ -51,7 +61,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "Can I use Ripplewatch from Claude, ChatGPT, or another AI assistant?",
         answer:
-          'Yes, with Ripplewatch Connect, through our MCP server (see <a href="/docs/api">the docs</a>). It works with assistants that support remote MCP servers over HTTP, including Claude (web, desktop, and Claude Code) and developer tools like Cursor. ChatGPT supports custom MCP connectors through its developer mode, which is in beta and has to be enabled by a workspace admin. Gemini supports MCP in Gemini CLI, but we haven\'t confirmed support in the Gemini app. You connect by signing in and approving, or with an API key for developer tools.',
+          'Yes, with Ripplewatch Connect, through our MCP server (see <a href="/docs/api">the docs</a>). It works with assistants that support remote MCP servers over HTTP, including Claude (web, desktop, and Claude Code) and developer tools like Cursor. ChatGPT supports custom MCP connectors through its developer mode, which is in beta and has to be enabled by a workspace admin. Gemini supports MCP in Gemini CLI, but we haven\'t confirmed support in the Gemini app. You connect by signing in and approving, or with an API key for developer tools. <a href="/connect/claude-and-chatgpt">Step-by-step setup</a>.',
       },
       {
         question: "What can an AI assistant do with my Ripplewatch account?",
