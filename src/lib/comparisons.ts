@@ -56,7 +56,7 @@ export const COMPARISONS: ComparisonEntry[] = [
     bestFor: "Sales teams who need auto-updating battlecards synced to their CRM",
     howPrioritized: "One battlecard for every rep and every deal",
     switchGain:
-      "Every finding arrives pre-scored for your specific positioning and win/loss history, instead of a battlecard that reads the same for every rep on every deal. You stop being the one who has to judge which of today's updates is actually urgent.",
+      "Every finding arrives pre-scored for your specific positioning and win/loss history, instead of a battlecard that reads the same for every rep on every deal, and you ask for it from inside Claude or another MCP assistant. You stop being the one who has to judge which of today's updates is actually urgent.",
     switchConsider:
       "If your team leans on CRM-tied battlecards and Semrush's SEO/traffic data as part of a broader sales-enablement motion, that combination isn't something switching to Ripplewatch replaces outright.",
   },
@@ -254,7 +254,7 @@ export const COMPARISONS: ComparisonEntry[] = [
     bestFor: "Teams who want a human analyst's judgment layered on top of AI monitoring",
     howPrioritized: "Human-analyst judgment, not tuned to your ICP",
     switchGain:
-      "You get scoring computed against your own positioning and win/loss history that updates as fast as the underlying signal does, without the added cost and lag of a human-curation step.",
+      "You get scoring computed against your own positioning and win/loss history that updates as fast as the underlying signal does, without the added cost and lag of a human-curation step, and you ask for it from inside Claude or another MCP assistant.",
     switchConsider:
       "If nuanced human judgment on less-structured signals is worth the added cost and lag to you, WatchMyCompetitor's analyst layer is a genuine tradeoff to weigh against faster, fully-automated scoring.",
   },
@@ -337,14 +337,14 @@ export const COMPARISONS: ComparisonEntry[] = [
     tagline:
       "An enterprise competitive-intelligence platform built around a Compete Agent that continuously gathers intel, a Win-Loss Suite with AI-interviewed verified buyer interviews, and Ask Klue, a chat interface for querying competitive data on demand.",
     whatTheyDoWell:
-      "The Win-Loss Suite's verified buyer interviews, including an AI interviewer for voice conversations, are a genuinely deep capability most competitive-intelligence tools don't attempt: real, structured feedback from actual buyers, not just internal rep opinions. Ask Klue's chat interface is a reasonable way to query competitive data without digging through a dashboard.",
+      "The Win-Loss Suite's verified buyer interviews, including an AI interviewer for voice conversations, are a genuinely deep capability most competitive-intelligence tools don't attempt: real, structured feedback from actual buyers, not just internal rep opinions. Ask Klue's chat interface is a reasonable way to query competitive data on demand.",
     theirMechanism: "a continuously-running Compete Agent feeding deal-specific insight to reps, plus a separate verified buyer-interview product",
     differentiator:
       "Klue is built and priced for large enterprise sales organizations: pricing isn't published, deals are customized and sold through a sales cycle, and the buyer-interview product assumes a dedicated CI or enablement function running it. Ripplewatch is self-serve with published pricing from day one, built for a team that wants to start monitoring competitors this afternoon, not after a multi-week evaluation.",
     bestFor: "Large enterprise sales orgs that want verified buyer win-loss interviews alongside monitoring",
     howPrioritized: "Deal-specific insight pushed to reps; no published self-serve pricing or scoring tier",
     switchGain:
-      "You get published, self-serve pricing and relevance scoring tied to your own positioning from day one, instead of a multi-week sales evaluation before you can see it working.",
+      "You get published, self-serve pricing and relevance scoring tied to your own positioning from day one, instead of a multi-week sales evaluation before you can see it working, and you ask it from inside Claude or another MCP assistant rather than a separate tool.",
     switchConsider:
       "Klue's verified buyer win-loss interviews, including an AI interviewer for voice conversations, are a genuinely deep capability Ripplewatch doesn't attempt to replicate; if that's the core need, it's worth the sales call.",
   },
@@ -358,11 +358,11 @@ export const COMPARISONS: ComparisonEntry[] = [
       "Deploying battlecards straight into Salesforce and Slack, where reps already work, is a genuinely practical distribution choice, and Sparks' scheduled passes over news, social, and PR give broad, automated coverage without a person doing that scanning manually.",
     theirMechanism: "automated monitoring paired with Salesforce/Slack-deployed battlecards and scheduled AI passes over public sources",
     differentiator:
-      "Crayon, like Klue, doesn't publish pricing: deals are customized, sold through a sales cycle, and priced for teams that need dedicated implementation support, not a self-serve signup. Ripplewatch publishes its pricing and scores every finding against your specific positioning and win/loss history from the first day, without an enterprise sales process in between.",
+      "Crayon, like Klue, doesn't publish pricing: deals are customized, sold through a sales cycle, and priced for teams that need dedicated implementation support, not a self-serve signup. Ripplewatch publishes its pricing and scores every finding against your specific positioning and win/loss history from the first day, without an enterprise sales process in between, and it works inside Claude and other AI assistants over MCP instead of asking your team to adopt another tool.",
     bestFor: "Enterprise sales teams who want automated battlecards live in Salesforce and Slack",
     howPrioritized: "Scheduled AI passes over public sources; no published self-serve pricing or personalized scoring",
     switchGain:
-      "You get transparent, self-serve pricing and relevance scoring tied to your own positioning and win/loss history, without an enterprise sales cycle or custom-quoted contract first.",
+      "You get transparent, self-serve pricing and relevance scoring tied to your own positioning and win/loss history, without an enterprise sales cycle or custom-quoted contract first, and the answers arrive inside Claude or another MCP assistant instead of a separate tool.",
     switchConsider:
       "If your team is already at the scale where dedicated implementation support and a Salesforce-embedded battlecard workflow matter more than self-serve simplicity, Crayon's enterprise-focused build is a real fit worth the sales conversation.",
   },

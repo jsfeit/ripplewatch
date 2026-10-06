@@ -28,8 +28,8 @@ export async function generateMetadata({
   const entry = getComparison(slug);
   if (!entry) return {};
 
-  const title = `Ripplewatch vs. ${entry.name}`;
-  const description = `How Ripplewatch compares to ${entry.name}: ${entry.tagline}`;
+  const title = `Ripplewatch vs. ${entry.name}: an AI analyst in your assistant`;
+  const description = `Ripplewatch vs. ${entry.name}. Ripplewatch is an AI analyst that works inside Claude and other assistants over MCP, with published pricing. See how it compares on monitoring, scoring and cost.`;
 
   return {
     title,

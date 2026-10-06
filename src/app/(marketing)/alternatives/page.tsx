@@ -3,7 +3,8 @@ import { ArrowRight } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { COMPARISONS } from "@/lib/comparisons";
 
-const description = "Considering a switch? See how Ripplewatch compares as an alternative to other competitive intelligence tools.";
+const description =
+  "Looking for a Crayon, Klue or Kompyte alternative? Ripplewatch is an AI competitive intelligence analyst that works inside Claude and other assistants over MCP, with pricing published up front.";
 
 // Rendered inline in the intro paragraph so search results and AI answers
 // see these tool names in prose, not only inside link cards further down the
@@ -12,13 +13,13 @@ const description = "Considering a switch? See how Ripplewatch compares as an al
 const NAMED_EXAMPLES = ["Kompyte", "Klue", "Crayon", "AlphaSense", "Owler"];
 
 export const metadata = {
-  title: "Ripplewatch alternatives to other CI tools",
+  title: "Crayon, Klue and Kompyte alternatives",
   description,
   alternates: { canonical: "/alternatives" },
-  openGraph: { title: "Ripplewatch alternatives to other CI tools | Ripplewatch", description, images: ["/opengraph-image"] },
+  openGraph: { title: "Crayon, Klue and Kompyte alternatives | Ripplewatch", description, images: ["/opengraph-image"] },
   twitter: {
     card: "summary_large_image",
-    title: "Ripplewatch alternatives to other CI tools | Ripplewatch",
+    title: "Crayon, Klue and Kompyte alternatives | Ripplewatch",
     description,
     images: ["/opengraph-image"],
   },
@@ -30,9 +31,11 @@ export default function AlternativesIndexPage() {
       <h1 className="text-3xl font-semibold tracking-tight">Looking for an alternative?</h1>
       <p className="mt-2 text-muted-foreground">{description}</p>
       <p className="mt-4 leading-relaxed text-muted-foreground">
-        Whether you&apos;re outgrowing a free tool, priced out of an enterprise one, or just tired of a
-        sales call to see pricing, this page covers alternatives to {NAMED_EXAMPLES.join(", ")}, and the
-        rest of the field below. Each page is specific to that tool: what it does well, what you&apos;d
+        Ripplewatch Connect works differently from the platforms below: there&apos;s no separate tool to log
+        into. It runs inside Claude and other AI assistants that support MCP, so you ask about your competitors in
+        the place you already work, and the answers are scored against your own positioning and deals. Whether
+        you&apos;re outgrowing a free tool, priced out of an enterprise one, or just tired of a sales call to see
+        pricing, this page covers alternatives to {NAMED_EXAMPLES.join(", ")}, and the rest of the field below. Each page is specific to that tool: what it does well, what you&apos;d
         gain and give up by switching, and what to actually look for in a replacement.
       </p>
 

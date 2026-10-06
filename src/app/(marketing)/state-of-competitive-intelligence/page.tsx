@@ -13,7 +13,7 @@ import {
 } from "@/lib/ci-market-research";
 
 const description =
-  "How Ripplewatch compares to mid-market tools like Kompyte and Contify: relevance scoring built for the SMB and early-stage teams that tier was never priced for, plus a survey of 20+ competitive intelligence tools and what's still missing from the category.";
+  "A survey of 20+ competitive intelligence tools, what each one actually delivers, and what's still missing from the category: answers inside the AI assistant you already use, scored against your own positioning and deals.";
 
 export const metadata = {
   title: "The State of Competitive Intelligence Tools",

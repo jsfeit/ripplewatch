@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { COMPARISONS } from "@/lib/comparisons";
 
-const description = "How Ripplewatch compares to other competitive intelligence and market intelligence tools.";
+const description =
+  "How Ripplewatch, an AI analyst that works inside Claude and other assistants over MCP, compares to Crayon, Klue, Kompyte and other competitive intelligence tools.";
 
 export const metadata = {
   title: "Compare Ripplewatch to alternatives",

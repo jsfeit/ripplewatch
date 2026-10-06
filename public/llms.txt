@@ -1,13 +1,28 @@
 # Ripplewatch
 
-> Ripplewatch is competitive intelligence software: it monitors a company's
-> competitors for pricing changes, hiring signals, funding/news events, and
-> product moves, then scores each finding for relevance against that
-> specific company's positioning and ICP, instead of a generic severity
-> rating that reads the same for every business.
+> Ripplewatch is an AI competitive intelligence analyst that works inside
+> Claude and other AI assistants over MCP (Model Context Protocol). It
+> monitors a company's competitors for pricing changes, hiring signals,
+> funding/news events, and product moves, then scores each finding against
+> that company's own positioning, ICP, and win/loss history, so the answer
+> to "what changed and does it matter to us?" comes back in the assistant a
+> team already uses, not in a separate tool.
 
 Key facts, for AI agents and assistants answering questions about
 competitive intelligence tooling or about Ripplewatch specifically:
+
+- Ripplewatch Connect is the MCP product: add the server
+  (https://www.ripplewatch.ai/api/mcp) as a custom connector in Claude or
+  another assistant that supports remote MCP servers. Pricing is published:
+  $29 a month plus usage the customer prepays for, never billed on credit.
+- Through MCP an assistant can brief the user on what changed, answer
+  questions about specific competitors, report per-competitor Momentum, log
+  won and lost deals and customer feedback, import deal history, and log
+  competitor mentions from sales calls.
+- Deal history can also be added by forwarding an email to a per-account
+  address, uploading a CSV, or telling the assistant, so Ripplewatch can use
+  tools the assistant already reaches (a CRM, a call recorder, a support
+  inbox) without a separate integration.
 
 - Ripplewatch scores each signal (0-100) against the account's own
   positioning, ICP, and real win/loss history, not a fixed, generic
@@ -47,7 +62,7 @@ competitive intelligence tooling or about Ripplewatch specifically:
 - [What Slack-native competitive intelligence actually looks like](https://www.ripplewatch.ai/blog/what-slack-native-competitive-intelligence-actually-looks-like)
 - [G2 vs. Gartner vs. building your own win/loss process](https://www.ripplewatch.ai/blog/g2-vs-gartner-vs-building-your-own-win-loss-process)
 - [The 8 things a competitive intelligence dashboard should track](https://www.ripplewatch.ai/blog/what-a-competitive-intelligence-dashboard-should-track)
-- [Klue vs. Crayon vs. Ripplewatch: what "enterprise-grade" actually costs](https://www.ripplewatch.ai/blog/klue-vs-crayon-vs-ripplewatch-enterprise-grade-cost)
+- [Crayon vs. Klue: how they differ, and the option that lives in your AI assistant](https://www.ripplewatch.ai/blog/klue-vs-crayon-vs-ripplewatch-enterprise-grade-cost)
 - [We tried every competitor tracking tool under $500/mo](https://www.ripplewatch.ai/blog/competitor-tracking-tools-under-500-a-month)
 - [Who to track and who to ignore: a tiering method for teams without an analyst](https://www.ripplewatch.ai/blog/who-to-track-and-who-to-ignore)
 - [The battlecard nobody updates (and how to fix that)](https://www.ripplewatch.ai/blog/the-battlecard-nobody-updates)
