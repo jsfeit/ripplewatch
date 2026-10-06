@@ -60,12 +60,31 @@ Sign in through the connection screen, ask for the weekly briefing, ask one free
 - Minimum data: `log_call_mentions` takes short verbatim snippets only, and the skills tell the model never to send full conversations or transcripts.
 - Authorization on every request: the MCP route verifies the token and resolves the account on each call.
 
-## What only you can do
+## Submission steps (from OpenAI's submission docs)
 
-- Complete individual or business verification in your OpenAI organization settings. Organization owners can submit.
-- Upload a square logo, at least 48 by 48 pixels.
-- Give OpenAI a demo account login and password with sample data. Create a dedicated one, not your own.
-- Record the demo video.
+1. **Verify your identity or business** in your OpenAI organization settings (platform.openai.com). Organization owners can submit. This is the one step that can take a while, so start it first.
+2. **Upload the package** at platform.openai.com/plugins: "Upload new or existing plugin", pick your verified identity, then upload `chatgpt-plugin/dist/ripplewatch-plugin.zip` (build it with `./scripts/build-chatgpt-plugin.sh`). Fix whatever the validator reports and upload again. Likely first issue: the logo field name in `plugin.json` (`extensions.com.openai.interface.logo`) is a guess, since the docs don't show it. Use "Copy issues" and send them to me.
+3. **Verify the domain** in the MCPs tab: select the server, click Connect, and the portal shows a token. Set it as `OPENAI_APPS_CHALLENGE_TOKEN` in Vercel and redeploy. `https://www.ripplewatch.ai/.well-known/openai-apps-challenge` then returns exactly that token as plain text. Finish the connection there (it signs in to Ripplewatch) and let the automated tool scan run. This step is also a real test of ChatGPT-side sign-in, and it works from a free account.
+4. **Review details** (Metadata & Skills tab, then Review information): paste the listing copy above, the reviewer login (see below), the eight test cases, the video link and release notes ("Initial release").
+5. **Submit for review**, confirm the policy attestations, then wait for email. After approval, open the package version and click Publish.
+
+## Reviewer account (already created)
+
+A dedicated demo account exists: company Fieldnote, Connect plan, demo mode (no billing), $100 test balance, three competitors (Notion, Linear, Asana) and eight logged deals. It signs in with an email and password, with no magic link, email code or MFA, as OpenAI requires. The login is in `chatgpt-plugin/.reviewer-credentials.local` (gitignored). Give OpenAI only the email, password and https://www.ripplewatch.ai/login.
+
+The first competitor signals appear after the next daily crawl, so wait a day before recording or submitting. Check that the weekly briefing returns something. If you ever need to rebuild the account, delete the user and account and run `npx tsx --conditions react-server scripts/seed-reviewer-account.ts`.
+
+## Demo video script (about 2 minutes, screen recording of ChatGPT)
+
+1. Open ChatGPT, add the plugin, sign in with the reviewer login and approve (show the consent screen).
+2. Ask "What changed with my competitors this week?" Show the briefing.
+3. Ask "Is Notion's pricing something we should respond to?" Show the answer naming Notion.
+4. Ask "Which competitor is heating up fastest?" Show the momentum labels.
+5. Say "We lost a deal to Linear last week because engineering wanted docs in their tracker. Log it." Show the confirmation.
+6. Try one negative case: "Cancel my subscription." Show it declining and pointing to settings.
+7. Disconnect the plugin.
+
+The video has to be recorded in ChatGPT with the plugin working in it, which probably needs a plan or workspace that supports custom plugins during testing. This is the main thing that can block you. If your free account can't, borrow a Business or Edu workspace for the recording.
 
 ## Open risk: sign-in
 
