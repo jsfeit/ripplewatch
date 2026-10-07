@@ -92,6 +92,8 @@ export function SettingsView({
   connect: {
     balanceUsd: number;
     hasSubscription: boolean;
+    isActive: boolean;
+    slackNotice: { ok: boolean; text: string } | null;
     ledger: ConnectLedgerRow[];
     autoReload: { enabled: boolean; amountUsd: number; thresholdUsd: number; failed: boolean };
     mcpLastConnectedAt: string | null;
@@ -255,6 +257,8 @@ export function SettingsView({
           <ConnectPanel
             balanceUsd={connect.balanceUsd}
             hasSubscription={connect.hasSubscription}
+            isActive={connect.isActive}
+            slackNotice={connect.slackNotice}
             ledger={connect.ledger}
             autoReload={connect.autoReload}
             mcpLastConnectedAt={connect.mcpLastConnectedAt}

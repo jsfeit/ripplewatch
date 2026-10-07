@@ -10,10 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CompetitorRow, type CompetitorInput } from "@/components/app/competitor-row";
-import { IntegrationConnector } from "@/components/app/integration-connector";
 import { Confetti } from "@/components/app/confetti";
 import { McpConnectStep } from "@/components/app/mcp-connect-step";
-import { HowItFits } from "@/components/app/how-it-fits";
+import { SlackStep } from "@/components/app/slack-step";
 import { DEAL_TOOLS, loadDealTools, saveDealTools } from "@/lib/deal-tools";
 import { cn } from "@/lib/utils";
 import { ONBOARDING_VALUE, type OnboardingStepKey } from "@/lib/onboarding-value";
@@ -70,7 +69,10 @@ export function GetStartedFlow({
     setCompetitors((prev) => prev.filter((_, i) => i !== index));
   }
 
-  async function finish() {
+  // Saves everything typed here. With after="slack" it then leaves for Slack's
+  // sign-in instead of celebrating, since that's a full page change and the
+  // setup would be lost if it hadn't been saved first.
+  async function finish(after?: "slack") {
     setSubmitting(true);
     setError("");
     const res = await fetch("/api/connect/onboarding/complete", {
@@ -88,6 +90,10 @@ export function GetStartedFlow({
     if (!res.ok) {
       setSubmitting(false);
       setError(data.error ?? "Something went wrong. Try again.");
+      return;
+    }
+    if (after === "slack") {
+      window.location.assign(`/api/integrations/slack/connect?next=${encodeURIComponent("/app/settings?tab=data")}`);
       return;
     }
     // Let the confetti land before moving on, then go to where the next
@@ -154,16 +160,24 @@ export function GetStartedFlow({
   return (
     <Card>
       <CardHeader>
-        {justUnlocked ? (
+        {justUnlocked && wizardStep !== 3 ? (
           <p className="mb-1 flex items-start gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm text-primary">
             <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
             {justUnlocked}
           </p>
         ) : null}
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Step {step + 1} of {TOTAL_STEPS}
-          {optional ? " · optional" : ""}
-        </p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Step {step + 1} of {TOTAL_STEPS}
+            {optional ? " · optional" : ""}
+          </p>
+          {justUnlocked && wizardStep === 3 ? (
+            <span className="flex items-center gap-1 text-xs text-primary">
+              <CheckCircle2 className="size-3.5" />
+              Tools saved
+            </span>
+          ) : null}
+        </div>
         <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
         <p className="text-sm text-muted-foreground">
           {wizardStep === 0
@@ -174,7 +188,9 @@ export function GetStartedFlow({
                 ? "Your deals are what make answers specific to you. If they live in a tool your assistant can reach, it can pull them in for you."
                 : "Slack is the shared feed: alerts and recaps land in a channel your whole team sees. Skip it if you're the only one using Ripplewatch."}
         </p>
-        <p className="mt-1 rounded-md bg-primary/[0.06] px-3 py-2 text-sm">{ONBOARDING_VALUE[key].unlocks}</p>
+        {wizardStep === 3 ? null : (
+          <p className="mt-1 rounded-md bg-primary/[0.06] px-3 py-2 text-sm">{ONBOARDING_VALUE[key].unlocks}</p>
+        )}
       </CardHeader>
       <CardContent>
         {wizardStep === 0 && (
@@ -274,18 +290,7 @@ export function GetStartedFlow({
           </div>
         ) : null}
 
-        {wizardStep === 3 ? (
-          <div className="space-y-4">
-            <HowItFits />
-            <IntegrationConnector
-              name="Slack"
-              description="Post alerts and recaps to a channel your team sees"
-              connected={false}
-              connectHref="/api/integrations/slack/connect"
-              provider="slack"
-            />
-          </div>
-        ) : null}
+        {wizardStep === 3 ? <SlackStep onConnect={() => void finish("slack")} busy={submitting} /> : null}
 
         {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
 
@@ -303,9 +308,9 @@ export function GetStartedFlow({
               <ArrowRight className="size-4" />
             </Button>
           ) : (
-            <Button type="button" onClick={finish} disabled={submitting || !hasCompetitor}>
+            <Button type="button" onClick={() => void finish()} disabled={submitting || !hasCompetitor}>
               {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
-              Finish setup
+              Finish without Slack
             </Button>
           )}
         </div>

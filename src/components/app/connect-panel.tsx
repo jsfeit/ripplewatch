@@ -43,6 +43,8 @@ export type AutoReloadSettings = { enabled: boolean; amountUsd: number; threshol
 export function ConnectPanel({
   balanceUsd,
   hasSubscription,
+  isActive,
+  slackNotice,
   ledger,
   autoReload,
   mcpLastConnectedAt,
@@ -61,6 +63,12 @@ export function ConnectPanel({
 }: {
   balanceUsd: number;
   hasSubscription: boolean;
+  // Active without a Stripe subscription (an account switched on by hand, or a
+  // demo): it still has the product, so it sees the same cards a paying one does.
+  isActive: boolean;
+  // What happened on the way back from Slack, decided on the server from the
+  // return URL (see slackNoticeFrom in the settings page).
+  slackNotice: { ok: boolean; text: string } | null;
   ledger: ConnectLedgerRow[];
   autoReload: AutoReloadSettings;
   // Set from an actually-authenticated MCP request (see /api/mcp/route.ts),
@@ -80,6 +88,10 @@ export function ConnectPanel({
   firstLook: ConnectFirstLook;
   disconnectIntegrationAction: (formData: FormData) => void;
 }) {
+  // Whether this account has the product at all: a paying subscription, or an
+  // account that's active by other means (demo, switched on by hand).
+  const hasAccess = hasSubscription || isActive;
+
   const router = useRouter();
   const [picker, setPicker] = useState<number | "custom">(CONNECT_DEFAULT_RELOAD_USD);
   const [custom, setCustom] = useState("");
@@ -369,7 +381,7 @@ export function ConnectPanel({
   const { done: doneCount } = setupProgress({ connected, hasPositioning, competitorCount, slackConnected, hasDealHistory });
 
   const checklistCard =
-    hasSubscription && doneCount < checklistItems.length ? (
+    hasAccess && doneCount < checklistItems.length ? (
       <div id="setup" className="scroll-mt-6 rounded-xl border border-border bg-card p-6">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-base font-semibold">Getting the most out of {CONNECT_NAME}</h2>
@@ -402,8 +414,48 @@ export function ConnectPanel({
       </div>
     ) : null;
 
+  // Two things people look for first: is my assistant connected, and is Slack.
+  // Slack in particular is how a team sees anything, so it gets a place at the
+  // top, not only a card further down.
+  const connectionStrip = (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground">Your assistant</p>
+          <p className="text-sm font-medium">{mcpLastConnectedAt ? "Connected" : "Not connected yet"}</p>
+        </div>
+        {mcpLastConnectedAt ? null : (
+          <a href="#connect-assistant" className="text-sm font-medium text-primary hover:underline">
+            Connect
+          </a>
+        )}
+      </div>
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground">Slack, your team&apos;s feed</p>
+          <p className="text-sm font-medium">{slackConnected ? "Connected" : "Not connected yet"}</p>
+        </div>
+        <a href="#connect-slack" className="text-sm font-medium text-primary hover:underline">
+          {slackConnected ? "Settings" : "Connect Slack"}
+        </a>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-w-0 space-y-6">
+      {slackNotice ? (
+        <div
+          className={cn(
+            "flex items-start gap-2 rounded-lg border p-4 text-sm",
+            slackNotice.ok ? "border-primary/30 bg-primary/10" : "border-destructive/30 bg-destructive/10"
+          )}
+        >
+          <CheckCircle2 className={cn("mt-0.5 size-4 shrink-0", slackNotice.ok ? "text-primary" : "text-destructive")} />
+          <p>{slackNotice.text}</p>
+        </div>
+      ) : null}
+
       {justPaid ? (
         <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/10 p-4 text-sm">
           <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
@@ -411,10 +463,13 @@ export function ConnectPanel({
         </div>
       ) : null}
 
-      {hasSubscription && competitorCount > 0 ? firstLookCard : null}
+      {hasAccess ? connectionStrip : null}
+
+      {hasAccess && competitorCount > 0 ? firstLookCard : null}
       {checklistCard}
-      {hasSubscription ? connectAssistantCard : null}
-      {hasSubscription ? (
+      {hasAccess ? connectAssistantCard : null}
+      {hasAccess ? slackCard : null}
+      {hasAccess ? (
         <ConnectNotifications
           initialDailyAlert={dailyAlertEnabled}
           initialMonthlyRecap={monthlyRecapEnabled}
@@ -422,9 +477,8 @@ export function ConnectPanel({
           slackConnected={slackConnected}
         />
       ) : null}
-      {hasSubscription ? slackCard : null}
 
-      {!hasSubscription ? (
+      {!hasAccess ? (
         <div className="rounded-xl border border-border bg-card p-6">
           <h2 className="text-lg font-semibold">Start {CONNECT_NAME}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
