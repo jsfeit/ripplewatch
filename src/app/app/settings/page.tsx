@@ -12,7 +12,28 @@ import { loadFirstLook, type FirstLook } from "@/lib/first-look";
 export const metadata = { title: "Settings" };
 export const dynamic = "force-dynamic";
 
-export default async function SettingsPage() {
+// What happened on the way back from Slack. The callback only sends
+// ?connected=slack or ?error=slack_..., so without this the person lands on
+// Settings with no sign that anything happened.
+function slackNoticeFrom(params: { connected?: string; error?: string }): { ok: boolean; text: string } | null {
+  if (params.connected === "slack") {
+    return { ok: true, text: "Slack is connected. Alerts and recaps will post to the channel you picked." };
+  }
+  const errors: Record<string, string> = {
+    slack_not_configured: "Slack isn't set up on this site yet. Email hello@ripplewatch.ai and we'll sort it.",
+    slack_state_mismatch: "That Slack connection expired, or started in a different tab. Try Connect Slack again.",
+    slack_exchange_failed: "Slack didn't accept the connection. Try again, and email hello@ripplewatch.ai if it keeps failing.",
+  };
+  const text = params.error ? errors[params.error] : undefined;
+  return text ? { ok: false, text } : null;
+}
+
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ connected?: string; error?: string }>;
+}) {
+  const params = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -83,6 +104,8 @@ export default async function SettingsPage() {
   let connect: {
     balanceUsd: number;
     hasSubscription: boolean;
+    isActive: boolean;
+    slackNotice: { ok: boolean; text: string } | null;
     ledger: ConnectLedgerRow[];
     autoReload: { enabled: boolean; amountUsd: number; thresholdUsd: number; failed: boolean };
     mcpLastConnectedAt: string | null;
@@ -126,6 +149,8 @@ export default async function SettingsPage() {
     connect = {
       balanceUsd: Number(wallet?.balance_micros ?? 0) / 1_000_000,
       hasSubscription: Boolean(account.stripe_subscription_id) && account.subscription_status !== "canceled",
+      isActive: account.status === "active",
+      slackNotice: slackNoticeFrom(params),
       autoReload: {
         enabled: wallet?.auto_reload_enabled ?? true,
         amountUsd: (wallet?.reload_amount_cents ?? 5000) / 100,

@@ -49,7 +49,13 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/app/settings?error=slack_exchange_failed", request.url));
   }
 
-  const response = NextResponse.redirect(new URL("/app/settings?connected=slack", request.url));
+  // Back to where the person started (the setup wizard sends them to the Data
+  // tab), with the same marker so Settings can say it worked.
+  const returnTo = cookieStore.get("slack_oauth_next")?.value;
+  const target = new URL(returnTo?.startsWith("/app/settings") ? returnTo : "/app/settings", request.url);
+  target.searchParams.set("connected", "slack");
+  const response = NextResponse.redirect(target);
   response.cookies.delete("slack_oauth_state");
+  response.cookies.delete("slack_oauth_next");
   return response;
 }
