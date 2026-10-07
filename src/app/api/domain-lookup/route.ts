@@ -23,7 +23,11 @@ export async function GET(request: Request) {
       signal: AbortSignal.timeout(5_000),
       redirect: "follow",
     });
-    if (!res.ok) return NextResponse.json({ description: null });
+    // 401/403/429/503 from a normal homepage almost always means bot
+    // protection (Cloudflare, Akamai and the like) turning an automated request
+    // away. Say so, so the form can explain a blank preview instead of looking
+    // broken. Any other failure stays quiet: it could just be a bad day.
+    if (!res.ok) return NextResponse.json({ description: null, blocked: [401, 403, 429, 503].includes(res.status) });
 
     const html = await res.text();
     const $ = cheerio.load(html);
