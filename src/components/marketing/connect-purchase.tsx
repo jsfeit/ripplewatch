@@ -45,6 +45,11 @@ export function ConnectPurchase({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "working" | "confirm-email" | "ready">("idle");
+  // Resend state for the "check your email" screen. Supabase limits how often
+  // a confirmation can be re-sent per address, so the button waits out a
+  // cooldown instead of letting people hit that limit.
+  const [resendWait, setResendWait] = useState(0);
+  const [resendNote, setResendNote] = useState("");
   const [error, setError] = useState("");
   const [checkout, setCheckout] = useState<number | null>(null);
   const startedRef = useRef(false);
@@ -125,12 +130,39 @@ export function ConnectPurchase({
         return;
       }
       if (!data.session) {
+        // The signup itself just sent the first email, so a resend is only
+        // allowed once the same cooldown has passed.
+        setResendWait(60);
         setStatus("confirm-email");
         return;
       }
       sessionStorage.removeItem(DRAFT_KEY);
     }
     await createAccountAndPay(OPENING_BALANCE_USD, companyName.trim());
+  }
+
+  useEffect(() => {
+    if (resendWait <= 0) return;
+    const t = setTimeout(() => setResendWait((n) => n - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendWait]);
+
+  async function resendConfirmation() {
+    if (resendWait > 0) return;
+    setResendNote("");
+    setResendWait(60);
+    // The destination (/onboarding?path=connect) and company name already
+    // live in the user's metadata from signUp, which the email template reads.
+    const { error: resendError } = await createClient().auth.resend({
+      type: "signup",
+      email: email.trim(),
+      options: { emailRedirectTo: window.location.origin },
+    });
+    setResendNote(
+      resendError
+        ? "Couldn't resend just now. Give it a minute and try again."
+        : `Sent again to ${email.trim()}. Check spam if it still doesn't show up.`
+    );
   }
 
   if (status === "confirm-email") {
@@ -141,6 +173,10 @@ export function ConnectPurchase({
         <p className="text-sm text-muted-foreground">
           We sent a confirmation link to {email}. Follow it and you&apos;ll land back here to finish paying.
         </p>
+        <Button type="button" variant="outline" size="sm" onClick={() => void resendConfirmation()} disabled={resendWait > 0}>
+          {resendWait > 0 ? `Resend email (${resendWait}s)` : "Resend email"}
+        </Button>
+        {resendNote ? <p className="text-xs text-muted-foreground">{resendNote}</p> : null}
       </div>
     );
   }
