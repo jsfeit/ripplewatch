@@ -12,6 +12,8 @@ export const metadata = { title: "Connect an app", robots: { index: false, follo
 const ERRORS: Record<string, string> = {
   invalid: "That authorization request isn't valid. Go back to the app and try connecting again.",
   plan: "Connecting an AI assistant is part of Ripplewatch Connect.",
+  inactive:
+    "Your Ripplewatch Connect subscription isn't active yet, so an assistant can't connect. If you haven't finished paying, do that in Settings, then connect again. If it was paused, email hello@ripplewatch.ai.",
   failed: "Something went wrong approving that. Go back to the app and try connecting again.",
 };
 
@@ -76,9 +78,14 @@ export default async function ConsentPage({
 
   const { data: profile } = await supabase.from("profiles").select("account_id").eq("id", user.id).maybeSingle();
   const { data: account } = profile?.account_id
-    ? await supabase.from("accounts").select("name, tier, demo_mode").eq("id", profile.account_id).single()
+    ? await supabase.from("accounts").select("name, tier, demo_mode, status").eq("id", profile.account_id).single()
     : { data: null };
-  const allowed = Boolean(account && canUseMcp(account.tier, account.demo_mode));
+  const onPlan = Boolean(account && canUseMcp(account.tier, account.demo_mode));
+  // The MCP server turns away a Connect account that isn't active (unpaid,
+  // paused), so approving here would end in a "couldn't connect" with no
+  // explanation. Say so up front and point at the fix instead.
+  const inactive = Boolean(account && onPlan && account.tier === "connect" && account.status !== "active");
+  const allowed = onPlan && !inactive;
 
   // The host the app will send the user back to, shown plainly so a lookalike
   // client name can't hide where the approval actually goes.
@@ -122,7 +129,9 @@ export default async function ConsentPage({
             Only continue if you started this from that app.
           </p>
 
-          {error && ERRORS[error] ? <p className="text-sm text-destructive">{ERRORS[error]}</p> : null}
+          {error && ERRORS[error] && !(error === "inactive" && inactive) ? (
+            <p className="text-sm text-destructive">{ERRORS[error]}</p>
+          ) : null}
 
           {allowed ? (
             <form action={decideAuthorization} className="flex gap-3">
@@ -136,11 +145,11 @@ export default async function ConsentPage({
             </form>
           ) : (
             <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">{ERRORS.plan}</p>
+              <p className="text-sm text-muted-foreground">{inactive ? ERRORS.inactive : ERRORS.plan}</p>
               <div className="flex gap-3">
-                <Link href="/connect" className="flex-1">
+                <Link href={inactive ? "/app/settings?tab=connect" : "/connect"} className="flex-1">
                   <Button type="button" className="w-full">
-                    About Connect
+                    {inactive ? "Open Settings" : "About Connect"}
                   </Button>
                 </Link>
                 <form action={decideAuthorization} className="flex-1">
