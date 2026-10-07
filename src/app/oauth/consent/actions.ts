@@ -25,9 +25,12 @@ export async function decideAuthorization(formData: FormData) {
   if (decision === "approve") {
     const { data: profile } = await supabase.from("profiles").select("account_id").eq("id", user.id).maybeSingle();
     const { data: account } = profile?.account_id
-      ? await supabase.from("accounts").select("tier, demo_mode").eq("id", profile.account_id).single()
+      ? await supabase.from("accounts").select("tier, demo_mode, status").eq("id", profile.account_id).single()
       : { data: null };
     if (!account || !canUseMcp(account.tier, account.demo_mode)) redirect(`${consentPath}&error=plan`);
+    // Same rule the MCP server applies on every call: an unpaid or paused
+    // Connect account can't use a token, so don't hand one out.
+    if (account.tier === "connect" && account.status !== "active") redirect(`${consentPath}&error=inactive`);
   }
 
   const result =
