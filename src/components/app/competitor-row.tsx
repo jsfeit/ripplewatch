@@ -44,7 +44,7 @@ export function CompetitorRow({
 }) {
   // Tagged with the domain it was fetched for, so a stale response arriving
   // after the user has moved on to another domain doesn't get rendered.
-  const [description, setDescription] = useState<{ domain: string; text: string } | null>(null);
+  const [lookup, setLookup] = useState<{ domain: string; text: string | null; blocked: boolean } | null>(null);
 
   const domain = value.domain.trim();
   const domainValid = domain.length === 0 || DOMAIN_PATTERN.test(domain);
@@ -56,7 +56,9 @@ export function CompetitorRow({
       fetch(`/api/domain-lookup?domain=${encodeURIComponent(domain)}`)
         .then((res) => res.json())
         .then((data) => {
-          if (data.description) setDescription({ domain, text: data.description });
+          if (data.description || data.blocked) {
+            setLookup({ domain, text: data.description ?? null, blocked: Boolean(data.blocked) });
+          }
         })
         .catch(() => {});
     }, 600);
@@ -99,8 +101,13 @@ export function CompetitorRow({
         <p className="mt-1.5 pl-10 text-xs text-destructive">
           Doesn&apos;t look like a valid domain; try something like acme.com
         </p>
-      ) : description?.domain === domain ? (
-        <p className="mt-1.5 pl-10 text-xs text-muted-foreground">{description.text}</p>
+      ) : lookup?.domain === domain && lookup.text ? (
+        <p className="mt-1.5 pl-10 text-xs text-muted-foreground">{lookup.text}</p>
+      ) : lookup?.domain === domain && lookup.blocked ? (
+        <p className="mt-1.5 pl-10 text-xs text-muted-foreground">
+          This site blocks automated checks, so there&apos;s no preview. You can still add it: I&apos;ll follow it through
+          news and press, and flag it for a closer look.
+        </p>
       ) : null}
     </div>
   );
