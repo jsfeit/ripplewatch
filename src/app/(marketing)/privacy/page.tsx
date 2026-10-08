@@ -79,6 +79,7 @@ export default function PrivacyPage() {
           <li><strong>Anthropic</strong>: AI processing (relevance scoring, suggestions, Ask).</li>
           <li><strong>Resend</strong>: transactional email delivery (scored updates, invites).</li>
           <li><strong>Sentry</strong>: error tracking, so we can catch and fix problems.</li>
+          <li><strong>Apollo</strong>: on our public marketing pages only, and only if you accept cookies, it identifies the company behind a visit so we know which businesses are interested. It does not identify individual visitors.</li>
           <li><strong>Slack, HubSpot, Gong, Zoom</strong>: only if and when you connect them yourself.</li>
         </ul>
         <p>
