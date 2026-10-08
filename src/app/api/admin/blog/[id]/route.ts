@@ -48,6 +48,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   revalidatePath("/blog");
+  // The sitemap is cached too; without this a new or edited post stays out of it until the next deploy.
+  revalidatePath("/sitemap.xml");
   revalidatePath(`/blog/${slug}`);
   if (existing && existing.slug !== slug) revalidatePath(`/blog/${existing.slug}`);
 
@@ -62,6 +64,8 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
   revalidatePath("/blog");
+  // The sitemap is cached too; without this a new or edited post stays out of it until the next deploy.
+  revalidatePath("/sitemap.xml");
   if (existing) revalidatePath(`/blog/${existing.slug}`);
 
   return NextResponse.json({ ok: true });

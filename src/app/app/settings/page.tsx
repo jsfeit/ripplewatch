@@ -62,6 +62,7 @@ export default async function SettingsPage({
     { data: suggestions },
     { data: apiKeys },
     { data: referrals },
+    { data: notificationPrefs },
   ] = await Promise.all([
     db
       .from("accounts")
@@ -95,8 +96,48 @@ export default async function SettingsPage({
       .select("id, referred_account_id, referred_at, qualified_at")
       .eq("referrer_account_id", accountId)
       .order("referred_at", { ascending: false }),
+    // Read on its own so the page still loads if the notification columns
+    // haven't been migrated yet: an error here just means "both on".
+    db
+      .from("accounts")
+      .select("connect_daily_alert_enabled, connect_monthly_recap_enabled, connect_email_with_slack")
+      .eq("id", accountId)
+      .maybeSingle(),
   ]);
   if (!account) redirect("/onboarding");
+
+  // Same momentum sort the competitor list already offers on its own
+  // fact-sheet page (see /app/competitors/[id]) — kept for parity now that
+  // the list itself lives here. 180-day lookback (not just the 60
+  // days the recent/prior comparison itself needs) so computeMomentum's
+  // per-competitor reliability weighting has real history to judge from —
+  // see computeReliability in momentum.ts.
+  const competitorIds = (competitors ?? []).map((c) => c.id);
+  const reliabilityLookbackStart = new Date();
+  reliabilityLookbackStart.setUTCDate(reliabilityLookbackStart.getUTCDate() - 180);
+  // Started here, before the Connect queries below, so the two groups run at
+  // the same time instead of one after the other.
+  const momentumQueries = competitorIds.length
+    ? Promise.all([
+        db
+          .from("signals")
+          .select("id, competitor_id, scored, relevance_level, relevance_reasoning, title")
+          .in("competitor_id", competitorIds)
+          .order("occurred_on", { ascending: false })
+          .limit(10),
+        db
+          .from("signals")
+          .select("competitor_id, type, sentiment, occurred_on, scored, relevance_score")
+          .in("competitor_id", competitorIds)
+          .gte("occurred_on", reliabilityLookbackStart.toISOString().slice(0, 10)),
+        db.from("competitor_win_loss").select("competitor_id, outcome, created_at").in("competitor_id", competitorIds),
+        db
+          .from("competitor_state_history")
+          .select("competitor_id, metric, value, recorded_at")
+          .in("competitor_id", competitorIds)
+          .gte("recorded_at", reliabilityLookbackStart.toISOString()),
+      ])
+    : Promise.resolve([{ data: [] }, { data: [] }, { data: [] }, { data: [] }]);
 
   // Ripplewatch Connect accounts see their prepaid balance and its history in
   // Settings. Read through the caller's own session (RLS lets a customer read
@@ -122,13 +163,6 @@ export default async function SettingsPage({
     firstLook: Pick<FirstLook, "companyName" | "crawl" | "topSignals" | "starterPrompts">;
   } | null = null;
   if (account.tier === "connect") {
-    // Read on its own so the page still loads if the notification columns
-    // haven't been migrated yet: an error here just means "both on".
-    const { data: notificationPrefs } = await db
-      .from("accounts")
-      .select("connect_daily_alert_enabled, connect_monthly_recap_enabled, connect_email_with_slack")
-      .eq("id", accountId)
-      .maybeSingle();
     const [{ data: wallet }, { data: ledgerRows }, firstLook, { count: dealCount }] = await Promise.all([
       db
         .from("connect_wallets")
@@ -185,41 +219,12 @@ export default async function SettingsPage({
     };
   }
 
-  // Same momentum sort the competitor list already offers on its own
-  // fact-sheet page (see /app/competitors/[id]) — kept for parity now that
-  // the list itself lives here. 180-day lookback (not just the 60
-  // days the recent/prior comparison itself needs) so computeMomentum's
-  // per-competitor reliability weighting has real history to judge from —
-  // see computeReliability in momentum.ts.
-  const competitorIds = (competitors ?? []).map((c) => c.id);
-  const reliabilityLookbackStart = new Date();
-  reliabilityLookbackStart.setUTCDate(reliabilityLookbackStart.getUTCDate() - 180);
   const [
     { data: recentSignals },
     { data: momentumSignals },
     { data: momentumWinLoss },
     { data: momentumStateHistory },
-  ] = competitorIds.length
-    ? await Promise.all([
-        db
-          .from("signals")
-          .select("id, competitor_id, scored, relevance_level, relevance_reasoning, title")
-          .in("competitor_id", competitorIds)
-          .order("occurred_on", { ascending: false })
-          .limit(10),
-        db
-          .from("signals")
-          .select("competitor_id, type, sentiment, occurred_on, scored, relevance_score")
-          .in("competitor_id", competitorIds)
-          .gte("occurred_on", reliabilityLookbackStart.toISOString().slice(0, 10)),
-        db.from("competitor_win_loss").select("competitor_id, outcome, created_at").in("competitor_id", competitorIds),
-        db
-          .from("competitor_state_history")
-          .select("competitor_id, metric, value, recorded_at")
-          .in("competitor_id", competitorIds)
-          .gte("recorded_at", reliabilityLookbackStart.toISOString()),
-      ])
-    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
+  ] = await momentumQueries;
   const momentumByCompetitorId: Record<string, MomentumResult> = {};
   for (const c of competitors ?? []) {
     momentumByCompetitorId[c.id] = computeMomentum(

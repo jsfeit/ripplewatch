@@ -47,6 +47,8 @@ export async function POST(request: Request) {
   }
 
   revalidatePath("/blog");
+  // The sitemap is cached too; without this a new or edited post stays out of it until the next deploy.
+  revalidatePath("/sitemap.xml");
   revalidatePath(`/blog/${slug}`);
 
   return NextResponse.json({ id: data.id });
