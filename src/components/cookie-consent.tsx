@@ -2,14 +2,19 @@
 
 import { useEffect, useState } from "react";
 import Script from "next/script";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 const LINKEDIN_PARTNER_ID = process.env.NEXT_PUBLIC_LINKEDIN_PARTNER_ID;
 const REWARDFUL_API_KEY = process.env.NEXT_PUBLIC_REWARDFUL_API_KEY;
+const APOLLO_TRACKER_ID = process.env.NEXT_PUBLIC_APOLLO_TRACKER_ID;
 const STORAGE_KEY = "rw-cookie-consent";
+// Apollo's visitor tracker is for the public marketing site only. The signed-in
+// app, admin, and auth pages are never worth identifying visitors on.
+const NO_APOLLO_PATHS = /^\/(app|admin|login|signup|onboarding|invite|oauth)(\/|$)/;
 
-// Gates GA4, the LinkedIn Insight Tag, and Rewardful behind consent instead
+// Gates GA4, the LinkedIn Insight Tag, Rewardful, and Apollo's visitor tracker behind consent instead
 // of firing them unconditionally — all three set non-essential ad/analytics/
 // affiliate-attribution cookies (GA's _ga/_gid, LinkedIn's bcookie/
 // UserMatchHistory, Rewardful's referral-attribution cookie), which need
@@ -18,6 +23,7 @@ const STORAGE_KEY = "rw-cookie-consent";
 export function CookieConsent() {
   const [consent, setConsent] = useState<"granted" | "denied" | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     // Syncing one-time from localStorage on mount, not deriving state from
@@ -85,6 +91,14 @@ export function CookieConsent() {
           </Script>
           <Script async src="https://r.wdfl.co/rw.js" data-rewardful={REWARDFUL_API_KEY} strategy="afterInteractive" />
         </>
+      )}
+
+      {consent === "granted" && APOLLO_TRACKER_ID && !NO_APOLLO_PATHS.test(pathname) && (
+        // Apollo's own loader, with the tracker id from the environment. Identifies the
+        // visiting company on the marketing pages; contact-level tracking is off in Apollo.
+        <Script id="apollo-tracker" strategy="afterInteractive">
+          {`function initApollo(){var n=Math.random().toString(36).substring(7),o=document.createElement("script");o.src="https://assets.apollo.io/micro/website-tracker/tracker.iife.js?nocache="+n,o.async=!0,o.defer=!0,o.onload=function(){window.trackingFunctions.onLoad({appId:"${APOLLO_TRACKER_ID}"})},document.head.appendChild(o)}initApollo();`}
+        </Script>
       )}
 
       {hydrated && consent === null && (
