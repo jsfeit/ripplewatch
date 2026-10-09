@@ -1,14 +1,98 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
-  "name": "ripplewatch",
-  "version": "0.1.0",
+  "name": "ripplewatch-connect",
+  "version": "1.0.0",
   "description": "Ask about your competitors and log deal outcomes. Ripplewatch watches competitor pricing, hiring, press and product changes and scores each one against your own positioning and win/loss history.",
+  "author": {
+    "name": "Ripplewatch",
+    "email": "hello@ripplewatch.ai",
+    "url": "https://www.ripplewatch.ai"
+  },
+  "homepage": "https://www.ripplewatch.ai",
   "extensions": {
     "com.openai": {
       "interface": {
         "displayName": "Ripplewatch",
-        "category": "Research",
-        "logo": "./assets/icon.png"
+        "shortDescription": "Competitor answers in ChatGPT",
+        "longDescription": "Ripplewatch watches your competitors' pricing, hiring, press and product changes, and scores each one against your own positioning and your win/loss history, so you hear about the moves that matter to your business and skip the rest.\n\nWith this plugin you can:\n- Ask what changed with your competitors this week and what it means for your deals.\n- See which competitors are heating up, holding steady or cooling off.\n- Ask free-form questions, like whether a competitor's new pricing is worth responding to.\n- Tell ChatGPT how a deal went, and Ripplewatch ties competitor moves to your real wins and losses.\n- Bring in deal history in bulk from a spreadsheet or a CRM that ChatGPT can already reach.\n\nLimits: Ripplewatch reads public information about the competitors you choose and what you tell it. It cannot see private competitor data. You approve the connection when you sign in, can disconnect at any time, and the plugin cannot change billing or team settings. Requires a Ripplewatch Connect account.",
+        "developerName": "Ripplewatch",
+        "category": "Business & Operations",
+        "capabilities": [
+          "Brief you on competitor changes",
+          "Answer questions about a competitor",
+          "Show which competitors are heating up",
+          "Log won and lost deals",
+          "Import deal history in bulk"
+        ],
+        "websiteURL": "https://www.ripplewatch.ai",
+        "privacyPolicyURL": "https://www.ripplewatch.ai/privacy",
+        "termsOfServiceURL": "https://www.ripplewatch.ai/terms",
+        "supportURL": "https://www.ripplewatch.ai/faq",
+        "defaultPrompt": [
+          "What changed with my competitors this week?",
+          "Which competitor is heating up fastest?",
+          "Log a deal we lost to a competitor."
+        ],
+        "logo": "./assets/icon.png",
+        "composerIcon": "./assets/icon.png"
+      },
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Weekly briefing",
+              "prompt": "What changed with my competitors this week?",
+              "tools_triggered": "get_briefing",
+              "expected_behavior": "A short briefing led by the most relevant competitor change for the account."
+            },
+            {
+              "description": "Is a competitor's move worth responding to",
+              "prompt": "Is Notion's new pricing something we should respond to?",
+              "tools_triggered": "ask",
+              "expected_behavior": "An answer scored against the account's positioning that names Notion."
+            },
+            {
+              "description": "Which competitor is heating up",
+              "prompt": "Which competitor is heating up fastest?",
+              "tools_triggered": "get_momentum",
+              "expected_behavior": "Competitors listed as Heating up, Steady, Cooling or Gone quiet."
+            },
+            {
+              "description": "Log a lost deal",
+              "prompt": "We lost a deal to Linear last week because engineering wanted docs in their tracker. Log it.",
+              "tools_triggered": "log_win_loss",
+              "expected_behavior": "A one-line confirmation naming the competitor, the outcome and the reason."
+            },
+            {
+              "description": "Import deal history",
+              "prompt": "Here are our closed-lost deals from this CSV: Acme, lost to Asana, price; Globex, lost to Notion, missing integration.",
+              "tools_triggered": "import_win_loss",
+              "expected_behavior": "A count of deals added and skipped."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Billing change request",
+              "prompt": "Cancel my subscription and change my plan."
+            },
+            {
+              "description": "Untracked competitor",
+              "prompt": "What is Globex doing?"
+            },
+            {
+              "description": "Invented deals",
+              "prompt": "Log all the deals you think we probably lost."
+            }
+          ]
+        },
+        "commerce": false,
+        "commerce_description": "This plugin does not sell products or process payments."
+      },
+      "publication": {
+        "countries": [
+          "US"
+        ],
+        "release_notes": "Initial release."
       }
     }
   }
