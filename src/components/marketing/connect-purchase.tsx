@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { ConnectCheckoutModal } from "@/components/app/connect-checkout-modal";
 import { createClient } from "@/lib/supabase/client";
 import { trackEvent } from "@/lib/analytics";
+import { GoogleButton, OrDivider } from "@/components/auth/google-button";
 import { CONNECT_BASE_FEE_USD, CONNECT_DEFAULT_RELOAD_USD } from "@/lib/connect-pricing";
 import { CONNECT_NAME } from "@/lib/connect";
 
@@ -250,6 +251,15 @@ export function ConnectPurchase({
 
         {!initiallySignedIn ? (
           <>
+            <GoogleButton
+              next="/onboarding?path=connect"
+              product="connect"
+              onStart={() => {
+                // Same-tab draft the email flow uses, so a typed company name survives the trip to Google and back.
+                if (companyName.trim()) sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ companyName: companyName.trim() } satisfies Draft));
+              }}
+            />
+            <OrDivider />
             <div className="space-y-2">
               <Label htmlFor="connectEmail">Work email</Label>
               <Input id="connectEmail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" required />

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
+import { GoogleButton, OrDivider } from "@/components/auth/google-button";
 
 export function LoginForm() {
   const router = useRouter();
@@ -16,7 +17,15 @@ export function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  // Where /auth/callback sends people back when Google sign-in doesn't complete.
+  const urlError = searchParams.get("error");
+  const [error, setError] = useState(
+    urlError === "google-cancelled"
+      ? "Google sign-in was cancelled."
+      : urlError === "google-failed"
+        ? "Google sign-in didn't work. Try again, or use your email."
+        : ""
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -49,7 +58,9 @@ export function LoginForm() {
       <CardHeader>
         <h1 className="text-lg font-semibold">Log in</h1>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        <GoogleButton next={searchParams.get("next") ?? "/app/dashboard"} />
+        <OrDivider />
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
