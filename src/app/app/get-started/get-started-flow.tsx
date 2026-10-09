@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CompetitorRow, type CompetitorInput } from "@/components/app/competitor-row";
 import { Confetti } from "@/components/app/confetti";
 import { McpConnectStep } from "@/components/app/mcp-connect-step";
+import { MomentumTease, ReadinessMeter } from "@/components/app/momentum-tease";
 import { SlackStep } from "@/components/app/slack-step";
 import { DEAL_TOOLS, loadDealTools, saveDealTools } from "@/lib/deal-tools";
 import { cn } from "@/lib/utils";
@@ -64,6 +65,12 @@ export function GetStartedFlow({
 
   const filledCompetitors = competitors.filter((c) => c.name.trim());
   const hasCompetitor = filledCompetitors.length >= 1;
+  // A progress cue built only from what's been told so far.
+  const readiness =
+    (mcpLastConnectedAt ? 30 : 0) +
+    (positioning.trim() || icp.trim() ? 20 : 0) +
+    (hasCompetitor ? 35 : 0) +
+    (dealTools.length > 0 ? 15 : 0);
 
   function updateCompetitor(index: number, field: keyof CompetitorInput, value: string) {
     setCompetitors((prev) => prev.map((c, i) => (i === index ? { ...c, [field]: value } : c)));
@@ -109,7 +116,7 @@ export function GetStartedFlow({
     setTimeout(() => {
       router.push("/app/settings?tab=data");
       router.refresh();
-    }, 2400);
+    }, 3600);
   }
 
   if (step === 0) {
@@ -136,7 +143,8 @@ export function GetStartedFlow({
               {`I'm checking ${filledCompetitors.length} competitor${filledCompetitors.length === 1 ? "" : "s"} now. Next, let's make the answers yours.`}
             </p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <MomentumTease names={filledCompetitors.map((c) => c.name)} />
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
               Taking you there…
@@ -167,6 +175,7 @@ export function GetStartedFlow({
   return (
     <Card>
       <CardHeader>
+        <ReadinessMeter percent={readiness} />
         {justUnlocked && wizardStep !== 3 ? (
           <p className="mb-1 flex items-start gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm text-primary">
             <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
@@ -196,7 +205,10 @@ export function GetStartedFlow({
                 : "Slack is the shared feed: alerts and recaps land in a channel your whole team sees. Skip it if you're the only one using Ripplewatch."}
         </p>
         {wizardStep === 3 ? null : (
-          <p className="mt-1 rounded-md bg-primary/[0.06] px-3 py-2 text-sm">{ONBOARDING_VALUE[key].unlocks}</p>
+          <p className="mt-1 rounded-md bg-primary/[0.06] px-3 py-2 text-sm">
+            <span className="font-semibold text-primary">Why this matters: </span>
+            {ONBOARDING_VALUE[key].unlocks}
+          </p>
         )}
       </CardHeader>
       <CardContent>
@@ -264,6 +276,7 @@ export function GetStartedFlow({
               <Plus className="size-4" />
               Add competitor
             </Button>
+            <MomentumTease names={filledCompetitors.map((c) => c.name)} />
           </div>
         )}
 
