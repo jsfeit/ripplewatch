@@ -39,7 +39,7 @@ export function SiteNav() {
         </nav>
         <div className="flex items-center gap-3">
           <Link
-            href="/onboarding"
+            href="/onboarding?path=connect"
             className={cn(buttonVariants({ variant: "ghost" }), "hidden sm:inline-flex")}
           >
             See it in action
@@ -78,7 +78,7 @@ export function SiteNav() {
             </Link>
           ))}
           <Link
-            href="/onboarding"
+            href="/onboarding?path=connect"
             className="rounded-md px-2 py-2.5 text-sm font-medium text-foreground hover:bg-secondary"
             onClick={() => setOpen(false)}
           >
