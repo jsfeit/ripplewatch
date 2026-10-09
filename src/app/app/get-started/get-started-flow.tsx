@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { McpConnectStep } from "@/components/app/mcp-connect-step";
 import { SlackStep } from "@/components/app/slack-step";
 import { DEAL_TOOLS, loadDealTools, saveDealTools } from "@/lib/deal-tools";
 import { cn } from "@/lib/utils";
+import { trackEvent } from "@/lib/analytics";
 import { ONBOARDING_VALUE, type OnboardingStepKey } from "@/lib/onboarding-value";
 
 const TOTAL_STEPS = 5;
@@ -42,6 +43,11 @@ export function GetStartedFlow({
 }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
+  // Step 0 connects the assistant; the rest follow WIZARD_STEPS. One event per step
+  // shown, so Google Analytics can draw the setup funnel for visitors who accepted cookies.
+  useEffect(() => {
+    trackEvent("setup_step_viewed", { step: step === 0 ? "connect" : (WIZARD_STEPS[step - 1]?.key ?? "done"), step_number: step + 1 });
+  }, [step]);
   // What the step just finished made better, shown at the top of the next one.
   const [justUnlocked, setJustUnlocked] = useState<string | null>(null);
   const [positioning, setPositioning] = useState("");
@@ -98,6 +104,7 @@ export function GetStartedFlow({
     }
     // Let the confetti land before moving on, then go to where the next
     // useful thing is: bringing their own deal data in.
+    trackEvent("setup_completed");
     setCelebrating(true);
     setTimeout(() => {
       router.push("/app/settings?tab=data");

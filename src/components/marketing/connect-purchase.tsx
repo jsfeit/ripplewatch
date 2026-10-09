@@ -43,6 +43,10 @@ export function ConnectPurchase({
   const router = useRouter();
   const [companyName, setCompanyName] = useState("");
   const [email, setEmail] = useState("");
+  // The top of the signup funnel: how many people reach the form at all.
+  useEffect(() => {
+    trackEvent("connect_form_viewed");
+  }, []);
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "working" | "confirm-email" | "ready">("idle");
   // Resend state for the "check your email" screen. Supabase limits how often

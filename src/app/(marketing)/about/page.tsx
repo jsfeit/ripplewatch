@@ -77,7 +77,7 @@ export default function AboutPage() {
         >
           Connect on LinkedIn
         </a>
-        <Link href="/onboarding" className={buttonVariants({})}>
+        <Link href="/onboarding?path=connect" className={buttonVariants({})}>
           Try Ripplewatch
         </Link>
       </div>
