@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { JsonLd, breadcrumbs } from "@/components/marketing/json-ld";
 import { buttonVariants } from "@/components/ui/button";
 import { CONNECT_EXAMPLES, CONNECT_MCP_URL, CONNECT_NAME } from "@/lib/connect";
 import { CONNECT_BASE_FEE_USD, CONNECT_MIN_FUNDING_USD } from "@/lib/connect-pricing";
@@ -20,9 +21,35 @@ export const metadata = {
   },
 };
 
+const SITE = "https://www.ripplewatch.ai";
+
+// Mirrors the numbered steps on the page. Search engines no longer show HowTo
+// rich results, but assistants that read structured data use it to lift steps.
+const HOW_TO = {
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  name: "Connect Ripplewatch to Claude or ChatGPT over MCP",
+  description,
+  totalTime: "PT2M",
+  tool: [{ "@type": "HowToTool", name: `MCP server URL: ${CONNECT_MCP_URL}` }],
+  step: [
+    { "@type": "HowToStep", name: "Open Connectors in Claude", text: "In Claude, go to Settings, then Connectors, then Add custom connector." },
+    { "@type": "HowToStep", name: "Add the server URL", text: `Name it Ripplewatch and paste ${CONNECT_MCP_URL}.` },
+    { "@type": "HowToStep", name: "Sign in and approve", text: "Sign in to Ripplewatch and approve the connection when it asks." },
+    { "@type": "HowToStep", name: "Ask your first question", text: "Ask what changed with your competitors this week, or ask it to start with Ripplewatch." },
+  ],
+};
+
 export default function ConnectGuidePage() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-20">
+      <JsonLd data={HOW_TO} />
+      <JsonLd
+        data={breadcrumbs(SITE, [
+          { name: CONNECT_NAME, path: "/connect" },
+          { name: "Connect to Claude or ChatGPT", path: "/connect/claude-and-chatgpt" },
+        ])}
+      />
       <h1 className="text-3xl font-semibold tracking-tight text-balance">Connect Ripplewatch to Claude or ChatGPT</h1>
       <p className="mt-4 leading-relaxed text-muted-foreground">
         {CONNECT_NAME} is an MCP server. MCP, the Model Context Protocol, is the open standard that lets an AI assistant

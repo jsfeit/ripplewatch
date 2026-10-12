@@ -27,12 +27,18 @@ export async function generateMetadata({
     title: post.title,
     description: post.description,
     alternates: { canonical: `/blog/${post.slug}` },
-    openGraph: { title: `${post.title} | Ripplewatch`, description: post.description, images: ["/opengraph-image"] },
+    // Per-post share card from ./og/route.tsx.
+    openGraph: {
+      title: `${post.title} | Ripplewatch`,
+      description: post.description,
+      type: "article",
+      images: [`/blog/${post.slug}/og`],
+    },
     twitter: {
       card: "summary_large_image",
       title: `${post.title} | Ripplewatch`,
       description: post.description,
-      images: ["/opengraph-image"],
+      images: [`/blog/${post.slug}/og`],
     },
   };
 }
@@ -188,6 +194,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
               logo: { "@type": "ImageObject", url: `${APP_URL}/opengraph-image` },
             },
             mainEntityOfPage: `${APP_URL}/blog/${post.slug}`,
+            image: `${APP_URL}/blog/${post.slug}/og`,
           }),
         }}
       />

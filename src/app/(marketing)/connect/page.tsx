@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Check, MessageSquare, PlugZap, ShieldCheck, Sparkles, Wallet } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
+import { JsonLd, breadcrumbs } from "@/components/marketing/json-ld";
 import { QuickAnswers } from "@/components/marketing/quick-answers";
 import { CONNECT_EXAMPLES, CONNECT_FEATURES, CONNECT_NAME, CONNECT_TAGLINE } from "@/lib/connect";
 import { CONNECT_BASE_FEE_USD, CONNECT_MIN_FUNDING_USD } from "@/lib/connect-pricing";
@@ -9,7 +10,7 @@ const description =
   "Ripplewatch Connect is an AI competitive intelligence analyst built into Claude and ChatGPT, with you at all times instead of a dashboard you have to remember to check. Ask what changed, get the read on what it means for your deals, and log outcomes by just telling your assistant. $29 a month plus usage you prepay for.";
 
 export const metadata = {
-  title: `${CONNECT_NAME}: Your AI competitive intelligence analyst`,
+  title: `${CONNECT_NAME}: AI competitive intelligence`,
   description,
   alternates: { canonical: "/connect" },
   openGraph: { title: `${CONNECT_NAME} | Ripplewatch`, description, images: ["/opengraph-image"] },
@@ -35,10 +36,29 @@ const STEPS = [
 ];
 
 const GET_STARTED = "/onboarding?path=connect";
+const SITE = "https://www.ripplewatch.ai";
+
+const PRODUCT_SCHEMA = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: CONNECT_NAME,
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  url: `${SITE}/connect`,
+  description,
+  offers: {
+    "@type": "Offer",
+    price: String(CONNECT_BASE_FEE_USD),
+    priceCurrency: "USD",
+    description: `Monthly platform fee. Usage is paid from a prepaid balance that starts at $${CONNECT_MIN_FUNDING_USD}.`,
+  },
+};
 
 export default function ConnectPage() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-20">
+      <JsonLd data={PRODUCT_SCHEMA} />
+      <JsonLd data={breadcrumbs(SITE, [{ name: CONNECT_NAME, path: "/connect" }])} />
       <div className="mx-auto max-w-2xl text-center">
         <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
           <Sparkles className="size-3.5" />

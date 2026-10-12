@@ -4,6 +4,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { GUIDE_TOPICS } from "@/lib/connect-guide";
 import { HowItFits } from "@/components/app/how-it-fits";
 import { CONNECT_NAME } from "@/lib/connect";
+import { JsonLd, breadcrumbs } from "@/components/marketing/json-ld";
 
 const description =
   "How to get the most out of Ripplewatch Connect: getting your win/loss data in, what momentum means, which emails you'll receive, how to see what changed, and what to ask your assistant.";
@@ -32,6 +33,12 @@ const TEAM = [
 export default function ConnectGuidePage() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-20">
+      <JsonLd
+        data={breadcrumbs("https://www.ripplewatch.ai", [
+          { name: CONNECT_NAME, path: "/connect" },
+          { name: "How to use Ripplewatch", path: "/connect/guide" },
+        ])}
+      />
       <h1 className="text-3xl font-semibold tracking-tight text-balance">How to get the most out of {CONNECT_NAME}</h1>
       <p className="mt-4 leading-relaxed text-muted-foreground">
         Ripplewatch works inside your AI assistant, so most of this is knowing what to say. Start with the path that

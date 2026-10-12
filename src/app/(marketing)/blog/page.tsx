@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { getAllPosts, readingTime } from "@/lib/posts";
 import { formatDate } from "@/lib/date";
+import { JsonLd, breadcrumbs } from "@/components/marketing/json-ld";
 import { Panel } from "@/components/ui/panel";
 import { CategoryTag, visualKindForSlug } from "@/components/marketing/blog-visual";
 
@@ -10,6 +11,8 @@ import { CategoryTag, visualKindForSlug } from "@/components/marketing/blog-visu
 // dynamic on every request, with revalidatePath firing immediately on
 // publish/edit/delete so admin changes don't wait out the cache window.
 export const revalidate = 300;
+
+const SITE = "https://www.ripplewatch.ai";
 
 const description = "Notes on competitive intelligence, win/loss analysis, and building a Momentum score that actually means something.";
 
@@ -30,6 +33,23 @@ export default async function BlogIndexPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-20">
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "Blog",
+          name: "Ripplewatch blog",
+          url: `${SITE}/blog`,
+          description,
+          publisher: { "@type": "Organization", name: "Ripplewatch", url: SITE },
+          blogPost: posts.slice(0, 20).map((p) => ({
+            "@type": "BlogPosting",
+            headline: p.title,
+            url: `${SITE}/blog/${p.slug}`,
+            datePublished: p.publishedAt,
+          })),
+        }}
+      />
+      <JsonLd data={breadcrumbs(SITE, [{ name: "Blog", path: "/blog" }])} />
       <section className="mx-auto max-w-2xl text-center">
         <span className="inline-flex items-center rounded-full border border-border bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground">
           Blog
