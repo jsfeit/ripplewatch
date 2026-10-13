@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,8 @@ import { CompetitorRow, type CompetitorInput } from "@/components/app/competitor
 import { Confetti } from "@/components/app/confetti";
 import { FirstQuestions } from "@/components/app/first-questions";
 import { McpConnectStep } from "@/components/app/mcp-connect-step";
-import { MomentumTease, ReadinessMeter } from "@/components/app/momentum-tease";
+import { MomentumTease, ReadinessMeter, type Skill } from "@/components/app/momentum-tease";
+import { SuggestedCompetitors, type SuggestedCompetitor } from "@/components/app/suggested-competitors";
 import { PersonalReadCard } from "@/components/app/personal-read-card";
 import { SlackStep } from "@/components/app/slack-step";
 import { clearIntro, loadIntro } from "@/lib/connect-intro";
@@ -83,6 +84,54 @@ export function GetStartedFlow({
     (positioning.trim() || icp.trim() ? 20 : 0) +
     (hasCompetitor ? 35 : 0) +
     (dealTools.length > 0 ? 15 : 0);
+
+  // Likely competitors, fetched once when the competitors step first opens (it needs what
+  // they said about their business). null = not asked yet, [] = nothing to suggest.
+  const [suggestions, setSuggestions] = useState<SuggestedCompetitor[] | null>(null);
+  const suggestionsAskedRef = useRef(false);
+  const onCompetitorsStep = step === 2;
+  useEffect(() => {
+    if (!onCompetitorsStep || suggestionsAskedRef.current) return;
+    suggestionsAskedRef.current = true;
+    fetch("/api/onboarding/suggest-competitors", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ companyName, positioning, icp }),
+    })
+      .then((res) => res.json())
+      .then((data) => setSuggestions(Array.isArray(data.competitors) ? data.competitors : []))
+      .catch(() => setSuggestions([]));
+  }, [onCompetitorsStep, companyName, positioning, icp]);
+
+  function toggleSuggestion(suggestion: SuggestedCompetitor) {
+    const key = suggestion.name.trim().toLowerCase();
+    setCompetitors((prev) => {
+      const at = prev.findIndex((c) => c.name.trim().toLowerCase() === key);
+      if (at !== -1) {
+        const rest = prev.filter((_, i) => i !== at);
+        return rest.length > 0 ? rest : [{ name: "", domain: "" }];
+      }
+      const empty = prev.findIndex((c) => !c.name.trim());
+      if (empty !== -1) return prev.map((c, i) => (i === empty ? { name: suggestion.name, domain: suggestion.domain } : c));
+      return [...prev, { name: suggestion.name, domain: suggestion.domain }];
+    });
+  }
+  const selectedNames = useMemo(
+    () => new Set(competitors.map((c) => c.name.trim().toLowerCase()).filter(Boolean)),
+    [competitors]
+  );
+  const domainByName = useMemo(
+    () => Object.fromEntries(competitors.filter((c) => c.name.trim() && c.domain.trim()).map((c) => [c.name.trim(), c.domain.trim()])),
+    [competitors]
+  );
+
+  // What the analyst can do so far; each tile is a real capability that turns on from what's been entered.
+  const skills: Skill[] = [
+    { label: "Briefings", on: Boolean(mcpLastConnectedAt) && hasCompetitor, hint: "Needs your assistant connected and a competitor" },
+    { label: "Momentum", on: hasCompetitor, hint: "Needs at least one competitor" },
+    { label: "Relevance scoring", on: Boolean(positioning.trim() || icp.trim()), hint: "Needs what you sell or who buys it" },
+    { label: "Deal-aware answers", on: Boolean(dealNote.trim()), hint: "Needs a deal you won or lost" },
+  ];
 
   function updateCompetitor(index: number, field: keyof CompetitorInput, value: string) {
     setCompetitors((prev) => prev.map((c, i) => (i === index ? { ...c, [field]: value } : c)));
@@ -207,7 +256,7 @@ export function GetStartedFlow({
   return (
     <Card>
       <CardHeader>
-        <ReadinessMeter percent={readiness} />
+        <ReadinessMeter percent={readiness} skills={skills} />
         {justUnlocked && wizardStep !== 3 ? (
           <p className="mb-1 flex items-start gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm text-primary">
             <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
@@ -308,7 +357,13 @@ export function GetStartedFlow({
               <Plus className="size-4" />
               Add competitor
             </Button>
-            <MomentumTease names={filledCompetitors.map((c) => c.name)} />
+            <SuggestedCompetitors
+              suggestions={suggestions}
+              loading={suggestions === null}
+              selectedNames={selectedNames}
+              onToggle={toggleSuggestion}
+            />
+            <MomentumTease names={filledCompetitors.map((c) => c.name)} domainByName={domainByName} />
           </div>
         )}
 

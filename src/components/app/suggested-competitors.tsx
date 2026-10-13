@@ -3,6 +3,7 @@
 import { Check } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CompanyLogo } from "@/components/app/company-logo";
 
 export type SuggestedCompetitor = { name: string; domain: string };
 
@@ -24,7 +25,7 @@ function SuggestionTile({
       type="button"
       onClick={onToggle}
       className={cn(
-        "relative flex items-center justify-center rounded-md border px-2.5 py-1.5 text-center transition-colors",
+        "relative flex items-center justify-center gap-2 rounded-md border px-2.5 py-1.5 text-center transition-colors",
         selected ? "border-primary bg-primary/5" : "border-border bg-card hover:border-border/80 hover:bg-secondary/30"
       )}
     >
@@ -33,6 +34,7 @@ function SuggestionTile({
           <Check className="size-2.5" />
         </span>
       ) : null}
+      <CompanyLogo name={suggestion.name} domain={suggestion.domain} className="size-4" />
       <p className="truncate text-xs font-medium">{suggestion.name}</p>
     </button>
   );
