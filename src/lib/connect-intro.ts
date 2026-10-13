@@ -17,6 +17,8 @@ export type ConnectIntro = {
   competitor: { name: string; domain: string } | null;
   read: IntroRead | null;
   evidence: string[];
+  // The saved read's id, sent back at the end of setup so the read can be linked to the account.
+  readId: string | null;
 };
 
 const KEY = "ripplewatch-connect-intro";
@@ -45,6 +47,7 @@ export function loadIntro(): ConnectIntro | null {
           : null,
       read: p.read && typeof p.read.found === "string" ? p.read : null,
       evidence: Array.isArray(p.evidence) ? p.evidence.filter((e): e is string => typeof e === "string") : [],
+      readId: typeof p.readId === "string" ? p.readId : null,
     };
   } catch {
     return null;
