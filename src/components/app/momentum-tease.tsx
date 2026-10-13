@@ -1,5 +1,6 @@
-import { Radar } from "lucide-react";
+import { Check, Lock, Radar } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CompanyLogo } from "@/components/app/company-logo";
 
 // A sneak peek at Momentum during setup. Nothing here is a made-up score: a
 // brand-new competitor honestly reads "Not enough history yet" (the same label
@@ -13,7 +14,16 @@ const LABELS: { name: string; dot: string; meaning: string }[] = [
   { name: "Gone quiet", dot: "bg-muted-foreground", meaning: "Nothing new lately" },
 ];
 
-export function MomentumTease({ names, className }: { names: string[]; className?: string }) {
+export function MomentumTease({
+  names,
+  domainByName,
+  className,
+}: {
+  names: string[];
+  // Optional, so a row can show the company's logo when its domain is known.
+  domainByName?: Record<string, string>;
+  className?: string;
+}) {
   const shown = names.filter((n) => n.trim()).slice(0, 5);
   if (shown.length === 0) return null;
   return (
@@ -29,7 +39,10 @@ export function MomentumTease({ names, className }: { names: string[]; className
       <ul className="mt-3 space-y-1.5">
         {shown.map((name) => (
           <li key={name} className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm">
-            <span className="truncate font-medium">{name.trim()}</span>
+            <span className="flex min-w-0 items-center gap-2">
+              <CompanyLogo name={name} domain={domainByName?.[name.trim()]} />
+              <span className="truncate font-medium">{name.trim()}</span>
+            </span>
             <span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
               <span className="relative flex size-2">
                 <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary/50 motion-reduce:hidden" />
@@ -57,9 +70,13 @@ export function MomentumTease({ names, className }: { names: string[]; className
   );
 }
 
+// What the analyst can do so far, lit up as each thing is told to it. Every tile
+// maps to a real capability and turns on from what has been entered, nothing else.
+export type Skill = { label: string; on: boolean; hint: string };
+
 // How briefed the analyst is, from what's been told so far. Purely a progress
 // cue: it reflects what you entered, nothing hidden.
-export function ReadinessMeter({ percent }: { percent: number }) {
+export function ReadinessMeter({ percent, skills }: { percent: number; skills?: Skill[] }) {
   const label = percent < 35 ? "Just got the keys" : percent < 70 ? "Learning your market" : percent < 100 ? "Nearly ready" : "Fully briefed";
   return (
     <div className="mb-3" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100} aria-label="How briefed your analyst is">
@@ -70,6 +87,23 @@ export function ReadinessMeter({ percent }: { percent: number }) {
       <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-secondary">
         <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${percent}%` }} />
       </div>
+      {skills ? (
+        <ul className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4" aria-label="What your analyst can do so far">
+          {skills.map((sk) => (
+            <li
+              key={sk.label}
+              title={sk.hint}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors duration-500",
+                sk.on ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground"
+              )}
+            >
+              {sk.on ? <Check className="size-3" /> : <Lock className="size-3" />}
+              <span className="truncate">{sk.label}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }
