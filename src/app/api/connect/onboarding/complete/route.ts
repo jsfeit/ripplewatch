@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { discoverCompetitorUrls } from "@/lib/scraping";
 import { suggestCompetitorCategories, researchCompanyContext } from "@/lib/anthropic";
 import { enqueueCrawlForAccount } from "@/lib/crawl";
+import { importWinLossText } from "@/lib/win-loss-import-text";
 
 type CompetitorInput = { name: string; domain: string };
 
@@ -39,12 +40,14 @@ export async function POST(request: Request) {
     competitors,
     hasSalesCrm,
     hasPlg,
+    dealNote,
   }: {
     positioning?: string;
     icp?: string;
     competitors: CompetitorInput[];
     hasSalesCrm?: boolean;
     hasPlg?: boolean;
+    dealNote?: string;
   } = body;
 
   const namedCompetitors = (competitors ?? []).filter((c) => c.name?.trim());
@@ -97,6 +100,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not save competitors." }, { status: 500 });
   }
 
+  // An optional deal told in plain words ("we lost X to Y because..."). It goes
+  // through the same text import the CSV upload and the assistant use, which
+  // matches it to the competitors saved just above. Best effort: a note that
+  // can't be turned into a deal never fails setup, the person is told instead.
+  let deal: { imported: number; skipped: number } | null = null;
+  const note = typeof dealNote === "string" ? dealNote.trim().slice(0, 2000) : "";
+  if (note) {
+    try {
+      const imported = await importWinLossText(createAdminClient(), accountId, user.id, note, 1);
+      if (imported.ok) deal = { imported: imported.result.imported, skipped: imported.result.skipped };
+    } catch (err) {
+      console.error("connect onboarding deal note failed:", err);
+    }
+  }
+
   // Best-effort, fire-and-forget — same pattern as the dashboard flow: a
   // brand-new account with zero signals is the worst possible first
   // impression, so this queues the backfill crawl right away instead of
@@ -121,5 +139,5 @@ export async function POST(request: Request) {
     }
   });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, deal });
 }
