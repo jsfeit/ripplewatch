@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CompetitorRow, type CompetitorInput } from "@/components/app/competitor-row";
 import { Confetti } from "@/components/app/confetti";
+import { FirstQuestions } from "@/components/app/first-questions";
 import { McpConnectStep } from "@/components/app/mcp-connect-step";
 import { MomentumTease, ReadinessMeter } from "@/components/app/momentum-tease";
 import { PersonalReadCard } from "@/components/app/personal-read-card";
@@ -67,6 +68,9 @@ export function GetStartedFlow({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [celebrating, setCelebrating] = useState(false);
+  // A deal told in plain words on the deals step, saved with everything else at the end.
+  const [dealNote, setDealNote] = useState("");
+  const [dealResult, setDealResult] = useState<{ imported: number; skipped: number } | null>(null);
   // This browser's saved choice. Read lazily and only on the client; the chips
   // that show it appear on a later step, so the server render never differs.
   const [dealTools, setDealTools] = useState<string[]>(() => (typeof window === "undefined" ? [] : loadDealTools()));
@@ -105,6 +109,7 @@ export function GetStartedFlow({
         hasSalesCrm,
         hasPlg,
         competitors: filledCompetitors,
+        dealNote,
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -117,16 +122,13 @@ export function GetStartedFlow({
       window.location.assign(`/api/integrations/slack/connect?next=${encodeURIComponent("/app/settings?tab=data")}`);
       return;
     }
-    // Let the confetti land before moving on, then go to where the next
-    // useful thing is: bringing their own deal data in.
+    // Stay on the finish screen: it holds the first read and the first questions, which take
+    // longer than a few seconds to take in. The next step is a button, not a timer.
     trackEvent("setup_completed");
+    if (dealNote.trim()) setDealResult(data.deal ?? { imported: 0, skipped: 0 });
     // Keep the read for the screen below; the saved copy has done its job.
     clearIntro();
     setCelebrating(true);
-    setTimeout(() => {
-      router.push("/app/settings?tab=data");
-      router.refresh();
-    }, 3600);
   }
 
   if (step === 0) {
@@ -143,6 +145,7 @@ export function GetStartedFlow({
   }
 
   if (celebrating) {
+    const lead = filledCompetitors[0]?.name ?? null;
     return (
       <>
         <Confetti />
@@ -150,19 +153,34 @@ export function GetStartedFlow({
           <CardHeader>
             <h1 className="text-xl font-semibold tracking-tight">You&apos;re all set, {companyName}.</h1>
             <p className="text-sm text-muted-foreground">
-              {`I'm checking ${filledCompetitors.length} competitor${filledCompetitors.length === 1 ? "" : "s"} now. Next, let's make the answers yours.`}
+              {`I'm checking ${filledCompetitors.length} competitor${filledCompetitors.length === 1 ? "" : "s"} now.`}
             </p>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
+            {dealResult ? (
+              <p className="flex items-start gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm text-primary">
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
+                {dealResult.imported > 0
+                  ? `Logged ${dealResult.imported} deal${dealResult.imported === 1 ? "" : "s"} from what you told me. Answers will weigh it from now on.`
+                  : "I couldn't turn that into a deal. Tell your assistant how it went and it will log it properly."}
+              </p>
+            ) : null}
             {intro?.read && intro.competitor ? (
               <PersonalReadCard competitorName={intro.competitor.name} read={intro.read} evidence={intro.evidence} />
             ) : (
               <MomentumTease names={filledCompetitors.map((c) => c.name)} />
             )}
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
-              Taking you there…
-            </p>
+            <FirstQuestions competitor={lead} />
+            <Button
+              type="button"
+              onClick={() => {
+                router.push("/app/settings?tab=data");
+                router.refresh();
+              }}
+            >
+              Next: bring in your deals
+              <ArrowRight className="size-4" />
+            </Button>
           </CardContent>
         </Card>
       </>
@@ -295,7 +313,23 @@ export function GetStartedFlow({
         )}
 
         {wizardStep === 2 ? (
-          <div className="space-y-3">
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="dealNote">Tell me about a deal, in your own words</Label>
+              <Textarea
+                id="dealNote"
+                value={dealNote}
+                onChange={(e) => setDealNote(e.target.value)}
+                rows={3}
+                maxLength={2000}
+                placeholder={`We lost a deal to ${filledCompetitors[0]?.name || "a competitor"}. They were cheaper and said setup was faster.`}
+              />
+              <p className="text-xs text-muted-foreground">
+                Won or lost, one deal or several, however you&apos;d say it out loud. It makes your first answers about
+                your deals, not just the market. Skip it and add real data later.
+              </p>
+            </div>
+            <div className="space-y-3">
             <p className="text-sm text-muted-foreground">Pick any that apply. You can change this later in Settings, under Data.</p>
             <div className="flex flex-wrap gap-2">
               {DEAL_TOOLS.map((t) => {
@@ -321,6 +355,7 @@ export function GetStartedFlow({
               Don&apos;t see yours, or don&apos;t use any? That&apos;s fine: you can always just tell your assistant how a
               deal went.
             </p>
+            </div>
           </div>
         ) : null}
 

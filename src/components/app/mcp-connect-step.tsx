@@ -41,8 +41,14 @@ export function McpConnectStep({
     // same staggered pattern as the Connect settings tab — no socket, just
     // a few refreshes while this screen is actually being looked at.
     if (connected) return;
-    const timers = [3000, 6000, 10000, 15000, 20000].map((ms) => setTimeout(() => router.refresh(), ms));
-    return () => timers.forEach(clearTimeout);
+    // Every 4 seconds for up to 3 minutes: connecting in the assistant takes a
+    // while, and the badge turning green by itself is the first small win.
+    let runs = 0;
+    const timer = setInterval(() => {
+      router.refresh();
+      if (++runs >= 45) clearInterval(timer);
+    }, 4000);
+    return () => clearInterval(timer);
   }, [connected, router]);
 
   async function copyText(text: string, setCopied: (v: boolean) => void) {
