@@ -11,11 +11,12 @@ import { countUnattributedLlmCalls } from "@/lib/usage";
 // read and carries on to signup.
 export const maxDuration = 120;
 
-// Worst case for the personalized synthesis alone is roughly 150 calls a day.
-// The three lookups it sits on top of share the free snapshot tool's own daily
+// Measured on a preview: a read costs roughly $0.10 to $0.15 in tokens, almost all of it the
+// pricing, recent-news and research lookups underneath, so 100 reads a day is a worst case of
+// about $15, before search fees. The three lookups it sits on top of share the free snapshot tool's own daily
 // ceilings (kept in step with src/app/api/snapshot/route.ts), so this flow and
 // that tool draw from one pool and cannot together exceed it.
-const LIVE_READ_DAILY_CAP = 150;
+const LIVE_READ_DAILY_CAP = 100;
 const SNAPSHOT_DAILY_LLM_CAP = 300;
 const SNAPSHOT_DAILY_RESEARCH_CAP = 100;
 const SNAPSHOT_DAILY_ACTIVITY_CAP = 250;

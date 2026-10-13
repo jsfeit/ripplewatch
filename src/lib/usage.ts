@@ -23,7 +23,7 @@ export function recordLlmUsage(
   functionName: string,
   model: string,
   usage: AnthropicUsage
-): void {
+): PromiseLike<void> {
   // Also reported to any metered operation in progress (see usage-meter.ts),
   // so a prepaid Connect call can be charged what it actually cost.
   addMeteredCost(
@@ -39,7 +39,7 @@ export function recordLlmUsage(
     )
   );
 
-  createAdminClient()
+  return createAdminClient()
     .from("llm_usage")
     .insert({
       account_id: accountId,
