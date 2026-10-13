@@ -2765,7 +2765,7 @@ Write the read.`;
 
   const message = await createMessage({
     model: "claude-sonnet-5",
-    max_tokens: 600,
+    max_tokens: 1200,
     system: cachedSystemPrompt(PERSONAL_READ_SYSTEM_PROMPT),
     output_config: { format: { type: "json_schema", schema: PERSONAL_READ_SCHEMA } },
     messages: [{ role: "user", content: userPrompt }],
