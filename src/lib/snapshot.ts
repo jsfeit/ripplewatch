@@ -16,6 +16,8 @@ import {
   researchDomainPublicly,
   researchRecentActivity,
   generateSnapshotVerdict,
+  generatePersonalRead,
+  type PersonalRead,
   type PublicResearch,
   type RecentActivity,
 } from "@/lib/anthropic";
@@ -73,6 +75,11 @@ export type SnapshotResult = {
   // findings were thin — thin findings still get a verdict, just an honest
   // one about the thinness.
   verdict: string | null;
+  // Only set when the lookup was run for a visitor who described their own
+  // business (see opts.visitor): the same signals read against that business.
+  // When present, `verdict` holds its first two parts joined, so anything that
+  // only knows about `verdict` still shows something sensible.
+  personalRead: PersonalRead | null;
   // Other sites with the same name on a different domain ending (e.g. arlo.co
   // for arlo.com), so a visitor who typed the wrong one can switch in a
   // click. Empty when there's nothing that looks like a different company.
@@ -152,6 +159,9 @@ export async function buildSnapshot(
     // everything else resolves, not tied to whether the search-based calls
     // above ran.
     verdictAllowed?: boolean;
+    // The visitor's own business, for the onboarding live read. When given, the
+    // synthesis call becomes the personalized read instead of the generic takeaway.
+    visitor?: { companyName: string | null; positioning: string; icp: string };
     // Set for a signed-in customer's competitor so its LLM spend is
     // attributed to their account instead of the anonymous pool.
     accountId?: string | null;
@@ -199,6 +209,7 @@ export async function buildSnapshot(
       research: null,
       activity: null,
       verdict: null,
+      personalRead: null,
       alternates,
       readDirectly: false,
       needsManualCheck: false,
@@ -334,18 +345,30 @@ export async function buildSnapshot(
   // reachable site that answered nothing still gets a verdict — the
   // thinness itself is the point, see generateSnapshotVerdict).
   let verdict: string | null = null;
+  let personalRead: PersonalRead | null = null;
   if (verdictAllowed) {
+    const verdictInput = {
+      domain,
+      companyName: activity?.companyName || home?.title || null,
+      activitySignals: activity?.signals ?? [],
+      pricingSummary: describePricingForVerdict(pricing),
+      hiringSummary: describeHiringForVerdict(hiring),
+    };
     try {
-      verdict = await generateSnapshotVerdict(
-        {
-          domain,
-          companyName: activity?.companyName || home?.title || null,
-          activitySignals: activity?.signals ?? [],
-          pricingSummary: describePricingForVerdict(pricing),
-          hiringSummary: describeHiringForVerdict(hiring),
-        },
-        accountId
-      );
+      if (opts.visitor) {
+        personalRead = await generatePersonalRead(
+          {
+            ...verdictInput,
+            visitorCompany: opts.visitor.companyName,
+            visitorPositioning: opts.visitor.positioning,
+            visitorIcp: opts.visitor.icp,
+          },
+          accountId
+        );
+        if (personalRead) verdict = `${personalRead.found} ${personalRead.meaning}`;
+      } else {
+        verdict = await generateSnapshotVerdict(verdictInput, accountId);
+      }
     } catch (err) {
       console.error(`snapshot verdict synthesis failed for ${domain}:`, err);
     }
@@ -361,6 +384,7 @@ export async function buildSnapshot(
     research,
     activity,
     verdict,
+    personalRead,
     alternates,
     readDirectly: answeredPricing || answeredHiring,
     // (Domains that don't exist or are placeholders returned early above, so

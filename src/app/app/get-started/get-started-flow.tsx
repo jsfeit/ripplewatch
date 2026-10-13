@@ -13,7 +13,9 @@ import { CompetitorRow, type CompetitorInput } from "@/components/app/competitor
 import { Confetti } from "@/components/app/confetti";
 import { McpConnectStep } from "@/components/app/mcp-connect-step";
 import { MomentumTease, ReadinessMeter } from "@/components/app/momentum-tease";
+import { PersonalReadCard } from "@/components/app/personal-read-card";
 import { SlackStep } from "@/components/app/slack-step";
+import { clearIntro, loadIntro } from "@/lib/connect-intro";
 import { DEAL_TOOLS, loadDealTools, saveDealTools } from "@/lib/deal-tools";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
@@ -51,11 +53,17 @@ export function GetStartedFlow({
   }, [step]);
   // What the step just finished made better, shown at the top of the next one.
   const [justUnlocked, setJustUnlocked] = useState<string | null>(null);
-  const [positioning, setPositioning] = useState("");
-  const [icp, setIcp] = useState("");
+  // What they told us on the free read before signing up, if they did it in this
+  // browser. Used to start the steps below filled in and to show the read again
+  // at the end. Read once on the client, so the server render is the empty one.
+  const [intro] = useState(() => (typeof window === "undefined" ? null : loadIntro()));
+  const [positioning, setPositioning] = useState(intro?.positioning ?? "");
+  const [icp, setIcp] = useState(intro?.icp ?? "");
   const [hasSalesCrm, setHasSalesCrm] = useState(false);
   const [hasPlg, setHasPlg] = useState(false);
-  const [competitors, setCompetitors] = useState<CompetitorInput[]>([{ name: "", domain: "" }]);
+  const [competitors, setCompetitors] = useState<CompetitorInput[]>([
+    intro?.competitor ? { name: intro.competitor.name, domain: intro.competitor.domain } : { name: "", domain: "" },
+  ]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [celebrating, setCelebrating] = useState(false);
@@ -112,6 +120,8 @@ export function GetStartedFlow({
     // Let the confetti land before moving on, then go to where the next
     // useful thing is: bringing their own deal data in.
     trackEvent("setup_completed");
+    // Keep the read for the screen below; the saved copy has done its job.
+    clearIntro();
     setCelebrating(true);
     setTimeout(() => {
       router.push("/app/settings?tab=data");
@@ -144,7 +154,11 @@ export function GetStartedFlow({
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
-            <MomentumTease names={filledCompetitors.map((c) => c.name)} />
+            {intro?.read && intro.competitor ? (
+              <PersonalReadCard competitorName={intro.competitor.name} read={intro.read} evidence={intro.evidence} />
+            ) : (
+              <MomentumTease names={filledCompetitors.map((c) => c.name)} />
+            )}
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
               Taking you there…
