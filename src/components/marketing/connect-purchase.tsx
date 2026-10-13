@@ -10,6 +10,7 @@ import { ConnectCheckoutModal } from "@/components/app/connect-checkout-modal";
 import { createClient } from "@/lib/supabase/client";
 import { trackEvent } from "@/lib/analytics";
 import { GoogleButton, OrDivider } from "@/components/auth/google-button";
+import { LiveReadStep } from "@/components/marketing/live-read-step";
 import { CONNECT_BASE_FEE_USD, CONNECT_DEFAULT_RELOAD_USD } from "@/lib/connect-pricing";
 import { CONNECT_NAME } from "@/lib/connect";
 
@@ -58,6 +59,10 @@ export function ConnectPurchase({
   const [error, setError] = useState("");
   const [checkout, setCheckout] = useState<number | null>(null);
   const startedRef = useRef(false);
+  // New visitors get one free read on a competitor before the account form.
+  // Anyone already signed in (back from the email link or from Google) has
+  // moved past it.
+  const [phase, setPhase] = useState<"read" | "form">(initiallySignedIn ? "form" : "read");
 
   const canSubmit =
     Boolean(companyName.trim()) &&
@@ -228,6 +233,22 @@ export function ConnectPurchase({
           Continue to payment
         </Button>
       </div>
+    );
+  }
+
+  if (phase === "read") {
+    return (
+      <LiveReadStep
+        initialCompany={companyName}
+        onDone={(name) => {
+          if (name) setCompanyName(name);
+          setPhase("form");
+        }}
+        onSkip={(name) => {
+          if (name) setCompanyName(name);
+          setPhase("form");
+        }}
+      />
     );
   }
 
