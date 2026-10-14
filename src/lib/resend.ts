@@ -1188,3 +1188,11 @@ export async function sendDisputeAlertEmail(
   });
   if (result.error) throw new Error(result.error.message);
 }
+
+// "Someone just signed up" alerts for the operator: new account, payment, an email
+// captured by a free tool, a live read run. Content comes from lead-alert-content.
+export async function sendLeadAlertEmail(to: string[], subject: string, html: string) {
+  if (!isResendConfigured() || to.length === 0) return;
+  const result = await getResend().emails.send({ from: getAlertsFromEmail(), to, subject, html });
+  if (result.error) throw new Error(result.error.message);
+}

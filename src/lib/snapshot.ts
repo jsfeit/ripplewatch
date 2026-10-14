@@ -1,3 +1,4 @@
+import { notifyLead } from "@/lib/lead-alerts";
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
@@ -499,7 +500,21 @@ export async function recordSnapshotLead(
     })
     .select("id")
     .single();
-  if (!insertError) return inserted.id;
+  if (!insertError) {
+    // A brand-new email (a repeat goes through the merge below instead).
+    const price = lookup.cheapestPrice !== null ? `, from $${lookup.cheapestPrice}${lookup.cheapestPeriod ? `/${lookup.cheapestPeriod}` : ""}` : "";
+    await notifyLead({
+      kind: "lead_captured",
+      email,
+      source: "snapshot",
+      company: null,
+      utmSource: utmSource || null,
+      utmMedium: utmMedium || null,
+      utmCampaign: utmCampaign || null,
+      detail: `Looked up ${lookup.domain}: pricing ${lookup.pricingState}${price}, hiring ${lookup.hiringState}${lookup.needsManualCheck ? " (needs a manual look)" : ""}`,
+    });
+    return inserted.id;
+  }
 
   if (insertError.code !== "23505") {
     console.error("snapshot lead insert failed:", insertError);

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyLead } from "@/lib/lead-alerts";
 
 // Creates the account for someone buying Ripplewatch Connect. Unlike the
 // dashboard onboarding this asks for nothing but a company name: competitors
@@ -44,6 +45,14 @@ export async function POST(request: Request) {
     console.error("connect profile link failed:", profileError);
     return NextResponse.json({ error: "Could not link the account to your profile." }, { status: 500 });
   }
+
+  await notifyLead({
+    kind: "account_created",
+    accountId,
+    email: user.email ?? null,
+    companyName,
+    method: user.app_metadata?.provider === "google" ? "Google" : "Email and password",
+  });
 
   return NextResponse.json({ ok: true, accountId });
 }

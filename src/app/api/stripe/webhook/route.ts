@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPlanChangeEmail, sendPaymentReceivedEmail, sendPaymentFailedEmail, sendReferralWelcomeEmail, sendReferralSignedUpEmail, sendConnectWelcomeEmail } from "@/lib/resend";
 import { creditWalletFromCheckout, creditWalletFromReloadInvoice, saveDefaultPaymentMethod } from "@/lib/connect-billing";
 import { handleDispute } from "@/lib/connect-disputes";
+import { notifyLead } from "@/lib/lead-alerts";
 
 export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
@@ -66,6 +67,15 @@ export async function POST(request: Request) {
               .select("name, contact_email")
               .eq("id", accountId)
               .single();
+            // Tells the operator a signup just paid. Sits inside the credited-once check
+            // above, so a redelivered webhook doesn't send it twice.
+            await notifyLead({
+              kind: "payment",
+              accountId,
+              email: connectAccount?.contact_email ?? null,
+              companyName: connectAccount?.name ?? "A new customer",
+              amountUsd: session.amount_total !== null ? session.amount_total / 100 : null,
+            });
             if (connectAccount?.contact_email) {
               const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
               sendConnectWelcomeEmail(connectAccount.contact_email, connectAccount.name, appUrl).catch((err) =>
