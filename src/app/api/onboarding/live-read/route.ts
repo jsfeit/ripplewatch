@@ -3,6 +3,7 @@ import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { normalizeDomain, DOMAIN_PATTERN, isBlockedHost } from "@/lib/domain";
 import { buildSnapshot } from "@/lib/snapshot";
 import { countUnattributedLlmCalls } from "@/lib/usage";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // Same lookup as the free competitor snapshot (pricing page, job board, a
 // recent-activity search), read against what the visitor says they sell. Runs
@@ -72,9 +73,32 @@ export async function POST(request: Request) {
   const news = result.activity?.signals.length ?? 0;
   if (news > 0) evidence.push(`${news} recent news item${news === 1 ? "" : "s"}`);
 
+  // Kept so the admin page can show who tried this and whether they signed up. Awaited
+  // (a serverless function can stop right after responding) and never allowed to fail the
+  // visitor's read: if the table is missing or the write fails, they still get their answer.
+  let readId: string | null = null;
+  const competitorName = result.activity?.companyName || result.title || domain;
+  const { data: saved, error: saveError } = await createAdminClient()
+    .from("live_reads")
+    .insert({
+      company_name: companyName || null,
+      positioning,
+      icp: icp || null,
+      competitor_domain: domain,
+      competitor_name: competitorName,
+      confidence: result.personalRead?.confidence ?? null,
+      evidence,
+      read: result.personalRead ? { ...result.personalRead } : null,
+    })
+    .select("id")
+    .single();
+  if (saveError) console.error("live read not saved:", saveError.message);
+  else readId = saved.id;
+
   return NextResponse.json({
+    readId,
     read: result.personalRead,
-    competitor: { domain, name: result.activity?.companyName || result.title || domain },
+    competitor: { domain, name: competitorName },
     evidence,
     reachable: result.reachable,
   });

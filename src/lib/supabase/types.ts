@@ -272,6 +272,36 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["competitor_win_loss"]["Insert"]>;
         Relationships: [];
       };
+      live_reads: {
+        Row: {
+          id: string;
+          created_at: string;
+          company_name: string | null;
+          positioning: string | null;
+          icp: string | null;
+          competitor_domain: string;
+          competitor_name: string | null;
+          confidence: "evidence" | "thin" | null;
+          evidence: string[];
+          read: Record<string, unknown> | null;
+          account_id: string | null;
+        };
+        Insert: {
+          id?: string;
+          created_at?: string;
+          company_name?: string | null;
+          positioning?: string | null;
+          icp?: string | null;
+          competitor_domain: string;
+          competitor_name?: string | null;
+          confidence?: "evidence" | "thin" | null;
+          evidence?: string[];
+          read?: Record<string, unknown> | null;
+          account_id?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["live_reads"]["Insert"]>;
+        Relationships: [];
+      };
       call_mentions: {
         Row: {
           id: string;

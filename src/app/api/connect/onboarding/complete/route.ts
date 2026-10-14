@@ -41,6 +41,7 @@ export async function POST(request: Request) {
     hasSalesCrm,
     hasPlg,
     dealNote,
+    liveReadId,
   }: {
     positioning?: string;
     icp?: string;
@@ -48,6 +49,7 @@ export async function POST(request: Request) {
     hasSalesCrm?: boolean;
     hasPlg?: boolean;
     dealNote?: string;
+    liveReadId?: string;
   } = body;
 
   const namedCompetitors = (competitors ?? []).filter((c) => c.name?.trim());
@@ -98,6 +100,17 @@ export async function POST(request: Request) {
   if (competitorsError) {
     console.error("connect onboarding competitors insert failed:", competitorsError);
     return NextResponse.json({ error: "Could not save competitors." }, { status: 500 });
+  }
+
+  // Ties the free read they ran before signing up to this account, for the admin live-reads
+  // page. Only fills an unclaimed row, so a copied id can't move someone else's read.
+  if (typeof liveReadId === "string" && /^[0-9a-f-]{36}$/i.test(liveReadId)) {
+    const { error: linkError } = await createAdminClient()
+      .from("live_reads")
+      .update({ account_id: accountId })
+      .eq("id", liveReadId)
+      .is("account_id", null);
+    if (linkError) console.error("live read link failed:", linkError.message);
   }
 
   // An optional deal told in plain words ("we lost X to Y because..."). It goes

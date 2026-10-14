@@ -79,6 +79,7 @@ export function LiveReadStep({
         competitor,
         read: data.read,
         evidence: data.evidence ?? [],
+        readId: typeof data.readId === "string" ? data.readId : null,
       };
       saveIntro(intro);
       trackEvent("live_read_shown", { confidence: data.read.confidence });

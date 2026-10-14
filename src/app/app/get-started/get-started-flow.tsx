@@ -159,6 +159,7 @@ export function GetStartedFlow({
         hasPlg,
         competitors: filledCompetitors,
         dealNote,
+        liveReadId: intro?.readId ?? null,
       }),
     });
     const data = await res.json().catch(() => ({}));
