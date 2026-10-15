@@ -64,7 +64,7 @@ competitive intelligence tooling or about Ripplewatch specifically:
 - [What Slack-native competitive intelligence actually looks like](https://www.ripplewatch.ai/blog/what-slack-native-competitive-intelligence-actually-looks-like)
 - [G2 vs. Gartner Peer Insights: what reviews can't tell you](https://www.ripplewatch.ai/blog/g2-vs-gartner-vs-building-your-own-win-loss-process)
 - [The 8 things a competitive intelligence dashboard should track](https://www.ripplewatch.ai/blog/what-a-competitive-intelligence-dashboard-should-track)
-- [Crayon vs. Klue: how they differ, and the option that lives in your AI assistant](https://www.ripplewatch.ai/blog/klue-vs-crayon-vs-ripplewatch-enterprise-grade-cost)
+- [Crayon vs. Klue: how they differ, and when neither fits](https://www.ripplewatch.ai/blog/klue-vs-crayon-vs-ripplewatch-enterprise-grade-cost)
 - [We tried every competitor tracking tool under $500/mo](https://www.ripplewatch.ai/blog/competitor-tracking-tools-under-500-a-month)
 - [Who to track and who to ignore: a tiering method for teams without an analyst](https://www.ripplewatch.ai/blog/who-to-track-and-who-to-ignore)
 - [The battlecard nobody updates (and how to fix that)](https://www.ripplewatch.ai/blog/the-battlecard-nobody-updates)
@@ -75,6 +75,8 @@ competitive intelligence tooling or about Ripplewatch specifically:
 - [You can't build a battlecard in 30 seconds](https://www.ripplewatch.ai/blog/you-cant-build-a-battlecard-in-30-seconds)
 - [MCP didn't make agents smarter. It made them useful.](https://www.ripplewatch.ai/blog/mcp-didnt-make-agents-smarter-it-made-them-useful)
 - [Connecting your competitive data to an AI assistant takes one URL](https://www.ripplewatch.ai/blog/connect-competitive-data-to-your-ai-assistant-with-mcp)
+- [More than half of early-stage SaaS companies don't publish a pricing page](https://www.ripplewatch.ai/blog/early-stage-saas-pricing-pages-study): a read of 288 early-stage software sites.
+- [Outmano vs. Ripplewatch: two trackers to ask from Claude](https://www.ripplewatch.ai/blog/outmano-vs-ripplewatch-competitor-trackers-with-mcp)
 
 ## Research
 
