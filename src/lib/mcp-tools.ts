@@ -60,6 +60,10 @@ function failure(message: string) {
 
 const READ_ONLY = { readOnlyHint: true, destructiveHint: false, openWorldHint: false } as const;
 const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const;
+// Adding a competitor checks the domain on the live web, so it reaches outside Ripplewatch.
+const WRITE_OPEN_WORLD = { readOnlyHint: false, destructiveHint: false, openWorldHint: true } as const;
+// Replaces text the account already saved, which can't be undone from the tool.
+const OVERWRITE = { readOnlyHint: false, destructiveHint: true, openWorldHint: false } as const;
 
 export function registerRipplewatchTools(server: McpServer) {
   server.registerPrompt(
@@ -435,7 +439,7 @@ export function registerRipplewatchTools(server: McpServer) {
         domain: z.string().optional().describe("Website domain, e.g. acme.com. Strongly recommended."),
         force: z.boolean().optional().describe("Add even if the domain doesn't look live."),
       }),
-      annotations: WRITE,
+      annotations: WRITE_OPEN_WORLD,
     },
     async ({ name, domain, force }, ctx) => {
       const accountId = accountIdFrom(ctx as Ctx);
@@ -567,7 +571,7 @@ export function registerRipplewatchTools(server: McpServer) {
     {
       title: "Log competitor mentions from sales calls",
       description:
-        "Record times a tracked competitor came up on a sales call, when the user has a call tool (Gong, Zoom, etc.) connected. Read the calls there, then pass only short verbatim snippets (a sentence or two) of where the competitor was mentioned, never full transcripts. Some call tools (Gong's connector, for one) return summaries instead of transcripts: in that case pass a one-sentence summary of where the competitor came up, exactly as the tool gave it, and say it is a summary. Mentions of competitors that aren't tracked are reported back, not guessed. Ask the user before pulling their calls, and never invent a quote or a mention. Repeats are ignored, so refreshing is safe.",
+        "Record times a tracked competitor came up on a sales call. Pass only short verbatim snippets the user has given you (a sentence or two) of where the competitor was mentioned, never full transcripts. If all you have is a summary, pass a one-sentence summary and say it is a summary. Mentions of competitors that aren't tracked are reported back, not guessed. Ask the user before logging, and never invent a quote or a mention. Repeats are ignored, so sending the same mention again is safe.",
       inputSchema: z.object({
         mentions: z
           .array(
@@ -639,12 +643,12 @@ export function registerRipplewatchTools(server: McpServer) {
     {
       title: "Set positioning and ICP",
       description:
-        "Update how the account positions itself and who it sells to. Everything Ripplewatch scores is judged against this, so keep it to a sentence or two each. Only the fields provided are changed.",
+        "Replace how the account positions itself and who it sells to. The text you send overwrites what was saved for that field, and the old text is not kept, so confirm with the user before changing it. Everything Ripplewatch scores is judged against this, so keep it to a sentence or two each. Only the fields provided are changed.",
       inputSchema: z.object({
         positioning: z.string().max(1500).optional().describe("How the company describes what it does and why it's different."),
         icp: z.string().max(1500).optional().describe("The ideal customer: who buys, company size, industry."),
       }),
-      annotations: WRITE,
+      annotations: OVERWRITE,
     },
     async ({ positioning, icp }, ctx) => {
       const accountId = accountIdFrom(ctx as Ctx);
