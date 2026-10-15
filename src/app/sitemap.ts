@@ -1,17 +1,19 @@
 import type { MetadataRoute } from "next";
 import { COMPARISONS } from "@/lib/comparisons";
-import { getAllPosts } from "@/lib/posts";
+import { createPublicClient } from "@/lib/supabase/public";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
-// Rebuilt at most every 5 minutes. Without this the sitemap was fixed at deploy time: a post
-// published from the admin editor stayed out of it until the next deploy, and the
-// revalidatePath("/sitemap.xml") calls in the admin blog routes did not reach it. Matches the
-// blog pages, which also refresh every 5 minutes.
-export const revalidate = 300;
+// Built on every request. A prerendered sitemap (static or on a 5-minute refresh) was served
+// frozen from the CDN: a post published from the admin editor stayed out of it until the next
+// deploy, and neither revalidatePath("/sitemap.xml") nor a 5-minute revalidate changed that
+// in production. Crawlers fetch the sitemap rarely, and the query below reads only slugs, so
+// building it fresh costs almost nothing.
+export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const posts = await getAllPosts();
+  const { data } = await createPublicClient().from("blog_posts").select("slug").order("published_at", { ascending: false });
+  const posts = data ?? [];
   const routes: { path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"] }[] = [
     { path: "/", priority: 1, changeFrequency: "weekly" },
     { path: "/connect", priority: 0.9, changeFrequency: "weekly" },
