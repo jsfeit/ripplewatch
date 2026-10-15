@@ -4,6 +4,7 @@ import { normalizeDomain, DOMAIN_PATTERN, isBlockedHost } from "@/lib/domain";
 import { buildSnapshot } from "@/lib/snapshot";
 import { countUnattributedLlmCalls } from "@/lib/usage";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyLead } from "@/lib/lead-alerts";
 
 // Same lookup as the free competitor snapshot (pricing page, job board, a
 // recent-activity search), read against what the visitor says they sell. Runs
@@ -94,6 +95,16 @@ export async function POST(request: Request) {
     .single();
   if (saveError) console.error("live read not saved:", saveError.message);
   else readId = saved.id;
+
+  await notifyLead({
+    kind: "live_read",
+    company: companyName || null,
+    positioning,
+    icp: icp || null,
+    competitor: competitorName,
+    confidence: result.personalRead?.confidence ?? null,
+    found: result.personalRead?.found ?? null,
+  });
 
   return NextResponse.json({
     readId,

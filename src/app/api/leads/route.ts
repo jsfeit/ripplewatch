@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { notifyLead } from "@/lib/lead-alerts";
 
 // Shared lead-capture endpoint — not tied to any one funnel. Currently fed
 // by onboarding's first step (before competitors, plan, password, or
@@ -72,6 +73,27 @@ export async function POST(request: Request) {
   if (error && error.code !== "23505") {
     console.error("lead insert failed:", error);
     return NextResponse.json({ error: "Something went wrong." }, { status: 500 });
+  }
+
+  // Only a brand-new email: a repeat (unique violation) is not a new lead.
+  if (!error) {
+    const detail = metadata
+      ? Object.entries(metadata as Record<string, unknown>)
+          .filter(([, v]) => typeof v === "string" || typeof v === "number" || typeof v === "boolean")
+          .map(([k, v]) => `${k}: ${v}`)
+          .join(", ")
+          .slice(0, 240)
+      : "";
+    await notifyLead({
+      kind: "lead_captured",
+      email,
+      source: capturePoint ?? "unknown",
+      company: companyName || null,
+      utmSource: utmSource || null,
+      utmMedium: utmMedium || null,
+      utmCampaign: utmCampaign || null,
+      detail: detail || null,
+    });
   }
 
   return NextResponse.json({ ok: true });
