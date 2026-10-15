@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { fitTitle } from "@/lib/seo";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -24,7 +25,7 @@ export async function generateMetadata({
   if (!post) return {};
 
   return {
-    title: post.title,
+    title: fitTitle(post.title),
     description: post.description,
     alternates: { canonical: `/blog/${post.slug}` },
     // Per-post share card from ./og/route.tsx.

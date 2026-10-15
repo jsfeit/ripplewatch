@@ -1,13 +1,14 @@
 import Link from "next/link";
+import { fitTitle } from "@/lib/seo";
 import { CompetitiveIntelQuiz } from "@/components/marketing/competitive-intel-quiz";
 import { DemoLink } from "@/components/marketing/demo-link";
 import { TIERS } from "@/lib/quiz-tiers";
 
 const description =
-  "Answer 5 quick questions to find out whether your competitive intelligence is Reactive, Aware, Systematic, or Predictive, and what to do about it.";
+  "A 5-question competitive intelligence questionnaire: find out if yours is Reactive, Aware, Systematic or Predictive, and what to do next.";
 
 export const metadata = {
-  title: "Competitive Intelligence Maturity Quiz",
+  title: fitTitle("Competitive Intelligence Questionnaire: 5 Questions"),
   description,
   alternates: { canonical: "/competitive-intelligence-quiz" },
   openGraph: { title: "Competitive Intelligence Maturity Quiz | Ripplewatch", description, images: ["/opengraph-image"] },

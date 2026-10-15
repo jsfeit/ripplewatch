@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { fitTitle } from "@/lib/seo";
 import { ArrowRight, Check, Sparkles, X } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
@@ -13,10 +14,10 @@ import {
 } from "@/lib/ci-market-research";
 
 const description =
-  "A survey of 20+ competitive intelligence tools, what each one actually delivers, and what's still missing from the category: answers inside the AI assistant you already use, scored against your own positioning and deals.";
+  "A survey of 20+ competitive intelligence tools: what each delivers and what's missing. Answers in your AI assistant, scored against your deals.";
 
 export const metadata = {
-  title: "State of Competitive Intelligence Tools: 20+ compared",
+  title: fitTitle("State of Competitive Intelligence Tools: 20+ compared"),
   description,
   alternates: { canonical: "/state-of-competitive-intelligence" },
   openGraph: {
