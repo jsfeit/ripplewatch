@@ -209,18 +209,18 @@ export const COMPARISONS: ComparisonEntry[] = [
     name: "Outmano",
     domain: "outmano.com",
     tagline:
-      "AI agents that crawl pricing, SEO, content, roadmap, reviews, hiring, and news per competitor for B2B SaaS SMBs, positioned as the affordable alternative to enterprise tools like Klue and Crayon.",
+      "AI agents that track competitors' pricing, launches, SEO, ads, reviews, hiring and news for SaaS teams, with a weekly ranked action plan, sales battlecards and a read-only MCP server for Claude, Cursor and other assistants.",
     whatTheyDoWell:
-      "Bringing broad, per-competitor agent coverage to SMB pricing (versus the five-figure annual contracts enterprise tools typically require) is a fair and real value proposition, and fast setup per competitor lowers the barrier to actually using it.",
-    theirMechanism: "per-competitor crawling agents feeding a weekly digest and Slack alerts",
+      "The breadth is real. Outmano's homepage lists ten angles per competitor, from pricing and feature matrices to SEO, paid ads, roadmap, reviews, hiring and news, all included on every plan, with plans priced by how many competitors you track. Its weekly output goes past a digest to a ranked action plan with the evidence and a first step for each item, every competitor gets a sales battlecard with a share link, and the MCP server lets an assistant answer from the same data.",
+    theirMechanism: "ten-angle tracking feeding a weekly AI action plan, battlecards and a read-only MCP server",
     differentiator:
-      "Broad coverage synthesized into a digest still runs into the same-severity problem: a competitor's SEO change reads with the same urgency as their pricing change, regardless of which one actually threatens a deal you're in. Ripplewatch scores each finding against your specific positioning and win/loss history instead of a flat alert stream.",
-    bestFor: "SMB teams who want Klue/Crayon-style coverage without the enterprise price tag",
-    howPrioritized: "Flat digest, every change reads the same urgency",
+      "Outmano compares competitor pricing against your own plans and learns which of its suggestions you turn down, but its homepage doesn't describe using your won and lost deals. Ripplewatch scores every finding against your positioning and the deals you have actually won and lost, which you log by telling your assistant how a deal went. The same competitor move can score High for one company and Low for another.",
+    bestFor: "SaaS teams who want broad per-competitor coverage, including SEO and ads, and a weekly action plan at a flat monthly price",
+    howPrioritized: "A weekly ranked action plan; compared against your own product, with no deal history described",
     switchGain:
-      "Findings get scored against your specific positioning and win/loss history instead of arriving in a flat digest where an SEO change reads with the same urgency as a pricing change.",
+      "Findings are scored against your own deal history and asked for from the assistant you already use, and you pay $29 a month plus usage you prepay, not a tier based on how many competitors you track.",
     switchConsider:
-      "Outmano's per-competitor agent coverage at SMB pricing is a real value proposition if broad coverage at low cost matters more to you than personalized relevance scoring.",
+      "Outmano covers angles Ripplewatch doesn't: SEO, paid ads, review tracking, and brand mentions on Hacker News and Reddit, plus shareable battlecards. As of October 2026 its Starter plan lists at $49 a month for 5 competitors, with a 40% founder discount applied at checkout, and it has its own MCP server. If broad coverage matters more to you than scoring against your deals, it is the stronger fit.",
   },
   {
     slug: "playwise-hq",
@@ -299,18 +299,18 @@ export const COMPARISONS: ComparisonEntry[] = [
     name: "RivalWatch",
     domain: "rivalwatch.online",
     tagline:
-      "A weekly snapshot-diff tool for small B2B SaaS teams: it re-crawls each tracked competitor's pages every week, compares the snapshot to the one before, and emails an AI-written explanation of what changed.",
+      "A $29-a-month weekly competitor digest for small teams: it monitors pricing, features, hiring and messaging for up to 5 competitors and emails an AI-written summary every Monday.",
     whatTheyDoWell:
-      "The weekly cadence is genuinely simple to reason about: sign up, add competitor URLs, and a digest lands every Monday morning with no ongoing setup. At $29/month, it's a low-commitment way for a solo founder or small team to start watching a handful of competitors without evaluating a bigger platform first.",
-    theirMechanism: "weekly page-snapshot diffing across pricing, copy, features, and job postings",
+      "The weekly cadence is genuinely simple to reason about: sign up, add competitor URLs, and a digest lands every Monday morning with no ongoing setup. At $29 a month for up to 5 competitors, it's a low-commitment way for a solo founder or small team to start watching a handful of rivals without evaluating a bigger platform first.",
+    theirMechanism: "monitoring across pricing, features, hiring and messaging, summarized into a Monday digest",
     differentiator:
-      "A once-a-week snapshot means a signal can sit for up to six days before anyone sees it, and every change lands in the same undifferentiated Monday digest regardless of how much it actually threatens your business. Ripplewatch scores each finding as it happens against your specific positioning and win/loss history, rather than batching everything into one weekly read.",
-    bestFor: "Solo founders or small teams who want a cheap, once-a-week competitor snapshot",
-    howPrioritized: "Weekly digest, no personalized scoring",
+      "Everything lands in one Monday digest, so a change can wait up to a week before anyone reads it, and every change gets the same treatment regardless of how much it threatens your business. Ripplewatch scores each finding against your specific positioning and win/loss history, so a pricing change that's dangerous for one company can be irrelevant for another, and you can ask about it any day.",
+    bestFor: "Solo founders or small teams who want a cheap, once-a-week competitor digest",
+    howPrioritized: "One weekly digest, no scoring against your own deals",
     switchGain:
-      "You move from a once-a-week digest to alerts scored against your own positioning as they happen, so a signal doesn't sit for up to six days before anyone sees it.",
+      "You move from a once-a-week email to answers whenever you ask, scored against your own positioning and won and lost deals, from inside Claude or another assistant.",
     switchConsider:
-      "If a once-a-week, $29/mo digest is genuinely all the coverage you need and price is the primary constraint, RivalWatch's cost is hard to beat for that scope.",
+      "If a once-a-week, $29-a-month digest is genuinely all the coverage you need and price is the main constraint, RivalWatch's cost is hard to beat for that scope.",
   },
   {
     slug: "valona-intelligence",
