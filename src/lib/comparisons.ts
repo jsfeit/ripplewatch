@@ -220,7 +220,7 @@ export const COMPARISONS: ComparisonEntry[] = [
     switchGain:
       "Findings are scored against your own deal history and asked for from the assistant you already use, and you pay $29 a month plus usage you prepay, not a tier based on how many competitors you track.",
     switchConsider:
-      "Outmano covers angles Ripplewatch doesn't: SEO, paid ads, content, roadmap, and brand mentions on Hacker News and Reddit, plus shareable battlecards. As of October 2026 its Starter plan lists at $49 a month for 5 competitors, with a 40% founder discount applied at checkout, and it has its own MCP server. If broad coverage matters more to you than scoring against your deals, it is the stronger fit.",
+      "Outmano covers angles Ripplewatch doesn't: SEO, paid ads, review tracking, and brand mentions on Hacker News and Reddit, plus shareable battlecards. As of October 2026 its Starter plan lists at $49 a month for 5 competitors, with a 40% founder discount applied at checkout, and it has its own MCP server. If broad coverage matters more to you than scoring against your deals, it is the stronger fit.",
   },
   {
     slug: "playwise-hq",
