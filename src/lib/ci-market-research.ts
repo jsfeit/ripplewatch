@@ -141,9 +141,9 @@ export const TOOL_PROFILES: ToolProfile[] = [
     name: "Outmano",
     domain: "outmano.com",
     tier: "ai-native",
-    pricing: "From $49/mo",
+    pricing: "From $49/mo (founder discount listed)",
     summary:
-      "Dedicated AI agents monitor each \"angle\" (pricing, features, SEO, hiring) independently, then a meta-agent synthesizes everything into one Monday-morning email grouped by competitor, each with a short strategic assessment.",
+      "AI agents monitor ten \"angles\" per competitor (pricing, features, SEO, ads, roadmap, reviews, hiring, news and more), then a weekly digest and ranked action plan summarize them by competitor. Includes sales battlecards and a read-only MCP server for assistants like Claude and Cursor.",
   },
   {
     name: "Steve",
@@ -197,6 +197,6 @@ export const COVERAGE_HEATMAP: CoverageRow[] = [
   { name: "Caelian", pricing: true, features: true, seoTraffic: false, hiring: true, reviews: true, social: true, fundingNews: true, crmDealData: false },
   { name: "Seeto", pricing: true, features: true, seoTraffic: true, hiring: false, reviews: false, social: false, fundingNews: false, crmDealData: false },
   { name: "Analook", pricing: true, features: false, seoTraffic: true, hiring: false, reviews: false, social: true, fundingNews: false, crmDealData: false },
-  { name: "Outmano", pricing: true, features: true, seoTraffic: true, hiring: true, reviews: false, social: false, fundingNews: false, crmDealData: false },
+  { name: "Outmano", pricing: true, features: true, seoTraffic: true, hiring: true, reviews: true, social: false, fundingNews: true, crmDealData: false },
   { name: "Steve", pricing: true, features: true, seoTraffic: false, hiring: false, reviews: true, social: true, fundingNews: false, crmDealData: true },
 ];
