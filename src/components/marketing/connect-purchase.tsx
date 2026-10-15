@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { ConnectCheckoutModal } from "@/components/app/connect-checkout-modal";
 import { createClient } from "@/lib/supabase/client";
 import { trackEvent } from "@/lib/analytics";
+import { readStoredUtm } from "@/components/utm-capture";
 import { GoogleButton, OrDivider } from "@/components/auth/google-button";
 import { LiveReadStep } from "@/components/marketing/live-read-step";
 import { CONNECT_BASE_FEE_USD, CONNECT_DEFAULT_RELOAD_USD } from "@/lib/connect-pricing";
@@ -130,7 +131,12 @@ export function ConnectPurchase({
         // custom data instead, read back as {{ .Data.next }}.
         options: {
           emailRedirectTo: window.location.origin,
-          data: { next: "/onboarding?path=connect", company_name: companyName.trim() },
+          data: {
+            next: "/onboarding?path=connect",
+            company_name: companyName.trim(),
+            // Kept on the user so where they came from survives even if the account is made later.
+            ...(readStoredUtm() ? { utm: readStoredUtm()!.label } : {}),
+          },
         },
       });
       if (signUpError) {

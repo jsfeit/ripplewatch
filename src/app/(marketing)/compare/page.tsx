@@ -37,6 +37,29 @@ export default function CompareIndexPage() {
         ))}
       </ul>
 
+      <section className="mt-12 border-t border-border pt-8">
+        <h2 className="text-lg font-semibold tracking-tight">Before you shortlist</h2>
+        <ul className="mt-3 space-y-2 text-sm leading-relaxed">
+          <li>
+            <Link
+              href="/blog/g2-vs-gartner-vs-building-your-own-win-loss-process"
+              className="text-primary hover:underline"
+            >
+              G2 vs. Gartner Peer Insights: what reviews can&apos;t tell you
+            </Link>{" "}
+            <span className="text-muted-foreground">
+              Review sites help you build a shortlist. They can&apos;t tell you why you lose deals.
+            </span>
+          </li>
+          <li>
+            <Link href="/state-of-competitive-intelligence" className="text-primary hover:underline">
+              The state of competitive intelligence tools
+            </Link>{" "}
+            <span className="text-muted-foreground">A survey of 20+ tools and what each one delivers.</span>
+          </li>
+        </ul>
+      </section>
+
       <p className="mt-10 text-sm text-muted-foreground">
         Already using one of these and thinking about switching? See{" "}
         <Link href="/alternatives" className="text-primary hover:underline">
