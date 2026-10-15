@@ -4,6 +4,12 @@ import { getAllPosts } from "@/lib/posts";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
+// Rebuilt at most every 5 minutes. Without this the sitemap was fixed at deploy time: a post
+// published from the admin editor stayed out of it until the next deploy, and the
+// revalidatePath("/sitemap.xml") calls in the admin blog routes did not reach it. Matches the
+// blog pages, which also refresh every 5 minutes.
+export const revalidate = 300;
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const posts = await getAllPosts();
   const routes: { path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"] }[] = [
