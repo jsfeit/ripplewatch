@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ripplewatch-connect",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Ask about your competitors and log deal outcomes. Ripplewatch watches competitor pricing, hiring, press and product changes and scores each one against your own positioning and win/loss history.",
   "author": {
     "name": "Ripplewatch",
@@ -86,7 +86,8 @@
           ]
         },
         "commerce": false,
-        "commerce_description": "This plugin does not sell products or process payments."
+        "commerce_description": "This plugin does not sell products or process payments.",
+        "demo_recording_url": "https://www.loom.com/share/8601c554aeeb46bda15a17d096d4a71c"
       },
       "publication": {
         "countries": [
