@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { fitTitle } from "@/lib/seo";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -23,10 +24,10 @@ export async function generateMetadata({
   if (!entry) return {};
 
   const title = `${entry.name} alternative that works in your AI assistant`;
-  const description = `Looking for a ${entry.name} alternative? Ripplewatch is an AI analyst that works inside Claude and other assistants over MCP, with pricing published up front. How it compares to ${entry.name}.`;
+  const description = `${entry.name} alternative: Ripplewatch is an AI analyst inside Claude and ChatGPT, with pricing published up front. See how it compares.`;
 
   return {
-    title,
+    title: fitTitle(title),
     description,
     alternates: { canonical: `/alternatives/${entry.slug}` },
     openGraph: { title: `${title} | Ripplewatch`, description },
