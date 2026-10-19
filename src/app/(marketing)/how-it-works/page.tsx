@@ -63,7 +63,7 @@ const STAGES = [
     accentText: "text-chart-4",
     accentBg: "bg-chart-4/10",
     title: "4. You find out where it actually matters",
-    body: "Ask Claude or ChatGPT what changed, or get scored updates in Slack the moment there's something worth acting on, no new tab, no dashboard to remember to open. Prefer a shared dashboard your team logs into together? That works too. Whoever used to half-own this as a side of their job gets to go back to their actual job.",
+    body: "Ask Claude or ChatGPT what changed, or get scored updates in Slack the moment there's something worth acting on, no new tab, no dashboard to remember to open. Whoever used to half-own this as a side of their job gets to go back to their actual job.",
   },
 ];
 
@@ -251,7 +251,7 @@ export default function HowItWorksPage() {
             Get Ripplewatch Connect
           </Link>
           <Link href="/pricing" className={buttonVariants({ size: "lg", variant: "outline" })}>
-            See dashboard pricing
+            See pricing
           </Link>
         </div>
         <p className="mt-3 text-xs text-muted-foreground">No sales call, no one to hire or free up. Just your context.</p>

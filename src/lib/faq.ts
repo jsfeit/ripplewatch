@@ -31,12 +31,12 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "What data sources does it monitor?",
         answer:
-          "Pricing pages, job postings, news coverage, and funding announcements, continuously, for every competitor you track. If you connect Slack, HubSpot, Gong, or Zoom, it also draws on sales-call mentions and CRM deal notes to sharpen its judgment.",
+          "Pricing pages, job postings, news coverage, and funding announcements, continuously, for every competitor you track. If you tell your assistant about sales calls, lost deals or customer feedback, it also draws on those to sharpen its judgment.",
       },
       {
-        question: "Does it use my sales calls or CRM data?",
+        question: "Does it use my sales calls or deal data?",
         answer:
-          "Only if you connect Gong, Zoom, or HubSpot yourself, and only to add context to scoring, for example recognizing that a competitor's price cut matches a reason you've actually lost a deal. You can disconnect any integration at any time in Settings.",
+          "Only what you choose to tell it. You can log call mentions, win/loss outcomes and customer feedback by talking to your assistant, and they are used only to add context to scoring, for example recognizing that a competitor's price cut matches a reason you've actually lost a deal.",
       },
       {
         question: "What is the Ask feature?",
@@ -51,12 +51,12 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "How do I get win/loss data into Ripplewatch?",
         answer:
-          'Whichever fits how your team already works: paste a CSV export or sync HubSpot deals from the dashboard\'s Win/loss section, push outcomes programmatically via <a href="/docs/api">POST /api/v1/win-loss</a> the moment a deal closes, or just forward or CC a "we lost this deal" email to your personal address shown in Settings → Developer (Dashboard plan, or via the assistant if you use Ripplewatch Connect). All three feed the same pipeline, and update each competitor\'s Momentum win-rate trend immediately.',
+          'Tell your assistant how a deal went ("we lost Acme to Northlane on price"), or hand it a CSV export of past deals and it will import them. Either way, each competitor\'s Momentum win-rate trend updates immediately.',
       },
       {
         question: "What is Ripplewatch Connect?",
         answer:
-          'Ripplewatch Connect is an AI competitive intelligence analyst built into Claude or ChatGPT, with you at all times instead of a dashboard you have to remember to open. You add Ripplewatch as a connector, then ask what changed with your competitors, what it means for your deals, and tell it how deals went, all in the chat. It\'s a separate product from the dashboard plans: $29 a month plus usage you prepay for. <a href="/connect">See how it works</a>, or <a href="/connect/guide">how to get the most out of it</a>.',
+          'Ripplewatch Connect is an AI competitive intelligence analyst built into Claude or ChatGPT, with you at all times instead of a dashboard you have to remember to open. You add Ripplewatch as a connector, then ask what changed with your competitors, what it means for your deals, and tell it how deals went, all in the chat. It costs $29 a month plus usage you prepay for. <a href="/connect">See how it works</a>, or <a href="/connect/guide">how to get the most out of it</a>.',
       },
       {
         question: "Can I use Ripplewatch from Claude, ChatGPT, or another AI assistant?",
@@ -89,9 +89,9 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
           "Yes, within 30 days: the $29 platform fee is refundable, and so is any balance you haven\'t used. Balance already used on answers and monitoring isn\'t refundable. Email us and we\'ll take care of it.",
       },
       {
-        question: "Do I need the dashboard to use Ripplewatch Connect?",
+        question: "Is there a dashboard I have to log into?",
         answer:
-          "No, and you don\'t get one: Connect is a separate product for people who\'d rather ask Claude or ChatGPT than log in. Your account has Ask and Settings (billing, balance, connector, competitors). The Ripplewatch Dashboard is a separate product: one fixed-price plan with no usage bill.",
+          "No. Ripplewatch lives in Claude or ChatGPT, so you ask about your competitors where you already work. Your account has Ask and Settings (billing, balance, connector, competitors).",
       },
       {
         question: "Can I cancel anytime?",
@@ -101,7 +101,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "Do you offer a free trial?",
         answer:
-          "Not a traditional free trial. Instead, every plan comes with that 30-day money-back guarantee, so you can actually use Ripplewatch for real, against your real competitors, before deciding it's for you.",
+          "Not a traditional free trial. Instead, Ripplewatch Connect comes with a 30-day money-back guarantee, so you can actually use Ripplewatch for real, against your real competitors, before deciding it's for you.",
       },
       {
         question: "Why don't you offer a free tier?",
@@ -109,22 +109,18 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
           "Because the value you're getting isn't a static dashboard, it's a live AI model reading and scoring every signal against your specific business context. Every pricing change, job posting, and news mention we surface has actually been analyzed by Claude in real time, not pulled from a cache and shown to everyone the same way. That analysis has a real, per-signal cost to us on every account, whether or not that account is paying. A free tier would mean covering that cost indefinitely for accounts that never convert, which isn't something we can sustain at our size. Instead we put that money into the 30-day guarantee, so you can use the real product risk-free without us subsidizing free usage forever.",
       },
       {
-        question: "Do you offer annual billing?",
-        answer: "Yes, on every plan: annual billing is 20% cheaper than paying monthly.",
-      },
-      {
         question: "Do you have a referral program?",
         answer:
           'Yes. Any paying customer can generate a shareable link from <a href="/app/settings#referrals">Settings → Referrals</a>. The company you refer gets 2 months free the moment they sign up, and you get 2 months free of your own once they\'ve been an active, paying customer for 60 days (not immediately, this keeps the reward tied to a referral that actually sticks, not a signup that cancels right away). Multiple successful referrals stack. See our <a href="/terms#referral-program">Terms of Service</a> for the full details.',
       },
       {
-        question: "What happens if I add more competitors than my plan allows?",
+        question: "How many competitors can I track?",
         answer:
-          "You can add as many as you like, but only up to your plan's limit stay actively monitored (the earliest ones you added). The rest are visible but paused until you upgrade or remove one to make room.",
+          "As many as you like. Each competitor you watch draws a small amount from your prepaid balance each month, typically a dollar or two."
       },
       {
         question: "Is there a setup fee?",
-        answer: "No. You only pay the plan price shown on the pricing page.",
+        answer: "No. You pay the $29 platform fee plus whatever opening balance you choose to fund, from $50.",
       },
     ],
   },
@@ -163,7 +159,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "How do I get started?",
         answer:
-          'With Ripplewatch Connect, sign up and walk through a short onboarding flow: tell us your positioning, your ICP, and the competitors you want tracked, and scored updates start showing up as soon as the first crawl runs. Prefer the Dashboard? <a href="/pricing">Book a demo</a> and we\'ll set it up with you.',
+          'With Ripplewatch Connect, sign up and walk through a short onboarding flow: tell us your positioning, your ICP, and the competitors you want tracked, and scored updates start showing up as soon as the first crawl runs.',
       },
       {
         question: "What integrations do you support?",

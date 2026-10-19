@@ -11,7 +11,6 @@ import { ExampleChats } from "@/components/marketing/example-chats";
 import { cn, avatarColor } from "@/lib/utils";
 import { CONNECT_NAME } from "@/lib/connect";
 import { CONNECT_BASE_FEE_USD } from "@/lib/connect-pricing";
-import { MONTHLY_PRICE_USD } from "@/lib/pricing";
 
 export const metadata = { alternates: { canonical: "/" } };
 
@@ -55,7 +54,6 @@ const STRUCTURED_DATA = {
     "Not alerts. Not data. Answers. Ripplewatch is an AI competitive intelligence analyst that works inside Claude and other AI assistants over MCP. It tracks your competitors' pricing, hiring, press and product changes, scores each one against your positioning and win/loss history, and tells product marketing and revenue teams which competitors are becoming a real threat.",
   offers: [
     { "@type": "Offer", name: CONNECT_NAME, price: String(CONNECT_BASE_FEE_USD), priceCurrency: "USD" },
-    { "@type": "Offer", name: "Ripplewatch Dashboard", price: String(MONTHLY_PRICE_USD.plus), priceCurrency: "USD" },
   ],
 };
 
@@ -94,7 +92,7 @@ export default function HomePage() {
           <p className="mt-5 text-sm text-muted-foreground">
             ${CONNECT_BASE_FEE_USD}/month plus usage you prepay for.{" "}
             <Link href="/pricing" className="font-medium text-primary hover:underline">
-              Prefer a shared dashboard?
+              See pricing
             </Link>
           </p>
         </div>
@@ -235,11 +233,10 @@ export default function HomePage() {
       <section className="border-t border-border bg-secondary/40">
         <div className="mx-auto max-w-6xl px-6 py-20">
           <h2 className="text-center text-3xl font-semibold tracking-tight">
-            Two ways to use Ripplewatch
+            Simple pricing
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-center text-muted-foreground">
-            {CONNECT_NAME} is the most flexible way in: no dashboard, pay only for what you use. The Dashboard is one
-            fixed price for a team that wants a shared view.
+            One flat platform fee, plus usage you prepay for. Pay only for what you use, never on credit.
           </p>
           <div className="mt-10">
             <PricingCards />
@@ -263,7 +260,7 @@ export default function HomePage() {
             <ArrowRight className="size-4" />
           </Link>
           <Link href="/pricing" className={buttonVariants({ size: "lg", variant: "outline" })}>
-            See dashboard pricing
+            See pricing
           </Link>
         </div>
       </section>

@@ -2,13 +2,11 @@ import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { PricingCards } from "@/components/marketing/pricing-cards";
-import { DemoLink } from "@/components/marketing/demo-link";
-import { TIERS } from "@/lib/tiers";
 import { CONNECT_NAME } from "@/lib/connect";
 import { CONNECT_BASE_FEE_USD } from "@/lib/connect-pricing";
 
 const description =
-  "Not alerts. Not data. Answers. Ripplewatch is an AI competitive intelligence analyst built into Claude and ChatGPT, tracking hiring, pricing, press, and product activity across your competitors. From $29/mo, or use the shared dashboard.";
+  "Not alerts. Not data. Answers. Ripplewatch is an AI competitive intelligence analyst built into Claude and ChatGPT, tracking hiring, pricing, press, and product activity across your competitors. From $29/mo plus usage you prepay for.";
 
 export const metadata = {
   title: "Pricing",
@@ -18,9 +16,9 @@ export const metadata = {
   twitter: { card: "summary_large_image", title: "Pricing | Ripplewatch", description },
 };
 
-// Derived from TIERS/Connect's own constants (the same data PricingCards
-// renders) rather than hardcoded a second time, so this can't silently drift
-// from the real prices the way a copy-pasted schema block would.
+// Derived from Connect's own constants (the same data PricingCards renders)
+// rather than hardcoded a second time, so this can't silently drift from the
+// real prices the way a copy-pasted schema block would.
 const STRUCTURED_DATA = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
@@ -36,13 +34,6 @@ const STRUCTURED_DATA = {
       priceCurrency: "USD",
       description: "Use Ripplewatch inside Claude or ChatGPT, plus usage you prepay for.",
     },
-    ...TIERS.map((tier) => ({
-      "@type": "Offer",
-      name: tier.name,
-      price: String(tier.monthlyUsd),
-      priceCurrency: "USD",
-      description: tier.tagline,
-    })),
   ],
 };
 
@@ -54,10 +45,10 @@ export default function PricingPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA) }}
       />
       <div className="mx-auto max-w-2xl text-center">
-        <h1 className="text-4xl font-semibold tracking-tight">Two ways to use Ripplewatch</h1>
+        <h1 className="text-4xl font-semibold tracking-tight">Simple pricing</h1>
         <p className="mt-4 text-muted-foreground">
           No dedicated CI analyst to hire, Ripplewatch is the AI one. Connect it to Claude or ChatGPT and pay only
-          for what you use, or run it as a shared dashboard for the whole team.
+          for what you use.
         </p>
       </div>
 
@@ -68,25 +59,26 @@ export default function PricingPage() {
       <div className="mx-auto mt-16 flex max-w-2xl items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 p-6">
         <ShieldCheck className="mt-0.5 size-5 shrink-0 text-primary" />
         <p className="text-sm leading-relaxed text-foreground">
-          <span className="font-semibold">30-day money-back guarantee.</span> On the Dashboard, use Ripplewatch for
-          real, against your real competitors; if it&apos;s not for you, email us within 30 days of any charge for a
-          full refund. On {CONNECT_NAME}, the platform fee and any unused balance are refundable the same way; usage
-          you&apos;ve already spent isn&apos;t. Cancel anytime from Settings, no penalty or lock-in.
+          <span className="font-semibold">30-day money-back guarantee.</span> Use {CONNECT_NAME} for real, against
+          your real competitors. If it&apos;s not for you, email us within 30 days: the platform fee and any unused
+          balance are refundable; usage you&apos;ve already spent isn&apos;t. Cancel anytime from Settings, no penalty
+          or lock-in.
         </p>
       </div>
 
       <div className="mx-auto mt-8 max-w-2xl rounded-xl border border-border bg-secondary/40 p-8 text-center">
-        <h3 className="text-lg font-semibold">Not sure which fits?</h3>
+        <h3 className="text-lg font-semibold">Want to see it work first?</h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          If you&apos;d rather ask Claude or ChatGPT than log into another tool, start with {CONNECT_NAME}: it&apos;s
-          the most flexible way in, and you only pay for what you actually use. Reach for the Dashboard once you want a
-          shared view a whole team logs into, with Slack and email delivery built in.
+          Run the free competitor snapshot to see what Ripplewatch reads about any competitor, no signup. When you
+          want it inside Claude or ChatGPT, {CONNECT_NAME} takes a couple of minutes to connect.
         </p>
         <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link href="/onboarding?path=connect" className={buttonVariants()}>
             Get {CONNECT_NAME}
           </Link>
-          <DemoLink variant="button" />
+          <Link href="/competitor-snapshot" className={buttonVariants({ variant: "outline" })}>
+            Try the free snapshot
+          </Link>
         </div>
       </div>
     </div>
