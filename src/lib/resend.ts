@@ -1191,8 +1191,8 @@ export async function sendDisputeAlertEmail(
 
 // "Someone just signed up" alerts for the operator: new account, payment, an email
 // captured by a free tool, a live read run. Content comes from lead-alert-content.
-export async function sendLeadAlertEmail(to: string[], subject: string, html: string, replyTo?: string) {
-  if (!isResendConfigured() || to.length === 0) return;
+export async function sendLeadAlertEmail(to: string[], subject: string, html: string, replyTo?: string): Promise<boolean> {
+  if (!isResendConfigured() || to.length === 0) return false;
   const result = await getResend().emails.send({
     from: getAlertsFromEmail(),
     to,
@@ -1201,4 +1201,5 @@ export async function sendLeadAlertEmail(to: string[], subject: string, html: st
     ...(replyTo ? { replyTo } : {}),
   });
   if (result.error) throw new Error(result.error.message);
+  return true;
 }

@@ -302,6 +302,30 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["live_reads"]["Insert"]>;
         Relationships: [];
       };
+      contact_messages: {
+        Row: {
+          id: string;
+          created_at: string;
+          topic: string;
+          name: string;
+          email: string;
+          company: string | null;
+          message: string | null;
+          emailed: boolean;
+        };
+        Insert: {
+          id?: string;
+          created_at?: string;
+          topic: string;
+          name: string;
+          email: string;
+          company?: string | null;
+          message?: string | null;
+          emailed?: boolean;
+        };
+        Update: Partial<Database["public"]["Tables"]["contact_messages"]["Insert"]>;
+        Relationships: [];
+      };
       call_mentions: {
         Row: {
           id: string;
