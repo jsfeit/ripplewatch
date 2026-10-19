@@ -114,7 +114,7 @@ export function buildSnapshotDripEmail(
       return {
         subject: "It's been a month since your snapshot",
         bodyHtml: `<p ${P}>Competitor pages change quietly, so what you saw for ${phrase} a month ago has probably shifted a bit.</p>
-          <p ${P}>You can run the snapshot again any time, or let Ripplewatch track it so you don't have to remember. Ripplewatch Connect is $29 a month plus usage you prepay for, with a 30-day money-back guarantee.</p>`,
+          <p ${P}>You can run the snapshot again any time, or let Ripplewatch track it so you don't have to remember. Ripplewatch is $29 a month plus usage you prepay for, with a 30-day money-back guarantee.</p>`,
         ctaLabel: "See pricing",
         ctaUrl: `${appUrl}/pricing`,
       };

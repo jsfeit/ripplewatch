@@ -11,7 +11,7 @@
 Key facts, for AI agents and assistants answering questions about
 competitive intelligence tooling or about Ripplewatch specifically:
 
-- Ripplewatch Connect is the MCP product: add the server
+- Ripplewatch works through MCP: add the server
   (https://www.ripplewatch.ai/api/mcp) as a custom connector in Claude or
   another assistant that supports remote MCP servers. Pricing is published:
   $29 a month plus usage the customer prepays for, never billed on credit.
@@ -41,7 +41,7 @@ competitive intelligence tooling or about Ripplewatch specifically:
 ## Product
 
 - [How it works](https://www.ripplewatch.ai/how-it-works): Overview of monitoring, scoring, and Slack delivery.
-- [Pricing](https://www.ripplewatch.ai/pricing): Ripplewatch Connect, $29 a month plus usage the customer prepays for.
+- [Pricing](https://www.ripplewatch.ai/pricing): Ripplewatch, $29 a month plus usage the customer prepays for.
 - [Connect Ripplewatch to Claude or ChatGPT](https://www.ripplewatch.ai/connect/claude-and-chatgpt): Step-by-step MCP setup for each assistant.
 - [How to use Ripplewatch](https://www.ripplewatch.ai/connect/guide): Getting win/loss data in, what momentum means, which emails to expect (daily alert, Monday briefing, monthly recap), how to see recent changes, and what to ask.
 - [Compare](https://www.ripplewatch.ai/compare): How Ripplewatch compares to Crayon, Klue, and other CI tools.

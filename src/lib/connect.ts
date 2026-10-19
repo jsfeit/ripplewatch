@@ -3,7 +3,7 @@
 // card, /connect page, homepage, onboarding and FAQ can't drift, and so a
 // rename is a one-line change.
 
-export const CONNECT_NAME = "Ripplewatch Connect";
+export const CONNECT_NAME = "Ripplewatch";
 export const CONNECT_TAGLINE = "Your AI competitive intelligence analyst, built into Claude or ChatGPT.";
 export const CONNECT_MCP_URL = "https://www.ripplewatch.ai/api/mcp";
 
@@ -48,7 +48,7 @@ export const CONNECT_EXAMPLES = [
 // product. Prices come from connect-pricing.ts at the call site, not here.
 export const CONNECT_QUICK_ANSWERS = [
   {
-    question: "What is Ripplewatch Connect?",
+    question: "What is Ripplewatch?",
     answer:
       "An AI competitive intelligence analyst that works inside Claude and other AI assistants over MCP. It watches your competitors' pricing, hiring, press and product changes, and scores each one against your positioning and your win/loss history.",
   },

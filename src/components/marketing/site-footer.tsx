@@ -14,7 +14,7 @@ const COLUMNS = [
   {
     title: "Product",
     links: [
-      { href: "/connect", label: "Ripplewatch Connect" },
+      { href: "/connect", label: "Overview" },
       { href: "/how-it-works", label: "How it works" },
       { href: "/pricing", label: "Pricing" },
       { href: "/onboarding", label: "Live demo" },

@@ -91,7 +91,7 @@ export default function MarketResearchPage() {
         </div>
         <p className="mt-3 max-w-2xl leading-relaxed text-foreground">
           Ripplewatch is built for the SMB and early-stage teams the mid-market tier below was never
-          priced for: transparent pricing and, via Ripplewatch Connect, self-serve setup with no
+          priced for: transparent pricing and, via Ripplewatch, self-serve setup with no
           minimum contract or sales call, while still scoring every signal against your own context
           instead of just surfacing raw changes.
         </p>
@@ -105,7 +105,7 @@ export default function MarketResearchPage() {
             </div>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               Every signal scored against your own positioning, ICP, and actual lost-deal and churn
-              history, not a generic severity scale. With Ripplewatch Connect, there&apos;s no sales
+              history, not a generic severity scale. With Ripplewatch, there&apos;s no sales
               call and no onboarding project: connect your competitors and you&apos;re live in
               minutes, at a fraction of what the tools below charge.
             </p>

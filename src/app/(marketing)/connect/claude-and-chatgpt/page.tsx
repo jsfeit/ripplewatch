@@ -46,7 +46,7 @@ export default function ConnectGuidePage() {
       <JsonLd data={HOW_TO} />
       <JsonLd
         data={breadcrumbs(SITE, [
-          { name: CONNECT_NAME, path: "/connect" },
+          { name: "Product", path: "/connect" },
           { name: "Connect to Claude or ChatGPT", path: "/connect/claude-and-chatgpt" },
         ])}
       />
