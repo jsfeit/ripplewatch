@@ -35,7 +35,7 @@ export default function ConnectGuidePage() {
     <div className="mx-auto max-w-3xl px-6 py-20">
       <JsonLd
         data={breadcrumbs("https://www.ripplewatch.ai", [
-          { name: CONNECT_NAME, path: "/connect" },
+          { name: "Product", path: "/connect" },
           { name: "How to use Ripplewatch", path: "/connect/guide" },
         ])}
       />

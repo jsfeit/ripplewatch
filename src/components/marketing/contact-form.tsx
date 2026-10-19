@@ -98,7 +98,7 @@ export function ContactForm({ initialTopic }: { initialTopic: ContactTopicId }) 
       {topic === "demo" ? (
         <div className="rounded-lg border border-border bg-secondary/40 p-4 text-sm">
           <p className="text-muted-foreground">
-            Happy to walk you through Ripplewatch Connect. Pick a time yourself, or send the form and we&apos;ll
+            Happy to walk you through Ripplewatch. Pick a time yourself, or send the form and we&apos;ll
             find one with you.
           </p>
           <BookingLink className="mt-3" />

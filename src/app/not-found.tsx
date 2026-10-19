@@ -10,7 +10,7 @@ export const metadata = { title: "Page not found", robots: { index: false, follo
 // This keeps the site's header and footer and points to the pages people actually want.
 export default function NotFound() {
   const links = [
-    { href: "/connect", label: "Ripplewatch Connect", note: "An AI analyst inside Claude or ChatGPT" },
+    { href: "/connect", label: "Product", note: "An AI analyst inside Claude or ChatGPT" },
     { href: "/compare", label: "Compare", note: "Ripplewatch against Crayon, Klue and others" },
     { href: "/blog", label: "Blog", note: "Notes on competitive intelligence and win/loss" },
     { href: "/competitor-snapshot", label: "Free competitor snapshot", note: "A one-time read on any competitor" },

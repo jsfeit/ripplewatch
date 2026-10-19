@@ -22,10 +22,9 @@ export function OnboardingEntry({
   if (hasAccount) {
     return (
       <div className="mx-auto max-w-lg space-y-3 rounded-2xl border border-border bg-card p-8 text-center">
-        <h1 className="text-xl font-semibold tracking-tight">{CONNECT_NAME} is its own account</h1>
+        <h1 className="text-xl font-semibold tracking-tight">You&apos;re signed in to another account</h1>
         <p className="text-sm text-muted-foreground">
-          You&apos;re signed in to an existing Ripplewatch account. {CONNECT_NAME} is set up on its own account, so
-          sign out and sign up with another email to buy it.
+          Ripplewatch is bought with a new account, so sign out and sign up with another email to buy it.
         </p>
       </div>
     );

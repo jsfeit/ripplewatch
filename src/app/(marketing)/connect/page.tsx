@@ -10,11 +10,11 @@ const description =
   "Ripplewatch Connect is an AI competitive intelligence analyst built into Claude and ChatGPT, with you at all times instead of a dashboard you have to remember to check. Ask what changed, get the read on what it means for your deals, and log outcomes by just telling your assistant. $29 a month plus usage you prepay for.";
 
 export const metadata = {
-  title: `${CONNECT_NAME}: AI competitive intelligence`,
+  title: "Competitive intelligence in Claude and ChatGPT",
   description,
   alternates: { canonical: "/connect" },
-  openGraph: { title: `${CONNECT_NAME} | Ripplewatch`, description, images: ["/opengraph-image"] },
-  twitter: { card: "summary_large_image", title: `${CONNECT_NAME} | Ripplewatch`, description, images: ["/opengraph-image"] },
+  openGraph: { title: "Competitive intelligence in Claude and ChatGPT | Ripplewatch", description, images: ["/opengraph-image"] },
+  twitter: { card: "summary_large_image", title: "Competitive intelligence in Claude and ChatGPT | Ripplewatch", description, images: ["/opengraph-image"] },
 };
 
 const STEPS = [
@@ -58,7 +58,7 @@ export default function ConnectPage() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-20">
       <JsonLd data={PRODUCT_SCHEMA} />
-      <JsonLd data={breadcrumbs(SITE, [{ name: CONNECT_NAME, path: "/connect" }])} />
+      <JsonLd data={breadcrumbs(SITE, [{ name: "Product", path: "/connect" }])} />
       <div className="mx-auto max-w-2xl text-center">
         <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
           <Sparkles className="size-3.5" />

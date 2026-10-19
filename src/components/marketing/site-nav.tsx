@@ -8,7 +8,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
-  { href: "/connect", label: "Ripplewatch Connect" },
+  { href: "/connect", label: "Product" },
   { href: "/how-it-works", label: "How it works" },
   { href: "/pricing", label: "Pricing" },
 ];

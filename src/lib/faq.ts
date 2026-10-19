@@ -9,11 +9,6 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
     title: "Product",
     items: [
       {
-        question: "What is Ripplewatch?",
-        answer:
-          "Not alerts. Not data. Answers. Ripplewatch is competitive intelligence built for small tech companies, not a fractional hire: it monitors the competitors you choose and scores every signal (a pricing change, a job posting, a news mention) against your own positioning, ICP, and the real reasons you've lost deals or churned customers, then rolls it all up into a single Momentum score per competitor.",
-      },
-      {
         question: "Who is Ripplewatch for?",
         answer:
           "Product marketing, sales and revenue teams at B2B software companies that track a handful of competitors and want a straight answer when someone asks whether a competitor's move matters. If you already have a competitive intelligence program run by a dedicated team and want battlecards deployed into your CRM, a platform like Crayon or Klue may fit better; <a href=\"/blog/klue-vs-crayon-vs-ripplewatch-enterprise-grade-cost\">here is how they differ</a>.",
@@ -21,7 +16,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "How does Ripplewatch compare to Crayon and Klue?",
         answer:
-          "Crayon and Klue are platforms your team logs into and adopts, sold through a sales cycle with no published pricing. Ripplewatch Connect runs inside Claude and other AI assistants over MCP, so you ask about your competitors where you already work, and its pricing is published: $29 a month plus usage you prepay for. It has no verified buyer-interview program like Klue's and no battlecard authoring like Crayon's. See <a href=\"/compare/crayon\">Ripplewatch vs. Crayon</a> and <a href=\"/compare/klue\">Ripplewatch vs. Klue</a>.",
+          "Crayon and Klue are platforms your team logs into and adopts, sold through a sales cycle with no published pricing. Ripplewatch runs inside Claude and other AI assistants over MCP, so you ask about your competitors where you already work, and its pricing is published: $29 a month plus usage you prepay for. It has no verified buyer-interview program like Klue's and no battlecard authoring like Crayon's. See <a href=\"/compare/crayon\">Ripplewatch vs. Crayon</a> and <a href=\"/compare/klue\">Ripplewatch vs. Klue</a>.",
       },
       {
         question: "How is this different from other competitive intelligence tools?",
@@ -54,14 +49,14 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
           'Tell your assistant how a deal went ("we lost Acme to Northlane on price"), or hand it a CSV export of past deals and it will import them. Either way, each competitor\'s Momentum win-rate trend updates immediately.',
       },
       {
-        question: "What is Ripplewatch Connect?",
+        question: "What is Ripplewatch?",
         answer:
-          'Ripplewatch Connect is an AI competitive intelligence analyst built into Claude or ChatGPT, with you at all times instead of a dashboard you have to remember to open. You add Ripplewatch as a connector, then ask what changed with your competitors, what it means for your deals, and tell it how deals went, all in the chat. It costs $29 a month plus usage you prepay for. <a href="/connect">See how it works</a>, or <a href="/connect/guide">how to get the most out of it</a>.',
+          'Ripplewatch is an AI competitive intelligence analyst built into Claude or ChatGPT, with you at all times instead of a dashboard you have to remember to open. You add Ripplewatch as a connector, then ask what changed with your competitors, what it means for your deals, and tell it how deals went, all in the chat. It costs $29 a month plus usage you prepay for. <a href="/connect">See how it works</a>, or <a href="/connect/guide">how to get the most out of it</a>.',
       },
       {
         question: "Can I use Ripplewatch from Claude, ChatGPT, or another AI assistant?",
         answer:
-          'Yes, with Ripplewatch Connect, through our MCP server (see <a href="/docs/api">the docs</a>). It works with assistants that support remote MCP servers over HTTP, including Claude (web, desktop, and Claude Code) and developer tools like Cursor. ChatGPT can add custom MCP servers from its Plugins page, but it depends on your plan and workspace: OpenAI currently lists full support for Business, Enterprise and Edu, with more limited read access on some other plans, and an admin may need to enable it. Gemini supports MCP in Gemini CLI, but we haven\'t confirmed support in the Gemini app. You connect by signing in and approving, or with an API key for developer tools. <a href="/connect/claude-and-chatgpt">Step-by-step setup</a>.',
+          'Yes, with Ripplewatch, through our MCP server (see <a href="/docs/api">the docs</a>). It works with assistants that support remote MCP servers over HTTP, including Claude (web, desktop, and Claude Code) and developer tools like Cursor. ChatGPT can add custom MCP servers from its Plugins page, but it depends on your plan and workspace: OpenAI currently lists full support for Business, Enterprise and Edu, with more limited read access on some other plans, and an admin may need to enable it. Gemini supports MCP in Gemini CLI, but we haven\'t confirmed support in the Gemini app. You connect by signing in and approving, or with an API key for developer tools. <a href="/connect/claude-and-chatgpt">Step-by-step setup</a>.',
       },
       {
         question: "What can an AI assistant do with my Ripplewatch account?",
@@ -74,7 +69,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
     title: "Pricing & billing",
     items: [
       {
-        question: "How much does Ripplewatch Connect cost?",
+        question: "How much does Ripplewatch cost?",
         answer:
           "$29 a month for the platform, plus usage from a balance you prepay (from $50). Each answer and each competitor you watch draws from that balance at our actual AI cost plus a small margin: typically a few cents an answer and a dollar or two a month per competitor. Teammates are unlimited. Taxes are added at checkout.",
       },
@@ -84,7 +79,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
           "Answers and competitor monitoring pause until you add funds, so you never owe for usage on credit. Each answer shows what it cost and what\'s left, and you can add funds any time from Settings.",
       },
       {
-        question: "Can I get a refund on Ripplewatch Connect?",
+        question: "Can I get a refund on Ripplewatch?",
         answer:
           "Yes, within 30 days: the $29 platform fee is refundable, and so is any balance you haven\'t used. Balance already used on answers and monitoring isn\'t refundable. Email us and we\'ll take care of it.",
       },
@@ -101,7 +96,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "Do you offer a free trial?",
         answer:
-          "Not a traditional free trial. Instead, Ripplewatch Connect comes with a 30-day money-back guarantee, so you can actually use Ripplewatch for real, against your real competitors, before deciding it's for you.",
+          "Not a traditional free trial. Instead, Ripplewatch comes with a 30-day money-back guarantee, so you can actually use Ripplewatch for real, against your real competitors, before deciding it's for you.",
       },
       {
         question: "Why don't you offer a free tier?",
@@ -159,7 +154,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "How do I get started?",
         answer:
-          'With Ripplewatch Connect, sign up and walk through a short onboarding flow: tell us your positioning, your ICP, and the competitors you want tracked, and scored updates start showing up as soon as the first crawl runs.',
+          'With Ripplewatch, sign up and walk through a short onboarding flow: tell us your positioning, your ICP, and the competitors you want tracked, and scored updates start showing up as soon as the first crawl runs.',
       },
       {
         question: "What integrations do you support?",

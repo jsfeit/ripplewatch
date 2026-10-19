@@ -891,7 +891,7 @@ export async function sendConnectWelcomeEmail(to: string, companyName: string, a
     html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
       <h2 style="margin:0 0 12px;">You're set up, ${escapeHtml(companyName)}.</h2>
       <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
-        Ripplewatch Connect lives inside the assistant you already use. Two minutes to connect it:
+        Ripplewatch lives inside the assistant you already use. Two minutes to connect it:
       </p>
       <ol style="color:#3a3a3a;font-size:14px;line-height:1.7;padding-left:20px;">
         <li>In Claude or ChatGPT, add a custom connector with this URL: <strong>${appUrl}/api/mcp</strong></li>
@@ -1080,7 +1080,7 @@ export async function sendConnectReloadFailedEmail(to: string, companyName: stri
   const result = await getResend().emails.send({
     from: getAlertsFromEmail(),
     to,
-    subject: "Your Ripplewatch Connect auto-reload didn't go through",
+    subject: "Your Ripplewatch auto-reload didn't go through",
     html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
       <h2 style="margin:0 0 12px;">Auto-reload failed for ${escapeHtml(companyName)}</h2>
       <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
@@ -1111,8 +1111,8 @@ export async function sendConnectLowBalanceEmail(
     from: getAlertsFromEmail(),
     to,
     subject: paused
-      ? "Ripplewatch Connect is paused: add funds to keep going"
-      : "Your Ripplewatch Connect balance is running low",
+      ? "Ripplewatch is paused: add funds to keep going"
+      : "Your Ripplewatch balance is running low",
     html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
       <h2 style="margin:0 0 12px;">${paused ? "Answers and monitoring are paused" : "Your balance is running low"}</h2>
       <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
@@ -1181,7 +1181,7 @@ export async function sendDisputeAlertEmail(
       </table>
       <p>${
         detail.froze
-          ? "This is a Ripplewatch Connect account: it has been put on hold and auto-reload switched off so no further credits are spent or added while you respond."
+          ? "This is a Ripplewatch account: it has been put on hold and auto-reload switched off so no further credits are spent or added while you respond."
           : "This account was not changed automatically."
       }</p>
       <p><a href="https://dashboard.stripe.com/disputes/${escapeHtml(detail.disputeId)}">Open the dispute in Stripe</a></p>`,
