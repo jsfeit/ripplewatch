@@ -2,9 +2,12 @@ import { NextResponse } from "next/server";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { notifyLead } from "@/lib/lead-alerts";
 import { CONTACT_TOPICS } from "@/lib/contact-topics";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { OPERATOR_EMAIL } from "@/lib/followups";
 
-// "Contact us" form: works like a support ticket. It emails the operator
-// (reply-to set to the sender) and keeps nothing else.
+// "Contact us" form: works like a support ticket. Every message is emailed to
+// the operator (reply-to set to the sender) and saved to contact_messages, so
+// it is only reported as failed if both of those fail.
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function clean(value: unknown, max: number): string {
@@ -34,6 +37,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Tell us a little about what you need." }, { status: 400 });
   }
 
-  await notifyLead({ kind: "contact_request", name, email, company: company || null, topic: topic.label, message });
+  const emailed = await notifyLead({
+    kind: "contact_request",
+    name,
+    email,
+    company: company || null,
+    topic: topic.label,
+    message,
+  });
+
+  // Best effort: the table comes from migration 0086, and a missing table must not lose the email.
+  let saved = false;
+  try {
+    const { error } = await createAdminClient()
+      .from("contact_messages")
+      .insert({ topic: topic.label, name, email, company: company || null, message: message || null, emailed });
+    saved = !error;
+    if (error) console.error("contact message save failed:", error.message);
+  } catch (err) {
+    console.error("contact message save failed:", err);
+  }
+
+  if (!emailed && !saved) {
+    return NextResponse.json(
+      { error: `We couldn't send that. Please email ${OPERATOR_EMAIL} instead.` },
+      { status: 502 }
+    );
+  }
   return NextResponse.json({ ok: true });
 }
