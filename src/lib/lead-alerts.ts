@@ -26,7 +26,9 @@ export async function notifyLead(event: LeadEvent): Promise<void> {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.ripplewatch.ai";
     // Visitor-typed text can be in the subject, so no line breaks and a sane length.
     const subject = alert.subject.replace(/[\r\n]+/g, " ").slice(0, 150);
-    await sendLeadAlertEmail([OPERATOR_EMAIL], subject, renderLeadAlertHtml(alert, appUrl));
+    // A contact request is a person waiting on an answer: replying to the alert goes to them.
+    const replyTo = event.kind === "contact_request" ? event.email : undefined;
+    await sendLeadAlertEmail([OPERATOR_EMAIL], subject, renderLeadAlertHtml(alert, appUrl), replyTo);
   } catch (err) {
     console.error("lead alert email failed:", err);
   }

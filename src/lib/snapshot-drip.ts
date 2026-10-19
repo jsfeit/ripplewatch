@@ -1,4 +1,3 @@
-import { DEMO_URL } from "@/lib/demo";
 import type { SnapshotLookup } from "@/lib/snapshot";
 
 // Follow-up series for people who only tried the free competitor snapshot
@@ -109,14 +108,14 @@ export function buildSnapshotDripEmail(
         bodyHtml: `<p ${P}>I'm Jeremy, I run Ripplewatch. We're a small team, so if it would help I'm glad to do a short call, set it up on ${lookups.length > 0 ? phrase : "your competitors"} ahead of time, and show you what it would have caught.</p>
           <p ${P}>Or just reply with a question. I read every one.</p>`,
         ctaLabel: "Book a 30-minute walkthrough",
-        ctaUrl: DEMO_URL,
+        ctaUrl: `${appUrl}/contact?topic=demo`,
       };
     case 5:
       return {
         subject: "It's been a month since your snapshot",
         bodyHtml: `<p ${P}>Competitor pages change quietly, so what you saw for ${phrase} a month ago has probably shifted a bit.</p>
-          <p ${P}>You can run the snapshot again any time, or let Ripplewatch track it so you don't have to remember. Plans start at $69 a month, with a 30-day money-back guarantee on every one.</p>`,
-        ctaLabel: "See plans",
+          <p ${P}>You can run the snapshot again any time, or let Ripplewatch track it so you don't have to remember. Ripplewatch Connect is $29 a month plus usage you prepay for, with a 30-day money-back guarantee.</p>`,
+        ctaLabel: "See pricing",
         ctaUrl: `${appUrl}/pricing`,
       };
     case 6:

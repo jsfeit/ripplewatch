@@ -21,7 +21,6 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
 import { UTM_STORAGE_KEY } from "@/components/utm-capture";
-import { DemoLink } from "@/components/marketing/demo-link";
 import { TIERS, tierForScore } from "@/lib/quiz-tiers";
 
 type Question = { icon: LucideIcon; prompt: string; topic: string; options: string[] };
@@ -349,7 +348,7 @@ export function CompetitiveIntelQuiz() {
                 Get started
                 <ArrowRight className="size-4" />
               </Link>
-              <DemoLink variant="button" />
+              <Link href="/contact" className={buttonVariants({ variant: "outline" })}>Questions? Contact us</Link>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
               Want to see it, not just read about it?{" "}

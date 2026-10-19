@@ -24,7 +24,6 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { DemoLink } from "@/components/marketing/demo-link";
 import { trackEvent } from "@/lib/analytics";
 import { UTM_STORAGE_KEY } from "@/components/utm-capture";
 import { BILLING_MODEL_LABELS } from "@/lib/billing-model";
@@ -159,7 +158,7 @@ export function CompetitorSnapshotTool() {
               Start tracking your competitors
               <ArrowRight className="size-4" />
             </Link>
-            <DemoLink variant="button" />
+            <Link href="/contact" className={buttonVariants({ variant: "outline" })}>Questions? Contact us</Link>
           </div>
           <QuestionBox email={submittedEmail} domain={result.domain} />
         </div>

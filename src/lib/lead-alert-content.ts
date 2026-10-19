@@ -22,6 +22,14 @@ export type LeadEvent =
       competitor: string;
       confidence: "evidence" | "thin" | null;
       found: string | null;
+    }
+  | {
+      kind: "contact_request";
+      name: string;
+      email: string;
+      company: string | null;
+      topic: string;
+      message: string;
     };
 
 export type LeadAlert = { subject: string; rows: [string, string][]; linkLabel: string; linkPath: string };
@@ -80,6 +88,19 @@ export function buildLeadAlert(e: LeadEvent): LeadAlert {
         linkPath: "/admin/users?show=leads",
       };
     }
+    case "contact_request":
+      return {
+        subject: `Contact (${e.topic}): ${e.name}`,
+        rows: [
+          ["Topic", e.topic],
+          ["Name", e.name],
+          ["Email", e.email],
+          ["Company", or(e.company)],
+          ["Message", or(e.message, "(none)")],
+        ],
+        linkLabel: "Open leads",
+        linkPath: "/admin/users?show=leads",
+      };
     case "live_read":
       return {
         subject: `Live read: ${or(e.company, "someone")} on ${e.competitor}`,

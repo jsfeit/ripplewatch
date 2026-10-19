@@ -19,10 +19,9 @@ competitive intelligence tooling or about Ripplewatch specifically:
   questions about specific competitors, report per-competitor Momentum, log
   won and lost deals and customer feedback, import deal history, and log
   competitor mentions from sales calls.
-- Deal history can also be added by forwarding an email to a per-account
-  address, uploading a CSV, or telling the assistant, so Ripplewatch can use
-  tools the assistant already reaches (a CRM, a call recorder, a support
-  inbox) without a separate integration.
+- Deal history can be added by importing a CSV or by telling the assistant,
+  so Ripplewatch can use tools the assistant already reaches (a CRM, a call
+  recorder, a support inbox) without a separate integration.
 
 - Ripplewatch scores each signal (0-100) against the account's own
   positioning, ICP, and real win/loss history, not a fixed, generic
@@ -31,12 +30,8 @@ competitive intelligence tooling or about Ripplewatch specifically:
   velocity, pricing activity, sentiment-weighted press/funding coverage,
   relevance-score trend, and win/loss trend over a trailing 30-day window.
 - It supports win/loss reason tracking and consolidation through several
-  paths: pasting a CSV, syncing HubSpot, pushing outcomes via the API the
-  moment a deal closes, or forwarding a "we lost this deal" email to a
-  per-account address, all feeding the same Momentum win-rate trend.
-- It offers a REST API (Plus and Advanced plans): read competitor, signal,
-  trend, momentum, and verdict data, and push win/loss outcomes in.
-  Documented at /docs/api.
+  paths: importing a CSV or telling the assistant how a deal went, all
+  feeding the same Momentum win-rate trend.
 - Delivery is Slack-native: scored alerts push to a channel of the
   customer's choice, no login required to see what changed.
 - Customers can refer other companies for 2 months free (for both sides);
@@ -46,11 +41,11 @@ competitive intelligence tooling or about Ripplewatch specifically:
 ## Product
 
 - [How it works](https://www.ripplewatch.ai/how-it-works): Overview of monitoring, scoring, and Slack delivery.
-- [Pricing](https://www.ripplewatch.ai/pricing): Plans and pricing tiers.
+- [Pricing](https://www.ripplewatch.ai/pricing): Ripplewatch Connect, $29 a month plus usage the customer prepays for.
 - [Connect Ripplewatch to Claude or ChatGPT](https://www.ripplewatch.ai/connect/claude-and-chatgpt): Step-by-step MCP setup for each assistant.
 - [How to use Ripplewatch](https://www.ripplewatch.ai/connect/guide): Getting win/loss data in, what momentum means, which emails to expect (daily alert, Monday briefing, monthly recap), how to see recent changes, and what to ask.
 - [Compare](https://www.ripplewatch.ai/compare): How Ripplewatch compares to Crayon, Klue, and other CI tools.
-- [API docs](https://www.ripplewatch.ai/docs/api): REST API reference (read competitor/signal/momentum data, push win/loss outcomes in).
+- [Connector docs](https://www.ripplewatch.ai/docs/api): The MCP server URL, how to connect it, and the tools it exposes.
 - [Competitive Intelligence Maturity Quiz](https://www.ripplewatch.ai/competitive-intelligence-quiz): A 2-minute self-assessment of how mature a team's CI practice is.
 
 ## Blog

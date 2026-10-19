@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Waves } from "lucide-react";
-import { DEMO_URL } from "@/lib/demo";
 
 // lucide-react doesn't ship brand icons — inline glyph instead.
 function LinkedinIcon({ className }: { className?: string }) {
@@ -19,7 +18,6 @@ const COLUMNS = [
       { href: "/how-it-works", label: "How it works" },
       { href: "/pricing", label: "Pricing" },
       { href: "/onboarding", label: "Live demo" },
-      { href: DEMO_URL, label: "Book a demo", external: true },
       { href: "/competitor-snapshot", label: "Competitor Snapshot" },
       { href: "/competitive-intelligence-quiz", label: "CI Quiz" },
     ],
@@ -43,6 +41,7 @@ const COLUMNS = [
       { href: "/affiliates", label: "Affiliates" },
       { href: "/creators", label: "For creators" },
       { href: "/refer", label: "Refer a friend" },
+      { href: "/contact", label: "Contact us" },
     ],
   },
   {
@@ -84,20 +83,9 @@ export function SiteFooter() {
               <ul className="mt-4 flex flex-col gap-3">
                 {column.links.map((link) => (
                   <li key={link.label}>
-                    {link.external ? (
-                      <a
-                        href={link.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-muted-foreground hover:text-foreground"
-                      >
-                        {link.label}
-                      </a>
-                    ) : (
-                      <Link href={link.href} className="text-sm text-muted-foreground hover:text-foreground">
-                        {link.label}
-                      </Link>
-                    )}
+                    <Link href={link.href} className="text-sm text-muted-foreground hover:text-foreground">
+                      {link.label}
+                    </Link>
                   </li>
                 ))}
               </ul>

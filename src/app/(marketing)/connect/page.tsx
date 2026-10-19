@@ -159,17 +159,6 @@ export default function ConnectPage() {
         </div>
       </div>
 
-      <div className="mx-auto mt-16 max-w-2xl rounded-xl border border-border bg-secondary/40 p-8 text-center">
-        <h3 className="text-lg font-semibold">Prefer a dashboard?</h3>
-        <p className="mt-2 text-sm text-muted-foreground">
-          The Ripplewatch dashboard is a separate product with fixed monthly pricing and no usage bill.
-        </p>
-        <div className="mt-5 flex justify-center">
-          <Link href="/pricing" className={buttonVariants({ variant: "outline" })}>
-            See dashboard plans <ArrowRight className="size-4" />
-          </Link>
-        </div>
-      </div>
     </div>
   );
 }

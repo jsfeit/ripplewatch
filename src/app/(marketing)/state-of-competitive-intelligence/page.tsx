@@ -4,7 +4,6 @@ import { ArrowRight, Check, Sparkles, X } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { cn } from "@/lib/utils";
-import { MONTHLY_PRICE_USD } from "@/lib/pricing";
 import {
   TOOL_PROFILES,
   LEADER_NOTES,
@@ -101,7 +100,7 @@ export default function MarketResearchPage() {
             <div className="flex items-baseline justify-between gap-2">
               <h3 className="font-medium text-primary">Ripplewatch</h3>
               <span className="text-xs text-muted-foreground">
-                $29/mo (Connect, self-serve) or ${MONTHLY_PRICE_USD.plus}/mo (Dashboard)
+                $29/mo plus usage, self-serve
               </span>
             </div>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
