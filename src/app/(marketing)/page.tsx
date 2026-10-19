@@ -1,10 +1,13 @@
 import Link from "next/link";
-import { ArrowRight, ArrowUp, Radar, Sparkles, Send, Waves, CircleDashed } from "lucide-react";
+import { ArrowRight, Radar, Sparkles, Send, Waves, CircleDashed } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/panel";
 import { PricingCards } from "@/components/marketing/pricing-cards";
 import { QuickAnswers } from "@/components/marketing/quick-answers";
+import { SourcesToChat } from "@/components/marketing/sources-to-chat";
+import { WorksWithYourAI } from "@/components/marketing/works-with-your-ai";
+import { ExampleChats } from "@/components/marketing/example-chats";
 import { cn, avatarColor } from "@/lib/utils";
 import { CONNECT_NAME } from "@/lib/connect";
 import { CONNECT_BASE_FEE_USD } from "@/lib/connect-pricing";
@@ -23,12 +26,6 @@ export const metadata = { alternates: { canonical: "/" } };
 // specific to this marketing example and shouldn't change how real scored/
 // unscored signals render in the actual product.
 const PRICE_HIKE_TITLE = "Northlane raised its Growth plan from $149 to $199/mo";
-
-const ASK_EXCHANGE = {
-  question: "What has Northlane changed recently that actually matters to us?",
-  answer:
-    "Two things worth acting on. They cut their entry tier from $99 to $69/mo, which directly narrows the price gap you've lost two deals to this month. They also removed the competitor-count cap on their top tier, which undercuts the \"scales with you\" pitch you lead with in upmarket conversations.",
-};
 
 const STEPS = [
   {
@@ -70,21 +67,20 @@ export default function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA) }}
       />
       <section className="mx-auto max-w-6xl px-6 pb-20 pt-20 sm:pt-28">
-        <div className="mx-auto max-w-3xl text-center">
+        <div className="mx-auto max-w-4xl text-center">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
             <Sparkles className="size-3.5" />
             Now inside Claude and ChatGPT
           </span>
-          <h1 className="mt-6 text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
-            Not alerts. Not data.
+          <h1 className="mt-6 text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
+            Your competitors,
             <br />
-            <span className="text-primary">Answers.</span>
+            <span className="text-primary">inside the AI you already use.</span>
           </h1>
-          <p className="mt-6 text-lg leading-relaxed text-muted-foreground text-balance">
-            Ripplewatch is the AI competitive intelligence analyst that&apos;s with you all the time, built right into
-            Claude or ChatGPT. Ask what your competitors are doing and what it actually means for your deals; it
-            reads their pricing, hiring, press, and product changes and scores it against your own positioning, ICP,
-            and lost-deal reasons, no dashboard required.
+          <p className="mx-auto mt-6 max-w-3xl text-lg leading-relaxed text-muted-foreground text-balance">
+            Pricing moves, hiring, press, product changes and your own lost deals, all in one chat. No new
+            dashboard to open and no new login to remember. Ripplewatch connects to Claude or ChatGPT and tells you
+            what your competitors&apos; moves mean for your deals.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link href="/onboarding?path=connect" className={buttonVariants({ size: "lg" })}>
@@ -102,7 +98,10 @@ export default function HomePage() {
             </Link>
           </p>
         </div>
+        <SourcesToChat />
       </section>
+
+      <WorksWithYourAI />
 
       <QuickAnswers />
 
@@ -118,21 +117,10 @@ export default function HomePage() {
             </h2>
             <p className="mt-3 text-muted-foreground">
               Once you connect Ripplewatch, this is the conversation, right inside Claude or ChatGPT: scoped to your
-              competitors, your positioning, and the last 90 days of signals.
+              competitors, your positioning, and the last 90 days of signals. Pick the one that sounds like you.
             </p>
           </div>
-          <Panel className="mx-auto mt-10 max-w-2xl p-5 shadow-sm">
-            <div className="ml-auto max-w-[85%] rounded-lg bg-primary px-4 py-3 text-sm leading-relaxed text-primary-foreground">
-              {ASK_EXCHANGE.question}
-            </div>
-            <div className="mr-auto mt-4 max-w-[85%] rounded-lg border border-primary/20 bg-accent/60 px-4 py-3 text-sm leading-relaxed text-foreground">
-              {ASK_EXCHANGE.answer}
-            </div>
-            <div className="mt-4 flex items-center gap-2 rounded-lg border border-border bg-secondary/40 px-4 py-2.5 text-sm text-muted-foreground">
-              Ask about a competitor, a trend, or what&apos;s changed…
-              <ArrowUp className="ml-auto size-3.5 shrink-0 rounded-full bg-primary p-0.5 text-primary-foreground" />
-            </div>
-          </Panel>
+          <ExampleChats />
           <div className="mt-8 text-center">
             <Link href="/connect" className={buttonVariants()}>
               See how {CONNECT_NAME} works <ArrowRight className="size-4" />
