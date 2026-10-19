@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { CompetitorSnapshotTool } from "@/components/marketing/competitor-snapshot-tool";
-import { DemoLink } from "@/components/marketing/demo-link";
 
 const description =
   "Enter a competitor's domain and get a live, one-time read on what they've been up to: funding, hiring, launches, pricing. See what Ripplewatch would track continuously.";
@@ -24,9 +23,6 @@ export default function CompetitorSnapshotPage() {
       <div className="text-center">
         <h1 className="text-3xl font-semibold tracking-tight">What would we catch about your competitor?</h1>
         <p className="mt-3 text-muted-foreground">{description}</p>
-        <div className="mt-4 flex justify-center">
-          <DemoLink label="Rather see it live? Book a demo" />
-        </div>
       </div>
       <div className="mt-12">
         <CompetitorSnapshotTool />

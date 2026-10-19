@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { fitTitle } from "@/lib/seo";
 import { CompetitiveIntelQuiz } from "@/components/marketing/competitive-intel-quiz";
-import { DemoLink } from "@/components/marketing/demo-link";
 import { TIERS } from "@/lib/quiz-tiers";
 
 const description =
@@ -26,9 +25,6 @@ export default function CompetitiveIntelligenceQuizPage() {
       <div className="text-center">
         <h1 className="text-3xl font-semibold tracking-tight">How mature is your competitive intelligence?</h1>
         <p className="mt-3 text-muted-foreground">{description}</p>
-        <div className="mt-4 flex justify-center">
-          <DemoLink label="Rather walk through it live? Book a demo" />
-        </div>
       </div>
       <div className="mt-12">
         <CompetitiveIntelQuiz />

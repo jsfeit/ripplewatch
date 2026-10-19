@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { applyCompetitorResolution, OPERATOR_EMAIL, type ManualResolution } from "@/lib/followups";
 import { sendSnapshotManualResultEmail } from "@/lib/resend";
-import { DEMO_URL } from "@/lib/demo";
 import type { BillingModel } from "@/lib/supabase/types";
 
 // Gated by middleware (/api/admin/:path* requires an admin session).
@@ -73,7 +72,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         hiringSummary: resolution.hiringSummary,
         notes: resolution.notes,
         appUrl: process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin,
-        demoUrl: DEMO_URL,
+        demoUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin}/contact?topic=demo`,
         replyTo: OPERATOR_EMAIL,
       });
     }
