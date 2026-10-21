@@ -97,12 +97,43 @@ To publish a new version later: bump `version` in `server.json`, then
 6. After publishing: Settings > Verification, to finish the official-vendor checklist.
 
 ### 3. PulseMCP, mcp.so, Glama
-I couldn't confirm their submit flows from outside. PulseMCP reads from the official
-registry, so step 1 may be enough there. Look for "Submit" or "Add server" on mcp.so and
-glama.ai/mcp/servers and paste the copy above.
+- **PulseMCP:** reads from the official registry, so Ripplewatch (published 2026-10-20)
+  should appear on its own within a day or so. Search pulsemcp.com for "ripplewatch" then.
+- **mcp.so:** its submit form asks for a *repository URL* and offers a $39 paid fast-track.
+  Ripplewatch's repo is private, so skip it unless you want to pay and give it a public repo.
+- **Glama:** has an "Add Server" button at glama.ai/mcp/servers, but it indexes GitHub
+  repos, so the same private-repo problem applies. Skip for now.
 
-### 4. Anthropic Claude connectors directory (last)
-Submitted from the Claude.ai organization admin area (needs a Team or Enterprise org) or
-Anthropic's directory review form. Have ready: public docs, privacy policy, icon, auth
-instructions and the reviewer login. It is a review request, not a guarantee.
-Their FAQ: https://support.claude.com/en/articles/11596036-anthropic-mcp-directory-faq
+### 4. Anthropic Claude connectors directory
+Portal: https://claude.ai/directory/manage > Submit new > MCP connector. Any paid Claude
+plan can submit (no Team or Enterprise plan needed). Review criteria:
+https://claude.com/docs/connectors/building/review-criteria
+
+Already true: every tool has a `title` and a `readOnlyHint`/`destructiveHint` annotation,
+and the server uses OAuth with dynamic client registration.
+
+Answers to paste, by portal step:
+1. **Connection:** `https://www.ripplewatch.ai/api/mcp`
+2. **Tools:** syncs automatically. Nothing to enter.
+3. **Listing:**
+   - Name: Ripplewatch
+   - One-liner (under 200): Competitive analyst inside Claude or ChatGPT. Ask who's heating up, why you're losing deals, and what changed, scored against your own win/loss history.
+   - Description (under 2,000): use the long description above.
+   - Categories: pick the closest to sales, marketing, research.
+   - Docs URL: https://www.ripplewatch.ai/docs/api
+   - Privacy URL: https://www.ripplewatch.ai/privacy
+   - Support: https://www.ripplewatch.ai/contact
+   - Icon: ripplewatch-logo-512.png (this folder)
+   - Slug: `ripplewatch` (permanent once published)
+4. **Use cases:** briefings on competitors, asking "is X heating up", logging won/lost deals.
+   Users need a Ripplewatch account ($29/month plus prepaid usage). Reads and writes data.
+5. **Company:** Ripplewatch, https://www.ripplewatch.ai, your email as contact.
+6. **Authentication:** OAuth with dynamic client registration.
+7. **Data handling:** your own API (first-party). No health data, no sponsored content.
+8. **Test and launch:** reviewer login = `directory-review@ripplewatch.ai` and the password in
+   `.reviewer-credentials.local`, sign in at https://www.ripplewatch.ai/login, then connect
+   the server. Then add the server as a custom connector in Claude yourself and call each
+   tool once, because this step asks you to confirm you did.
+9. **Compliance:** seven acknowledgments, all required. Read each one honestly.
+10. **Review and submit.**
+Escalations: mcp-review@anthropic.com. Status shows in the portal.
