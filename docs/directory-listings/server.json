@@ -1,0 +1,14 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "ai.ripplewatch/ripplewatch",
+  "title": "Ripplewatch",
+  "description": "Competitive analyst inside Claude or ChatGPT. Ask who's heating up and why.",
+  "version": "0.1.0",
+  "websiteUrl": "https://www.ripplewatch.ai",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://www.ripplewatch.ai/api/mcp"
+    }
+  ]
+}

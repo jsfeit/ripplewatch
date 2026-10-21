@@ -52,3 +52,4 @@ supabase/.temp/
 # ChatGPT plugin: built zip and the reviewer login are local only.
 /chatgpt-plugin/dist/
 /chatgpt-plugin/.reviewer-credentials.local
+/docs/directory-listings/.reviewer-credentials.local
