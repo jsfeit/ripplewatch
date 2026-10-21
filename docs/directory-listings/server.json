@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "ai.ripplewatch/ripplewatch",
   "title": "Ripplewatch",
-  "description": "Competitive intelligence analyst inside Claude or ChatGPT: competitor momentum, pricing, hiring and news, scored against your own win/loss history.",
+  "description": "Competitive analyst inside Claude or ChatGPT. Ask who's heating up and why.",
   "version": "0.1.0",
   "websiteUrl": "https://www.ripplewatch.ai",
   "remotes": [

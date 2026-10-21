@@ -75,39 +75,15 @@ log_customer_feedback, log_call_mentions, get_next_step, get_slack_setup_link
 
 ## Submit, in this order
 
-### 1. Official MCP Registry (about 15 minutes)
-Other directories read from this one, so do it first. `server.json` in this folder is
-ready. Its name, `ai.ripplewatch/ripplewatch`, is the reverse of ripplewatch.ai, which
-the registry requires for domain-based login. Commands are from the registry's docs
-(modelcontextprotocol.io/registry/authentication). It is still a preview, so re-check
-if anything errors.
+### 1. Official MCP Registry (DONE 2026-10-20)
+Published as `ai.ripplewatch/ripplewatch` v0.1.0. Domain ownership was proved with a TXT
+record on ripplewatch.ai in Cloudflare (`v=MCPv1; k=ed25519; p=...`, public key only; the
+private key is in `~/mcp-keys/key.pem`, outside the repo). Check it at
+https://registry.modelcontextprotocol.io/v0.1/servers?search=ripplewatch
 
-```bash
-brew install mcp-publisher
-mkdir -p ~/mcp-keys && cd ~/mcp-keys          # keep the private key OUT of the repo
-
-# 1. make a key and print the DNS record to add
-openssl genpkey -algorithm Ed25519 -out key.pem
-PUBLIC_KEY="$(openssl pkey -in key.pem -pubout -outform DER | tail -c 32 | base64)"
-echo "ripplewatch.ai. IN TXT \"v=MCPv1; k=ed25519; p=${PUBLIC_KEY}\""
-```
-
-2. Add that as a **TXT record on ripplewatch.ai** (name `@`, the value inside the quotes)
-   in wherever the domain's DNS lives (Vercel > Domains > ripplewatch.ai > DNS Records,
-   if it's hosted there). Wait 5 to 10 minutes.
-
-```bash
-# 3. log in and publish
-PRIVATE_KEY="$(openssl pkey -in key.pem -noout -text | grep -A3 "priv:" | tail -n +2 | tr -d ' :\n')"
-mcp-publisher login dns --domain ripplewatch.ai --private-key "${PRIVATE_KEY}"
-cd /Users/jeremy/ripplewatch/docs/directory-listings
-mcp-publisher publish
-curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=ripplewatch"
-```
-
-No-DNS alternative: change `name` in server.json to `io.github.jsfeit/ripplewatch`, run
-`mcp-publisher login github`, enter the code it prints at github.com/login/device, then
-`mcp-publisher publish`.
+To publish a new version later: bump `version` in `server.json`, then
+`mcp-publisher login dns --domain ripplewatch.ai --private-key <key>` and
+`mcp-publisher publish`. Descriptions are capped at 100 characters.
 
 ### 2. Smithery (about 10 minutes)
 1. Go to https://smithery.ai/new and sign in (GitHub is fine).
