@@ -69,7 +69,7 @@ async function handle(req: Request): Promise<Response> {
   // The MCP server is Ripplewatch Connect's product: a dashboard plan (with
   // its REST API) doesn't include it.
   if (!canUseMcp(auth.tier, auth.demoMode)) {
-    return Response.json({ error: "Connecting an AI assistant requires Ripplewatch Connect." }, { status: 403 });
+    return Response.json({ error: "Connecting an AI assistant requires an active Ripplewatch subscription." }, { status: 403 });
   }
 
   // Fire-and-forget: Settings reads this to show a real "connected" status

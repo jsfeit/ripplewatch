@@ -3,16 +3,16 @@ import { fitTitle } from "@/lib/seo";
 import { COMPARISONS } from "@/lib/comparisons";
 
 const description =
-  "How Ripplewatch, an AI analyst inside Claude and ChatGPT, compares to Crayon, Klue, Kompyte and other competitive intelligence tools.";
+  "Crayon, Klue, Kompyte, AlphaSense and Ripplewatch compared: monitoring, scoring and cost. Ripplewatch is an AI analyst inside Claude and ChatGPT.";
 
 export const metadata = {
-  title: fitTitle("Ripplewatch vs Crayon, Klue, Kompyte and AlphaSense"),
+  title: fitTitle("Crayon vs Klue vs Kompyte vs Ripplewatch: compared"),
   description,
   alternates: { canonical: "/compare" },
-  openGraph: { title: "Ripplewatch vs Crayon, Klue, Kompyte and AlphaSense", description, images: ["/opengraph-image"] },
+  openGraph: { title: "Crayon vs Klue vs Kompyte vs Ripplewatch: compared", description, images: ["/opengraph-image"] },
   twitter: {
     card: "summary_large_image",
-    title: "Ripplewatch vs Crayon, Klue, Kompyte and AlphaSense",
+    title: "Crayon vs Klue vs Kompyte vs Ripplewatch: compared",
     description,
     images: ["/opengraph-image"],
   },

@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     .eq("id", profile.account_id)
     .single();
   if (!account || account.tier !== "connect") {
-    return NextResponse.json({ error: "This account isn't a Ripplewatch Connect account." }, { status: 400 });
+    return NextResponse.json({ error: "This account isn't set up for Ripplewatch." }, { status: 400 });
   }
   if (account.demo_mode) return NextResponse.json({ error: "Billing is disabled for demo accounts." }, { status: 403 });
 

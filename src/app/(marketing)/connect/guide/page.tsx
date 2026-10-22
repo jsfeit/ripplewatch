@@ -7,7 +7,7 @@ import { CONNECT_NAME } from "@/lib/connect";
 import { JsonLd, breadcrumbs } from "@/components/marketing/json-ld";
 
 const description =
-  "How to get the most out of Ripplewatch Connect: getting your win/loss data in, what momentum means, which emails you'll receive, how to see what changed, and what to ask your assistant.";
+  "How to get the most out of Ripplewatch: getting your win/loss data in, what momentum means, which emails you'll receive, how to see what changed, and what to ask your assistant.";
 
 export const metadata = {
   title: "How to use Ripplewatch: win/loss data, momentum and what to ask",

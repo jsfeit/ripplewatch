@@ -31,7 +31,7 @@ export default function AlternativesIndexPage() {
       <h1 className="text-3xl font-semibold tracking-tight">Looking for an alternative?</h1>
       <p className="mt-2 text-muted-foreground">{description}</p>
       <p className="mt-4 leading-relaxed text-muted-foreground">
-        Ripplewatch Connect works differently from the platforms below: there&apos;s no separate tool to log
+        Ripplewatch works differently from the platforms below: there&apos;s no separate tool to log
         into. It runs inside Claude and other AI assistants that support MCP, so you ask about your competitors in
         the place you already work, and the answers are scored against your own positioning and deals. Whether
         you&apos;re outgrowing a free tool, priced out of an enterprise one, or just tired of a sales call to see
