@@ -3,7 +3,7 @@ action: new-post
 slug: best-mcp-servers-for-sales-and-marketing-teams
 title: "The Best MCP Servers for Sales and Marketing Teams, and How to Pick One"
 description: "Which MCP servers actually exist for CRM, email, analytics and research, what the registry says about each, and five checks before you connect one."
-publish_date: schedule (Jeremy to confirm; planned Mon 2026-10-26)
+publish_date: 2026-10-26
 status: draft
 facts_checked: "Every server below was read from the official MCP Registry on 2026-10-22: active, hosted (remote), name and description quoted from its entry. Not run or tested."
 ---
