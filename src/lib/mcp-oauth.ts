@@ -61,7 +61,7 @@ export async function authenticateOAuthAccessToken(token: string): Promise<OAuth
   // off connected apps immediately instead of when the token expires.
   const { data: account } = await supabase.from("accounts").select("tier, demo_mode, status").eq("id", profile.account_id).single();
   if (!account || !API_ACCESS_ALLOWED[account.tier]) {
-    return { ok: false, status: 403, error: "Connecting an AI assistant requires an active Ripplewatch subscription." };
+    return { ok: false, status: 403, error: "Connecting an AI assistant requires an active Ripplewatch subscription. Sign up at https://www.ripplewatch.ai/onboarding?path=connect" };
   }
 
   if (account.tier === "connect" && account.status !== "active") {

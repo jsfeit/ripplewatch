@@ -1,5 +1,4 @@
 import { ContactForm } from "@/components/marketing/contact-form";
-import { CONTACT_TOPICS, type ContactTopicId } from "@/lib/contact-topics";
 
 const description = "Send Ripplewatch a question, ask for help with your account, or book a demo.";
 
@@ -11,9 +10,9 @@ export const metadata = {
   twitter: { card: "summary_large_image", title: "Contact us | Ripplewatch", description },
 };
 
-export default async function ContactPage({ searchParams }: { searchParams: Promise<{ topic?: string }> }) {
-  const { topic } = await searchParams;
-  const initialTopic: ContactTopicId = CONTACT_TOPICS.some((t) => t.id === topic) ? (topic as ContactTopicId) : "question";
+// Static on purpose: reading ?topic= on the server made every visit render on demand (0.3 to 1.1 s).
+// The form reads it in the browser instead, so the page itself can be served from the cache.
+export default function ContactPage() {
   return (
     <div className="mx-auto max-w-xl px-6 py-20">
       <div className="text-center">
@@ -23,7 +22,7 @@ export default async function ContactPage({ searchParams }: { searchParams: Prom
         </p>
       </div>
       <div className="mt-10">
-        <ContactForm initialTopic={initialTopic} />
+        <ContactForm />
       </div>
     </div>
   );

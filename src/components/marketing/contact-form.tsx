@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Calendar, CheckCircle2, Loader2 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,8 +26,18 @@ function BookingLink({ className }: { className?: string }) {
   );
 }
 
-export function ContactForm({ initialTopic }: { initialTopic: ContactTopicId }) {
-  const [topic, setTopic] = useState<ContactTopicId>(initialTopic);
+export function ContactForm() {
+  const [topic, setTopic] = useState<ContactTopicId>("question");
+
+  // /contact?topic=demo and the like preselect a topic. Read in the browser so the page can be static.
+  useEffect(() => {
+    const wanted = new URLSearchParams(window.location.search).get("topic");
+    const match = CONTACT_TOPICS.find((t) => t.id === wanted);
+    // Reading the URL needs the browser, so it can only happen after load.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (match) setTopic(match.id);
+  }, []);
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
