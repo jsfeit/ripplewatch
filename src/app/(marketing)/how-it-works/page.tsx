@@ -8,7 +8,7 @@ import { cn, avatarColor } from "@/lib/utils";
 import Link from "next/link";
 
 const description =
-  "Not alerts. Not data. Answers. See exactly how a raw competitor signal turns into a Momentum score, delivered in Claude, ChatGPT, or Slack, no new tool to check, scored against your positioning, ICP, and the real reasons deals were lost.";
+  "See how a raw competitor signal becomes a Momentum score, weighed against your positioning, buyers and lost deals, inside Claude or ChatGPT.";
 
 export const metadata = {
   title: "How it works",
