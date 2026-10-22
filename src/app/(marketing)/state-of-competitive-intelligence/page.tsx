@@ -30,6 +30,26 @@ export const metadata = {
   },
 };
 
+
+// Plain-language findings pulled from the coverage grid below, so the numbers on this page can never
+// disagree with the grid. Ripplewatch's own row is left out: these describe the rest of the market.
+function keyFindings() {
+  const others = COVERAGE_HEATMAP.filter((row) => row.name !== "Ripplewatch");
+  const total = others.length;
+  const count = (key: keyof Omit<(typeof COVERAGE_HEATMAP)[number], "name">) => others.filter((row) => row[key]).length;
+  return {
+    total,
+    pricing: count("pricing"),
+    hiring: count("hiring"),
+    reviews: count("reviews"),
+    fundingNews: count("fundingNews"),
+    crmDealData: count("crmDealData"),
+    seoTraffic: count("seoTraffic"),
+    profiled: TOOL_PROFILES.length,
+    quoteOnly: TOOL_PROFILES.filter((tool) => tool.pricing.toLowerCase().startsWith("custom quote")).length,
+  };
+}
+
 function profilesFor(tier: ToolProfile["tier"]) {
   return TOOL_PROFILES.filter((p) => p.tier === tier);
 }
@@ -68,6 +88,57 @@ export default function MarketResearchPage() {
         </h1>
         <p className="mt-4 text-muted-foreground">{description}</p>
       </div>
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Article",
+            headline: "The state of competitive intelligence tools",
+            description,
+            datePublished: "2026-07-01",
+            author: { "@type": "Person", name: "Jeremy Feit", url: "https://www.ripplewatch.ai/about" },
+            publisher: { "@type": "Organization", name: "Ripplewatch", url: "https://www.ripplewatch.ai" },
+            mainEntityOfPage: "https://www.ripplewatch.ai/state-of-competitive-intelligence",
+            about: {
+              "@type": "ItemList",
+              name: "Competitive intelligence tools surveyed",
+              itemListElement: TOOL_PROFILES.map((tool, i) => ({
+                "@type": "ListItem",
+                position: i + 1,
+                name: tool.name,
+                url: `https://${tool.domain}`,
+              })),
+            },
+          }),
+        }}
+      />
+
+      {(() => {
+        const f = keyFindings();
+        return (
+          <Panel className="mx-auto mt-10 max-w-2xl p-6">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Key findings</h2>
+            <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed">
+              <li>The market splits into three tiers: enterprise and category leaders, a mid-market tier, and a newer group of AI-native tools.</li>
+              <li>
+                Of the {f.total} other tools in the coverage grid below, {f.pricing} track competitor pricing and {f.hiring} track hiring.
+                Review sentiment ({f.reviews}) and website traffic ({f.seoTraffic}) are covered by fewer.
+              </li>
+              <li>
+                Only {f.crmDealData} of the {f.total} connect to deal data from a CRM, which is how a finding gets weighed against the deals a team
+                actually wins and loses.
+              </li>
+              <li>
+                {f.quoteOnly} of the {f.profiled} tools profiled below are priced by custom quote only, so a buyer can&apos;t see a price without
+                talking to sales.
+              </li>
+            </ul>
+            <p className="mt-3 text-xs text-muted-foreground">Compiled from public pricing pages, product marketing and review sites, July 2026.</p>
+          </Panel>
+        );
+      })()}
 
       <section className="mt-20">
         <h2 className="text-2xl font-semibold tracking-tight">Three tiers of the market</h2>

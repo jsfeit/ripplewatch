@@ -213,6 +213,33 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           }),
         }}
       />
+      {post.slug === "early-stage-saas-pricing-pages-study" ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Dataset",
+              name: "Pricing pages on the websites of 288 early-stage software companies",
+              description:
+                "Whether 288 early-stage US software companies (25 or fewer employees) publish a pricing page: 56% had none we could find, 22% publish prices, 17% say contact sales only. Of 29 companies with a readable monthly starting price, the median was $129 a month.",
+              url: `${APP_URL}/blog/${post.slug}`,
+              creator: { "@type": "Organization", name: "Ripplewatch", url: APP_URL },
+              datePublished: post.publishedAt,
+              temporalCoverage: "2026-10",
+              spatialCoverage: "United States",
+              measurementTechnique:
+                "Automated read of each company's own website for a pricing page, with a hand check of 20 randomly chosen 'no pricing page found' companies (19 confirmed).",
+              variableMeasured: [
+                "Has a pricing page",
+                "Publishes prices",
+                "Sales-led, contact us only",
+                "Monthly starting price (USD)",
+              ],
+            }),
+          }}
+        />
+      ) : null}
       {FAQPAGE_SLUGS.has(post.slug) ? (
         <script
           type="application/ld+json"
