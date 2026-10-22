@@ -44,7 +44,7 @@ const authedHandler = withMcpAuth(
 // access token issued through the connector flow (Claude and ChatGPT custom
 // connectors, where the user signs in and approves instead of pasting a key).
 // Both resolve to the same account-scoped identity.
-async function handle(req: Request): Promise<Response> {
+async function handleRequest(req: Request): Promise<Response> {
   const header = req.headers.get("authorization") ?? "";
   const token = header.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() : "";
 
@@ -69,7 +69,7 @@ async function handle(req: Request): Promise<Response> {
   // The MCP server is Ripplewatch Connect's product: a dashboard plan (with
   // its REST API) doesn't include it.
   if (!canUseMcp(auth.tier, auth.demoMode)) {
-    return Response.json({ error: "Connecting an AI assistant requires an active Ripplewatch subscription." }, { status: 403 });
+    return Response.json({ error: `Connecting an AI assistant requires an active Ripplewatch subscription. Sign up at ${new URL(req.url).origin}/onboarding?path=connect` }, { status: 403 });
   }
 
   // Fire-and-forget: Settings reads this to show a real "connected" status
@@ -90,4 +90,27 @@ async function handle(req: Request): Promise<Response> {
   return authedHandler(req);
 }
 
-export { handle as GET, handle as POST, handle as DELETE };
+// Claude and ChatGPT call this from their own servers, so they never needed CORS. Browser-based
+// MCP clients (the MCP Inspector web app, third-party web tools) do. The endpoint takes a bearer
+// token and no cookies, so allowing any origin does not expose a signed-in session, and
+// WWW-Authenticate has to be readable for such a client to find the sign-in metadata.
+const CORS_HEADERS: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept, Mcp-Session-Id, Mcp-Protocol-Version, Last-Event-ID",
+  "Access-Control-Expose-Headers": "WWW-Authenticate, Mcp-Session-Id",
+  "Access-Control-Max-Age": "86400",
+};
+
+async function handle(req: Request): Promise<Response> {
+  const res = await handleRequest(req);
+  const headers = new Headers(res.headers);
+  for (const [key, value] of Object.entries(CORS_HEADERS)) headers.set(key, value);
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+}
+
+function preflight(): Response {
+  return new Response(null, { status: 204, headers: CORS_HEADERS });
+}
+
+export { handle as GET, handle as POST, handle as DELETE, preflight as OPTIONS };
