@@ -18,10 +18,10 @@ If nothing scored High this week, the owner says so in the invite and the meetin
 
 ## The agenda
 
-- **Minutes 0 to 5:** review this week's High relevance findings only, not the full raw feed. If nothing scored High, say so and move on. That's a real and useful outcome too.
-- **Minutes 5 to 15:** for each High finding, make one decision. Does this change a talk track, a deal currently in flight, or a roadmap conversation, or is it just worth having noted?
-- **Minutes 15 to 25:** a quick Momentum check. Which competitors are heating up this week, and does that match what the room's gut feel already was? When it doesn't, that mismatch is usually the most useful five minutes of the meeting.
-- **Minutes 25 to 30:** log any new win/loss reasons from deals that closed this week, so next week's Momentum and relevance scoring stay accurate instead of drifting on stale data.
+- Minutes 0 to 5: review this week's High relevance findings only, not the full raw feed. If nothing scored High, say so and move on. That's a real and useful outcome too.
+- Minutes 5 to 15: for each High finding, make one decision. Does this change a talk track, a deal currently in flight, or a roadmap conversation, or is it just worth having noted?
+- Minutes 15 to 25: a quick Momentum check. Which competitors are heating up this week, and does that match what the room's gut feel already was? When it doesn't, that mismatch is usually the most useful five minutes of the meeting.
+- Minutes 25 to 30: log any new win/loss reasons from deals that closed this week, so next week's Momentum and relevance scoring stay accurate instead of drifting on stale data.
 
 ## What a good decision sounds like
 
@@ -40,9 +40,9 @@ Whoever owns messaging and whoever's closest to actual deals, not a large cross-
 
 Three failure modes show up again and again:
 
-- **It turns into a status update.** The giveaway is people reading the feed aloud. If the meeting has no decisions, cut it down or cancel it.
-- **There's no owner.** Everyone assumes someone else prepared. Pick one person and rotate quarterly.
-- **The alerts are too noisy.** If every week has ten "High" findings, the scoring is off. Fix the inputs: log more win/loss reasons and tighten what counts as a direct competitor.
+- It turns into a status update. The giveaway is people reading the feed aloud. If the meeting has no decisions, cut it down or cancel it.
+- There's no owner. Everyone assumes someone else prepared. Pick one person and rotate quarterly.
+- The alerts are too noisy. If every week has ten "High" findings, the scoring is off. Fix the inputs: log more win/loss reasons and tighten what counts as a direct competitor.
 
 ## How to tell it's working
 
