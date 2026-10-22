@@ -52,6 +52,23 @@ export async function generateMetadata({
 // as a link; everything else stays a plain string, so no HTML injection
 // risk from post body text.
 const LINK_PATTERN = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/g;
+// **bold** is the other supported pattern. Posts have always used it in lists ("- **Label:** text"), but
+// it used to print as literal asterisks. Same rule as links: split out as a React node, never as HTML.
+const BOLD_PATTERN = /\*\*([^*]+)\*\*/g;
+
+function renderBold(text: string, keyStart: number): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  let last = 0;
+  let key = keyStart;
+  for (const match of text.matchAll(BOLD_PATTERN)) {
+    const start = match.index ?? 0;
+    if (start > last) nodes.push(text.slice(last, start));
+    nodes.push(<strong key={`b${key++}`} className="font-semibold text-foreground">{match[1]}</strong>);
+    last = start + match[0].length;
+  }
+  if (last < text.length) nodes.push(text.slice(last));
+  return nodes;
+}
 
 function renderInlineText(text: string) {
   const nodes: ReactNode[] = [];
@@ -61,7 +78,7 @@ function renderInlineText(text: string) {
   for (const match of text.matchAll(LINK_PATTERN)) {
     const [full, label, href] = match;
     const start = match.index ?? 0;
-    if (start > lastIndex) nodes.push(text.slice(lastIndex, start));
+    if (start > lastIndex) nodes.push(...renderBold(text.slice(lastIndex, start), key++ * 100));
 
     const isInternal = href.startsWith("/");
     nodes.push(
@@ -83,7 +100,7 @@ function renderInlineText(text: string) {
     );
     lastIndex = start + full.length;
   }
-  if (lastIndex < text.length) nodes.push(text.slice(lastIndex));
+  if (lastIndex < text.length) nodes.push(...renderBold(text.slice(lastIndex), key++ * 100));
 
   return nodes;
 }

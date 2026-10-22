@@ -17,15 +17,15 @@ For one competitor, once, it's good. It reads their site, checks recent news, an
 
 ## Where it starts to break
 
-**It doesn't remember last week.** The most useful question in competitive intelligence is "what changed?", and that needs two snapshots to compare. A fresh chat has only today's. It can tell you what their pricing page says now. It can't tell you the entry plan was cheaper in September, because nobody saved September.
+It doesn't remember last week. The most useful question in competitive intelligence is "what changed?", and that needs two snapshots to compare. A fresh chat has only today's. It can tell you what their pricing page says now. It can't tell you the entry plan was cheaper in September, because nobody saved September.
 
-**It doesn't watch.** Nothing happens between chats. A competitor can raise prices on Tuesday and you'll hear about it when you next think to ask, which is usually when a prospect mentions it.
+It doesn't watch. Nothing happens between chats. A competitor can raise prices on Tuesday and you'll hear about it when you next think to ask, which is usually when a prospect mentions it.
 
-**It doesn't know your deals.** A generic summary tells you what a competitor does. It doesn't tell you which of their moves threatens the two deals you have open, because it doesn't know who you sell to or why you've lost before. Relevance is the whole game, and it comes from your own history, not from the web.
+It doesn't know your deals. A generic summary tells you what a competitor does. It doesn't tell you which of their moves threatens the two deals you have open, because it doesn't know who you sell to or why you've lost before. Relevance is the whole game, and it comes from your own history, not from the web.
 
-**It's inconsistent.** Ask the same question twice and you get different sources and different depth. That's fine for a quick read and a problem if you want to compare this month to last month.
+It's inconsistent. Ask the same question twice and you get different sources and different depth. That's fine for a quick read and a problem if you want to compare this month to last month.
 
-**It's hard to audit.** When a summary says a competitor "appears to be moving upmarket," what was that based on? A job board? A pricing change? One press mention? Without the evidence you can't judge how much weight to give it.
+It's hard to audit. When a summary says a competitor "appears to be moving upmarket," what was that based on? A job board? A pricing change? One press mention? Without the evidence you can't judge how much weight to give it.
 
 ## The do-it-yourself version
 
@@ -50,8 +50,8 @@ The last line matters. It's the difference between a useful summary and a confid
 
 Three signs it's time to stop maintaining your own setup:
 
-- **You track more than three or four competitors.** Keeping each one current by hand is where the time goes.
-- **Your own deal history should shape the answer.** Win/loss reasons, buyer profile, who you lose to. A tool built around that scores each finding against it, so you read less and decide more.
-- **You want the answer without having to remember to ask.** A scheduled prompt still depends on you setting it up, fixing it, and reading it.
+- You track more than three or four competitors. Keeping each one current by hand is where the time goes.
+- Your own deal history should shape the answer. Win/loss reasons, buyer profile, who you lose to. A tool built around that scores each finding against it, so you read less and decide more.
+- You want the answer without having to remember to ask. A scheduled prompt still depends on you setting it up, fixing it, and reading it.
 
 That's the gap we built Ripplewatch for. It watches competitors continuously, keeps the history so it can tell you what changed, and scores each finding against your own positioning and deals, all inside the assistant you already use. You can [see what it says about one competitor for free](/competitor-snapshot) before deciding anything. But if a prompt and a calendar reminder cover what you need today, they're a perfectly good place to start.

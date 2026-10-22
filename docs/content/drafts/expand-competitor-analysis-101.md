@@ -30,10 +30,10 @@ Use the same list for every competitor so you can compare them later. Ten minute
 
 SWOT is four short lists. Write them for your company against each competitor:
 
-- **Strengths:** what you genuinely do better than them, not what you'd like to be true.
-- **Weaknesses:** where they'd actually win a deal against you today.
-- **Opportunities:** segments or use cases they serve poorly, or not at all.
-- **Threats:** what they could plausibly do that would hurt you, not just what they've already done.
+- Strengths: what you genuinely do better than them, not what you'd like to be true.
+- Weaknesses: where they'd actually win a deal against you today.
+- Opportunities: segments or use cases they serve poorly, or not at all.
+- Threats: what they could plausibly do that would hurt you, not just what they've already done.
 
 A quick example, with a made-up company. Say you sell documentation software to small product teams, and your closest competitor is a big general workspace tool with a free tier. Your strength might be that decisions stay linked to the work. Your weakness is that the competitor is already installed at most of your prospects. The opportunity is teams who've outgrown free pages and want structure. The threat is that the competitor ships a templates feature and removes your edge.
 
