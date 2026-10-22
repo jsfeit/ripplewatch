@@ -27,11 +27,25 @@ function ago(iso: string): string {
 
 export default async function AdminLiveReadsPage() {
   const admin = createAdminClient();
-  const { data: reads, error } = await admin
+  // utm_* come from migration 0087; until it is applied, fall back to the original columns.
+  const withUtm = await admin
     .from("live_reads")
-    .select("id, created_at, company_name, positioning, icp, competitor_domain, competitor_name, confidence, read, account_id")
+    .select(
+      "id, created_at, company_name, positioning, icp, competitor_domain, competitor_name, confidence, read, account_id, utm_source, utm_medium, utm_campaign"
+    )
     .order("created_at", { ascending: false })
     .limit(500);
+  let reads: ((NonNullable<typeof withUtm.data>)[number])[] | null = withUtm.data;
+  let error = withUtm.error;
+  if (error) {
+    const plain = await admin
+      .from("live_reads")
+      .select("id, created_at, company_name, positioning, icp, competitor_domain, competitor_name, confidence, read, account_id")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    reads = plain.data ? plain.data.map((r) => ({ ...r, utm_source: null, utm_medium: null, utm_campaign: null })) : null;
+    error = plain.error;
+  }
 
   if (error) {
     return (
@@ -117,7 +131,14 @@ export default async function AdminLiveReadsPage() {
                 const read = r.read as { found?: string; meaning?: string; move?: string; question?: string } | null;
                 return (
                   <tr key={r.id} className="border-b border-border/60 align-top last:border-0">
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{ago(r.created_at)}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                      {ago(r.created_at)}
+                      {r.utm_source ? (
+                        <span className="mt-0.5 block text-xs">
+                          {[r.utm_source, r.utm_campaign].filter(Boolean).join(" / ")}
+                        </span>
+                      ) : null}
+                    </td>
                     <td className="px-4 py-3">
                       <p className="font-medium">{r.company_name || "(no name)"}</p>
                       <p className="max-w-[16rem] truncate text-xs text-muted-foreground" title={r.positioning ?? ""}>

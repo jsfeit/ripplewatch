@@ -39,6 +39,9 @@ export async function POST(request: Request) {
   const positioning = str(body?.positioning, 400);
   const icp = str(body?.icp, 400);
   const domain = normalizeDomain(str(body?.domain, 200)).toLowerCase();
+  const utmSource = str(body?.utm_source, 100);
+  const utmMedium = str(body?.utm_medium, 100);
+  const utmCampaign = str(body?.utm_campaign, 100);
 
   if (positioning.length < 3) {
     return NextResponse.json({ error: "Tell us in a sentence what you sell." }, { status: 400 });
@@ -79,21 +82,28 @@ export async function POST(request: Request) {
   // visitor's read: if the table is missing or the write fails, they still get their answer.
   let readId: string | null = null;
   const competitorName = result.activity?.companyName || result.title || domain;
-  const { data: saved, error: saveError } = await createAdminClient()
+  const row = {
+    company_name: companyName || null,
+    positioning,
+    icp: icp || null,
+    competitor_domain: domain,
+    competitor_name: competitorName,
+    confidence: result.personalRead?.confidence ?? null,
+    evidence,
+    read: result.personalRead ? { ...result.personalRead } : null,
+  };
+  const admin = createAdminClient();
+  // The UTM columns come from migration 0087. Until it is applied the first insert fails, so
+  // fall back to saving the read without them rather than losing it.
+  let { data: saved, error: saveError } = await admin
     .from("live_reads")
-    .insert({
-      company_name: companyName || null,
-      positioning,
-      icp: icp || null,
-      competitor_domain: domain,
-      competitor_name: competitorName,
-      confidence: result.personalRead?.confidence ?? null,
-      evidence,
-      read: result.personalRead ? { ...result.personalRead } : null,
-    })
+    .insert({ ...row, utm_source: utmSource || null, utm_medium: utmMedium || null, utm_campaign: utmCampaign || null })
     .select("id")
     .single();
-  if (saveError) console.error("live read not saved:", saveError.message);
+  if (saveError) {
+    ({ data: saved, error: saveError } = await admin.from("live_reads").insert(row).select("id").single());
+  }
+  if (saveError || !saved) console.error("live read not saved:", saveError?.message);
   else readId = saved.id;
 
   await notifyLead({

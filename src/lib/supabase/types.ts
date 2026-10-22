@@ -285,6 +285,9 @@ export interface Database {
           evidence: string[];
           read: Record<string, unknown> | null;
           account_id: string | null;
+          utm_source: string | null;
+          utm_medium: string | null;
+          utm_campaign: string | null;
         };
         Insert: {
           id?: string;
@@ -298,6 +301,9 @@ export interface Database {
           evidence?: string[];
           read?: Record<string, unknown> | null;
           account_id?: string | null;
+          utm_source?: string | null;
+          utm_medium?: string | null;
+          utm_campaign?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["live_reads"]["Insert"]>;
         Relationships: [];

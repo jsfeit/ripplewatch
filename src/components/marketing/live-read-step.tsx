@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { PersonalReadCard } from "@/components/app/personal-read-card";
 import { saveIntro, type ConnectIntro, type IntroRead } from "@/lib/connect-intro";
 import { trackEvent } from "@/lib/analytics";
+import { readStoredUtm } from "@/components/utm-capture";
 
 type Result = { read: IntroRead; competitorName: string; evidence: string[] };
 
@@ -56,7 +57,15 @@ export function LiveReadStep({
       const res = await fetch("/api/onboarding/live-read", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyName, positioning, icp, domain }),
+        body: JSON.stringify({
+          companyName,
+          positioning,
+          icp,
+          domain,
+          utm_source: readStoredUtm()?.source ?? "",
+          utm_medium: readStoredUtm()?.medium ?? "",
+          utm_campaign: readStoredUtm()?.campaign ?? "",
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {

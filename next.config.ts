@@ -16,7 +16,14 @@ const SECURITY_HEADERS = [
 
 const nextConfig: NextConfig = {
   async headers() {
-    return [{ source: "/:path*", headers: SECURITY_HEADERS }];
+    return [
+      { source: "/:path*", headers: SECURITY_HEADERS },
+      // The site's own CSS, JS and font files (one set per deploy). Google fetches them to render
+      // pages, which is fine, but listed them as 192 "Crawled - currently not indexed" pages in
+      // Search Console. noindex keeps them out of that report without blocking the fetch, which
+      // a robots.txt rule would, and Google needs these files to render the page properly.
+      { source: "/_next/static/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex" }] },
+    ];
   },
   async redirects() {
     // /waitlist was removed once signup went fully self-serve — this keeps

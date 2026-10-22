@@ -248,7 +248,7 @@ export default function HowItWorksPage() {
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link href="/onboarding?path=connect" className={buttonVariants({ size: "lg" })}>
-            Get Ripplewatch Connect
+            Get Ripplewatch
           </Link>
           <Link href="/pricing" className={buttonVariants({ size: "lg", variant: "outline" })}>
             See pricing

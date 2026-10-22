@@ -29,7 +29,7 @@ export async function meteredForConnect<T>(
     const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.ripplewatch.ai";
     return {
       ok: false,
-      message: `Your Ripplewatch Connect balance is $${funds.balanceUsd.toFixed(2)}, below the $${CONNECT_MIN_BALANCE_TO_RUN_USD.toFixed(2)} needed to run this. Add funds at ${base}/app/settings?tab=connect to keep going.`,
+      message: `Your Ripplewatch balance is $${funds.balanceUsd.toFixed(2)}, below the $${CONNECT_MIN_BALANCE_TO_RUN_USD.toFixed(2)} needed to run this. Add funds at ${base}/app/settings?tab=connect to keep going.`,
     };
   }
 

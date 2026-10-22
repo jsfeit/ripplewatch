@@ -50,7 +50,7 @@ export async function authenticateApiKey(token: string): Promise<ApiKeyAuth> {
   // A Connect account whose subscription isn't paying is on hold: cut off
   // here too, not just in the dashboard.
   if (account.tier === "connect" && account.status !== "active") {
-    return { ok: false, status: 403, error: "Your Ripplewatch Connect subscription isn't active." };
+    return { ok: false, status: 403, error: "Your Ripplewatch subscription isn't active." };
   }
 
   const now = Date.now();

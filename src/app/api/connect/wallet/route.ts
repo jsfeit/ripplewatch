@@ -23,7 +23,7 @@ export async function PATCH(request: Request) {
 
   const admin = createAdminClient();
   const { data: account } = await admin.from("accounts").select("tier").eq("id", profile.account_id).single();
-  if (account?.tier !== "connect") return NextResponse.json({ error: "Not a Ripplewatch Connect account." }, { status: 400 });
+  if (account?.tier !== "connect") return NextResponse.json({ error: "This account isn't set up for Ripplewatch." }, { status: 400 });
 
   const body = await request.json().catch(() => null);
   const update: {

@@ -29,8 +29,8 @@ export async function generateMetadata({
   const entry = getComparison(slug);
   if (!entry) return {};
 
-  const title = `Ripplewatch vs. ${entry.name}: an AI analyst in your assistant`;
-  const description = `Ripplewatch vs. ${entry.name}: an AI analyst inside Claude and ChatGPT, with published pricing. How they compare on monitoring, scoring and cost.`;
+  const title = `${entry.name} alternative: Ripplewatch vs. ${entry.name}`;
+  const description = `${entry.name} alternative? Ripplewatch vs. ${entry.name} compared: monitoring, scoring and cost. $29 a month plus usage, inside Claude and ChatGPT.`;
 
   return {
     title: fitTitle(title),

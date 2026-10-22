@@ -28,7 +28,7 @@ export async function POST(request: Request) {
 
   const { data: account } = await supabase.from("accounts").select("id, name, tier").eq("id", accountId).single();
   if (!account || account.tier !== "connect") {
-    return NextResponse.json({ error: "This account isn't a Ripplewatch Connect account." }, { status: 400 });
+    return NextResponse.json({ error: "This account isn't set up for Ripplewatch." }, { status: 400 });
   }
 
   const body = await request.json().catch(() => null);
