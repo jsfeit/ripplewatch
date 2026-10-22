@@ -2,7 +2,7 @@ import Link from "next/link";
 import { CompetitorSnapshotTool } from "@/components/marketing/competitor-snapshot-tool";
 
 const description =
-  "Enter a competitor's domain and get a live, one-time read on what they've been up to: funding, hiring, launches, pricing. See what Ripplewatch would track continuously.";
+  "Enter a competitor's domain for a free, live read on funding, hiring, launches and pricing. See what Ripplewatch would track continuously.";
 
 export const metadata = {
   title: "Free Competitor Snapshot",

@@ -4,7 +4,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { COMPARISONS } from "@/lib/comparisons";
 
 const description =
-  "Looking for a Crayon, Klue or Kompyte alternative? Ripplewatch is an AI competitive intelligence analyst that works inside Claude and other assistants over MCP, with pricing published up front.";
+  "Looking for a Crayon, Klue or Kompyte alternative? Ripplewatch is an AI analyst inside Claude and ChatGPT, with pricing published up front.";
 
 // Rendered inline in the intro paragraph so search results and AI answers
 // see these tool names in prose, not only inside link cards further down the
