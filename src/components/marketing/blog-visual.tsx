@@ -48,6 +48,13 @@ export const BLOG_VISUAL_KIND: Record<string, BlogVisualKind> = {
   "why-competitive-intelligence-should-always-be-on": "signal",
   "you-cant-build-a-battlecard-in-30-seconds": "field",
   "dashboards-and-alerts-are-dead": "field",
+  "what-mcp-servers-that-get-used-have-in-common": "signal",
+  "why-not-just-ask-claude-or-chatgpt-to-research-your-competitors": "compare",
+  "outmano-vs-ripplewatch-competitor-trackers-with-mcp": "compare",
+  "early-stage-saas-pricing-pages-study": "data",
+  "connect-competitive-data-to-your-ai-assistant-with-mcp": "process",
+  "mcp-didnt-make-agents-smarter-it-made-them-useful": "signal",
+  "the-five-stages-most-competitive-intelligence-never-finishes": "process",
 };
 
 export function visualKindForSlug(slug: string): BlogVisualKind {
