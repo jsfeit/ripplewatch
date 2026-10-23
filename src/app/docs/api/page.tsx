@@ -21,7 +21,7 @@ function Code({ children }: { children: string }) {
 
 export default function ApiDocsPage() {
   return (
-    <LegalDoc title="Connector docs" updated="October 19, 2026">
+    <LegalDoc title="Connector docs" updated="October 23, 2026">
       <p className="text-muted-foreground">
         Ripplewatch runs as an MCP server, so an assistant like Claude or ChatGPT can answer questions
         about your competitors and record what you tell it, right in the chat.
@@ -55,6 +55,15 @@ export default function ApiDocsPage() {
       <p>
         Signal text comes from public third-party sources, so tool results label it as data rather than
         instructions. Requests are limited to 60 per minute per key, and each tool call counts as a request.
+      </p>
+
+      <h2>Public repository</h2>
+      <p>
+        The setup steps, the full tool list and the MCP Registry manifest are also published, documentation only, at{" "}
+        <a href="https://github.com/jsfeit/ripplewatch-mcp" target="_blank" rel="noopener noreferrer">
+          github.com/jsfeit/ripplewatch-mcp
+        </a>
+        . The registry name is <code>ai.ripplewatch/ripplewatch</code>.
       </p>
 
       <h2>Errors</h2>

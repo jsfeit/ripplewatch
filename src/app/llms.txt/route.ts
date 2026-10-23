@@ -55,6 +55,7 @@ export async function GET() {
     `- [How it works](${SITE}/how-it-works): How a raw competitor signal becomes a scored answer.`,
     `- [Pricing](${SITE}/pricing): $29 a month plus usage the customer prepays for.`,
     `- [Connector docs](${SITE}/docs/api): The MCP server URL, how to connect it, and the tools it exposes.`,
+    "- [Public repository](https://github.com/jsfeit/ripplewatch-mcp): Setup, the 16 tools and example prompts, plus the MCP Registry manifest (documentation only).",
     `- [FAQ](${SITE}/faq)`,
     "",
     "## Free tools",
