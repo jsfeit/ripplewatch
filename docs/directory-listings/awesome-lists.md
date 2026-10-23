@@ -22,7 +22,7 @@ so Ripplewatch goes between **Revup** and **Rumoro**.
   🔐 - Competitor momentum, pricing, hiring and news, scored against your own won and lost deals.
 ```
 
-- Description is 88 characters (limit 120), one sentence ending in a period.
+- Description is 90 characters (limit 120), one sentence ending in a period.
 - 🔐 means OAuth. Their check confirmed against our endpoint: an unauthenticated `initialize` returns `401` with
   `WWW-Authenticate: Bearer resource_metadata=...`, which their workflow reads as OAuth.
 - Name links to the homepage, not the GitHub repo, as their rules ask.
