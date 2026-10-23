@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
 import { getAllPosts, readingTime } from "@/lib/posts";
 import { formatDate } from "@/lib/date";
 import { JsonLd, breadcrumbs } from "@/components/marketing/json-ld";
-import { Panel } from "@/components/ui/panel";
-import { CategoryTag, visualKindForSlug } from "@/components/marketing/blog-visual";
+import { visualKindForSlug } from "@/components/marketing/blog-visual";
+import { BlogList } from "@/components/marketing/blog-list";
 
 // Public content that only changes when an admin publishes/edits a post
 // (see src/app/api/admin/blog) — cached for 5 minutes instead of forced
@@ -29,7 +28,6 @@ export const metadata = {
 
 export default async function BlogIndexPage() {
   const posts = await getAllPosts();
-  const [featured, ...rest] = posts;
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-20">
@@ -69,53 +67,16 @@ export default async function BlogIndexPage() {
           in the meantime.
         </p>
       ) : (
-        <>
-          {featured && (
-            <Link href={`/blog/${featured.slug}`} className="group mt-14 block">
-              <Panel className="border-primary/25 bg-primary/[0.03] p-8 transition-colors group-hover:border-primary/40 sm:p-10">
-                <div className="flex items-center gap-3 text-xs font-medium text-muted-foreground">
-                  <span>Latest</span>
-                  <span aria-hidden="true">·</span>
-                  <CategoryTag slug={featured.slug} kind={visualKindForSlug(featured.slug)} />
-                </div>
-                <h2 className="mt-3 max-w-2xl text-2xl font-semibold tracking-tight text-balance group-hover:text-primary sm:text-3xl">
-                  {featured.title}
-                </h2>
-                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-                  {featured.description}
-                </p>
-                <div className="mt-6 flex items-center gap-2 text-sm font-medium text-foreground">
-                  Read the post
-                  <ArrowUpRight className="size-4 text-muted-foreground/60 transition-colors group-hover:text-primary" />
-                </div>
-              </Panel>
-            </Link>
-          )}
-
-          <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {rest.map((post) => {
-              const kind = visualKindForSlug(post.slug);
-              return (
-                <Link key={post.slug} href={`/blog/${post.slug}`} className="group block h-full">
-                  <Panel className="flex h-full flex-col p-5 transition-colors group-hover:border-primary/40">
-                    <CategoryTag slug={post.slug} kind={kind} />
-                    <h3 className="mt-2 text-base font-medium tracking-tight text-balance group-hover:text-primary">
-                      {post.title}
-                    </h3>
-                    <p className="mt-2 line-clamp-3 flex-1 text-sm leading-relaxed text-muted-foreground">
-                      {post.description}
-                    </p>
-                    <div className="mt-4 flex items-center gap-3 text-xs text-muted-foreground">
-                      <span>{formatDate(post.publishedAt)}</span>
-                      <span aria-hidden="true">·</span>
-                      <span>{readingTime(post.body)} min read</span>
-                    </div>
-                  </Panel>
-                </Link>
-              );
-            })}
-          </div>
-        </>
+        <BlogList
+          posts={posts.map((p) => ({
+            slug: p.slug,
+            title: p.title,
+            description: p.description,
+            dateLabel: formatDate(p.publishedAt),
+            minutes: readingTime(p.body),
+            kind: visualKindForSlug(p.slug),
+          }))}
+        />
       )}
     </div>
   );
