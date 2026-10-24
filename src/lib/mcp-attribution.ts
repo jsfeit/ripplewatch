@@ -109,10 +109,11 @@ async function enrichConnection(accountId: string, clientId: string): Promise<vo
   }
 }
 
-// One call per MCP request. Fire-and-forget by the caller; errors never reach the user.
-export function touchConnection(accountId: string, clientId: string): void {
-  void createAdminClient()
-    .rpc("mcp_connection_touch", { p_account_id: accountId, p_client_id: clientId })
+// One call per MCP request. Returns a promise that never rejects; the caller hands it to `after()` so the
+// serverless function stays alive until the write and the client lookup finish, instead of being frozen
+// the moment the response is sent.
+export function touchConnection(accountId: string, clientId: string): Promise<void> {
+  return Promise.resolve(createAdminClient().rpc("mcp_connection_touch", { p_account_id: accountId, p_client_id: clientId }))
     .then(() => enrichConnection(accountId, clientId))
     .then(undefined, () => {});
 }
