@@ -55,6 +55,8 @@ export const BLOG_VISUAL_KIND: Record<string, BlogVisualKind> = {
   "connect-competitive-data-to-your-ai-assistant-with-mcp": "process",
   "mcp-didnt-make-agents-smarter-it-made-them-useful": "signal",
   "the-five-stages-most-competitive-intelligence-never-finishes": "process",
+  // Scheduled to publish Mon 2026-10-26.
+  "best-mcp-servers-for-sales-and-marketing-teams": "compare",
 };
 
 export function visualKindForSlug(slug: string): BlogVisualKind {

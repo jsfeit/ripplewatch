@@ -81,7 +81,7 @@ export default async function RootLayout({
                 url: APP_URL,
                 description: DESCRIPTION,
                 logo: `${APP_URL}/opengraph-image`,
-                sameAs: ["https://www.linkedin.com/company/ripplewatch/"],
+                sameAs: ["https://www.linkedin.com/company/ripplewatch/", "https://github.com/jsfeit/ripplewatch-mcp"],
               }),
             }}
           />
