@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { createMcpHandler, withMcpAuth } from "mcp-handler";
 import type { AuthInfo } from "@modelcontextprotocol/server";
 import { authenticateApiKey } from "@/lib/api-auth";
