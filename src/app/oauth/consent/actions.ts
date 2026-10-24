@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { canUseMcp } from "@/lib/tier-limits";
+import { recordConnection } from "@/lib/mcp-attribution";
 
 const AUTHORIZATION_ID = /^[\w-]{8,200}$/;
 
@@ -31,6 +32,18 @@ export async function decideAuthorization(formData: FormData) {
     // Same rule the MCP server applies on every call: an unpaid or paused
     // Connect account can't use a token, so don't hand one out.
     if (account.tier === "connect" && account.status !== "active") redirect(`${consentPath}&error=inactive`);
+
+    // Remember which assistant is being connected, for attribution. Best effort: it never holds up
+    // or fails the approval.
+    const details = await supabase.auth.oauth.getAuthorizationDetails(authorizationId);
+    if (details.data && "client" in details.data && profile?.account_id) {
+      await recordConnection({
+        accountId: profile.account_id,
+        clientId: details.data.client.id,
+        clientName: details.data.client.name || null,
+        redirectUri: details.data.redirect_uri,
+      });
+    }
   }
 
   const result =

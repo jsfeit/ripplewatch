@@ -308,6 +308,32 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["live_reads"]["Insert"]>;
         Relationships: [];
       };
+      mcp_connections: {
+        Row: {
+          id: string;
+          account_id: string;
+          client_id: string;
+          client_name: string | null;
+          redirect_host: string | null;
+          assistant: string;
+          first_connected_at: string;
+          last_seen_at: string | null;
+          request_count: number;
+        };
+        Insert: {
+          id?: string;
+          account_id: string;
+          client_id: string;
+          client_name?: string | null;
+          redirect_host?: string | null;
+          assistant?: string;
+          first_connected_at?: string;
+          last_seen_at?: string | null;
+          request_count?: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["mcp_connections"]["Insert"]>;
+        Relationships: [];
+      };
       contact_messages: {
         Row: {
           id: string;
@@ -1271,6 +1297,10 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
+      mcp_connection_touch: {
+        Args: { p_account_id: string; p_client_id: string };
+        Returns: undefined;
+      };
       claim_crawl_jobs: {
         Args: { batch_size: number };
         Returns: Database["public"]["Tables"]["crawl_jobs"]["Row"][];
