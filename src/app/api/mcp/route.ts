@@ -6,6 +6,7 @@ import { authenticateOAuthAccessToken, bearerChallenge } from "@/lib/mcp-oauth";
 import { canUseMcp } from "@/lib/tier-limits";
 import { registerRipplewatchTools } from "@/lib/mcp-tools";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { touchConnection } from "@/lib/mcp-attribution";
 
 // Add-competitor and Ask can each take several seconds (domain check, URL
 // discovery, an LLM call), same budget as their REST equivalents.
@@ -81,9 +82,13 @@ async function handleRequest(req: Request): Promise<Response> {
     .eq("id", auth.accountId)
     .then(undefined, () => {});
 
+  const clientId = "clientId" in auth && typeof auth.clientId === "string" ? auth.clientId : "api-key";
+  // Which assistant this is, for attribution. API keys aren't an assistant, so they're skipped.
+  if (clientId !== "api-key") touchConnection(auth.accountId, clientId);
+
   verified.set(req, {
     token,
-    clientId: "clientId" in auth && typeof auth.clientId === "string" ? auth.clientId : "api-key",
+    clientId,
     scopes: ["read", "write"],
     extra: { accountId: auth.accountId, tier: auth.tier },
   });
