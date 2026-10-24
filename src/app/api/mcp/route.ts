@@ -84,7 +84,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
   const clientId = "clientId" in auth && typeof auth.clientId === "string" ? auth.clientId : "api-key";
   // Which assistant this is, for attribution. API keys aren't an assistant, so they're skipped.
-  if (clientId !== "api-key") touchConnection(auth.accountId, clientId);
+  if (clientId !== "api-key") after(touchConnection(auth.accountId, clientId));
 
   verified.set(req, {
     token,
