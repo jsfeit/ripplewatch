@@ -11,7 +11,7 @@ export const metadata = { title: "Connect an app", robots: { index: false, follo
 
 const ERRORS: Record<string, string> = {
   invalid: "That authorization request isn't valid. Go back to the app and try connecting again.",
-  plan: "Connecting an AI assistant is part of Ripplewatch.",
+  plan: "Connecting an AI assistant is part of Ripplewatch Connect.",
   inactive:
     "Your Ripplewatch subscription isn't active yet, so an assistant can't connect. If you haven't finished paying, do that in Settings, then connect again. If it was paused, email hello@ripplewatch.ai.",
   failed: "Something went wrong approving that. Go back to the app and try connecting again.",
