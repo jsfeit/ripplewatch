@@ -65,9 +65,54 @@ export async function recordConnection(input: {
   }
 }
 
+// Clients already looked up by this server instance, so a busy connection costs one read, not one per request.
+const enriched = new Set<string>();
+
+// The consent screen only sees a client the first time it is approved. If the user already consented
+// (a re-authentication, or a connection made before attribution existed), Supabase sends them straight
+// back and the row has no name. The token still carries the client id, so look the client up by id.
+async function enrichConnection(accountId: string, clientId: string): Promise<void> {
+  const key = `${accountId}:${clientId}`;
+  if (enriched.has(key)) return;
+  enriched.add(key);
+  try {
+    const admin = createAdminClient();
+    const { data: row } = await admin
+      .from("mcp_connections")
+      .select("client_name")
+      .eq("account_id", accountId)
+      .eq("client_id", clientId)
+      .maybeSingle();
+    if (!row || row.client_name) return;
+
+    const { data: client } = await admin.auth.admin.oauth.getClient(clientId);
+    if (!client) return;
+    const redirectUri = client.redirect_uris?.[0] ?? null;
+    let redirectHost: string | null = null;
+    try {
+      redirectHost = new URL(redirectUri ?? "").host || null;
+    } catch {
+      // not a URL
+    }
+    await admin
+      .from("mcp_connections")
+      .update({
+        client_name: client.client_name || null,
+        redirect_host: redirectHost,
+        assistant: classifyAssistant(client.client_name, redirectUri),
+      })
+      .eq("account_id", accountId)
+      .eq("client_id", clientId);
+  } catch (err) {
+    enriched.delete(key);
+    console.warn("mcp attribution: couldn't look up client:", err);
+  }
+}
+
 // One call per MCP request. Fire-and-forget by the caller; errors never reach the user.
 export function touchConnection(accountId: string, clientId: string): void {
   void createAdminClient()
     .rpc("mcp_connection_touch", { p_account_id: accountId, p_client_id: clientId })
+    .then(() => enrichConnection(accountId, clientId))
     .then(undefined, () => {});
 }
