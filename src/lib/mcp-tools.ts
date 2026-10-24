@@ -291,7 +291,8 @@ export function registerRipplewatchTools(server: McpServer) {
     "list_competitors",
     {
       title: "List tracked competitors",
-      description: "The competitors this account currently tracks, with domain and category.",
+      description:
+        "List every competitor this account tracks, oldest first, with name, domain and category. Call this first to get exact names before get_competitor. It returns no scores or signals (use get_momentum or get_briefing for those). An empty list means nothing is tracked yet, so suggest add_competitor. Read-only, no parameters.",
       inputSchema: z.object({}),
       annotations: READ_ONLY,
     },
@@ -311,8 +312,10 @@ export function registerRipplewatchTools(server: McpServer) {
     {
       title: "Competitor detail",
       description:
-        "Everything on one tracked competitor: momentum with the drivers behind the score, recent signals, and how many deals the account has logged against them.",
-      inputSchema: z.object({ name: z.string().min(1).describe("Competitor name, as returned by list_competitors.") }),
+        "Full detail on one tracked competitor: momentum label, score and confidence with the per-input drivers behind it (hiring, pricing, reviews and so on), the 10 most recent scored signals, and counts of deals won and lost or churned against them. Use it when the user asks about a specific competitor, for example 'Is Northlane heating up?'; use get_momentum to compare all of them at once. An unknown name returns an error that lists the tracked competitors. Read-only.",
+      inputSchema: z.object({
+        name: z.string().min(1).describe("Competitor name, case-insensitive, exactly as returned by list_competitors."),
+      }),
       annotations: READ_ONLY,
     },
     async ({ name }, ctx) => {
@@ -417,7 +420,7 @@ export function registerRipplewatchTools(server: McpServer) {
     {
       title: "Best next step",
       description:
-        "What single piece of information from the user would most improve future answers right now, and why. Call this when the user asks how to get more out of Ripplewatch, or when answers feel generic.",
+        "Returns the single most useful thing the user could tell Ripplewatch next, with the reason it would sharpen future answers, and names the tool to do it with (add_competitor, set_context, log_win_loss, import_win_loss, log_customer_feedback or ask). Call it when the user asks how to get more out of Ripplewatch, or when answers feel generic. It only gives guidance and changes nothing. Read-only, no parameters.",
       inputSchema: z.object({}),
       annotations: READ_ONLY,
     },
