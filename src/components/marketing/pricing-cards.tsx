@@ -3,7 +3,11 @@ import { Check, Sparkles } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CONNECT_PRICING_FEATURES, CONNECT_NAME, CONNECT_TAGLINE } from "@/lib/connect";
-import { CONNECT_BASE_FEE_USD, CONNECT_MIN_FUNDING_USD } from "@/lib/connect-pricing";
+import {
+  CONNECT_BASE_FEE_USD,
+  CONNECT_DEFAULT_RELOAD_USD,
+  CONNECT_MIN_FUNDING_USD,
+} from "@/lib/connect-pricing";
 
 // Ripplewatch Connect is the only product on sale: a flat platform fee plus
 // usage from a prepaid balance.
@@ -33,7 +37,9 @@ export function PricingCards() {
             Get {CONNECT_NAME}
           </Link>
           <p className="text-center text-xs text-muted-foreground">
-            No seat fee. 30-day refund on the platform fee.{" "}
+            First charge ${CONNECT_BASE_FEE_USD + CONNECT_DEFAULT_RELOAD_USD}: the ${CONNECT_BASE_FEE_USD} platform fee
+            plus a ${CONNECT_DEFAULT_RELOAD_USD} starting balance, tax extra. Unused balance and the platform fee are
+            refundable within 30 days. No seat fee.{" "}
             <Link href="/connect" className="underline underline-offset-2 hover:text-foreground">
               How it works
             </Link>
