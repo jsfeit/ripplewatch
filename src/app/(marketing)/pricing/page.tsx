@@ -62,7 +62,11 @@ export default function PricingPage() {
           <span className="font-semibold">30-day money-back guarantee.</span> Use {CONNECT_NAME} for real, against
           your real competitors. If it&apos;s not for you, email us within 30 days: the platform fee and any unused
           balance are refundable; usage you&apos;ve already spent isn&apos;t. Cancel anytime from Settings, no penalty
-          or lock-in.
+          or lock-in. Wondering what you&apos;re trusting us with? Read how we handle{" "}
+          <Link href="/security" className="font-medium text-primary hover:underline">
+            security and your data
+          </Link>
+          .
         </p>
       </div>
 
