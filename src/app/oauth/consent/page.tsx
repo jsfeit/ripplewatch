@@ -120,7 +120,10 @@ export default async function ConsentPage({
               <li>Add competitors, log won and lost deals, and log customer feedback on your behalf</li>
             </ul>
             <p className="pt-1 text-xs text-muted-foreground">
-              It can&apos;t change billing or team settings. You can disconnect it any time in Settings → Developer.
+              It can&apos;t change billing or team settings. You can disconnect it any time in Settings → Developer.{" "}
+              <Link href="/security" target="_blank" className="underline underline-offset-2 hover:text-foreground">
+                How we protect your data
+              </Link>
             </p>
           </div>
 
