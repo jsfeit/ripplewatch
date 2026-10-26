@@ -179,6 +179,9 @@ export async function POST(request: Request) {
               ...(tier ? { tier } : {}),
               subscription_status: subscription.status,
               ...(connectNotActive ? {} : { status: "active" as const }),
+              // Coming back stops the retention clock and rearms the notice.
+              canceled_at: null,
+              retention_notice_sent_at: null,
             })
             .eq("id", accountId);
           if (error) throw new Error(`customer.subscription.created account update failed: ${error.message}`);
@@ -330,6 +333,8 @@ export async function POST(request: Request) {
               stripe_subscription_id: null,
               subscription_status: "canceled",
               status: "hold",
+              // Starts the 30-day retention clock (see /api/cron/retention).
+              canceled_at: new Date().toISOString(),
             })
             .eq("id", accountId);
           if (error) throw new Error(`customer.subscription.deleted account update failed: ${error.message}`);

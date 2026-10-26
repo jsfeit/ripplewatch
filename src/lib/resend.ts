@@ -449,6 +449,39 @@ export async function sendWelcomeEmail(to: string, companyName: string, appUrl: 
   if (result.error) throw new Error(result.error.message);
 }
 
+// Sent by /api/cron/retention a week before a cancelled account's data is
+// deleted (30 days after cancelling), with the date and the two ways out:
+// come back, or ask for an export.
+export async function sendRetentionNoticeEmail(to: string, companyName: string, deleteOn: string, appUrl: string) {
+  if (!isResendConfigured()) return;
+
+  const subject = `Your Ripplewatch data will be deleted on ${deleteOn}`;
+  const result = await getResend().emails.send({
+    from: getFromEmail(),
+    to,
+    subject,
+    html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+      <h2 style="margin:0 0 12px;">${subject}</h2>
+      <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+        ${companyName} cancelled Ripplewatch, and we keep your data for 30 days afterwards in case you come back.
+        That 30 days ends on ${deleteOn}, and after that your competitors, signals, deals and context are deleted
+        for good.
+      </p>
+      <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+        Want to keep it? Reactivate before then and everything is exactly as you left it. Want a copy first? Reply
+        to this email and we'll send an export.
+      </p>
+      <a href="${appUrl}/app/reactivate" style="display:inline-block;margin-top:8px;padding:10px 20px;background:#0f5f56;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">
+        Reactivate my account
+      </a>
+      <p style="color:#888;font-size:12px;margin-top:24px;">
+        Questions? Just reply; a person reads every one.
+      </p>
+    </div>`,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
 // Fired by /api/cron/uptime-check on a failed health check. Deliberately
 // plain text, no styling — this is an operational alert, not a customer
 // email, and needs to render instantly in any inbox.

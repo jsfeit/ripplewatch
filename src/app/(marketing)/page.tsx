@@ -10,7 +10,7 @@ import { WorksWithYourAI } from "@/components/marketing/works-with-your-ai";
 import { ExampleChats } from "@/components/marketing/example-chats";
 import { cn, avatarColor } from "@/lib/utils";
 import { CONNECT_NAME } from "@/lib/connect";
-import { CONNECT_BASE_FEE_USD } from "@/lib/connect-pricing";
+import { CONNECT_BASE_FEE_USD, CONNECT_DEFAULT_RELOAD_USD } from "@/lib/connect-pricing";
 
 export const metadata = { alternates: { canonical: "/" } };
 
@@ -76,13 +76,13 @@ export default function HomePage() {
             <span className="text-primary">inside the AI you already use.</span>
           </h1>
           <p className="mx-auto mt-6 max-w-3xl text-lg leading-relaxed text-muted-foreground text-balance">
-            Pricing moves, hiring, press, product changes and your own lost deals, all in one chat. No new
-            dashboard to open and no new login to remember. Ripplewatch connects to Claude or ChatGPT and tells you
-            what your competitors&apos; moves mean for your deals.
+            Stop checking competitor sites by hand. Ripplewatch watches their pricing, hiring, press and product
+            changes every day, and tells you in Claude or ChatGPT which moves matter for your deals. Nothing new to
+            log into, and nothing slips past you.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link href="/onboarding?path=connect" className={buttonVariants({ size: "lg" })}>
-              Get {CONNECT_NAME}
+              Get a free competitor read
               <ArrowRight className="size-4" />
             </Link>
             <Link href="/connect" className={buttonVariants({ size: "lg", variant: "outline" })}>
@@ -90,13 +90,18 @@ export default function HomePage() {
             </Link>
           </div>
           <p className="mt-5 text-sm text-muted-foreground">
-            ${CONNECT_BASE_FEE_USD}/month plus usage you prepay for.{" "}
+            The read is free and needs no signup. To keep it going: ${CONNECT_BASE_FEE_USD}/month plus a $
+            {CONNECT_DEFAULT_RELOAD_USD} starting balance (${CONNECT_BASE_FEE_USD + CONNECT_DEFAULT_RELOAD_USD} up
+            front), and unused balance is refundable within 30 days.{" "}
             <Link href="/pricing" className="font-medium text-primary hover:underline">
               See pricing
             </Link>
           </p>
         </div>
         <SourcesToChat />
+        <p className="mt-4 text-center text-xs text-muted-foreground">
+          Illustrative example. Company names and scores are made up.
+        </p>
       </section>
 
       <WorksWithYourAI />
@@ -119,6 +124,9 @@ export default function HomePage() {
             </p>
           </div>
           <ExampleChats />
+          <p className="mt-3 text-center text-xs text-muted-foreground">
+            Illustrative example. Company names and numbers are made up.
+          </p>
           <div className="mt-8 text-center">
             <Link href="/connect" className={buttonVariants()}>
               See how {CONNECT_NAME} works <ArrowRight className="size-4" />
@@ -252,11 +260,12 @@ export default function HomePage() {
       <section className="mx-auto max-w-3xl px-6 py-20 text-center">
         <h2 className="text-3xl font-semibold tracking-tight">Ready to stop guessing what matters?</h2>
         <p className="mt-3 text-muted-foreground">
-          Connect Ripplewatch to Claude or ChatGPT and ask your first question in minutes.
+          Get a free read on one competitor in about a minute. Then connect Ripplewatch to Claude or ChatGPT and
+          ask your first question.
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link href="/onboarding?path=connect" className={buttonVariants({ size: "lg" })}>
-            Get {CONNECT_NAME}
+            Get a free competitor read
             <ArrowRight className="size-4" />
           </Link>
           <Link href="/pricing" className={buttonVariants({ size: "lg", variant: "outline" })}>

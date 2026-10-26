@@ -17,15 +17,13 @@ const COLUMNS = [
       { href: "/connect", label: "Overview" },
       { href: "/how-it-works", label: "How it works" },
       { href: "/pricing", label: "Pricing" },
-      { href: "/onboarding", label: "Live demo" },
+      { href: "/onboarding", label: "Free competitor read" },
       { href: "/competitor-snapshot", label: "Competitor Snapshot" },
-      { href: "/competitive-intelligence-quiz", label: "CI Quiz" },
     ],
   },
   {
     title: "Resources",
     links: [
-      { href: "/state-of-competitive-intelligence", label: "Research" },
       { href: "/blog", label: "Blog" },
       { href: "/compare", label: "Compare" },
       { href: "/alternatives", label: "Alternatives" },
@@ -36,22 +34,30 @@ const COLUMNS = [
     title: "Company",
     links: [
       { href: "/about", label: "About" },
-      { href: "/press", label: "Press" },
-      { href: "/careers", label: "Careers" },
-      { href: "/affiliates", label: "Affiliates" },
-      { href: "/creators", label: "For creators" },
-      { href: "/refer", label: "Refer a friend" },
       { href: "/contact", label: "Contact us" },
     ],
   },
   {
     title: "Legal",
     links: [
+      { href: "/security", label: "Security" },
       { href: "/privacy", label: "Privacy" },
       { href: "/terms", label: "Terms" },
       { href: "/terms#subprocessors", label: "Subprocessors" },
     ],
   },
+];
+
+// Pages that matter to a few visitors (press, partners, hiring) but not to
+// someone deciding whether to buy, so they sit in the bottom bar.
+const MORE_LINKS = [
+  { href: "/state-of-competitive-intelligence", label: "Research" },
+  { href: "/competitive-intelligence-quiz", label: "CI Quiz" },
+  { href: "/press", label: "Press" },
+  { href: "/careers", label: "Careers" },
+  { href: "/affiliates", label: "Affiliates" },
+  { href: "/creators", label: "For creators" },
+  { href: "/refer", label: "Refer a friend" },
 ];
 
 export function SiteFooter() {
@@ -94,7 +100,18 @@ export function SiteFooter() {
         </div>
 
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border/70 pt-8 sm:flex-row">
-          <p className="text-xs text-muted-foreground">© 2026 Ripplewatch. ripplewatch.ai</p>
+          <div className="flex flex-col items-center gap-3 sm:items-start">
+            <ul className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground sm:justify-start">
+              {MORE_LINKS.map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className="hover:text-foreground">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-muted-foreground">© 2026 Ripplewatch. ripplewatch.ai</p>
+          </div>
           <a
             href="https://www.linkedin.com/company/ripplewatch/"
             target="_blank"

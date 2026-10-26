@@ -25,6 +25,10 @@
       "schedule": "0 * * * *"
     },
     {
+      "path": "/api/cron/retention",
+      "schedule": "30 8 * * *"
+    },
+    {
       "path": "/api/cron/audit-log-purge",
       "schedule": "45 8 * * *"
     },

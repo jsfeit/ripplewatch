@@ -139,7 +139,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "What happens to my data if I cancel?",
         answer:
-          "We keep it for a limited period in case you reactivate, and delete it sooner if you ask us to.",
+          "We keep it for 30 days in case you reactivate, email you a week before it is deleted, and delete it sooner if you ask us to.",
       },
       {
         question: "How is my data encrypted?",

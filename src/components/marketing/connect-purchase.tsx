@@ -67,7 +67,7 @@ export function ConnectPurchase({
 
   const canSubmit =
     Boolean(companyName.trim()) &&
-    (initiallySignedIn || (EMAIL_PATTERN.test(email.trim()) && password.length >= 6));
+    (initiallySignedIn || (EMAIL_PATTERN.test(email.trim()) && password.length >= 8));
 
   // Creates the Connect account (idempotent) and opens payment.
   async function createAccountAndPay(fundingUsd: number, name: string) {
@@ -297,7 +297,8 @@ export function ConnectPurchase({
             </div>
             <div className="space-y-2">
               <Label htmlFor="connectPassword">Password</Label>
-              <Input id="connectPassword" type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required />
+              <Input id="connectPassword" type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required />
+              <p className="text-xs text-muted-foreground">At least 8 characters.</p>
             </div>
           </>
         ) : null}

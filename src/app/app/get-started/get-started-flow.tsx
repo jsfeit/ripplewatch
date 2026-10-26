@@ -39,19 +39,32 @@ const WIZARD_STEPS: { title: string; optional: boolean; key: OnboardingStepKey }
   { title: "Connect Slack", optional: true, key: "slack" },
 ];
 
+// Where connecting the assistant sits among the steps shown: after the context
+// and a competitor are saved (so the first crawl is already running), before
+// the optional ones. WIZARD_STEPS holds every step except this one.
+const CONNECT_STEP = 2;
+const wizardIndex = (step: number) => (step < CONNECT_STEP ? step : step - 1);
+
 export function GetStartedFlow({
   companyName,
   mcpLastConnectedAt,
+  contextSaved,
+  savedCompetitorName,
 }: {
   companyName: string;
   mcpLastConnectedAt: string | null;
+  // Business context and competitors are already saved (a reload partway through).
+  contextSaved: boolean;
+  savedCompetitorName: string | null;
 }) {
   const router = useRouter();
-  const [step, setStep] = useState(0);
+  // Order: business, competitors (saved here), connect, deals, Slack. Someone who
+  // already saved their context resumes at connect, or just past it if connected.
+  const [step, setStep] = useState(contextSaved ? (mcpLastConnectedAt ? CONNECT_STEP + 1 : CONNECT_STEP) : 0);
   // Step 0 connects the assistant; the rest follow WIZARD_STEPS. One event per step
   // shown, so Google Analytics can draw the setup funnel for visitors who accepted cookies.
   useEffect(() => {
-    trackEvent("setup_step_viewed", { step: step === 0 ? "connect" : (WIZARD_STEPS[step - 1]?.key ?? "done"), step_number: step + 1 });
+    trackEvent("setup_step_viewed", { step: step === CONNECT_STEP ? "connect" : (WIZARD_STEPS[wizardIndex(step)]?.key ?? "done"), step_number: step + 1 });
   }, [step]);
   // What the step just finished made better, shown at the top of the next one.
   const [justUnlocked, setJustUnlocked] = useState<string | null>(null);
@@ -89,7 +102,7 @@ export function GetStartedFlow({
   // they said about their business). null = not asked yet, [] = nothing to suggest.
   const [suggestions, setSuggestions] = useState<SuggestedCompetitor[] | null>(null);
   const suggestionsAskedRef = useRef(false);
-  const onCompetitorsStep = step === 2;
+  const onCompetitorsStep = step === 1;
   useEffect(() => {
     if (!onCompetitorsStep || suggestionsAskedRef.current) return;
     suggestionsAskedRef.current = true;
@@ -143,24 +156,41 @@ export function GetStartedFlow({
     setCompetitors((prev) => prev.filter((_, i) => i !== index));
   }
 
-  // Saves everything typed here. With after="slack" it then leaves for Slack's
-  // sign-in instead of celebrating, since that's a full page change and the
-  // setup would be lost if it hadn't been saved first.
+  // Saves the business context and competitors as soon as the competitors step is
+  // done, before the assistant is connected, so the first crawl is already running
+  // when the first question is asked. The server skips this if they're already saved.
+  async function saveCore(): Promise<boolean> {
+    const res = await fetch("/api/connect/onboarding/complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        stage: "core",
+        positioning,
+        icp,
+        hasSalesCrm,
+        hasPlg,
+        competitors: filledCompetitors,
+        liveReadId: intro?.readId ?? null,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.error ?? "Something went wrong. Try again.");
+      return false;
+    }
+    return true;
+  }
+
+  // Ends setup: saves the optional deal note and marks the wizard done. With
+  // after="slack" it then leaves for Slack's sign-in instead of celebrating, since
+  // that's a full page change and the setup would be lost if it hadn't been saved first.
   async function finish(after?: "slack") {
     setSubmitting(true);
     setError("");
     const res = await fetch("/api/connect/onboarding/complete", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        positioning,
-        icp,
-        hasSalesCrm,
-        hasPlg,
-        competitors: filledCompetitors,
-        dealNote,
-        liveReadId: intro?.readId ?? null,
-      }),
+      body: JSON.stringify({ stage: "extras", dealNote }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -181,21 +211,48 @@ export function GetStartedFlow({
     setCelebrating(true);
   }
 
-  if (step === 0) {
+  // Leaves deals and Slack for later: ends setup and goes to the Connect settings.
+  async function skipRest() {
+    setSubmitting(true);
+    setError("");
+    const res = await fetch("/api/connect/onboarding/complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stage: "extras" }),
+    });
+    if (!res.ok) {
+      setSubmitting(false);
+      setError("Something went wrong. Try again.");
+      return;
+    }
+    trackEvent("setup_completed", { skipped_optional: true });
+    clearIntro();
+    router.push("/app/settings?tab=connect");
+    router.refresh();
+  }
+
+  if (step === CONNECT_STEP) {
     return (
-      <McpConnectStep
-        mcpLastConnectedAt={mcpLastConnectedAt}
-        totalSteps={TOTAL_STEPS}
-        onContinue={() => {
-          setJustUnlocked(ONBOARDING_VALUE.connect.unlocked());
-          setStep(1);
-        }}
-      />
+      <>
+        <McpConnectStep
+          mcpLastConnectedAt={mcpLastConnectedAt}
+          stepNumber={step + 1}
+          totalSteps={TOTAL_STEPS}
+          firstQuestionCompetitor={filledCompetitors[0]?.name ?? savedCompetitorName}
+          onContinue={() => {
+            setJustUnlocked(ONBOARDING_VALUE.connect.unlocked());
+            setStep(CONNECT_STEP + 1);
+          }}
+          onSkip={() => void skipRest()}
+          skipping={submitting}
+        />
+        {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
+      </>
     );
   }
 
   if (celebrating) {
-    const lead = filledCompetitors[0]?.name ?? null;
+    const lead = filledCompetitors[0]?.name ?? savedCompetitorName;
     return (
       <>
         <Confetti />
@@ -203,7 +260,9 @@ export function GetStartedFlow({
           <CardHeader>
             <h1 className="text-xl font-semibold tracking-tight">You&apos;re all set, {companyName}.</h1>
             <p className="text-sm text-muted-foreground">
-              {`I'm checking ${filledCompetitors.length} competitor${filledCompetitors.length === 1 ? "" : "s"} now.`}
+              {filledCompetitors.length > 0
+                ? `I'm checking ${filledCompetitors.length} competitor${filledCompetitors.length === 1 ? "" : "s"} now.`
+                : "I'm checking your competitors now."}
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -237,15 +296,24 @@ export function GetStartedFlow({
     );
   }
 
-  const wizardStep = step - 1;
+  const wizardStep = wizardIndex(step);
   const { title, optional, key } = WIZARD_STEPS[wizardStep];
 
-  function advance() {
+  // Competitors are saved before connecting, so a first question has something to read.
+  async function advance() {
+    if (wizardStep === 1) {
+      setSubmitting(true);
+      setError("");
+      const saved = await saveCore();
+      setSubmitting(false);
+      if (!saved) return;
+      setJustUnlocked(ONBOARDING_VALUE.competitors.unlocked(filledCompetitors.length));
+      setStep(CONNECT_STEP);
+      return;
+    }
     // Only celebrate what actually happened: a blank business step unlocked nothing.
     if (wizardStep === 0) {
       setJustUnlocked(positioning.trim() || icp.trim() ? ONBOARDING_VALUE.business.unlocked() : null);
-    } else if (wizardStep === 1) {
-      setJustUnlocked(ONBOARDING_VALUE.competitors.unlocked(filledCompetitors.length));
     } else if (wizardStep === 2) {
       // Remembered in this browser so the Data tab can name these tools in its prompts.
       saveDealTools(dealTools);
@@ -281,7 +349,7 @@ export function GetStartedFlow({
           {wizardStep === 0
             ? `This is what your assistant uses to judge whether something is actually relevant to ${companyName}, not just noise. Skip it and every answer defaults to generic.`
             : wizardStep === 1
-              ? "Required. Your assistant can't compare you to anyone until it knows who to compare you to, and this is the one piece of setup nothing else substitutes for."
+              ? "Required. Your assistant can't compare you to anyone until it knows who to compare you to. Saving this starts your first check, so it's already running when you ask your first question."
               : wizardStep === 2
                 ? "Your deals are what make answers specific to you. If they live in a tool your assistant can reach, it can pull them in for you."
                 : "Slack is the shared feed: alerts and recaps land in a channel your whole team sees. Skip it if you're the only one using Ripplewatch."}
@@ -420,7 +488,7 @@ export function GetStartedFlow({
         {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
 
         <div className="mt-6 flex items-center justify-between">
-          <Button type="button" variant="ghost" onClick={() => {
+          <Button type="button" variant="ghost" className={step === 0 ? "invisible" : undefined} onClick={() => {
               setJustUnlocked(null);
               setStep((s) => Math.max(0, s - 1));
             }}>
@@ -428,12 +496,17 @@ export function GetStartedFlow({
             Back
           </Button>
           {wizardStep < WIZARD_STEPS.length - 1 ? (
-            <Button type="button" onClick={advance} disabled={wizardStep === 1 && !hasCompetitor}>
-              Continue
+            <Button
+              type="button"
+              onClick={() => void advance()}
+              disabled={(wizardStep === 1 && !hasCompetitor) || submitting}
+            >
+              {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
+              {wizardStep === 1 ? "Save and connect" : "Continue"}
               <ArrowRight className="size-4" />
             </Button>
           ) : (
-            <Button type="button" onClick={() => void finish()} disabled={submitting || !hasCompetitor}>
+            <Button type="button" onClick={() => void finish()} disabled={submitting}>
               {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
               Finish without Slack
             </Button>
