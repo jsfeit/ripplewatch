@@ -40,7 +40,7 @@ export default function SecurityPage() {
         <ul>
           <li>Each account&apos;s data is kept separate at the database level, so one customer can&apos;t see another&apos;s competitors, signals or business context.</li>
           <li>We don&apos;t sell your data, to anyone, for any reason.</li>
-          <li>Your data isn&apos;t used to train AI models. Relevant parts of your business context and competitor signals are sent to Anthropic&apos;s Claude models per request to produce your scores and answers, and Anthropic doesn&apos;t train on them.</li>
+          <li>Your data isn&apos;t used to train AI models. Relevant parts of your business context and competitor signals are sent to Anthropic&apos;s Claude models per request to produce your scores and answers. Anthropic doesn&apos;t train on them, and our terms with Anthropic provide zero data retention, so they don&apos;t keep those requests after processing.</li>
         </ul>
       </section>
 
@@ -88,7 +88,7 @@ export default function SecurityPage() {
       <section>
         <h2>Found a problem?</h2>
         <p>
-          Email <a href="mailto:hello@ripplewatch.ai">hello@ripplewatch.ai</a> with what you found and we&apos;ll
+          Email <a href="mailto:security@ripplewatch.ai">security@ripplewatch.ai</a> with what you found and we&apos;ll
           look at it promptly and tell you what we did.
         </p>
       </section>
