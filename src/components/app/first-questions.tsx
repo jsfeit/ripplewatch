@@ -13,8 +13,8 @@ export function firstQuestions(competitor: string | null): string[] {
   const c = competitor?.trim();
   return c
     ? [
+        `Using Ripplewatch: is ${c} heating up or cooling off, and what changed?`,
         `Using Ripplewatch: what's changed with ${c} this week, and should I worry?`,
-        `Using Ripplewatch: is ${c} heating up or cooling off?`,
         `Using Ripplewatch: should we respond to ${c}'s pricing?`,
         "Using Ripplewatch: start here. What do you know about us so far, and what would make your answers sharper?",
       ]
@@ -29,6 +29,66 @@ export function firstQuestions(competitor: string | null): string[] {
 function displayQuestion(q: string): string {
   const text = q.replace(/^Using Ripplewatch: /, "");
   return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+const LINK_CLASS =
+  "inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs font-medium text-muted-foreground hover:border-primary/50 hover:text-foreground";
+
+// The one question to ask first, shown the moment the assistant connects:
+// whether a competitor is heating up or cooling off, and what changed. It is
+// the question that shows the Momentum score, which is what Ripplewatch does
+// that a chat on its own can't.
+export function FirstQuestionCard({ competitor }: { competitor: string | null }) {
+  const [copied, setCopied] = useState(false);
+  const q = firstQuestions(competitor)[0];
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(q);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // Clipboard blocked: the open-in links still work.
+    }
+  }
+
+  return (
+    <div className="space-y-4 rounded-xl border border-primary/30 bg-primary/[0.06] p-5">
+      <div>
+        <p className="text-sm font-semibold text-primary">Ask your first question</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          You&apos;ll get a Momentum score, Heating up, Steady or Cooling, and the signals pulling it that way. Your first
+          check on {competitor?.trim() || "your competitors"} is running now, so the read gets richer over the next few
+          minutes.
+        </p>
+      </div>
+      <p className="rounded-lg border border-border bg-background px-4 py-3 text-sm font-medium">{displayQuestion(q)}</p>
+      <div className="flex flex-wrap gap-2">
+        <a
+          href={`https://claude.ai/new?q=${encodeURIComponent(q)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => trackEvent("first_question_opened", { assistant: "claude", index: 0, where: "connect" })}
+          className={LINK_CLASS}
+        >
+          Open in Claude <ExternalLink className="size-3" />
+        </a>
+        <a
+          href={`https://chatgpt.com/?q=${encodeURIComponent(q)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => trackEvent("first_question_opened", { assistant: "chatgpt", index: 0, where: "connect" })}
+          className={LINK_CLASS}
+        >
+          Open in ChatGPT <ExternalLink className="size-3" />
+        </a>
+        <button type="button" onClick={() => void copy()} className={LINK_CLASS}>
+          {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export function FirstQuestions({ competitor }: { competitor: string | null }) {

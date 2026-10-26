@@ -9,22 +9,32 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CONNECT_MCP_URL } from "@/lib/connect";
 import { timeAgo } from "@/lib/date";
 import { ONBOARDING_VALUE } from "@/lib/onboarding-value";
+import { FirstQuestionCard } from "@/components/app/first-questions";
 import { cn } from "@/lib/utils";
 
-// The first thing a Connect account sees after checkout: get the assistant
-// talking to Ripplewatch before anything else, the way Firecrawl and other
-// MCP-first products lead with "connect your agent" rather than a form.
-// Everything else (positioning, competitors, Slack) is useful but optional.
-// This is the one step that makes the purchase actually do something.
+// Connecting the assistant, the step that makes the purchase actually do
+// something. By now the business context and a competitor are saved (the
+// first crawl is already running), so the moment it connects this shows the
+// first question to ask: whether that competitor is heating up or cooling off.
 export function McpConnectStep({
   mcpLastConnectedAt,
+  stepNumber,
   totalSteps,
+  firstQuestionCompetitor,
   onContinue,
+  onSkip,
+  skipping,
 }: {
   mcpLastConnectedAt: string | null;
-  // The wizard's step count, so this header can't fall behind when a step is added.
+  // Where this sits in the wizard, so the header can't fall behind when a step is added.
+  stepNumber: number;
   totalSteps: number;
+  // The competitor the first question is about (the one they named earlier).
+  firstQuestionCompetitor: string | null;
   onContinue: () => void;
+  // Finish setup now, leaving deals and Slack for later.
+  onSkip: () => void;
+  skipping: boolean;
 }) {
   const router = useRouter();
   const connected = Boolean(mcpLastConnectedAt);
@@ -41,14 +51,19 @@ export function McpConnectStep({
     // same staggered pattern as the Connect settings tab — no socket, just
     // a few refreshes while this screen is actually being looked at.
     if (connected) return;
-    // Every 4 seconds for up to 3 minutes: connecting in the assistant takes a
-    // while, and the badge turning green by itself is the first small win.
+    // Every 4 seconds for the first 3 minutes, since the badge turning green by
+    // itself is the first small win, then every 15 seconds for another half
+    // hour so someone who comes back from an admin approval still sees it.
     let runs = 0;
-    const timer = setInterval(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const tick = () => {
       router.refresh();
-      if (++runs >= 45) clearInterval(timer);
-    }, 4000);
-    return () => clearInterval(timer);
+      runs += 1;
+      if (runs < 45) timer = setTimeout(tick, 4000);
+      else if (runs < 45 + 120) timer = setTimeout(tick, 15000);
+    };
+    timer = setTimeout(tick, 4000);
+    return () => clearTimeout(timer);
   }, [connected, router]);
 
   async function copyText(text: string, setCopied: (v: boolean) => void) {
@@ -99,7 +114,7 @@ export function McpConnectStep({
     <Card>
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Step 1 of {totalSteps}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Step {stepNumber} of {totalSteps}</p>
           <span
             className={cn(
               "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
@@ -120,6 +135,8 @@ export function McpConnectStep({
         </p>
       </CardHeader>
       <CardContent>
+        {connected ? <FirstQuestionCard competitor={firstQuestionCompetitor} /> : null}
+        {connected ? null : (
         <Tabs defaultValue="claude">
           <TabsList>
             <TabsTrigger value="claude">Claude</TabsTrigger>
@@ -140,6 +157,17 @@ export function McpConnectStep({
               ]}
               note="Already added this once and it's not prompting you to sign in? Remove the existing connector first, then add it fresh. Editing an existing one can reuse a stale login."
             />
+            <details className="mt-4 rounded-md border border-border p-3 text-sm">
+              <summary className="cursor-pointer font-medium">Can&apos;t add a custom connector? Ask your admin</summary>
+              <div className="mt-3 space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  On Team and Enterprise plans an admin may need to allow custom connectors first. Send them this:
+                </p>
+                <p className="rounded-md border border-border bg-secondary/40 p-3 text-xs">
+                  {`Could you add a custom connector in Claude for our team? Name: Ripplewatch. URL: ${CONNECT_MCP_URL}. It lets us ask Claude about our competitors. It only reads competitor data and logs deals we tell it about, and can't change billing or team settings.`}
+                </p>
+              </div>
+            </details>
             <details className="mt-4 rounded-md border border-border p-3 text-sm">
               <summary className="cursor-pointer font-medium">Sign-in not working? Connect with a key instead</summary>
               <div className="mt-3 space-y-3">
@@ -253,6 +281,7 @@ export function McpConnectStep({
             />
           </TabsContent>
         </Tabs>
+        )}
 
         <div className="mt-8 flex items-center justify-between">
           <p className="text-xs text-muted-foreground">
@@ -261,10 +290,23 @@ export function McpConnectStep({
               : "Waiting for the connection. This updates on its own, no need to refresh."}
           </p>
           <Button onClick={onContinue} disabled={!connected}>
-            Continue
+            {connected ? "Make it sharper" : "Continue"}
             <ArrowRight className="size-4" />
           </Button>
         </div>
+        {connected ? (
+          <p className="mt-3 text-right text-xs text-muted-foreground">
+            Deals and Slack are optional.{" "}
+            <button
+              type="button"
+              onClick={onSkip}
+              disabled={skipping}
+              className="underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+            >
+              Skip to my account
+            </button>
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );
