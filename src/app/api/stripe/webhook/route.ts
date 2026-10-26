@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { getStripe, TIER_BY_PRICE } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPlanChangeEmail, sendPaymentReceivedEmail, sendPaymentFailedEmail, sendReferralWelcomeEmail, sendReferralSignedUpEmail, sendConnectWelcomeEmail } from "@/lib/resend";
+import { recordAudit } from "@/lib/audit";
 import { creditWalletFromCheckout, creditWalletFromReloadInvoice, saveDefaultPaymentMethod } from "@/lib/connect-billing";
 import { handleDispute } from "@/lib/connect-disputes";
 import { notifyLead } from "@/lib/lead-alerts";
@@ -58,6 +59,26 @@ export async function POST(request: Request) {
             );
           }
           const credit = await creditWalletFromCheckout(supabase, session);
+          // Logged once: only when this delivery is the one that credited the wallet.
+          if (credit.credited) {
+            const fundedUsd = Number(session.metadata?.funding_cents) / 100;
+            if (connectPurpose === "connect_signup") {
+              await recordAudit({
+                accountId,
+                actorType: "system",
+                actorLabel: "Stripe",
+                action: "billing.subscription_started",
+                target: "Ripplewatch",
+              });
+            }
+            await recordAudit({
+              accountId,
+              actorType: "system",
+              actorLabel: "Stripe",
+              action: "billing.balance_added",
+              target: Number.isFinite(fundedUsd) ? `$${fundedUsd.toFixed(2)}` : null,
+            });
+          }
 
           // Welcome only the first time the signup payment is credited, so a
           // redelivered webhook doesn't email again. Best-effort.
@@ -317,6 +338,13 @@ export async function POST(request: Request) {
             })
             .eq("id", accountId);
           if (error) throw new Error(`customer.subscription.deleted account update failed: ${error.message}`);
+          await recordAudit({
+            accountId,
+            actorType: "system",
+            actorLabel: "Stripe",
+            action: "billing.subscription_canceled",
+            target: "Ripplewatch",
+          });
         }
         break;
       }

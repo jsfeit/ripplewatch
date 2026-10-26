@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { generateApiKey } from "@/lib/api-keys";
 import { API_ACCESS_ALLOWED } from "@/lib/tier-limits";
+import { recordAudit } from "@/lib/audit";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -42,6 +43,16 @@ export async function POST(request: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  await recordAudit({
+    accountId: profile.account_id,
+    actorType: "user",
+    actorId: user.id,
+    actorLabel: user.email ?? null,
+    action: "api_key.created",
+    target: data.name,
+    headers: request.headers,
+  });
 
   // The only response that will ever contain the plaintext key — it is
   // never stored, so this is the caller's one chance to copy it.

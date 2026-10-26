@@ -1,5 +1,6 @@
 import { NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { recordAudit } from "@/lib/audit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { discoverCompetitorUrls } from "@/lib/scraping";
 import { reviewNewCompetitor } from "@/lib/competitor-intake";
@@ -104,10 +105,25 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 
   // RLS scopes this delete to the caller's own account_id — no explicit
   // ownership check needed beyond being signed in.
-  const { error } = await supabase.from("competitors").delete().eq("id", id);
+  const { data: removed, error } = await supabase
+    .from("competitors")
+    .delete()
+    .eq("id", id)
+    .select("account_id, name")
+    .maybeSingle();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  if (removed) {
+    await recordAudit({
+      accountId: removed.account_id,
+      actorType: "user",
+      actorId: user.id,
+      actorLabel: user.email ?? null,
+      action: "competitor.removed",
+      target: removed.name,
+    });
   }
 
   return NextResponse.json({ ok: true });

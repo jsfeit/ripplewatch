@@ -338,6 +338,34 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["mcp_connections"]["Insert"]>;
         Relationships: [];
       };
+      audit_log: {
+        Row: {
+          id: string;
+          account_id: string;
+          created_at: string;
+          actor_type: "user" | "assistant" | "system";
+          actor_id: string | null;
+          actor_label: string | null;
+          action: string;
+          target: string | null;
+          detail: Record<string, unknown> | null;
+          ip: string | null;
+        };
+        Insert: {
+          id?: string;
+          account_id: string;
+          created_at?: string;
+          actor_type: "user" | "assistant" | "system";
+          actor_id?: string | null;
+          actor_label?: string | null;
+          action: string;
+          target?: string | null;
+          detail?: Record<string, unknown> | null;
+          ip?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["audit_log"]["Insert"]>;
+        Relationships: [];
+      };
       contact_messages: {
         Row: {
           id: string;

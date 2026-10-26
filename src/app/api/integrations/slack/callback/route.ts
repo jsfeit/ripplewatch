@@ -1,3 +1,4 @@
+import { recordAudit } from "@/lib/audit";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
@@ -45,6 +46,15 @@ export async function GET(request: Request) {
       },
       { onConflict: "account_id,provider" }
     );
+    await recordAudit({
+      accountId: profile.account_id,
+      actorType: "user",
+      actorId: user.id,
+      actorLabel: user.email ?? null,
+      action: "integration.connected",
+      target: "Slack",
+      headers: request.headers,
+    });
   } catch {
     return NextResponse.redirect(new URL("/app/settings?error=slack_exchange_failed", request.url));
   }

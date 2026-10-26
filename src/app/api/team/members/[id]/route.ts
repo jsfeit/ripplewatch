@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { recordAudit } from "@/lib/audit";
 
 // Removes a teammate from the account (unlinks their profile — doesn't
 // delete their auth user, they just lose access and would need a fresh
 // invite to rejoin). RLS on profiles has no delete/update-by-others policy,
 // so this goes through the admin client after confirming the caller shares
 // the same account.
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
   const {
@@ -36,7 +37,17 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
 
+  const { data: removedUser } = await admin.auth.admin.getUserById(id);
   await admin.from("profiles").update({ account_id: null }).eq("id", id);
+  await recordAudit({
+    accountId: profile.account_id,
+    actorType: "user",
+    actorId: user.id,
+    actorLabel: user.email ?? null,
+    action: "team.removed",
+    target: removedUser.user?.email ?? id,
+    headers: request.headers,
+  });
 
   return NextResponse.json({ ok: true });
 }
