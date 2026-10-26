@@ -108,6 +108,8 @@ export interface Database {
           stripe_customer_id: string | null;
           stripe_subscription_id: string | null;
           subscription_status: string | null;
+          canceled_at: string | null;
+          retention_notice_sent_at: string | null;
           contact_email: string | null;
           created_by: string | null;
           payment_reminder_1_sent_at: string | null;
@@ -153,6 +155,8 @@ export interface Database {
           stripe_customer_id?: string | null;
           stripe_subscription_id?: string | null;
           subscription_status?: string | null;
+          canceled_at?: string | null;
+          retention_notice_sent_at?: string | null;
           contact_email?: string | null;
           created_by?: string | null;
           payment_reminder_1_sent_at?: string | null;

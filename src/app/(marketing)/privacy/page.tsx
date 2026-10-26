@@ -12,7 +12,7 @@ export const metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalDoc title="Privacy Policy" updated="July 23, 2026">
+    <LegalDoc title="Privacy Policy" updated="October 26, 2026">
       <p className="text-muted-foreground">
         This policy explains what information Ripplewatch (&ldquo;Ripplewatch,&rdquo; &ldquo;we,&rdquo; &ldquo;us&rdquo;) collects through
         ripplewatch.ai and the Ripplewatch application, how we use it, and who we share it with. It&apos;s
@@ -93,8 +93,9 @@ export default function PrivacyPage() {
         <h2>6. Data retention</h2>
         <p>
           We keep your account and signal data for as long as your account is active. If you cancel, we
-          retain your data for a limited period in case you&apos;d like to reactivate, and delete it sooner on
-          request.
+          keep your data for 30 days in case you&apos;d like to reactivate, email you a week before it is
+          deleted, and then delete it. We delete it sooner on request. Payment records held by Stripe follow
+          Stripe&apos;s own retention.
         </p>
       </section>
 
