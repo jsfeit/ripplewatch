@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import { recordAudit } from "@/lib/audit";
 import { createClient } from "@/lib/supabase/server";
 import type { IntegrationProvider } from "@/lib/supabase/types";
 
@@ -39,6 +41,16 @@ export async function disconnectIntegrationAction(formData: FormData) {
     .update({ connected: false, credentials: null, connected_at: null })
     .eq("account_id", profile.account_id)
     .eq("provider", provider);
+
+  await recordAudit({
+    accountId: profile.account_id,
+    actorType: "user",
+    actorId: user.id,
+    actorLabel: user.email ?? null,
+    action: "integration.disconnected",
+    target: provider,
+    headers: await headers(),
+  });
 
   revalidatePath("/app/settings");
 }

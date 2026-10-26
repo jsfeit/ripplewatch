@@ -16,6 +16,7 @@ import { loadFirstLook } from "@/lib/first-look";
 import { importWinLossText } from "@/lib/win-loss-import-text";
 import { logCallMentions } from "@/lib/call-mentions";
 import { hasMinimumBalance } from "@/lib/connect-wallet";
+import { assistantLabel, recordAudit, type AuditAction } from "@/lib/audit";
 import { GUIDE_TOPICS, getGuideTopic, guideTopicText, type GuideTopicId } from "@/lib/connect-guide";
 
 // Signal titles and summaries come from public third-party pages, so they can
@@ -47,6 +48,25 @@ function result(payload: unknown, next?: NextBestActions | null, usage?: UsageNo
   // Connect customers see what each call cost, so a usage bill is never a surprise.
   const body = usage ? { ...(withNext as Record<string, unknown>), usage } : withNext;
   return { content: [{ type: "text" as const, text: JSON.stringify(body, null, 2) }] };
+}
+
+// Writes one audit entry for a change an assistant just made.
+async function auditFromAssistant(
+  ctx: Ctx,
+  accountId: string,
+  action: AuditAction,
+  target: string | null,
+  detail?: Record<string, unknown>
+) {
+  const clientId = ctx.http?.authInfo?.extra?.clientId;
+  await recordAudit({
+    accountId,
+    actorType: "assistant",
+    actorLabel: await assistantLabel(accountId, typeof clientId === "string" ? clientId : undefined),
+    action,
+    target,
+    detail: detail ?? null,
+  });
 }
 
 function tierFrom(ctx: Ctx): string | undefined {
@@ -462,6 +482,7 @@ export function registerRipplewatchTools(server: McpServer) {
         return failure(added.error);
       }
       after(() => reviewNewCompetitor(createAdminClient(), added.competitor, process.env.NEXT_PUBLIC_APP_URL ?? ""));
+      await auditFromAssistant(ctx as Ctx, accountId, "competitor.added", added.competitor.name);
       const next = await computeNextBestActions(supabase, accountId);
       return result(
         {
@@ -498,6 +519,9 @@ export function registerRipplewatchTools(server: McpServer) {
         reason: reason?.trim() || null,
       });
       if (!logged.ok) return failure(logged.error);
+      if (logged.imported > 0) {
+        await auditFromAssistant(ctx as Ctx, accountId, "deal.logged", competitor_name, { outcome, count: logged.imported });
+      }
       const next = await computeNextBestActions(supabase, accountId);
       return result(
         {
@@ -544,6 +568,7 @@ export function registerRipplewatchTools(server: McpServer) {
         const imported = await importWinLossText(supabase, accountId, null, text, 20);
         if (!imported.ok) return failure(imported.error);
         const r = imported.result;
+        if (r.imported > 0) await auditFromAssistant(ctx as Ctx, accountId, "deal.logged", "Bulk import", { count: r.imported });
         const next = await computeNextBestActions(supabase, accountId);
         return result(
           {
@@ -636,6 +661,7 @@ export function registerRipplewatchTools(server: McpServer) {
       const supabase = createAdminClient();
       const logged = await logCustomerFeedback(supabase, accountId, null, { summary, score, source, respondent });
       if (!logged.ok) return failure(logged.error);
+      await auditFromAssistant(ctx as Ctx, accountId, "feedback.logged", respondent ?? null);
       const next = await computeNextBestActions(supabase, accountId);
       return result({ logged: logged.entry }, next);
     }
@@ -662,6 +688,7 @@ export function registerRipplewatchTools(server: McpServer) {
       if (Object.keys(update).length === 0) return failure("Provide positioning, icp, or both.");
       const { error } = await supabase.from("accounts").update(update).eq("id", accountId);
       if (error) return failure("Couldn't save that. Try again.");
+      await auditFromAssistant(ctx as Ctx, accountId, "context.updated", Object.keys(update).join(", "));
       const next = await computeNextBestActions(supabase, accountId);
       return result({ updated: Object.keys(update) }, next);
     }

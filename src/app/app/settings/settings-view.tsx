@@ -674,6 +674,21 @@ export function SettingsView({
           </Card>
         )}
 
+        <Card className="mt-6">
+          <CardHeader>
+            <h2 className="font-medium">Audit log</h2>
+            <p className="text-sm text-muted-foreground">
+              A record of who connected an assistant, created a key, invited a teammate or changed your competitors and
+              deals. Visible to the account owner only.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <Link href="/app/settings/audit-log" className="text-sm font-medium text-primary hover:underline">
+              Open the audit log
+            </Link>
+          </CardContent>
+        </Card>
+
         {API_ACCESS_ALLOWED[account.tier] && (
           <Card className="mt-6">
             <CardHeader>

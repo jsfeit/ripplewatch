@@ -3,7 +3,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { canUseMcp } from "@/lib/tier-limits";
+import { headers } from "next/headers";
 import { recordConnection } from "@/lib/mcp-attribution";
+import { recordAudit } from "@/lib/audit";
 
 const AUTHORIZATION_ID = /^[\w-]{8,200}$/;
 
@@ -42,6 +44,15 @@ export async function decideAuthorization(formData: FormData) {
         clientId: details.data.client.id,
         clientName: details.data.client.name || null,
         redirectUri: details.data.redirect_uri,
+      });
+      await recordAudit({
+        accountId: profile.account_id,
+        actorType: "user",
+        actorId: user.id,
+        actorLabel: user.email ?? null,
+        action: "assistant.connected",
+        target: details.data.client.name || "An AI assistant",
+        headers: await headers(),
       });
     }
   }

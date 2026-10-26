@@ -91,7 +91,7 @@ async function handleRequest(req: Request): Promise<Response> {
     token,
     clientId,
     scopes: ["read", "write"],
-    extra: { accountId: auth.accountId, tier: auth.tier },
+    extra: { accountId: auth.accountId, tier: auth.tier, clientId },
   });
   return authedHandler(req);
 }

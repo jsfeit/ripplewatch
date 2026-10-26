@@ -4,6 +4,7 @@ import { resolveAccountContext } from "@/lib/impersonation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { addCompetitor } from "@/lib/competitor-add";
 import { reviewNewCompetitor } from "@/lib/competitor-intake";
+import { recordAudit } from "@/lib/audit";
 
 // The domain check (a couple of fetches plus look-alike suggestions) and the
 // background review that follows both run inside this function's lifetime.
@@ -60,6 +61,15 @@ export async function POST(request: Request) {
       process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin
     )
   );
+
+  await recordAudit({
+    accountId,
+    actorType: "user",
+    actorId: user.id,
+    actorLabel: user.email ?? null,
+    action: "competitor.added",
+    target: result.competitor.name,
+  });
 
   return NextResponse.json({ competitor: result.competitor, notice: result.notice });
 }

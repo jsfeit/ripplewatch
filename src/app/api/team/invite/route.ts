@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { SEAT_LIMIT, seatLimitLabel } from "@/lib/tier-limits";
 import { sendInviteEmail } from "@/lib/resend";
+import { recordAudit } from "@/lib/audit";
 
 // Members + pending invites for the caller's own account, so Settings can
 // render one combined "who has access" list.
@@ -112,6 +113,16 @@ export async function POST(request: Request) {
     // Most likely the (account_id, email) unique constraint — already invited.
     return NextResponse.json({ error: "That email has already been invited." }, { status: 409 });
   }
+
+  await recordAudit({
+    accountId: profile.account_id,
+    actorType: "user",
+    actorId: user.id,
+    actorLabel: user.email ?? null,
+    action: "team.invited",
+    target: email,
+    headers: request.headers,
+  });
 
   const acceptUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${invite.token}`;
   let emailError = false;

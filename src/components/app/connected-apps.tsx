@@ -67,15 +67,17 @@ export function ConnectedApps() {
   async function disconnect(app: AppRow) {
     setRevoking(app.key);
     setError("");
-    const client = createClient();
-    const results = await Promise.all(
-      app.clientIds.map(async (clientId) => ({ clientId, error: (await client.auth.oauth.revokeGrant({ clientId })).error }))
-    );
+    const res = await fetch("/api/settings/connected-apps/disconnect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientIds: app.clientIds, name: app.name }),
+    });
+    const data = (await res.json().catch(() => ({}))) as { revoked?: string[]; failed?: string[] };
     setRevoking(null);
-    const revoked = results.filter((r) => !r.error).map((r) => r.clientId);
+    const revoked = data.revoked ?? [];
     // Drop what was revoked, even if one failed, so the list matches reality.
     setGrants((current) => (current ?? []).filter((g) => !revoked.includes(g.clientId)));
-    if (results.some((r) => r.error)) setError("Couldn't disconnect that app completely. Try again.");
+    if (!res.ok || (data.failed?.length ?? 0) > 0) setError("Couldn't disconnect that app completely. Try again.");
   }
 
   return (
