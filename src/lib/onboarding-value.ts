@@ -6,8 +6,8 @@ export type OnboardingStepKey = "connect" | "business" | "competitors" | "tools"
 
 export const ONBOARDING_VALUE: Record<OnboardingStepKey, { unlocks: string; unlocked: (n?: number) => string }> = {
   connect: {
-    unlocks: "Once I'm connected, your assistant can brief you on your competitors, answer questions about them, and log what you tell it.",
-    unlocked: () => "Connected. Your assistant can now brief you and answer questions about your competitors.",
+    unlocks: "Once I'm connected, your assistant can tell you whether a competitor is heating up or cooling off, answer questions about them, and log what you tell it.",
+    unlocked: () => "Connected. Your assistant can now tell you whether your competitors are heating up or cooling off.",
   },
   business: {
     unlocks: "I judge every competitor move against what you sell and who you sell to, so you hear about what matters and skip the noise.",

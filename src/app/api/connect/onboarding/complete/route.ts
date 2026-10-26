@@ -10,6 +10,14 @@ type CompetitorInput = { name: string; domain: string };
 
 // Fills in the context a Connect account skips at checkout (just company
 // name + card, to keep signup fast) — positioning, ICP, and competitors.
+//
+// Called in two stages by the get-started flow: "core" saves the context and
+// competitors and starts the first crawl (before the assistant is connected,
+// so the first question already has something to read), and "extras" finishes
+// setup (optional deal note, and the flag that stops the wizard reappearing).
+// A call with no stage does both at once, as the flow used to. Saving
+// competitors is skipped when the account already has some, so a repeated
+// call (a reload, a second tab) can't duplicate them.
 // Unlike /api/onboarding/complete, the account and profile link already
 // exist (created at checkout by /api/connect/account), so this only ever
 // updates, never inserts. Same competitor-discovery and first-crawl kickoff
@@ -42,6 +50,7 @@ export async function POST(request: Request) {
     hasPlg,
     dealNote,
     liveReadId,
+    stage,
   }: {
     positioning?: string;
     icp?: string;
@@ -50,67 +59,90 @@ export async function POST(request: Request) {
     hasPlg?: boolean;
     dealNote?: string;
     liveReadId?: string;
+    stage?: string;
   } = body;
 
+  const runCore = stage !== "extras";
+  const runExtras = stage !== "core";
+
+  const { count: existingCompetitors } = await supabase
+    .from("competitors")
+    .select("id", { count: "exact", head: true })
+    .eq("account_id", accountId);
+  const alreadySavedCore = (existingCompetitors ?? 0) > 0;
+  const saveCore = runCore && !alreadySavedCore;
+
   const namedCompetitors = (competitors ?? []).filter((c) => c.name?.trim());
-  if (namedCompetitors.length === 0) {
+  if (saveCore && namedCompetitors.length === 0) {
     return NextResponse.json({ error: "Add at least one competitor." }, { status: 400 });
   }
 
-  const { error: accountError } = await supabase
-    .from("accounts")
-    .update({
-      positioning: positioning?.trim() || null,
-      icp: icp?.trim() || null,
-      has_sales_crm: Boolean(hasSalesCrm),
-      has_plg: Boolean(hasPlg),
-      connect_get_started_dismissed_at: new Date().toISOString(),
-    })
-    .eq("id", accountId);
-  if (accountError) {
-    console.error("connect onboarding account update failed:", accountError);
-    return NextResponse.json({ error: "Could not save that." }, { status: 500 });
+  if (runExtras) {
+    const { error: dismissError } = await supabase
+      .from("accounts")
+      .update({ connect_get_started_dismissed_at: new Date().toISOString() })
+      .eq("id", accountId);
+    if (dismissError) {
+      console.error("connect onboarding dismiss failed:", dismissError);
+      return NextResponse.json({ error: "Could not save that." }, { status: 500 });
+    }
   }
 
-  // Same discovery/categorization as the dashboard flow — see
-  // /api/onboarding/complete for why these run in parallel.
-  const [competitorUrls, categories] = await Promise.all([
-    Promise.all(
-      namedCompetitors.map((c) => {
-        const domain = c.domain?.trim() || null;
-        return domain ? discoverCompetitorUrls(domain) : Promise.resolve({ pricingUrl: null, careersUrl: null });
+  if (saveCore) {
+    const { error: accountError } = await supabase
+      .from("accounts")
+      .update({
+        positioning: positioning?.trim() || null,
+        icp: icp?.trim() || null,
+        has_sales_crm: Boolean(hasSalesCrm),
+        has_plg: Boolean(hasPlg),
       })
-    ),
-    suggestCompetitorCategories(
-      namedCompetitors.map((c) => ({ name: c.name.trim(), domain: c.domain?.trim() || null })),
-      accountId
-    ).catch(() => namedCompetitors.map(() => "")),
-  ]);
+      .eq("id", accountId);
+    if (accountError) {
+      console.error("connect onboarding account update failed:", accountError);
+      return NextResponse.json({ error: "Could not save that." }, { status: 500 });
+    }
 
-  const { error: competitorsError } = await supabase.from("competitors").insert(
-    namedCompetitors.map((c, i) => ({
-      account_id: accountId,
-      name: c.name.trim(),
-      domain: c.domain?.trim() || null,
-      category: categories[i] || null,
-      pricing_url: competitorUrls[i].pricingUrl,
-      careers_url: competitorUrls[i].careersUrl,
-    }))
-  );
-  if (competitorsError) {
-    console.error("connect onboarding competitors insert failed:", competitorsError);
-    return NextResponse.json({ error: "Could not save competitors." }, { status: 500 });
-  }
+    // Same discovery/categorization as the dashboard flow — see
+    // /api/onboarding/complete for why these run in parallel.
+    const [competitorUrls, categories] = await Promise.all([
+      Promise.all(
+        namedCompetitors.map((c) => {
+          const domain = c.domain?.trim() || null;
+          return domain ? discoverCompetitorUrls(domain) : Promise.resolve({ pricingUrl: null, careersUrl: null });
+        })
+      ),
+      suggestCompetitorCategories(
+        namedCompetitors.map((c) => ({ name: c.name.trim(), domain: c.domain?.trim() || null })),
+        accountId
+      ).catch(() => namedCompetitors.map(() => "")),
+    ]);
 
-  // Ties the free read they ran before signing up to this account, for the admin live-reads
-  // page. Only fills an unclaimed row, so a copied id can't move someone else's read.
-  if (typeof liveReadId === "string" && /^[0-9a-f-]{36}$/i.test(liveReadId)) {
-    const { error: linkError } = await createAdminClient()
-      .from("live_reads")
-      .update({ account_id: accountId })
-      .eq("id", liveReadId)
-      .is("account_id", null);
-    if (linkError) console.error("live read link failed:", linkError.message);
+    const { error: competitorsError } = await supabase.from("competitors").insert(
+      namedCompetitors.map((c, i) => ({
+        account_id: accountId,
+        name: c.name.trim(),
+        domain: c.domain?.trim() || null,
+        category: categories[i] || null,
+        pricing_url: competitorUrls[i].pricingUrl,
+        careers_url: competitorUrls[i].careersUrl,
+      }))
+    );
+    if (competitorsError) {
+      console.error("connect onboarding competitors insert failed:", competitorsError);
+      return NextResponse.json({ error: "Could not save competitors." }, { status: 500 });
+    }
+
+    // Ties the free read they ran before signing up to this account, for the admin live-reads
+    // page. Only fills an unclaimed row, so a copied id can't move someone else's read.
+    if (typeof liveReadId === "string" && /^[0-9a-f-]{36}$/i.test(liveReadId)) {
+      const { error: linkError } = await createAdminClient()
+        .from("live_reads")
+        .update({ account_id: accountId })
+        .eq("id", liveReadId)
+        .is("account_id", null);
+      if (linkError) console.error("live read link failed:", linkError.message);
+    }
   }
 
   // An optional deal told in plain words ("we lost X to Y because..."). It goes
@@ -119,7 +151,7 @@ export async function POST(request: Request) {
   // can't be turned into a deal never fails setup, the person is told instead.
   let deal: { imported: number; skipped: number } | null = null;
   const note = typeof dealNote === "string" ? dealNote.trim().slice(0, 2000) : "";
-  if (note) {
+  if (runExtras && note) {
     try {
       const imported = await importWinLossText(createAdminClient(), accountId, user.id, note, 1);
       if (imported.ok) deal = { imported: imported.result.imported, skipped: imported.result.skipped };
@@ -128,29 +160,31 @@ export async function POST(request: Request) {
     }
   }
 
-  // Best-effort, fire-and-forget — same pattern as the dashboard flow: a
-  // brand-new account with zero signals is the worst possible first
-  // impression, so this queues the backfill crawl right away instead of
-  // waiting for the next scheduled cron run.
-  const researchPromise = researchCompanyContext(account.name, positioning?.trim() || null, accountId)
-    .then((summary) =>
-      supabase
-        .from("accounts")
-        .update({ company_research: summary, company_research_updated_at: new Date().toISOString() })
-        .eq("id", accountId)
-    )
-    .catch((err) => console.error("connect onboarding company research failed:", err));
+  if (saveCore) {
+    // Best-effort, fire-and-forget — same pattern as the dashboard flow: a
+    // brand-new account with zero signals is the worst possible first
+    // impression, so this queues the backfill crawl right away instead of
+    // waiting for the next scheduled cron run.
+    const researchPromise = researchCompanyContext(account.name, positioning?.trim() || null, accountId)
+      .then((summary) =>
+        supabase
+          .from("accounts")
+          .update({ company_research: summary, company_research_updated_at: new Date().toISOString() })
+          .eq("id", accountId)
+      )
+      .catch((err) => console.error("connect onboarding company research failed:", err));
 
-  after(async () => {
-    await researchPromise.catch(() => {});
-    try {
-      const admin = createAdminClient();
-      const { data: fullAccount } = await admin.from("accounts").select("*").eq("id", accountId).single();
-      if (fullAccount) await enqueueCrawlForAccount(admin, fullAccount);
-    } catch (err) {
-      console.error("connect onboarding backfill crawl enqueue failed:", err);
-    }
-  });
+    after(async () => {
+      await researchPromise.catch(() => {});
+      try {
+        const admin = createAdminClient();
+        const { data: fullAccount } = await admin.from("accounts").select("*").eq("id", accountId).single();
+        if (fullAccount) await enqueueCrawlForAccount(admin, fullAccount);
+      } catch (err) {
+        console.error("connect onboarding backfill crawl enqueue failed:", err);
+      }
+    });
+  }
 
   return NextResponse.json({ ok: true, deal });
 }
