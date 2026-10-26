@@ -39,19 +39,13 @@ export function SiteNav() {
         </nav>
         <div className="flex items-center gap-3">
           <Link
-            href="/onboarding?path=connect"
-            className={cn(buttonVariants({ variant: "ghost" }), "hidden sm:inline-flex")}
-          >
-            See it in action
-          </Link>
-          <Link
             href="/login"
             className={cn(buttonVariants({ variant: "ghost" }), "hidden sm:inline-flex")}
           >
             Sign in
           </Link>
           <Link href={getStartedHref} className={cn(buttonVariants(), "hidden sm:inline-flex")}>
-            Get started
+            Free competitor read
           </Link>
           <button
             type="button"
@@ -78,13 +72,6 @@ export function SiteNav() {
             </Link>
           ))}
           <Link
-            href="/onboarding?path=connect"
-            className="rounded-md px-2 py-2.5 text-sm font-medium text-foreground hover:bg-secondary"
-            onClick={() => setOpen(false)}
-          >
-            See it in action
-          </Link>
-          <Link
             href="/login"
             className="rounded-md px-2 py-2.5 text-sm font-medium text-foreground hover:bg-secondary"
             onClick={() => setOpen(false)}
@@ -96,7 +83,7 @@ export function SiteNav() {
             className={cn(buttonVariants(), "mt-2 w-full")}
             onClick={() => setOpen(false)}
           >
-            Get started
+            Free competitor read
           </Link>
         </nav>
       ) : null}

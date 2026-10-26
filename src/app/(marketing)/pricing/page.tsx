@@ -74,7 +74,7 @@ export default function PricingPage() {
         </p>
         <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link href="/onboarding?path=connect" className={buttonVariants()}>
-            Get {CONNECT_NAME}
+            Get a free competitor read
           </Link>
           <Link href="/competitor-snapshot" className={buttonVariants({ variant: "outline" })}>
             Try the free snapshot
