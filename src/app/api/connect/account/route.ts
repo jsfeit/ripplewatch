@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyLead } from "@/lib/lead-alerts";
@@ -46,13 +46,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not link the account to your profile." }, { status: 500 });
   }
 
-  await notifyLead({
+  after(() => notifyLead({
     kind: "account_created",
     accountId,
     email: user.email ?? null,
     companyName,
     method: user.app_metadata?.provider === "google" ? "Google" : "Email and password",
-  });
+  }));
 
   return NextResponse.json({ ok: true, accountId });
 }
