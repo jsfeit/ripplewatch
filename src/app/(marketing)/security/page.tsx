@@ -54,6 +54,25 @@ export default function SecurityPage() {
       </section>
 
       <section>
+        <h2>Audit log</h2>
+        <p>
+          Ripplewatch keeps a record of the changes that matter for security, and the account owner can read it in
+          Settings, under Audit log. It covers:
+        </p>
+        <ul>
+          <li>API keys created and revoked, and teammates invited and removed.</li>
+          <li>AI assistants and integrations connected and disconnected, including which assistant did it.</li>
+          <li>Competitors added or removed, deals and feedback logged, and business context updated.</li>
+          <li>Subscription and balance changes.</li>
+        </ul>
+        <p>
+          Each entry shows who did it, what happened and when. For changes to who can get in (keys, teammates,
+          assistants, integrations) we also keep the IP address. Entries are kept for 12 months, and the owner can
+          export them as a CSV. Teammates can&apos;t see the log.
+        </p>
+      </section>
+
+      <section>
         <h2>Sign-in and keys</h2>
         <ul>
           <li>Connecting an assistant uses an OAuth sign-in that you approve on a screen showing which app is asking and where it will send you back.</li>
