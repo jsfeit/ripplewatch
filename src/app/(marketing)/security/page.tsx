@@ -14,7 +14,7 @@ export const metadata = {
 
 export default function SecurityPage() {
   return (
-    <LegalDoc title="Security" updated="October 27, 2026">
+    <LegalDoc title="Security" updated="October 26, 2026">
       <p className="text-muted-foreground">
         Ripplewatch holds your competitors, your positioning and the reasons you win and lose deals. That is
         sensitive, so here is plainly what we do with it. We don&apos;t have a SOC 2 report today, and this page
