@@ -15,6 +15,14 @@ import { avatarColor } from "@/lib/utils";
 // Same caching rationale as the blog index — see that file.
 export const revalidate = 300;
 
+// Pre-render every post so each is served from the CDN. Without this the route rendered on every
+// request (cache-control: no-store, a database read per visit), unlike the compare and
+// alternatives pages. A post published after the build still renders on first request, then caches.
+export async function generateStaticParams() {
+  const posts = await getAllPosts();
+  return posts.map((p) => ({ slug: p.slug }));
+}
+
 export async function generateMetadata({
   params,
 }: {

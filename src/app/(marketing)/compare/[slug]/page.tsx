@@ -9,6 +9,7 @@ import { MOCK_SIGNALS, MOCK_COMPETITORS } from "@/lib/mock-data";
 import { COMPARISONS, getComparison } from "@/lib/comparisons";
 import { QuizCta } from "@/components/marketing/quiz-cta";
 import { TIERS } from "@/lib/tiers";
+import { CONNECT_BASE_FEE_USD, CONNECT_MIN_FUNDING_USD } from "@/lib/connect-pricing";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
@@ -29,8 +30,9 @@ export async function generateMetadata({
   const entry = getComparison(slug);
   if (!entry) return {};
 
-  const title = `${entry.name} alternative: Ripplewatch vs. ${entry.name}`;
-  const description = `${entry.name} alternative? Ripplewatch vs. ${entry.name} compared: monitoring, scoring and cost. $29 a month plus usage, inside Claude and ChatGPT.`;
+  // The /alternatives page owns "X alternative"; this one is for the head-to-head searches.
+  const title = `Ripplewatch vs. ${entry.name}: how they compare`;
+  const description = `Ripplewatch vs. ${entry.name} side by side: how each monitors competitors, how findings are prioritized, who each is best for, and cost ($${CONNECT_BASE_FEE_USD}/month plus usage for Ripplewatch).`;
 
   return {
     title: fitTitle(title),
@@ -49,6 +51,21 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
   const { slug } = await params;
   const entry = getComparison(slug);
   if (!entry) notFound();
+
+  const faqs = [
+    {
+      q: `Is Ripplewatch a replacement for ${entry.name}?`,
+      a: `It depends on the job. ${entry.name} is best for: ${entry.bestFor.charAt(0).toLowerCase()}${entry.bestFor.slice(1)}. Ripplewatch is built for small teams who want every competitor change scored against their own positioning and win/loss history, and who want to ask about it from inside Claude or ChatGPT.`,
+    },
+    {
+      q: `How much does Ripplewatch cost compared with ${entry.name}?`,
+      a: `Ripplewatch publishes its price: $${CONNECT_BASE_FEE_USD} per month plus a prepaid balance (from $${CONNECT_MIN_FUNDING_USD}) that pays for usage, with unused balance refundable. For ${entry.name}'s current pricing, check ${entry.domain}.`,
+    },
+    {
+      q: `Can I see Ripplewatch work on ${entry.name} before signing up?`,
+      a: `Yes. The free competitor snapshot reads ${entry.domain}'s pricing page, job board and recent news with no account.`,
+    },
+  ];
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-20">
@@ -88,6 +105,20 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
                 item: `${APP_URL}/compare/${entry.slug}`,
               },
             ],
+          }),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: faqs.map((f) => ({
+              "@type": "Question",
+              name: f.q,
+              acceptedAnswer: { "@type": "Answer", text: f.a },
+            })),
           }),
         }}
       />
@@ -160,6 +191,13 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">{entry.howPrioritized}</td>
               </tr>
+              <tr className="border-b border-border">
+                <td className="px-4 py-3 font-medium text-muted-foreground">Pricing</td>
+                <td className="px-4 py-3 text-foreground">
+                  ${CONNECT_BASE_FEE_USD}/month plus a prepaid balance from ${CONNECT_MIN_FUNDING_USD}, published
+                </td>
+                <td className="px-4 py-3 text-muted-foreground">See {entry.domain} for current pricing</td>
+              </tr>
               <tr>
                 <td className="px-4 py-3 font-medium text-muted-foreground">Best for</td>
                 <td className="px-4 py-3 text-foreground">
@@ -185,12 +223,31 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
         </div>
       </div>
 
+      <div className="mt-16">
+        <h2 className="text-lg font-medium">Common questions</h2>
+        <dl className="mt-4 max-w-2xl space-y-5">
+          {faqs.map((f) => (
+            <div key={f.q}>
+              <dt className="font-medium">{f.q}</dt>
+              <dd className="mt-1 leading-relaxed text-muted-foreground">{f.a}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+
       <div className="mt-20 space-y-3 text-center">
         <Link href="/pricing" className={buttonVariants({ size: "lg" })}>
           Get started
           <ArrowRight className="size-4" />
         </Link>
         <QuizCta variant="inline" />
+        <p className="text-sm text-muted-foreground">
+          Weighing a switch?{" "}
+          <Link href={`/alternatives/${entry.slug}`} className="text-primary hover:underline">
+            See when to move from {entry.name} to Ripplewatch, and when not to
+          </Link>
+          .
+        </p>
       </div>
     </div>
   );
