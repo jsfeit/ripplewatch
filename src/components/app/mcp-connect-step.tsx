@@ -63,7 +63,13 @@ export function McpConnectStep({
       else if (runs < 45 + 120) timer = setTimeout(tick, 15000);
     };
     timer = setTimeout(tick, 4000);
-    return () => clearTimeout(timer);
+    // Coming back from the assistant's tab is the moment it has just connected, so check at once.
+    const onFocus = () => router.refresh();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("focus", onFocus);
+    };
   }, [connected, router]);
 
   async function copyText(text: string, setCopied: (v: boolean) => void) {

@@ -6,6 +6,8 @@ import { suggestCompetitorCategories, researchCompanyContext } from "@/lib/anthr
 import { enqueueCrawlForAccount } from "@/lib/crawl";
 import { importWinLossText } from "@/lib/win-loss-import-text";
 
+export const maxDuration = 60;
+
 type CompetitorInput = { name: string; domain: string };
 
 // Fills in the context a Connect account skips at checkout (just company
@@ -88,50 +90,41 @@ export async function POST(request: Request) {
     }
   }
 
+  let savedRows: { id: string }[] = [];
   if (saveCore) {
-    const { error: accountError } = await supabase
-      .from("accounts")
-      .update({
-        positioning: positioning?.trim() || null,
-        icp: icp?.trim() || null,
-        has_sales_crm: Boolean(hasSalesCrm),
-        has_plg: Boolean(hasPlg),
-      })
-      .eq("id", accountId);
+    // The page lookups and the category guess are slow (a site fetch each, plus a model call), and
+    // nothing the person sees next needs them, so the competitors are saved bare and filled in
+    // behind the response below. The account update and the insert don't depend on each other.
+    const [{ error: accountError }, { data: inserted, error: competitorsError }] = await Promise.all([
+      supabase
+        .from("accounts")
+        .update({
+          positioning: positioning?.trim() || null,
+          icp: icp?.trim() || null,
+          has_sales_crm: Boolean(hasSalesCrm),
+          has_plg: Boolean(hasPlg),
+        })
+        .eq("id", accountId),
+      supabase
+        .from("competitors")
+        .insert(
+          namedCompetitors.map((c) => ({
+            account_id: accountId,
+            name: c.name.trim(),
+            domain: c.domain?.trim() || null,
+          }))
+        )
+        .select("id"),
+    ]);
     if (accountError) {
       console.error("connect onboarding account update failed:", accountError);
       return NextResponse.json({ error: "Could not save that." }, { status: 500 });
     }
-
-    // Same discovery/categorization as the dashboard flow — see
-    // /api/onboarding/complete for why these run in parallel.
-    const [competitorUrls, categories] = await Promise.all([
-      Promise.all(
-        namedCompetitors.map((c) => {
-          const domain = c.domain?.trim() || null;
-          return domain ? discoverCompetitorUrls(domain) : Promise.resolve({ pricingUrl: null, careersUrl: null });
-        })
-      ),
-      suggestCompetitorCategories(
-        namedCompetitors.map((c) => ({ name: c.name.trim(), domain: c.domain?.trim() || null })),
-        accountId
-      ).catch(() => namedCompetitors.map(() => "")),
-    ]);
-
-    const { error: competitorsError } = await supabase.from("competitors").insert(
-      namedCompetitors.map((c, i) => ({
-        account_id: accountId,
-        name: c.name.trim(),
-        domain: c.domain?.trim() || null,
-        category: categories[i] || null,
-        pricing_url: competitorUrls[i].pricingUrl,
-        careers_url: competitorUrls[i].careersUrl,
-      }))
-    );
     if (competitorsError) {
       console.error("connect onboarding competitors insert failed:", competitorsError);
       return NextResponse.json({ error: "Could not save competitors." }, { status: 500 });
     }
+    savedRows = inserted ?? [];
 
     // Ties the free read they ran before signing up to this account, for the admin live-reads
     // page. Only fills an unclaimed row, so a copied id can't move someone else's read.
@@ -175,6 +168,36 @@ export async function POST(request: Request) {
       .catch((err) => console.error("connect onboarding company research failed:", err));
 
     after(async () => {
+      try {
+        // Same discovery/categorization as the dashboard flow, run here so setup doesn't wait on it.
+        const [competitorUrls, categories] = await Promise.all([
+          Promise.all(
+            namedCompetitors.map((c) => {
+              const domain = c.domain?.trim() || null;
+              return domain ? discoverCompetitorUrls(domain) : Promise.resolve({ pricingUrl: null, careersUrl: null });
+            })
+          ),
+          suggestCompetitorCategories(
+            namedCompetitors.map((c) => ({ name: c.name.trim(), domain: c.domain?.trim() || null })),
+            accountId
+          ).catch(() => namedCompetitors.map(() => "")),
+        ]);
+        const admin = createAdminClient();
+        await Promise.all(
+          savedRows.map((row, i) =>
+            admin
+              .from("competitors")
+              .update({
+                category: categories[i] || null,
+                pricing_url: competitorUrls[i]?.pricingUrl ?? null,
+                careers_url: competitorUrls[i]?.careersUrl ?? null,
+              })
+              .eq("id", row.id)
+          )
+        );
+      } catch (err) {
+        console.error("connect onboarding competitor details failed:", err);
+      }
       await researchPromise.catch(() => {});
       try {
         const admin = createAdminClient();

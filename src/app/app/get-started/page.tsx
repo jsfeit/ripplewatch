@@ -24,23 +24,24 @@ export default async function GetStartedPage() {
   const { data: profile } = await supabase.from("profiles").select("account_id").eq("id", user.id).single();
   if (!profile?.account_id) redirect("/onboarding");
 
-  const { data: account } = await supabase
-    .from("accounts")
-    .select("id, name, tier, connect_get_started_dismissed_at, mcp_last_connected_at")
-    .eq("id", profile.account_id)
-    .single();
+  const [{ data: account }, { data: firstCompetitor, count: competitorCount }] = await Promise.all([
+    supabase
+      .from("accounts")
+      .select("id, name, tier, connect_get_started_dismissed_at, mcp_last_connected_at")
+      .eq("id", profile.account_id)
+      .single(),
+    // Context and competitors are saved before the assistant is connected, so
+    // someone who reloads partway through resumes after those steps.
+    supabase
+      .from("competitors")
+      .select("name", { count: "exact" })
+      .eq("account_id", profile.account_id)
+      .order("created_at", { ascending: true })
+      .limit(1),
+  ]);
   if (!account || account.tier !== "connect") redirect("/app/settings");
 
   if (account.connect_get_started_dismissed_at) redirect("/app/settings?tab=connect");
-
-  // Context and competitors are saved before the assistant is connected, so
-  // someone who reloads partway through resumes after those steps.
-  const { data: firstCompetitor, count: competitorCount } = await supabase
-    .from("competitors")
-    .select("name", { count: "exact" })
-    .eq("account_id", account.id)
-    .order("created_at", { ascending: true })
-    .limit(1);
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-10">

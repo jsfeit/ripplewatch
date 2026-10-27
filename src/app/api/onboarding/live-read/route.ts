@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { normalizeDomain, DOMAIN_PATTERN, isBlockedHost } from "@/lib/domain";
 import { buildSnapshot } from "@/lib/snapshot";
@@ -106,7 +106,7 @@ export async function POST(request: Request) {
   if (saveError || !saved) console.error("live read not saved:", saveError?.message);
   else readId = saved.id;
 
-  await notifyLead({
+  after(() => notifyLead({
     kind: "live_read",
     company: companyName || null,
     positioning,
@@ -114,7 +114,7 @@ export async function POST(request: Request) {
     competitor: competitorName,
     confidence: result.personalRead?.confidence ?? null,
     found: result.personalRead?.found ?? null,
-  });
+  }));
 
   return NextResponse.json({
     readId,
