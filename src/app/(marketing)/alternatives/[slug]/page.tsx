@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { COMPARISONS, getComparison } from "@/lib/comparisons";
 import { QuizCta } from "@/components/marketing/quiz-cta";
 import { TIERS } from "@/lib/tiers";
+import { CONNECT_BASE_FEE_USD, CONNECT_MIN_FUNDING_USD } from "@/lib/connect-pricing";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
@@ -23,8 +24,8 @@ export async function generateMetadata({
   const entry = getComparison(slug);
   if (!entry) return {};
 
-  const title = `${entry.name} alternative that works in your AI assistant`;
-  const description = `${entry.name} alternative: Ripplewatch is an AI analyst inside Claude and ChatGPT, with pricing published up front. See how it compares.`;
+  const title = `${entry.name} alternative: self-serve, from $${CONNECT_BASE_FEE_USD}/mo`;
+  const description = `Looking for a ${entry.name} alternative? Ripplewatch works inside Claude and ChatGPT, scores every change against your positioning, and publishes its price: $${CONNECT_BASE_FEE_USD}/month plus usage. When to switch, and when not to.`;
 
   return {
     title: fitTitle(title),
@@ -43,6 +44,17 @@ export default async function AlternativePage({ params }: { params: Promise<{ sl
   const { slug } = await params;
   const entry = getComparison(slug);
   if (!entry) notFound();
+
+  const faqs = [
+    { q: `Why look for a ${entry.name} alternative?`, a: entry.switchGain },
+    { q: `What does ${entry.name} do well?`, a: entry.whatTheyDoWell },
+    {
+      q: `Is Ripplewatch self-serve, and what does it cost?`,
+      a: `Yes. There is no sales call. Pricing is published: a $${CONNECT_BASE_FEE_USD} per month platform fee plus a prepaid balance (from $${CONNECT_MIN_FUNDING_USD}) that pays for usage, and unused balance can be refunded.`,
+    },
+    { q: `When should I stay with ${entry.name}?`, a: entry.switchConsider },
+  ];
+  const related = COMPARISONS.filter((c) => c.slug !== entry.slug && ["kompyte", "crayon", "klue", "valona-intelligence"].includes(c.slug));
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-20">
@@ -85,6 +97,20 @@ export default async function AlternativePage({ params }: { params: Promise<{ sl
           }),
         }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: faqs.map((f) => ({
+              "@type": "Question",
+              name: f.q,
+              acceptedAnswer: { "@type": "Answer", text: f.a },
+            })),
+          }),
+        }}
+      />
       <div className="mx-auto max-w-2xl text-center">
         <span className="inline-flex items-center rounded-full border border-border bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground">
           {entry.name} alternative
@@ -93,6 +119,42 @@ export default async function AlternativePage({ params }: { params: Promise<{ sl
           Looking for a {entry.name} alternative?
         </h1>
         <p className="mt-4 text-muted-foreground">{entry.tagline}</p>
+      </div>
+
+      <div className="mt-12 overflow-x-auto rounded-xl border border-border">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-secondary/50 text-xs uppercase tracking-wide text-muted-foreground">
+            <tr>
+              <th className="px-4 py-3 font-medium"> </th>
+              <th className="px-4 py-3 font-medium">Ripplewatch</th>
+              <th className="px-4 py-3 font-medium">{entry.name}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border align-top">
+            <tr>
+              <th className="px-4 py-3 font-medium">Best for</th>
+              <td className="px-4 py-3 text-muted-foreground">Small teams who want to see what changed at competitors and what to do about it, without an enterprise rollout</td>
+              <td className="px-4 py-3 text-muted-foreground">{entry.bestFor}</td>
+            </tr>
+            <tr>
+              <th className="px-4 py-3 font-medium">How changes are prioritized</th>
+              <td className="px-4 py-3 text-muted-foreground">Scored against your positioning and your win/loss history</td>
+              <td className="px-4 py-3 text-muted-foreground">{entry.howPrioritized}</td>
+            </tr>
+            <tr>
+              <th className="px-4 py-3 font-medium">Where you use it</th>
+              <td className="px-4 py-3 text-muted-foreground">Inside Claude, ChatGPT and other assistants over MCP, plus Slack</td>
+              <td className="px-4 py-3 text-muted-foreground">Its own product</td>
+            </tr>
+            <tr>
+              <th className="px-4 py-3 font-medium">Pricing</th>
+              <td className="px-4 py-3 text-muted-foreground">${CONNECT_BASE_FEE_USD}/month plus a prepaid balance from ${CONNECT_MIN_FUNDING_USD}, published</td>
+              <td className="px-4 py-3 text-muted-foreground">
+                See <span className="font-medium">{entry.domain}</span> for current pricing
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       <div className="mt-16 space-y-10">
@@ -138,6 +200,18 @@ export default async function AlternativePage({ params }: { params: Promise<{ sl
         </div>
       </div>
 
+      <div className="mt-16">
+        <h2 className="text-lg font-medium">Questions about switching from {entry.name}</h2>
+        <dl className="mt-4 space-y-5">
+          {faqs.map((f) => (
+            <div key={f.q}>
+              <dt className="font-medium">{f.q}</dt>
+              <dd className="mt-1 leading-relaxed text-muted-foreground">{f.a}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+
       <div className="mt-16 rounded-xl border border-dashed border-border p-6 text-center">
         <p className="text-sm text-muted-foreground">
           Want to see it work on {entry.name} itself, right now, no signup?{" "}
@@ -161,6 +235,19 @@ export default async function AlternativePage({ params }: { params: Promise<{ sl
           </Link>
           .
         </p>
+        {related.length > 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Also comparing:{" "}
+            {related.map((c, i) => (
+              <span key={c.slug}>
+                {i > 0 ? ", " : ""}
+                <Link href={`/alternatives/${c.slug}`} className="text-primary hover:underline">
+                  {c.name}
+                </Link>
+              </span>
+            ))}
+          </p>
+        ) : null}
       </div>
     </div>
   );
