@@ -14,7 +14,7 @@ export const metadata = {
 
 export default function SecurityPage() {
   return (
-    <LegalDoc title="Security" updated="October 26, 2026">
+    <LegalDoc title="Security" updated="October 27, 2026">
       <p className="text-muted-foreground">
         Ripplewatch holds your competitors, your positioning and the reasons you win and lose deals. That is
         sensitive, so here is plainly what we do with it. We don&apos;t have a SOC 2 report today, and this page
@@ -80,7 +80,7 @@ export default function SecurityPage() {
         <h2>Your data, your call</h2>
         <ul>
           <li>You can ask for an export or deletion of your data at any time at <a href="mailto:hello@ripplewatch.ai">hello@ripplewatch.ai</a>.</li>
-          <li>If you cancel, we keep your data for a limited period in case you come back, and delete it sooner if you ask.</li>
+          <li>If you cancel, we keep your data for 30 days in case you come back, email you a week before it is deleted, and then delete it. We delete it sooner if you ask.</li>
           <li>Our <a href="/privacy">Privacy Policy</a> has the full detail.</li>
         </ul>
       </section>
