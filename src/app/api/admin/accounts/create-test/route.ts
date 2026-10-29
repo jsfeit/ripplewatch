@@ -98,7 +98,7 @@ export async function POST(request: Request) {
   });
   if (linkError || !link.properties?.action_link) {
     return NextResponse.json(
-      { ok: true, accountId, warning: "Account created, but the sign-in link failed — sign in manually via 'Forgot password'." },
+      { ok: true, accountId, warning: "Account created, but the sign-in link failed. Sign in manually via 'Forgot password'." },
       { status: 200 }
     );
   }

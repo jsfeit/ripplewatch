@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10MB — plenty for notes/decks, not video
+const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10MB: plenty for notes/decks, not video
 
 export async function GET() {
   const supabase = await createClient();

@@ -473,7 +473,7 @@ export default async function DashboardPage() {
           <h2 className="text-sm font-semibold">Customer voice</h2>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          What your own customers think of you — NPS scores and the feature requests they&apos;re asking for.
+          What your own customers think of you. NPS scores and the feature requests they&apos;re asking for.
           Separate from everything else here, which is about your competitors.
         </p>
         <div className="mt-4">

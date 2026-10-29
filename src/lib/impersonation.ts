@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { createClient } from "@/lib/supabase/server";
 
 export const IMPERSONATION_COOKIE = "rw_impersonation";
-const IMPERSONATION_TTL_MS = 60 * 60 * 1000; // 1 hour — re-start from the admin panel if you need longer
+const IMPERSONATION_TTL_MS = 60 * 60 * 1000; // 1 hour: re-start from the admin panel if you need longer
 
 export type ImpersonationContext = {
   logId: string;

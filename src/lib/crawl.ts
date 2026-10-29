@@ -731,7 +731,7 @@ export async function finalizeCompletedRuns(supabase: AdminSupabase): Promise<Cr
       .eq("run_id", run.id)
       .in("status", ["pending", "running"]);
 
-    if (unfinished && unfinished > 0) continue; // still in progress — try again next tick
+    if (unfinished && unfinished > 0) continue; // still in progress, try again next tick
 
     const { data: account } = await supabase.from("accounts").select("*").eq("id", run.account_id).single();
     if (!account) {

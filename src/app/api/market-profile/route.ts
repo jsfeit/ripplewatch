@@ -75,6 +75,6 @@ export async function PATCH(request: Request) {
     .maybeSingle();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  if (!data) return NextResponse.json({ error: "No market profile yet — it generates on your first crawl." }, { status: 404 });
+  if (!data) return NextResponse.json({ error: "No market profile yet. It generates on your first crawl." }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

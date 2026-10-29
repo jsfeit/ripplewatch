@@ -195,7 +195,7 @@ export function CustomerVoiceBoard({ initialEntries }: { initialEntries: Feedbac
             </div>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            What your own customers say — an NPS score, a feature request, a complaint. A score is optional: NPS
+            What your own customers say: an NPS score, a feature request, a complaint. A score is optional: NPS
             is just one shape this can take, not a separate thing to track.
           </p>
 
@@ -305,7 +305,7 @@ export function CustomerVoiceBoard({ initialEntries }: { initialEntries: Feedbac
                       </span>
                     ) : (
                       <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary text-[10px] font-semibold text-muted-foreground">
-                        —
+                        n/a
                       </span>
                     )}
                     <div className="min-w-0 flex-1">

@@ -8,7 +8,7 @@ type Account = Database["public"]["Tables"]["accounts"]["Row"];
 
 export const maxDuration = 300; // Vercel Cron functions get a longer budget than normal requests
 
-const ACCOUNT_CONCURRENCY = 3; // matches crawl.ts's cross-account bound — one web-search-grounded LLM call per account
+const ACCOUNT_CONCURRENCY = 3; // matches crawl.ts's cross-account bound: one web-search-grounded LLM call per account
 
 // Runs weekly (see vercel.json). One web-search-grounded call per account,
 // excluding names already tracked or already surfaced (pending, added, or

@@ -140,58 +140,58 @@ export function scoreToLevel(score: number): RelevanceLevel {
   return "Low";
 }
 
-const SYSTEM_PROMPT = `You score competitive-intelligence signals for a B2B SaaS company. Your job is not to summarize the signal — the customer can already read it. Your job is to judge how much it actually matters to THIS company, given their positioning, ICP, and the real reasons they've lost deals or churned customers, and to say why in plain language a marketing lead would use in a Slack message.
+const SYSTEM_PROMPT = `You score competitive-intelligence signals for a B2B SaaS company. Your job is not to summarize the signal. The customer can already read it. Your job is to judge how much it actually matters to THIS company, given their positioning, ICP, and the real reasons they've lost deals or churned customers, and to say why in plain language a marketing lead would use in a Slack message.
 
-Lead the reasoning with the new information, not the background. The reader already knows who their own competitors are and roughly why they track them — opening with "X is a competitor in your ICP" or restating the competitive relationship tells them nothing new and wastes the one or two sentences you have. Start directly with what happened and its concrete, specific consequence for this company (the price gap, the feature parity gap, the segment it threatens) — the same thing a sharp analyst would lead with in a Slack DM. Only mention the competitive-positioning context (why this competitor is relevant to their ICP at all) if it's genuinely load-bearing for the reasoning AND not already obvious — and if you do, put it at the end, briefly, not as the opening frame.
+Lead the reasoning with the new information, not the background. The reader already knows who their own competitors are and roughly why they track them, opening with "X is a competitor in your ICP" or restating the competitive relationship tells them nothing new and wastes the one or two sentences you have. Start directly with what happened and its concrete, specific consequence for this company (the price gap, the feature parity gap, the segment it threatens), the same thing a sharp analyst would lead with in a Slack DM. Only mention the competitive-positioning context (why this competitor is relevant to their ICP at all) if it's genuinely load-bearing for the reasoning AND not already obvious, and if you do, put it at the end, briefly, not as the opening frame.
 
-When public market research on the company is provided alongside their self-reported positioning, use both together — the self-reported text tells you how they see themselves, the research tells you their actual real-world market position, known differentiators, and competitive set. Ground your reasoning in the combination, not just whichever one is more detailed. Self-reported positioning is often thin or generic ("we help businesses grow"); real research on what the company actually does and who it actually competes with should carry real weight in judging whether a signal is a real threat, not just filler — but that research is context for YOUR judgment, not something to narrate back to the reader as the headline of the reasoning. If no research is provided, work from positioning/ICP alone as before.
+When public market research on the company is provided alongside their self-reported positioning, use both together, the self-reported text tells you how they see themselves, the research tells you their actual real-world market position, known differentiators, and competitive set. Ground your reasoning in the combination, not just whichever one is more detailed. Self-reported positioning is often thin or generic ("we help businesses grow"); real research on what the company actually does and who it actually competes with should carry real weight in judging whether a signal is a real threat, not just filler, but that research is context for YOUR judgment, not something to narrate back to the reader as the headline of the reasoning. If no research is provided, work from positioning/ICP alone as before.
 
-Before scoring, check whether this signal is even about the right company. Competitor names sometimes collide with a completely unrelated company (e.g. a company called "Sage" that sells accounting software vs. an unrelated healthcare/senior-care company also called "Sage"). If the signal is clearly about a different, unrelated company that just happens to share the name — not a different segment or product line of the SAME company, but a genuinely different business — set "wrongCompany": true, score it 0-5, and say in the reasoning which unrelated company it's actually about. This is different from a same-company signal that's just not very relevant (that still gets "wrongCompany": false and scored normally on the rubric below).
+Before scoring, check whether this signal is even about the right company. Competitor names sometimes collide with a completely unrelated company (e.g. a company called "Sage" that sells accounting software vs. an unrelated healthcare/senior-care company also called "Sage"). If the signal is clearly about a different, unrelated company that just happens to share the name, not a different segment or product line of the SAME company, but a genuinely different business, set "wrongCompany": true, score it 0-5, and say in the reasoning which unrelated company it's actually about. This is different from a same-company signal that's just not very relevant (that still gets "wrongCompany": false and scored normally on the rubric below).
 
 Respond with strict JSON only, no markdown, matching this shape exactly:
 {"score": <integer 0-100>, "wrongCompany": true | false, "reasoning": "<1-3 sentences>"}
 
-Score on a continuous 0-100 scale — do not think in three buckets and then pick a number that "sounds right" for one of them. Anchor to these reference bands, but land on the specific number within a band that the signal actually earns; don't cluster on round numbers or a band's midpoint out of habit.
+Score on a continuous 0-100 scale. Do not think in three buckets and then pick a number that "sounds right" for one of them. Anchor to these reference bands, but land on the specific number within a band that the signal actually earns; don't cluster on round numbers or a band's midpoint out of habit.
 
-Most accounts won't have rich lost-deal or churn notes on file — thin context is the normal case, not an excuse to default everything low. Score like an experienced competitive analyst reading this cold: you don't need a company to have written down "we lost a deal over this" to recognize that a same-market competitor cutting price, shipping a notable feature, or making a notable hire is inherently worth flagging. Extrapolate from what a reasonable person selling into this ICP would care about, the same way a sharp analyst would, rather than waiting for an exact documented match before scoring above the middle of the range.
+Most accounts won't have rich lost-deal or churn notes on file, thin context is the normal case, not an excuse to default everything low. Score like an experienced competitive analyst reading this cold: you don't need a company to have written down "we lost a deal over this" to recognize that a same-market competitor cutting price, shipping a notable feature, or making a notable hire is inherently worth flagging. Extrapolate from what a reasonable person selling into this ICP would care about, the same way a sharp analyst would, rather than waiting for an exact documented match before scoring above the middle of the range.
 
 - 90-100: A direct, named hit on a specific, documented reason a deal was lost or a customer churned (the exact price point, the exact feature gap, the exact named competitor comparison), now confirmed or made worse.
-- 70-89: A clear, concrete competitive move from a same-segment competitor — a real price cut, a new tier, a notable feature launch, a positioning shift — that a sharp analyst would recognize as a real threat to this company's ICP, whether or not it's tied to a documented loss reason. Most "yes, this squarely concerns our market and it's a real product/pricing move" signals belong here, not in the band below.
+- 70-89: A clear, concrete competitive move from a same-segment competitor, a real price cut, a new tier, a notable feature launch, a positioning shift, that a sharp analyst would recognize as a real threat to this company's ICP, whether or not it's tied to a documented loss reason. Most "yes, this squarely concerns our market and it's a real product/pricing move" signals belong here, not in the band below.
 - 50-69: A believable but indirect or partial threat: a hiring signal, a directional move with no confirmed numbers, or a concrete change aimed at a segment adjacent to (not squarely inside) the ICP.
 - 25-49: Plausible background noise: generic funding/press coverage with only a loosely related product implication, or a change aimed at a segment that's a stretch from the ICP but not clearly disqualified.
 - 0-24: Not actually relevant: a segment that's clearly and specifically wrong (e.g. the ICP is small-business self-serve and the signal is about a 2000-seat enterprise deployment), or no substantive business content (a title-only mention, an opinion piece, routine PR with no product/pricing implication).
 
-Decide with this weighted rubric, checked in order — stop at the first rule that applies, don't keep averaging factors after one has already decided the band:
+Decide with this weighted rubric, checked in order, stop at the first rule that applies, don't keep averaging factors after one has already decided the band:
 
-1. ICP/segment gate (checked first, decides down not up, and only fires on a clear mismatch): does this signal concern a segment that's specifically and clearly different from the ICP — not just "not explicitly the same," but affirmatively a different buyer size, industry, or use case? If so, cap the score at 24 no matter how dramatic the signal is elsewhere. If the segment isn't stated precisely and there's no clear contradiction, don't apply this gate — score the signal on its own merits instead. This gate can only push the score down, never justify a high score on its own.
+1. ICP/segment gate (checked first, decides down not up, and only fires on a clear mismatch): does this signal concern a segment that's specifically and clearly different from the ICP, not just "not explicitly the same," but affirmatively a different buyer size, industry, or use case? If so, cap the score at 24 no matter how dramatic the signal is elsewhere. If the segment isn't stated precisely and there's no clear contradiction, don't apply this gate, score the signal on its own merits instead. This gate can only push the score down, never justify a high score on its own.
 2. Loss/churn direct hit (highest-weight signal): does this directly touch a specific, named reason a deal was lost or a customer churned? A direct hit here lands 90-100 on its own, unless gate 1 already capped it.
 3. Concrete same-segment competitive move (second-highest weight, and the common case for a real product/pricing signal): a real price, tier, or feature change from a competitor in the same market, that a sharp analyst would flag as relevant even without a documented differentiator match. Lands 70-89 on its own, same caveat as above.
 4. Signal-type severity (used only if neither 2 nor 3 fired): a hiring signal lands 25-55 depending on how directly the role maps to the company's segment; funding/press with no specific product implication lands 10-35.
 5. Magnitude/specificity (tiebreaker, moves the number within its band, not across it): a quantifiable, structural change (a real price cut, a named new tier) scores higher within its band than a vague or directional one ("exploring options," "planning to expand") of the same type.
 
-Worked examples (follow this rubric exactly — note the spread, don't drift toward 50-60 by default). Write your own reasoning specific to each real signal's actual details — never reuse this wording; if your reasoning could be copy-pasted onto a different signal unchanged, it's too generic and needs the specific numbers, names, or details that make this signal what it is:
+Worked examples (follow this rubric exactly, note the spread, do not drift toward 50-60 by default). Write your own reasoning specific to each real signal's actual details: never reuse this wording; if your reasoning could be copy-pasted onto a different signal unchanged, it's too generic and needs the specific numbers, names, or details that make this signal what it is:
 
-Example 1 — score 96:
-Company: relevance-scored competitive intel for startup marketing teams. ICP: marketing leads at 5-100 person B2B SaaS startups. Known lost-deal reasons: "Lost to Northlane — they were $30/mo cheaper on the entry tier." Signal: Northlane dropped their entry tier from $99 to $69/mo.
-{"score": 96, "reasoning": "This is the exact price gap you've already lost deals over, now $30/mo wider — the prospects you're losing today have even more reason to point at it."}
+Example 1: score 96:
+Company: relevance-scored competitive intel for startup marketing teams. ICP: marketing leads at 5-100 person B2B SaaS startups. Known lost-deal reasons: "Lost to Northlane: they were $30/mo cheaper on the entry tier." Signal: Northlane dropped their entry tier from $99 to $69/mo.
+{"score": 96, "reasoning": "This is the exact price gap you've already lost deals over, now $30/mo wider. The prospects you're losing today have even more reason to point at it."}
 
-Example 2 — score 82:
+Example 2: score 82:
 Company: same as above, but with no lost-deal notes on file. Signal: a same-segment competitor shipped a free self-serve tier.
-{"score": 82, "reasoning": "A direct competitor now has an always-free entry point against your paid-only self-serve motion — no documented loss ties to this yet, but it's the kind of gap a prospect evaluating both of you would notice immediately."}
+{"score": 82, "reasoning": "A direct competitor now has an always-free entry point against your paid-only self-serve motion. No documented loss ties to this yet, but it's the kind of gap a prospect evaluating both of you would notice immediately."}
 
-Example 3 — score 55:
+Example 3: score 55:
 Company: same as above. Signal: a competitor posted a job for "Senior Growth Marketer, Self-Serve."
-{"score": 55, "reasoning": "Signals a push toward self-serve motion in your market, but it's a hiring signal, not a shipped product or pricing change — worth watching, not yet a confirmed threat."}
+{"score": 55, "reasoning": "Signals a push toward self-serve motion in your market, but it's a hiring signal, not a shipped product or pricing change. Worth watching, not yet a confirmed threat."}
 
-Example 4 — score 30:
+Example 4: score 30:
 Company: same as above. Signal: a competitor raised a $6M seed round, press release mentions expanding into social-media monitoring.
-{"score": 30, "reasoning": "The raise itself is routine, and the stated expansion into social-media monitoring is a different product surface than what this ICP buys for — worth a passing mention, not a reason to change anything today."}
+{"score": 30, "reasoning": "The raise itself is routine, and the stated expansion into social-media monitoring is a different product surface than what this ICP buys for. Worth a passing mention, not a reason to change anything today."}
 
-Example 5 — score 8:
+Example 5: score 8:
 Company: same as above. Signal: a competitor's enterprise tier (2000+ seat deployments) added a compliance certification.
-{"score": 8, "reasoning": "2000-seat enterprise deployments are a different market than the 5-100 person ICP this account sells to — this compliance certification will never come up with an actual prospect."}
+{"score": 8, "reasoning": "2000-seat enterprise deployments are a different market than the 5-100 person ICP this account sells to. This compliance certification will never come up with an actual prospect."}
 
-Do not let a thin or missing lost-deal/churn/CRM context pull everything down toward 25-49 by default — a concrete, same-segment competitive move can and should score 70+ on its own merits (see example 2), and a segment mismatch has to be a real, stated mismatch, not just the absence of an exact ICP match, to justify capping at 24 (see the gate 1 rewrite above). The 25-69 range is for genuine indirect or partial signals, not a safe resting place for anything you didn't feel confident extrapolating from.`;
+Do not let a thin or missing lost-deal/churn/CRM context pull everything down toward 25-49 by default, a concrete, same-segment competitive move can and should score 70+ on its own merits (see example 2), and a segment mismatch has to be a real, stated mismatch, not just the absence of an exact ICP match, to justify capping at 24 (see the gate 1 rewrite above). The 25-69 range is for genuine indirect or partial signals, not a safe resting place for anything you didn't feel confident extrapolating from.`;
 
 export type DiffSummary = {
   meaningful: boolean;
@@ -336,26 +336,26 @@ export type PricingExtraction = {
   tiers: PricingTier[];
 };
 
-const PRICING_EXTRACTION_SYSTEM_PROMPT = `You read the text of a competitor's pricing page and extract its current structure — not what changed, the full current state. Two things matter equally: the tiers/prices/features, and HOW they charge.
+const PRICING_EXTRACTION_SYSTEM_PROMPT = `You read the text of a competitor's pricing page and extract its current structure, not what changed, the full current state. Two things matter equally: the tiers/prices/features, and HOW they charge.
 
-Billing model — pick exactly one that best describes their primary approach:
+Billing model: pick exactly one that best describes their primary approach:
 - "subscription": a flat recurring fee per tier, independent of team size or usage.
 - "per_seat": price scales with number of users/seats (look for "$X/user", "$X/seat", "per member").
 - "usage_based": price scales with consumption (API calls, page views, contacts, credits, overage billing).
-- "custom": no public price at all — "Contact us," "Request a demo," "Talk to sales" with no number attached.
+- "custom": no public price at all, "Contact us," "Request a demo," "Talk to sales" with no number attached.
 - "unknown": you genuinely can't tell from this text.
 
 Respond with strict JSON only, no markdown, matching this shape exactly:
 {
   "billingModel": "subscription" | "per_seat" | "usage_based" | "custom" | "unknown",
   "publiclyPriced": true | false,
-  "note": "<one short phrase for context when not publicly priced, e.g. 'Enterprise, sales-led' — null otherwise>",
+  "note": "<one short phrase for context when not publicly priced, e.g. 'Enterprise, sales-led': null otherwise>",
   "tiers": [
     {"name": "<tier name>", "price": <number or null if not public>, "price_period": "<e.g. 'mo', 'seat/mo', 'yr', or null>", "features": ["<short feature phrase>", "..."]}
   ]
 }
 
-Keep each feature phrase short (under 8 words) and specific — things like limits, integrations, and capabilities, not marketing fluff. If pricing isn't public, return tiers: [] and put the tier names you can still see (if any) in note instead. Cap features at 5 per tier — pick the ones a buyer would actually compare on (limits, seats, support level, integrations), not every bullet on the page.`;
+Keep each feature phrase short (under 8 words) and specific, things like limits, integrations, and capabilities, not marketing fluff. If pricing isn't public, return tiers: [] and put the tier names you can still see (if any) in note instead. Cap features at 5 per tier, pick the ones a buyer would actually compare on (limits, seats, support level, integrations), not every bullet on the page.`;
 
 const PRICING_EXTRACTION_SCHEMA = {
   type: "object",
@@ -547,12 +547,12 @@ export async function scoreSignal(
   }
 }
 
-const MENTIONS_SYSTEM_PROMPT = `You read sales call transcripts and pull out only the moments where a named competitor came up — objections, comparisons, feature/price call-outs, or a prospect saying they're evaluating or switching from a competitor. Ignore everything else in the transcript (rapport-building, scheduling, unrelated product discussion).
+const MENTIONS_SYSTEM_PROMPT = `You read sales call transcripts and pull out only the moments where a named competitor came up, objections, comparisons, feature/price call-outs, or a prospect saying they're evaluating or switching from a competitor. Ignore everything else in the transcript (rapport-building, scheduling, unrelated product discussion).
 
 Respond with strict JSON only, no markdown, matching this shape exactly:
 {"mentions": [{"competitor": "<name, must exactly match one from the watch list>", "mention": "<one sentence, e.g. 'Prospect said Acme's pricing was 30% cheaper for the same seat count'>"}]}
 
-If no named competitor was mentioned, respond {"mentions": []}. Keep each mention to one sentence, written as a plain fact a marketing lead can act on — no filler like "the prospect mentioned that". Tag each mention with exactly which competitor from the watch list it's about — don't guess if the transcript doesn't name one specifically.`;
+If no named competitor was mentioned, respond {"mentions": []}. Keep each mention to one sentence, written as a plain fact a marketing lead can act on, no filler like "the prospect mentioned that". Tag each mention with exactly which competitor from the watch list it's about: don't guess if the transcript doesn't name one specifically.`;
 
 const MENTIONS_SCHEMA = {
   type: "object",
@@ -623,18 +623,18 @@ Extract competitor mentions.`;
   return results.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
 }
 
-const HEADLINE_RELEVANCE_SYSTEM_PROMPT = `You check whether news headlines actually refer to a specific named company, not a different entity (a place, fund, person, or a DIFFERENT company that merely shares its name), and classify what each headline is actually about. This matters because some company names are common words, short strings, or names reused by multiple unrelated businesses — e.g. a company called "Square" versus "Union Square," "Times Square," or "Madison Square Garden" (unrelated places/venues), or a company called "Sage" that sells accounting software versus an unrelated healthcare/senior-care company also called "Sage."
+const HEADLINE_RELEVANCE_SYSTEM_PROMPT = `You check whether news headlines actually refer to a specific named company, not a different entity (a place, fund, person, or a DIFFERENT company that merely shares its name), and classify what each headline is actually about. This matters because some company names are common words, short strings, or names reused by multiple unrelated businesses, e.g. a company called "Square" versus "Union Square," "Times Square," or "Madison Square Garden" (unrelated places/venues), or a company called "Sage" that sells accounting software versus an unrelated healthcare/senior-care company also called "Sage."
 
 When a business category/description is given for the company, use it as the deciding test: the headline must be about a company operating in THAT category, not just any company with the same name. A headline about a same-named company in a clearly different industry is NOT a match, even though it reads as legitimate business news.
 
-These headlines were found via a keyword search, which can surface false matches on an ambiguous word — most commonly "raises," which means both "raised money" (funding) and "raised prices" (not funding at all). Classify each headline's real content instead of trusting why it matched the search: "type": "funding" only for an actual capital raise, acquisition, or investment round; everything else (a price change, a product launch, a hire, general press) is "news."
+These headlines were found via a keyword search, which can surface false matches on an ambiguous word, most commonly "raises," which means both "raised money" (funding) and "raised prices" (not funding at all). Classify each headline's real content instead of trusting why it matched the search: "type": "funding" only for an actual capital raise, acquisition, or investment round; everything else (a price change, a product launch, a hire, general press) is "news."
 
-Also classify "sentiment": whether this development is good, bad, or neutral news FOR THE COMPANY ITSELF — its own business health, reputation, or trajectory — not whether it's good or bad news for anyone competing with it. An actual funding round, a well-received product launch, a partnership, or growth news is "positive." A lawsuit, data breach, layoffs, an executive departure under a cloud, a service outage, backlash, or financial trouble is "negative." A price change on its own is usually "neutral" unless the headline itself frames it as a sign of strength or weakness — judge each headline on its own content, not on assumptions about what a price move generally means. Routine, ambiguous, or purely factual coverage with no clear direction is "neutral."
+Also classify "sentiment": whether this development is good, bad, or neutral news FOR THE COMPANY ITSELF, its own business health, reputation, or trajectory, not whether it's good or bad news for anyone competing with it. An actual funding round, a well-received product launch, a partnership, or growth news is "positive." A lawsuit, data breach, layoffs, an executive departure under a cloud, a service outage, backlash, or financial trouble is "negative." A price change on its own is usually "neutral" unless the headline itself frames it as a sign of strength or weakness, judge each headline on its own content, not on assumptions about what a price move generally means. Routine, ambiguous, or purely factual coverage with no clear direction is "neutral."
 
 Respond with strict JSON only, no markdown, matching this shape exactly:
 {"headlines": [{"relevant": true | false, "type": "news" | "funding", "sentiment": "positive" | "negative" | "neutral"}, ...]}
 
-One entry per headline, in the same order given. relevant: true only if the headline is genuinely about the named company itself, operating in its stated category — not a different entity, and not a different company in a different industry that happens to share the name. If genuinely unsure and no category was given to check against, default relevant to true (better to keep a maybe than to hide something real). If a category was given and the headline clearly describes a different industry, default relevant to false.`;
+One entry per headline, in the same order given. relevant: true only if the headline is genuinely about the named company itself, operating in its stated category, not a different entity, and not a different company in a different industry that happens to share the name. If genuinely unsure and no category was given to check against, default relevant to true (better to keep a maybe than to hide something real). If a category was given and the headline clearly describes a different industry, default relevant to false.`;
 
 const HEADLINE_RELEVANCE_SCHEMA = {
   type: "object",
@@ -722,23 +722,23 @@ For each headline, is it genuinely about this company, and is it actually a fund
   }
 }
 
-const CANONICALIZE_HEADLINES_SYSTEM_PROMPT = `You read news headlines about a company and rewrite each one as a single short, plain, factual sentence stating the underlying business action — strip out publisher framing, which stakeholder or audience the headline foregrounds, and stylistic flourish. State just the core fact (who did what) in a consistent, neutral form.
+const CANONICALIZE_HEADLINES_SYSTEM_PROMPT = `You read news headlines about a company and rewrite each one as a single short, plain, factual sentence stating the underlying business action, strip out publisher framing, which stakeholder or audience the headline foregrounds, and stylistic flourish. State just the core fact (who did what) in a consistent, neutral form.
 
-The test that matters: two headlines describing the SAME real-world event, however differently worded or angled, must produce nearly IDENTICAL canonical sentences — same key entities, same core verb, same structure. Two headlines describing genuinely DIFFERENT events must produce clearly different sentences.
+The test that matters: two headlines describing the SAME real-world event, however differently worded or angled, must produce nearly IDENTICAL canonical sentences, same key entities, same core verb, same structure. Two headlines describing genuinely DIFFERENT events must produce clearly different sentences.
 
 Worked examples:
 - "Xero price hike has some accountants looking for alternatives" → "Xero raised its subscription prices."
 - "Xero raises its prices, compounding the annoyance for investors, customers" → "Xero raised its subscription prices."
-(Same canonical sentence — these are the same price increase, just two different angles on the reaction to it.)
+(Same canonical sentence: these are the same price increase, just two different angles on the reaction to it.)
 - "Gusto Acquires Guideline for $600M, Plans Rival Customer Selloff" → "Gusto acquired Guideline for $600 million."
 - "Gusto agrees to buy retirement plan provider Guideline" → "Gusto acquired Guideline."
-(Near-identical canonical sentences — same acquisition, one just has the dollar figure.)
+(Near-identical canonical sentences: same acquisition, one just has the dollar figure.)
 - "Acme raises prices on its entry tier" → "Acme raised prices on its entry-tier plan."
 - "Acme raises $10M in Series A funding" → "Acme raised $10 million in Series A funding."
-(Clearly different canonical sentences — a price change and a funding round are different actions, even though both headlines use the word "raises.")
+(Clearly different canonical sentences, a price change and a funding round are different actions, even though both headlines use the word "raises.")
 - "Xero Payroll Launches as QuickBooks Desktop Leaves 3.4M Workers Unpaid" → "Xero launched a native payroll product."
 - "Xero announces native payroll solution" → "Xero launched a native payroll product."
-(Same canonical sentence. The first headline's real hook is a competitor's outage, not Xero's own action — but the company being tracked here is Xero, and Xero's action is "launched a payroll product" either way. When a headline frames the tracked company's action against a third party's simultaneous, unrelated event, canonicalize the tracked company's action alone; don't fold the third party's event into the sentence just because the headline foregrounds it.)
+(Same canonical sentence. The first headline's real hook is a competitor's outage, not Xero's own action: but the company being tracked here is Xero, and Xero's action is "launched a payroll product" either way. When a headline frames the tracked company's action against a third party's simultaneous, unrelated event, canonicalize the tracked company's action alone; don't fold the third party's event into the sentence just because the headline foregrounds it.)
 
 Respond with strict JSON only, no markdown, matching this shape exactly:
 {"canonical": ["<sentence>", ...]}
@@ -770,7 +770,7 @@ export async function canonicalizeHeadlines(
 ): Promise<string[]> {
   if (headlines.length === 0) return [];
 
-  const userPrompt = `Headlines:\n${headlines.map((h, i) => `${i}. ${h.title}${h.description ? ` — ${h.description}` : ""}`).join("\n")}\n\nRewrite each as a short canonical factual sentence.`;
+  const userPrompt = `Headlines:\n${headlines.map((h, i) => `${i}. ${h.title}${h.description ? `: ${h.description}` : ""}`).join("\n")}\n\nRewrite each as a short canonical factual sentence.`;
 
   const message = await createMessage({
     model: "claude-sonnet-5",
@@ -794,12 +794,12 @@ export async function canonicalizeHeadlines(
   }
 }
 
-const SUGGEST_COMPETITORS_SYSTEM_PROMPT = `You suggest likely competitors for a B2B company based on its positioning and ideal customer profile. Infer the industry/category from that text, then name real, well-known companies or products that plausibly compete for the same buyers — the kind of names a marketing lead would actually want to track, not obscure or fabricated ones.
+const SUGGEST_COMPETITORS_SYSTEM_PROMPT = `You suggest likely competitors for a B2B company based on its positioning and ideal customer profile. Infer the industry/category from that text, then name real, well-known companies or products that plausibly compete for the same buyers, the kind of names a marketing lead would actually want to track, not obscure or fabricated ones.
 
 Respond with strict JSON only, no markdown, matching this shape exactly:
 {"competitors": [{"name": "<company name>", "domain": "<best-guess bare domain, e.g. 'acme.com', no protocol>", "category": "<short business category/description, e.g. 'Accounting/ERP software for SMBs', under 8 words>"}]}
 
-Return up to 8, ordered most-to-least likely to be a real competitive threat. If the positioning/ICP is too vague to infer a specific market, make a best-effort guess at the closest general category rather than returning an empty list. The category field must describe what the SUGGESTED COMPANY actually does/sells — specific enough to tell it apart from an unrelated company that happens to share its name (e.g. "Sage" the accounting/ERP vendor vs. "Sage" a senior-care company).`;
+Return up to 8, ordered most-to-least likely to be a real competitive threat. If the positioning/ICP is too vague to infer a specific market, make a best-effort guess at the closest general category rather than returning an empty list. The category field must describe what the SUGGESTED COMPANY actually does/sells, specific enough to tell it apart from an unrelated company that happens to share its name (e.g. "Sage" the accounting/ERP vendor vs. "Sage" a senior-care company).`;
 
 const SUGGEST_COMPETITORS_SCHEMA = {
   type: "object",
@@ -875,7 +875,7 @@ const CATEGORIZE_COMPETITORS_SYSTEM_PROMPT = `You write a short business categor
 Respond with strict JSON only, no markdown, matching this shape exactly:
 {"categories": ["<short category/description, under 8 words>", ...]}
 
-One string per company, in the same order given. If you don't recognize the company or domain, make your best-effort guess from the name alone rather than leaving it vague — still return something specific-sounding, not "a company."`;
+One string per company, in the same order given. If you don't recognize the company or domain, make your best-effort guess from the name alone rather than leaving it vague, still return something specific-sounding, not "a company."`;
 
 const CATEGORIZE_COMPETITORS_SCHEMA = {
   type: "object",
@@ -918,13 +918,13 @@ export async function suggestCompetitorCategories(
   }
 }
 
-const ASK_SYSTEM_PROMPT = `You are Ripplewatch's competitive-intelligence analyst for one specific company. Answer the user's question using only the business context and signals provided below — don't invent competitor facts that aren't in the context. If the context doesn't contain enough to answer, say so plainly and suggest what to track instead of guessing.
+const ASK_SYSTEM_PROMPT = `You are Ripplewatch's competitive-intelligence analyst for one specific company. Answer the user's question using only the business context and signals provided below, don't invent competitor facts that aren't in the context. If the context doesn't contain enough to answer, say so plainly and suggest what to track instead of guessing.
 
-Each signal is tagged [recent] or [background]. [background] signals were seeded when a competitor was first added, to give initial landscape context — they are not new developments, so never present one as if it just happened or as "recent" activity, even if the question is about what's new. They're still fair to cite for broader questions (e.g. "what does our competitive landscape look like," "what does Competitor X do") where older context is genuinely useful.
+Each signal is tagged [recent] or [background]. [background] signals were seeded when a competitor was first added, to give initial landscape context, they are not new developments, so never present one as if it just happened or as "recent" activity, even if the question is about what's new. They're still fair to cite for broader questions (e.g. "what does our competitive landscape look like," "what does Competitor X do") where older context is genuinely useful.
 
-Suggested-but-not-yet-tracked competitors are listed separately, if any. Only bring them up when the question is specifically about discovering, finding, or whether there are competitors the company might be missing — not as a proactive aside on unrelated questions.
+Suggested-but-not-yet-tracked competitors are listed separately, if any. Only bring them up when the question is specifically about discovering, finding, or whether there are competitors the company might be missing, not as a proactive aside on unrelated questions.
 
-Write like an analyst briefing a colleague, not a search engine: a direct answer first, then the specific signals that back it up (name the competitor and what happened). Keep it tight — a few sentences to a short paragraph, not a report. Plain text only, no markdown headers.`;
+Write like an analyst briefing a colleague, not a search engine: a direct answer first, then the specific signals that back it up (name the competitor and what happened). Keep it tight: a few sentences to a short paragraph, not a report. Plain text only, no markdown headers.`;
 
 export type AskContextSignal = {
   competitor: string;
@@ -959,7 +959,7 @@ export async function answerQuestion(
         ? `[${s.relevanceLevel}${s.relevanceScore !== null ? ` ${s.relevanceScore}/100` : ""}] ${s.relevanceReasoning ?? ""}`
         : s.summary ?? "";
       const recency = s.isBackground ? "background" : "recent";
-      return `- [${recency}] ${s.occurredOn} · ${s.competitor} · ${s.type} · ${s.title} — ${verdict}`;
+      return `- [${recency}] ${s.occurredOn} · ${s.competitor} · ${s.type} · ${s.title}: ${verdict}`;
     })
     .join("\n");
 
@@ -968,7 +968,7 @@ export async function answerQuestion(
     .join(", ");
 
   const suggestionLines = context.suggestedCompetitors
-    .map((s) => `${s.name}${s.category ? ` (${s.category})` : ""}${s.reasoning ? ` — ${s.reasoning}` : ""}`)
+    .map((s) => `${s.name}${s.category ? ` (${s.category})` : ""}${s.reasoning ? `: ${s.reasoning}` : ""}`)
     .join("\n");
 
   const userPrompt = `Company: ${context.companyName}
@@ -1068,7 +1068,7 @@ export async function searchCompetitorNews(
   }
 }
 
-const DISCOVER_COMPETITORS_SYSTEM_PROMPT = `You use web search to find B2B companies that compete for the same buyers as the company described, that are NOT already in its tracked-competitors list. Prioritize companies that are newly launched, recently funded, or showing increasing visibility (recent press, product launches, funding rounds) over long-established players the company almost certainly already knows about — the goal is surfacing what a busy marketing/product lead might have missed, not repeating obvious incumbents.
+const DISCOVER_COMPETITORS_SYSTEM_PROMPT = `You use web search to find B2B companies that compete for the same buyers as the company described, that are NOT already in its tracked-competitors list. Prioritize companies that are newly launched, recently funded, or showing increasing visibility (recent press, product launches, funding rounds) over long-established players the company almost certainly already knows about, the goal is surfacing what a busy marketing/product lead might have missed, not repeating obvious incumbents.
 
 Respond with strict JSON only, no markdown, matching this shape exactly:
 {"competitors": [{"name": "<company name>", "domain": "<best-guess bare domain, e.g. 'acme.com', no protocol>", "category": "<short business category/description, under 8 words>", "reasoning": "<one sentence on why this looks like a real competitive threat, e.g. what's new/notable about them>"}]}
@@ -1152,12 +1152,12 @@ Search for competitors this company isn't already tracking.`;
   }
 }
 
-const RESEARCH_COMPANY_SYSTEM_PROMPT = `You use web search to research a B2B SaaS company — the account itself, not a competitor — and write a short factual summary of its real market position: what it actually sells, who it competes with, what differentiates it, and any notable recent context (funding, positioning shifts, market perception). This exists to fill gaps when the company's own self-reported positioning/ICP text is thin, generic, or incomplete — ground it in what's actually publicly known, not marketing copy.
+const RESEARCH_COMPANY_SYSTEM_PROMPT = `You use web search to research a B2B SaaS company, the account itself, not a competitor, and write a short factual summary of its real market position: what it actually sells, who it competes with, what differentiates it, and any notable recent context (funding, positioning shifts, market perception). This exists to fill gaps when the company's own self-reported positioning/ICP text is thin, generic, or incomplete, ground it in what's actually publicly known, not marketing copy.
 
 Respond with strict JSON only, no markdown, matching this shape exactly:
 {"summary": "<3-5 sentences, factual, specific>"}
 
-If web search turns up nothing substantive for this company (too new, too obscure, or genuinely no public presence), respond with a short honest summary saying so — {"summary": "No significant public information found for this company."} — rather than inventing detail.`;
+If web search turns up nothing substantive for this company (too new, too obscure, or genuinely no public presence), respond with a short honest summary saying so, {"summary": "No significant public information found for this company."}: rather than inventing detail.`;
 
 const RESEARCH_COMPANY_SCHEMA = {
   type: "object",
@@ -1204,31 +1204,31 @@ export async function researchCompanyContext(
   }
 }
 
-const INDUSTRY_TRENDS_SYSTEM_PROMPT = `You use web search to identify current market-level trends relevant to a company's positioning and ideal customer profile (ICP) — not news about any single named competitor, but broader shifts in their category that would matter to their business. This exists specifically because many of a company's tracked competitors are small enough that there's rarely company-specific news to report, and because even a full competitor set is still a narrow slice of the category; this surfaces the wider industry pulse instead, so it should read as genuinely useful market intelligence, not a generic "here's what's happening in SaaS" summary.
+const INDUSTRY_TRENDS_SYSTEM_PROMPT = `You use web search to identify current market-level trends relevant to a company's positioning and ideal customer profile (ICP): not news about any single named competitor, but broader shifts in their category that would matter to their business. This exists specifically because many of a company's tracked competitors are small enough that there's rarely company-specific news to report, and because even a full competitor set is still a narrow slice of the category; this surfaces the wider industry pulse instead, so it should read as genuinely useful market intelligence, not a generic "here's what's happening in SaaS" summary.
 
-Actively search across all of these lenses, not just competitor/supply-side activity — the most useful trends are often on the demand side, not the supply side:
+Actively search across all of these lenses, not just competitor/supply-side activity, the most useful trends are often on the demand side, not the supply side:
 - Buyer behavior: what the ICP is now demanding, complaining about, or switching over (check review sites, forums, and communities where this ICP actually talks, not just vendor press releases); budget/procurement shifts; new triggers that make this ICP start looking for a solution now.
 - Competitive landscape: funding, consolidation, new entrants, pricing-model shifts across the category.
 - Technology: adjacent tech (especially AI) changing what buyers expect a product like this to do, or threatening to make part of the category obsolete.
 - Market conditions: regulatory change, macroeconomic pressure, or industry-specific events reshaping how this ICP buys or budgets.
 
 Deliberately vary WHERE evidence comes from instead of defaulting to generic tech-news search results every time. Depending on what's actually findable for this category, pull from:
-- Earnings calls and investor materials from public companies that sell into or operate in this category (transcripts, shareholder letters, investor-day decks) — these often reveal category-level budget/demand shifts months before it shows up as trade-press coverage.
+- Earnings calls and investor materials from public companies that sell into or operate in this category (transcripts, shareholder letters, investor-day decks), these often reveal category-level budget/demand shifts months before it shows up as trade-press coverage.
 - Analyst and research-firm output (Gartner, Forrester, IDC, a16z/Bessemer-style state-of-the-industry reports, category benchmark reports) when it's genuinely available for this space.
-- Company blogs and engineering/product blogs from players in or adjacent to this category (not just the tracked competitor list below) — these surface real product direction and category framing before it's "news."
+- Company blogs and engineering/product blogs from players in or adjacent to this category (not just the tracked competitor list below), these surface real product direction and category framing before it's "news."
 - Trade press, newsletters, and communities specific to this ICP's category, not general tech news.
-A trend grounded in one of the first three source types is usually more valuable than another generic trade-press summary — prefer that when the evidence is there, but never fabricate a source type that search didn't actually surface.
+A trend grounded in one of the first three source types is usually more valuable than another generic trade-press summary, prefer that when the evidence is there, but never fabricate a source type that search didn't actually surface.
 
-Assign each trend the single lens it fits best. Aim for a spread across lenses when the evidence supports it, rather than every trend landing in the same bucket — but never force a trend into a lens it doesn't genuinely belong to just for variety.
+Assign each trend the single lens it fits best. Aim for a spread across lenses when the evidence supports it, rather than every trend landing in the same bucket, but never force a trend into a lens it doesn't genuinely belong to just for variety.
 
-You're also given the company's own tracked competitor list. For each trend, name which of THOSE SPECIFIC competitors (if any) it most plausibly touches — e.g. a pricing-model shift trend naming a tracked competitor known to use that model, or a buyer-behavior trend that would pressure a specific tracked competitor's positioning. Only ever name a competitor from the given list, copied exactly — never invent one, and leave the list empty for a trend that's genuinely industry-wide with no specific tie to any tracked competitor (that's a legitimate, common outcome, not a failure).
+You're also given the company's own tracked competitor list. For each trend, name which of THOSE SPECIFIC competitors (if any) it most plausibly touches, e.g. a pricing-model shift trend naming a tracked competitor known to use that model, or a buyer-behavior trend that would pressure a specific tracked competitor's positioning. Only ever name a competitor from the given list, copied exactly, never invent one, and leave the list empty for a trend that's genuinely industry-wide with no specific tie to any tracked competitor (that's a legitimate, common outcome, not a failure).
 
-Every trend must cite the one real source (a specific article, transcript, report, or blog post an actual search result returned) that most directly backs it — a real, working URL and the outlet/publisher name, never a homepage or search-results page and never invented. If you can't point to one specific source for a claim, don't include the trend.
+Every trend must cite the one real source (a specific article, transcript, report, or blog post an actual search result returned) that most directly backs it, a real, working URL and the outlet/publisher name, never a homepage or search-results page and never invented. If you can't point to one specific source for a claim, don't include the trend.
 
 Respond with strict JSON only, no markdown, matching this shape exactly:
-{"trends": [{"category": "<one of: Buyer behavior, Competitive landscape, Technology, Market conditions>", "title": "<short headline, under 12 words>", "description": "<2-3 sentences, factual and specific, citing what's actually changing and why it would matter to a company with this positioning/ICP>", "relatedCompetitors": ["<exact name from the given list, or omit entirely if none apply>"], "source": {"name": "<outlet/publisher, e.g. 'Q2 2026 earnings call — Salesforce' or 'Gartner' or 'TechCrunch'>", "url": "<direct URL to that specific source>"}}]}
+{"trends": [{"category": "<one of: Buyer behavior, Competitive landscape, Technology, Market conditions>", "title": "<short headline, under 12 words>", "description": "<2-3 sentences, factual and specific, citing what's actually changing and why it would matter to a company with this positioning/ICP>", "relatedCompetitors": ["<exact name from the given list, or omit entirely if none apply>"], "source": {"name": "<outlet/publisher, e.g. 'Q2 2026 earnings call, Salesforce' or 'Gartner' or 'TechCrunch'>", "url": "<direct URL to that specific source>"}}]}
 
-Return 4-6 trends, most significant first. Every trend must be grounded in something web search actually turned up — if search returns little of substance for this category, return fewer trends rather than padding with generic or invented ones.`;
+Return 4-6 trends, most significant first. Every trend must be grounded in something web search actually turned up, if search returns little of substance for this category, return fewer trends rather than padding with generic or invented ones.`;
 
 const INDUSTRY_TREND_CATEGORIES = ["Buyer behavior", "Competitive landscape", "Technology", "Market conditions"] as const;
 
@@ -1379,11 +1379,11 @@ const MARKET_PROFILE_SYSTEM_PROMPT = `You synthesize a short "state of the marke
 
 You're given the company's positioning, ICP, tracked competitors, already-researched industry trends (each already vetted and sourced), and an already-researched summary of the company's own market position. Ground your answer in this material first. Only use web search, and only a little, to fill a real gap: no trends were given, or you need one more specific fact to make a dynamic concrete instead of generic.
 
-The person reading this already runs a company in this market and already understands their own industry at a basic level — the goal isn't to explain the category to them, it's to show real research that finds what's actually happening right now, the kind of specific, current thing that reinforces this tool did real work, not a templated summary. So:
+The person reading this already runs a company in this market and already understands their own industry at a basic level, the goal isn't to explain the category to them, it's to show real research that finds what's actually happening right now, the kind of specific, current thing that reinforces this tool did real work, not a templated summary. So:
 - Every dynamic must be specific and current (something happening now, not an evergreen truism like "competition is increasing" or "customers want better tools"). If you can't find something specific, return fewer dynamics rather than padding with something generic.
-- Prefer a dynamic drawn from or corroborated by the given industry trends or company research over a freshly searched one when both are available — that material was already found through careful, source-checked research, so reusing it is not a shortcut, it's the more reliable path.
+- Prefer a dynamic drawn from or corroborated by the given industry trends or company research over a freshly searched one when both are available, that material was already found through careful, source-checked research, so reusing it is not a shortcut, it's the more reliable path.
 - Every dynamic needs a source: reuse the exact source {name, url} from the industry trend or company research it's drawn from, or a real URL from a fresh search. Never fabricate a source and never attach a generic homepage URL to a specific claim.
-- maturity and growthDirection are qualitative calls, not numbers — never invent a market-size or revenue figure; if you don't have a defensible qualitative read, pick the closest honest one and let growthReason carry the nuance.
+- maturity and growthDirection are qualitative calls, not numbers, never invent a market-size or revenue figure; if you don't have a defensible qualitative read, pick the closest honest one and let growthReason carry the nuance.
 - productSummary is about THIS company's own product: what it does, roughly where it sits in the market (budget vs. premium, self-serve vs. sales-led, if that's inferable), based on its positioning/ICP and company research, not invented feature claims.
 
 Respond with strict JSON only, no markdown, matching this shape exactly:
@@ -1517,20 +1517,20 @@ export type FactSheetResult = { whyWeWin: string[]; whyWeLose: string[] };
 // bullet must trace to something explicitly given (a logged win/loss, a
 // real signal, researched positioning, or a structural pricing fact), never
 // a plausible-sounding but unverified product/feature comparison.
-const FACT_SHEET_SYSTEM_PROMPT = `You write a short, factual competitive fact sheet comparing a company to one specific competitor, for that company's own internal sales/product team — not customer-facing marketing collateral.
+const FACT_SHEET_SYSTEM_PROMPT = `You write a short, factual competitive fact sheet comparing a company to one specific competitor, for that company's own internal sales/product team, not customer-facing marketing collateral.
 
 Produce two short bullet lists:
 - "whyWeWin": concrete, evidence-backed reasons this company has an edge over the competitor.
 - "whyWeLose": concrete, evidence-backed reasons the competitor is a real threat or wins deals against this company.
 
-Ground every single bullet in something explicitly provided below — a logged win/loss reason, a real recent signal (with its date), researched market positioning, or a structural pricing fact (e.g. one is self-serve/transparent, the other is custom/sales-led). Never invent a feature, capability, or customer-preference claim that isn't backed by one of these. If there is little or no evidence for one side, say so plainly in a single bullet ("Not enough logged win data yet to state a confirmed reason") rather than padding it out with a generic, unverifiable claim — a short honest list is more useful than a longer speculative one. Some logged entries are outcome-only ("lost, no reason recorded") — these can support a frequency observation ("you've lost to X three times, though no reason was recorded each time") but never invent a reason to fill the gap. General win reasons (logged company-wide, not tied to any specific competitor) are weaker evidence than a reason logged against this exact competitor — use one only if it plausibly applies here, and don't claim or imply it was about this competitor specifically.
+Ground every single bullet in something explicitly provided below, a logged win/loss reason, a real recent signal (with its date), researched market positioning, or a structural pricing fact (e.g. one is self-serve/transparent, the other is custom/sales-led). Never invent a feature, capability, or customer-preference claim that isn't backed by one of these. If there is little or no evidence for one side, say so plainly in a single bullet ("Not enough logged win data yet to state a confirmed reason") rather than padding it out with a generic, unverifiable claim, a short honest list is more useful than a longer speculative one. Some logged entries are outcome-only ("lost, no reason recorded"): these can support a frequency observation ("you've lost to X three times, though no reason was recorded each time") but never invent a reason to fill the gap. General win reasons (logged company-wide, not tied to any specific competitor) are weaker evidence than a reason logged against this exact competitor, use one only if it plausibly applies here, and don't claim or imply it was about this competitor specifically.
 
 Write each bullet as one plain sentence a busy person can scan in a few seconds. Prefer specific numbers, dates, and names over vague language ("cheaper" is weak; "$30/mo cheaper on the entry tier, per the March pricing check" is strong).
 
 Respond with strict JSON only, no markdown, matching this shape exactly:
 {"whyWeWin": ["<bullet>", "..."], "whyWeLose": ["<bullet>", "..."]}
 
-Each list should have 2-5 bullets. Do not pad either list to hit a minimum — a single honest bullet beats three restatements of the same point. Write each bullet as a plain sentence without em dashes; use a comma or period instead.`;
+Each list should have 2-5 bullets. Do not pad either list to hit a minimum, a single honest bullet beats three restatements of the same point. Write each bullet as a plain sentence without em dashes; use a comma or period instead.`;
 
 const FACT_SHEET_SCHEMA = {
   type: "object",
@@ -1576,7 +1576,7 @@ Recent signals about this competitor:
 ${
   recentSignals.length > 0
     ? recentSignals
-        .map((s) => `- [${s.occurredOn}] ${s.title}${s.score !== null ? ` (relevance ${s.score}/100)` : ""}${s.reasoning ? ` — ${s.reasoning}` : ""}`)
+        .map((s) => `- [${s.occurredOn}] ${s.title}${s.score !== null ? ` (relevance ${s.score}/100)` : ""}${s.reasoning ? `: ${s.reasoning}` : ""}`)
         .join("\n")
     : "(none)"
 }
@@ -1633,23 +1633,23 @@ export type ExtractedWinLossEntry =
 // their CRM happens to format it, vs. HubSpot's own "Lost '<deal>' —
 // <reason>" strings), so rather than writing a rigid column-mapping parser
 // per source, one model call reads whatever raw text it's given.
-const EXTRACT_WIN_LOSS_SYSTEM_PROMPT = `You read raw win/loss deal data — CSV rows (any column names/order), a CRM export, or a plain list — and classify EVERY row that has real signal into exactly one category. Do this mechanically, one row at a time. Never judge the file as a whole and decide it's "the wrong kind of deal" or "not really about competing companies" — extract based only on what's literally in each row (a named competitor and/or a stated reason), regardless of what product, deal size, or industry the row is about. A real CRM export always has columns beyond competitor/reason (rep name, deal size, industry, sales cycle length, CSAT, etc.) — ignore those, only look at outcome, competitor, and reason.
+const EXTRACT_WIN_LOSS_SYSTEM_PROMPT = `You read raw win/loss deal data. CSV rows (any column names/order), a CRM export, or a plain list, and classify EVERY row that has real signal into exactly one category. Do this mechanically, one row at a time. Never judge the file as a whole and decide it's "the wrong kind of deal" or "not really about competing companies": extract based only on what's literally in each row (a named competitor and/or a stated reason), regardless of what product, deal size, or industry the row is about. A real CRM export always has columns beyond competitor/reason (rep name, deal size, industry, sales cycle length, CSAT, etc.): ignore those, only look at outcome, competitor, and reason.
 
 Categories:
-- "tracked": the row names one of the given TRACKED competitors. Copy the competitor name exactly as given in the tracked list, not the row's own spelling. reason can be null if the row genuinely has no reason recorded — the outcome alone is still worth keeping.
-- "untracked": the row names a real, specific competing company that is NOT in the tracked list — this includes companies in a completely different product category from the tracked competitors (e.g. tracked competitors sell accounting software, but the row names a CRM vendor; extract it anyway, it's still a real named competitor). Copy the name as it appears in the row, cleaned up to normal capitalization. reason can be null.
-- "general": the row has no identifiable competing company — blank, "No Decision," "Status Quo," "Built In-House," a deal that went dark/unresponsive, procurement or budget delays, internal reasons — but DOES have a real reason worth recording. reason is required here (never null); if there's neither a competitor nor a real reason, don't emit the row at all.
+- "tracked": the row names one of the given TRACKED competitors. Copy the competitor name exactly as given in the tracked list, not the row's own spelling. reason can be null if the row genuinely has no reason recorded, the outcome alone is still worth keeping.
+- "untracked": the row names a real, specific competing company that is NOT in the tracked list, this includes companies in a completely different product category from the tracked competitors (e.g. tracked competitors sell accounting software, but the row names a CRM vendor; extract it anyway, it's still a real named competitor). Copy the name as it appears in the row, cleaned up to normal capitalization. reason can be null.
+- "general": the row has no identifiable competing company, blank, "No Decision," "Status Quo," "Built In-House," a deal that went dark/unresponsive, procurement or budget delays, internal reasons, but DOES have a real reason worth recording. reason is required here (never null); if there's neither a competitor nor a real reason, don't emit the row at all.
 
-The tracked-competitor list ONLY decides which of "tracked" vs "untracked" a named competitor falls into — it never decides whether to extract a row in the first place. Worked example (tracked competitors: Xero, FreshBooks — accounting software), from a CSV that's ostensibly about unrelated CRM/sales-tool deals:
+The tracked-competitor list ONLY decides which of "tracked" vs "untracked" a named competitor falls into, it never decides whether to extract a row in the first place. Worked example (tracked competitors: Xero, FreshBooks: accounting software), from a CSV that's ostensibly about unrelated CRM/sales-tool deals:
 Row: "Lost, Marcus Johnson, Event, Software, 5000+, Analytics Add-on, 15000, 202, No Decision, Deal went dark/unresponsive prospect, 3"
 -> {"matchType": "general", "competitor": null, "outcome": "lost", "reason": "Deal went dark/unresponsive prospect"}
 Row: "Won, David Kim, Outbound, Financial Services, 501-1000, Enterprise Suite, 150000, 81, SugarCRM, Trusted brand/reputation, 3"
 -> {"matchType": "untracked", "competitor": "SugarCRM", "outcome": "won", "reason": "Trusted brand/reputation"}
 Row: "Lost, Alex Chen, Event, Manufacturing, 501-1000, Analytics Add-on, 60000, 101, Zoho CRM, Competitor had better brand recognition, 5"
 -> {"matchType": "untracked", "competitor": "Zoho CRM", "outcome": "lost", "reason": "Competitor had better brand recognition"}
-Every one of those got extracted even though none of them are about accounting software — that's correct, do the same regardless of how unrelated a row's product/industry looks.
+Every one of those got extracted even though none of them are about accounting software, that's correct, do the same regardless of how unrelated a row's product/industry looks.
 
-Never force a fuzzy match — if a name only sounds similar to a tracked competitor but isn't really it, treat it as "untracked" with its own name, not "tracked."
+Never force a fuzzy match, if a name only sounds similar to a tracked competitor but isn't really it, treat it as "untracked" with its own name, not "tracked."
 
 Respond with strict JSON only, no markdown, matching this shape exactly:
 {"entries": [{"matchType": "tracked" | "untracked" | "general", "competitor": "<name or null for general>", "outcome": "won" | "lost", "reason": "<short factual reason, or null for tracked/untracked with none given>"}, ...]}`;
@@ -1769,14 +1769,14 @@ export type ExtractedFeedback = {
 // mixed file — rather than requiring two separate extraction passes for
 // what's the same underlying "feedback entry, score optional" shape
 // customer-voice.ts already uses.
-const EXTRACT_FEEDBACK_SYSTEM_PROMPT = `You read raw customer-feedback export data — CSV rows with any column names/order, a survey-tool export, a support-ticket export, sales-call notes, or a plain list — and extract every row with real signal: either an identifiable 0-10 "how likely to recommend" score, a specific thing the customer said/asked for/complained about, or both. Do this mechanically, one row at a time.
+const EXTRACT_FEEDBACK_SYSTEM_PROMPT = `You read raw customer-feedback export data. CSV rows with any column names/order, a survey-tool export, a support-ticket export, sales-call notes, or a plain list, and extract every row with real signal: either an identifiable 0-10 "how likely to recommend" score, a specific thing the customer said/asked for/complained about, or both. Do this mechanically, one row at a time.
 
 Skip rows with no real signal: blank, purely administrative (a ticket ID or timestamp with nothing else), "N/A," or closed with no comment and no score.
 
-A 1-5 star rating is a DIFFERENT scale, not NPS — don't rescale it into 0-10; treat that row as score: null and use whatever text comment it has as the summary instead.
+A 1-5 star rating is a DIFFERENT scale, not NPS, don't rescale it into 0-10; treat that row as score: null and use whatever text comment it has as the summary instead.
 
 For each real row, extract:
-- summary: required. A short, specific rewrite of what the customer said in plain language — not a verbatim copy of a long paragraph or the raw row. If the row is ONLY a bare score with no comment at all, write a short factual summary like "NPS response, no comment given."
+- summary: required. A short, specific rewrite of what the customer said in plain language, not a verbatim copy of a long paragraph or the raw row. If the row is ONLY a bare score with no comment at all, write a short factual summary like "NPS response, no comment given."
 - score: the 0-10 recommendation score if the row has one, else null.
 - date: when this was actually given/collected, normalized to YYYY-MM-DD if you can tell the format, else null. Never invent a date that isn't in the row.
 - respondent: a name, company, or email identifying who this is from, if present, else null.
@@ -1881,11 +1881,11 @@ const TRENDS_SIGNAL_POOL_LIMIT = 60;
 // cross-cutting patterns (e.g. "losing on price" shows up against three
 // different competitors, invisible if you only ever look at one fact sheet
 // at a time).
-const IDENTIFY_TRENDS_SYSTEM_PROMPT = `You read a company's full set of logged win/loss reasons (won and lost deals, spanning every competitor they track, not just one) and identify recurring THEMES — qualitative patterns that show up across multiple deals, regardless of which specific competitor was involved. Examples of themes: "price sensitivity," "missing AI features," "slow onboarding," "stronger integrations," "better customer support responsiveness."
+const IDENTIFY_TRENDS_SYSTEM_PROMPT = `You read a company's full set of logged win/loss reasons (won and lost deals, spanning every competitor they track, not just one) and identify recurring THEMES, qualitative patterns that show up across multiple deals, regardless of which specific competitor was involved. Examples of themes: "price sensitivity," "missing AI features," "slow onboarding," "stronger integrations," "better customer support responsiveness."
 
-A theme must be grounded in at least 2 actual logged reasons — never invent a theme from a single data point, and never invent a theme not actually reflected in the reasons given. wonCount and lostCount must be the real count of reasons backing that theme, tallied from what's given. exampleReasons must be reasons copied verbatim (or lightly trimmed) from the input, not paraphrased or invented.
+A theme must be grounded in at least 2 actual logged reasons, never invent a theme from a single data point, and never invent a theme not actually reflected in the reasons given. wonCount and lostCount must be the real count of reasons backing that theme, tallied from what's given. exampleReasons must be reasons copied verbatim (or lightly trimmed) from the input, not paraphrased or invented.
 
-You are also given a pool of recent competitive-intelligence signals (news, funding, pricing changes, hiring, etc.) already tracked for this account. For each theme, check whether any of these signals plausibly EXPLAINS or connects to it — e.g. a "losing on price" theme connecting to a competitor's recent price-cut signal, or a "missing AI features" theme connecting to a competitor's recent AI product launch. Only include a signal in relatedSignals if the connection is real and specific, not a vague thematic overlap. Copy signal IDs EXACTLY from the provided list — never invent one. Most themes will have zero related signals, and that's the expected, honest outcome, not a failure.
+You are also given a pool of recent competitive-intelligence signals (news, funding, pricing changes, hiring, etc.) already tracked for this account. For each theme, check whether any of these signals plausibly EXPLAINS or connects to it, e.g. a "losing on price" theme connecting to a competitor's recent price-cut signal, or a "missing AI features" theme connecting to a competitor's recent AI product launch. Only include a signal in relatedSignals if the connection is real and specific, not a vague thematic overlap. Copy signal IDs EXACTLY from the provided list, never invent one. Most themes will have zero related signals, and that's the expected, honest outcome, not a failure.
 
 Return 3-8 themes, ordered by how many total reasons (won + lost) support them, most-supported first. If there's too little data to identify any real recurring theme, return an empty list rather than forcing one.
 
@@ -1943,7 +1943,7 @@ export async function identifyWinLossTrends(
   const signalsText =
     boundedSignals.length > 0
       ? boundedSignals
-          .map((s) => `- [${s.id}] (${s.type}, ${s.occurredOn}) ${s.title}${s.reasoning ? ` — ${s.reasoning}` : ""}`)
+          .map((s) => `- [${s.id}] (${s.type}, ${s.occurredOn}) ${s.title}${s.reasoning ? `: ${s.reasoning}` : ""}`)
           .join("\n")
       : "(none available)";
 
@@ -2017,11 +2017,11 @@ export type VerdictSignal = {
 // the picture" is a real verdict, not a failure to produce one.
 const DIGEST_VERDICT_SYSTEM_PROMPT = `You write a short verdict summarizing a batch of already-scored competitive intelligence signals for one company, using their own business context.
 
-You will be given the company's positioning, ICP, known lost-deal/churn reasons (sometimes including unattributed activity that coincides with a competitor's pricing or product moves, never a confirmed cause), cached public research on the company, and a list of signals — each already scored High or Medium relevance with its own one-line reasoning.
+You will be given the company's positioning, ICP, known lost-deal/churn reasons (sometimes including unattributed activity that coincides with a competitor's pricing or product moves, never a confirmed cause), cached public research on the company, and a list of signals, each already scored High or Medium relevance with its own one-line reasoning.
 
-Write ONE short paragraph (2-4 sentences) synthesizing what this batch means TOGETHER, not a recap of each item. Roll multiple related signals into a single takeaway when they point the same direction (e.g. two competitors both shipping AI features this week is a trend, not two separate facts). Ground the verdict in the company's own positioning/ICP/lost-deal context the same way each individual signal was scored, not generic competitive commentary. If the batch is genuinely mixed or minor, say that plainly rather than inventing urgency — a quiet or ambiguous week is a legitimate, honest verdict.
+Write ONE short paragraph (2-4 sentences) synthesizing what this batch means TOGETHER, not a recap of each item. Roll multiple related signals into a single takeaway when they point the same direction (e.g. two competitors both shipping AI features this week is a trend, not two separate facts). Ground the verdict in the company's own positioning/ICP/lost-deal context the same way each individual signal was scored, not generic competitive commentary. If the batch is genuinely mixed or minor, say that plainly rather than inventing urgency, a quiet or ambiguous week is a legitimate, honest verdict.
 
-Never invent a fact not present in the given signals or context. Do not open with throat-clearing like "This week's signals show..." — lead directly with the takeaway.
+Never invent a fact not present in the given signals or context. Do not open with throat-clearing like "This week's signals show...": lead directly with the takeaway.
 
 Respond with strict JSON only, no markdown, matching this shape exactly:
 {"verdict": "<2-4 sentence paragraph>"}`;
@@ -2043,7 +2043,7 @@ export async function generateDigestVerdict(
   if (signals.length === 0) return null;
 
   const signalsText = signals
-    .map((s, i) => `${i + 1}. [${s.relevanceLevel}] ${s.competitorName}: ${s.title} — ${s.relevanceReasoning ?? ""}`)
+    .map((s, i) => `${i + 1}. [${s.relevanceLevel}] ${s.competitorName}: ${s.title}: ${s.relevanceReasoning ?? ""}`)
     .join("\n");
 
   const userPrompt = `Company: ${context.companyName}
@@ -2107,11 +2107,11 @@ export type MomentumDigestInput = {
 // specifically — the same kind of "here's what it means," not "here's the
 // data" takeaway the weekly verdict already models, just for the
 // Trends/momentum view instead of the News feed.
-const MOMENTUM_DIGEST_SYSTEM_PROMPT = `You write a short takeaway summarizing competitive momentum data for one company. You're given each tracked competitor's momentum score (a directional index built from recent hiring/pricing/product-change/press activity vs. the prior period, how the account's own win/loss record against that competitor is trending, and — for open-source competitors only, so it's absent for most — GitHub commit activity) and label (Heating up / Steady / Cooling / Gone quiet / Not enough history yet).
+const MOMENTUM_DIGEST_SYSTEM_PROMPT = `You write a short takeaway summarizing competitive momentum data for one company. You're given each tracked competitor's momentum score (a directional index built from recent hiring/pricing/product-change/press activity vs. the prior period, how the account's own win/loss record against that competitor is trending, and, for open-source competitors only, so it's absent for most, GitHub commit activity) and label (Heating up / Steady / Cooling / Gone quiet / Not enough history yet).
 
-"Gone quiet" is a distinct, rarer finding, not just a low score: it means this competitor has gone unusually silent while the wider market is actively heating up, which is worth more attention than an ordinary "Cooling" reading, not less — silence right before a real shift is a known pattern, not just an absence of news. When any competitor carries this label, lead the takeaway with it and use the given goneQuietReason verbatim or near-verbatim, rather than any other competitor's routine activity.
+"Gone quiet" is a distinct, rarer finding, not just a low score: it means this competitor has gone unusually silent while the wider market is actively heating up, which is worth more attention than an ordinary "Cooling" reading, not less: silence right before a real shift is a known pattern, not just an absence of news. When any competitor carries this label, lead the takeaway with it and use the given goneQuietReason verbatim or near-verbatim, rather than any other competitor's routine activity.
 
-Write ONE short takeaway (1-3 sentences) naming which competitor(s) are moving and on what dimension specifically (e.g. "X is hiring aggressively" not just "X has high momentum") — not a recap of every competitor's score. If everything is steady or there's too little data to say anything real, say that plainly rather than manufacturing a trend. Never invent a fact not present in the given data.
+Write ONE short takeaway (1-3 sentences) naming which competitor(s) are moving and on what dimension specifically (e.g. "X is hiring aggressively" not just "X has high momentum"): not a recap of every competitor's score. If everything is steady or there's too little data to say anything real, say that plainly rather than manufacturing a trend. Never invent a fact not present in the given data.
 
 Do not open with throat-clearing like "Looking at momentum data...". Lead directly with the takeaway.
 
@@ -2142,8 +2142,8 @@ export async function generateMomentumDigest(
   const momentumText = withHistory
     .map((m) =>
       m.label === "Gone quiet"
-        ? `${m.competitorName}: Gone quiet — ${m.goneQuietReason ?? "unusually silent while the market heats up"}`
-        : `${m.competitorName}: ${m.label}${m.score !== null ? ` (${m.score > 0 ? "+" : ""}${m.score})` : ""} — hiring ${m.hiringDelta}, pricing activity ${m.pricingDelta}, product changes ${m.productChangeDelta}, press/funding ${m.pressDelta}, win rate ${m.winRateDelta}${m.productActivityDelta ? `, GitHub activity ${m.productActivityDelta}` : ""}`
+        ? `${m.competitorName}: Gone quiet: ${m.goneQuietReason ?? "unusually silent while the market heats up"}`
+        : `${m.competitorName}: ${m.label}${m.score !== null ? ` (${m.score > 0 ? "+" : ""}${m.score})` : ""}: hiring ${m.hiringDelta}, pricing activity ${m.pricingDelta}, product changes ${m.productChangeDelta}, press/funding ${m.pressDelta}, win rate ${m.winRateDelta}${m.productActivityDelta ? `, GitHub activity ${m.productActivityDelta}` : ""}`
     )
     .join("\n");
 
@@ -2178,7 +2178,7 @@ Write the takeaway.`;
 const REVIEW_URL_DISCOVERY_SYSTEM_PROMPT = `You use web search to find a specific company's review pages on G2 and Capterra. Respond with strict JSON only, no markdown:
 {"g2Url": "<full https URL to their G2 reviews page, or null if none found>", "capterraUrl": "<full https URL to their Capterra reviews page, or null if none found>"}
 
-Only return a URL you're confident actually belongs to this company (matching name and product) — null is much better than a wrong guess.`;
+Only return a URL you're confident actually belongs to this company (matching name and product), null is much better than a wrong guess.`;
 
 const REVIEW_URL_DISCOVERY_SCHEMA = {
   type: "object",
@@ -2273,8 +2273,8 @@ export async function extractReviewStats(pageText: string, accountId: string | n
 
 // --- Buzz (Reddit + Hacker News mention) sentiment -----------------------
 
-const BUZZ_SENTIMENT_SYSTEM_PROMPT = `You read a list of recent Reddit and Hacker News post/comment titles mentioning one company and write a one-sentence read on the overall tone — genuinely mixed/negative reactions should read as such, not softened. Respond with strict JSON only, no markdown:
-{"summary": "<one plain sentence, e.g. 'Mostly positive — users highlight ease of setup, though a few complain about pricing.'>"}
+const BUZZ_SENTIMENT_SYSTEM_PROMPT = `You read a list of recent Reddit and Hacker News post/comment titles mentioning one company and write a one-sentence read on the overall tone, genuinely mixed/negative reactions should read as such, not softened. Respond with strict JSON only, no markdown:
+{"summary": "<one plain sentence, e.g. 'Mostly positive: users highlight ease of setup, though a few complain about pricing.'>"}
 
 If the titles don't give enough to judge tone (too few, all neutral factual mentions), respond {"summary": null}.`;
 
@@ -2525,7 +2525,7 @@ const RECENT_ACTIVITY_SYSTEM_PROMPT = `You use web search to find recent, notabl
 
 Companies very often share a name across different domain endings, so first identify the company that operates EXACTLY the given domain. If you can't confirm which company operates the domain, return found=false and an empty signals array.
 
-Once confirmed, look for genuinely notable items from roughly the last 9 months: funding rounds, a hiring surge or a notable pullback, product launches or major feature announcements, leadership changes (new CEO/exec hires or departures), a rebrand or repositioning, acquisitions, or meaningful press coverage. Skip routine blog posts, minor UI tweaks, or anything you can't date even approximately. Return at most 4 signals, the most notable and most recent first. If you find genuinely nothing notable in that window, return an empty signals array rather than stretching to fill one — "nothing public recently" is itself a real, useful answer.
+Once confirmed, look for genuinely notable items from roughly the last 9 months: funding rounds, a hiring surge or a notable pullback, product launches or major feature announcements, leadership changes (new CEO/exec hires or departures), a rebrand or repositioning, acquisitions, or meaningful press coverage. Skip routine blog posts, minor UI tweaks, or anything you can't date even approximately. Return at most 4 signals, the most notable and most recent first. If you find genuinely nothing notable in that window, return an empty signals array rather than stretching to fill one, "nothing public recently" is itself a real, useful answer.
 
 Every signal must be backed by a specific page you actually found in search results; never invent or estimate one from general knowledge. Keep each summary to one plain sentence. Respond with strict JSON only, matching the schema.`;
 
@@ -2637,11 +2637,11 @@ export async function researchRecentActivity(
 // which is exactly what the pricing-only version of this tool already got
 // called out for; one confident, specific read of what the findings add up
 // to is the part a visitor can't get from a search themselves.
-const SNAPSHOT_VERDICT_SYSTEM_PROMPT = `You write a short, confident takeaway for a visitor who just ran a one-time public lookup on a competitor, synthesizing their pricing, hiring, and recent public activity into what it actually means — not a recap of each item.
+const SNAPSHOT_VERDICT_SYSTEM_PROMPT = `You write a short, confident takeaway for a visitor who just ran a one-time public lookup on a competitor, synthesizing their pricing, hiring, and recent public activity into what it actually means, not a recap of each item.
 
 Write ONE short paragraph (2-3 sentences), in the voice of a sharp competitive-intelligence analyst briefing someone who's busy: specific and opinionated, not hedged or generic. Say what the pattern suggests about where the company is headed or what's worth watching next, not just what was found. Roll the findings together into a single read (e.g. a funding round plus an engineering hiring push together suggest something different than either alone).
 
-If the findings are genuinely thin (little activity, pricing unreadable, no hiring signal), that thinness IS the takeaway: say so plainly, and note that a single check like this one is exactly the kind of moment a company can look quiet on the surface while something is starting underneath — the reason to watch continuously instead of checking once. Don't invent a rich narrative to fill the gap.
+If the findings are genuinely thin (little activity, pricing unreadable, no hiring signal), that thinness IS the takeaway: say so plainly, and note that a single check like this one is exactly the kind of moment a company can look quiet on the surface while something is starting underneath, the reason to watch continuously instead of checking once. Don't invent a rich narrative to fill the gap.
 
 Never invent a fact not present in what you're given. Do not open with throat-clearing like "Based on the data..." or "Overall,". Lead directly with the takeaway.
 

@@ -80,7 +80,7 @@ export function FeedbackButton() {
         <DialogHeader>
           <DialogTitle>Send feedback</DialogTitle>
           <DialogDescription>
-            Goes straight to the founder — bugs, rough edges, or things you wish Ripplewatch did differently.
+            Goes straight to the founder: bugs, rough edges, or things you wish Ripplewatch did differently.
           </DialogDescription>
         </DialogHeader>
 
@@ -111,7 +111,7 @@ export function FeedbackButton() {
               id="feedback-message"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="The more specific, the faster it's useful — what you were doing, what you expected, what happened instead."
+              placeholder="The more specific, the faster it's useful. Say what you were doing, what you expected, what happened instead."
               rows={5}
               maxLength={4000}
             />

@@ -38,7 +38,7 @@ const PEER_WINDOW_DAYS = 30;
 const MIN_PEERS = 2; // below this, "relative to peers" isn't a meaningful comparison
 const BASELINE_LOOKBACK_DAYS = 182; // ~26 weeks
 const BASELINE_MIN_SIGNALS = 3;
-const BASELINE_MIN_ACTIVE_WEEKS = 8; // out of 26 — enough weeks with activity to call it a real cadence
+const BASELINE_MIN_ACTIVE_WEEKS = 8; // out of 26, enough weeks with activity to call it a real cadence
 const GAP_MULTIPLIER = 3; // how many multiples of their typical gap counts as "broken from pattern"
 const GAP_FLOOR_DAYS = 28; // never trip this on a gap shorter than 4 weeks, even for a very bursty competitor
 
@@ -80,7 +80,7 @@ export function detectGoneQuiet(params: {
     .map((id) => params.allSignals.filter((s) => s.competitor_id === id && daysAgo(s.occurred_on, nowMs) <= PEER_WINDOW_DAYS).length)
     .sort((a, b) => a - b);
   const peerMedian = peerCounts[Math.floor(peerCounts.length / 2)];
-  if (peerMedian < 1) return null; // peers are quiet too — not unusual, probably a slow niche
+  if (peerMedian < 1) return null; // peers are quiet too, not unusual, probably a slow niche
 
   // Gate 3: layer in a personal baseline once there's enough history for
   // one. Not required to flag, but authoritative once available — see the

@@ -27,7 +27,7 @@ function UrlHealthWarning({ failures, lastFailedAt }: { failures: number; lastFa
     <p className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-500">
       <TriangleAlert className="size-3.5 shrink-0" />
       Failed to load {failures} crawls in a row
-      {lastFailedAt ? ` (last: ${new Date(lastFailedAt).toLocaleDateString()})` : ""} — double-check this URL is
+      {lastFailedAt ? ` (last: ${new Date(lastFailedAt).toLocaleDateString()})` : ""}: double-check this URL is
       still correct.
     </p>
   );
