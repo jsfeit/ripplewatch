@@ -63,6 +63,7 @@ export function FreeReadTool() {
   const [writing, setWriting] = useState(false);
   const [read, setRead] = useState<Read | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
+  const buildRef = useRef<HTMLDivElement>(null);
 
   const filled = domains.map((d) => d.trim()).filter(Boolean);
   const canRun = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) && positioning.trim().length >= 3 && filled.length > 0 && phase === "form";
@@ -81,6 +82,8 @@ export function FreeReadTool() {
     setRead(null);
     setWriting(false);
     trackEvent("free_read_requested", { competitors: filled.length });
+    // The form is tall, so bring the live checklist into view rather than leave it below the fold.
+    setTimeout(() => buildRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
     const utm = readStoredUtm();
     try {
       const res = await fetch("/api/free-read", {
@@ -156,7 +159,7 @@ export function FreeReadTool() {
   if (phase !== "form") {
     return (
       <div className="space-y-6">
-        <div className="space-y-4">
+        <div ref={buildRef} className="scroll-mt-24 space-y-4">
           {order.map((domain) => {
             const done = progress[domain] ?? new Set<Step>();
             const finished = Boolean(cards[domain]);
@@ -273,6 +276,9 @@ export function FreeReadTool() {
             <p className="flex items-center gap-2 text-xs text-muted-foreground">
               <Mail className="size-3.5" />
               A copy is on its way to {email.trim()}.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Built from each company&apos;s public pages and recent news. Check anything you plan to act on.
             </p>
 
             <div className="rounded-2xl border border-border bg-secondary/30 p-6 text-center">
