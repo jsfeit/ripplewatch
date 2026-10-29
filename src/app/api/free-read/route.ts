@@ -77,7 +77,7 @@ function describeHistory(h: SnapshotResult["pricingHistory"]): string {
   return `Compared with an archived copy from ${h.capturedAt}: ${h.summary}`;
 }
 
-function emailHtml(company: string, read: FreeRead, cards: CompetitorCard[], appUrl: string): string {
+function emailHtml(company: string, read: FreeRead, cards: CompetitorCard[], appUrl: string, leadId: string | null): string {
   const label: Record<string, string> = { heating_up: "Heating up", cooling_off: "Cooling off", steady: "Holding steady", unclear: "Not enough to tell" };
   const rows = read.competitors
     .map((c) => {
@@ -90,6 +90,7 @@ function emailHtml(company: string, read: FreeRead, cards: CompetitorCard[], app
 <p style="margin:20px 0 0"><strong>What you could do:</strong> ${escapeHtml(read.move)}</p>
 <p><strong>Worth answering from your own deals:</strong> ${escapeHtml(read.question)}</p>
 <p style="color:#555">That was one look. Ripplewatch keeps watching, scores every move against your deals, and answers in Claude or ChatGPT: <a href="${appUrl}/pricing">${appUrl.replace(/^https?:\/\//, "")}/pricing</a>.</p>
+${leadId ? `<p style="color:#888;font-size:12px">Questions? Just reply, a person reads every one.<br><a href="${appUrl}/unsubscribe?lead=${leadId}" style="color:#888">Unsubscribe from follow-up emails</a></p>` : ""}
 </div>`;
 }
 
@@ -135,7 +136,9 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
 
   // The email is the price of the read, so it is recorded before any money is spent on it.
-  const { error: leadError } = await admin.from("leads").insert({
+  const { data: insertedLead, error: leadError } = await admin
+    .from("leads")
+    .insert({
     email,
     company_name: companyName || null,
     utm_source: utmSource || null,
@@ -143,9 +146,17 @@ export async function POST(request: Request) {
     utm_campaign: utmCampaign || null,
     capture_point: "free_read",
     metadata: { positioning, icp, competitors: domains.join(", ") },
-  });
+    })
+    .select("id")
+    .single();
   if (leadError && leadError.code !== "23505") console.error("free read lead insert failed:", leadError.message);
   const newLead = !leadError;
+  // Someone who already left their email (quiz, snapshot) has a lead row; the unsubscribe link needs its id.
+  let leadId: string | null = insertedLead?.id ?? null;
+  if (!leadId) {
+    const { data: existing } = await admin.from("leads").select("id").eq("email", email).maybeSingle();
+    leadId = existing?.id ?? null;
+  }
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -224,7 +235,7 @@ export async function POST(request: Request) {
         after(async () => {
           const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.ripplewatch.ai";
           try {
-            await sendCampaignEmail(email, "Your competitor read from Ripplewatch", emailHtml(companyName, read, cards, appUrl));
+            await sendCampaignEmail(email, "Your competitor read from Ripplewatch", emailHtml(companyName, read, cards, appUrl, leadId));
           } catch (err) {
             console.error("free read email failed:", err instanceof Error ? err.message : err);
           }

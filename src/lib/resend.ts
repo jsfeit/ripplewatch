@@ -238,7 +238,11 @@ export async function sendLeadDripEmail(
   const intro =
     capturePoint === "quiz"
       ? "You took the competitive intelligence maturity quiz a few days ago"
-      : "You started setting up Ripplewatch a few days ago";
+      : capturePoint === "free_read"
+        ? "You ran a free competitor read on Ripplewatch a few days ago"
+        : "You started setting up Ripplewatch a few days ago";
+  const introTail =
+    capturePoint === "free_read" ? "but never started watching those competitors" : "but never finished setting up monitoring";
 
   let subject: string;
   let body: string;
@@ -246,7 +250,7 @@ export async function sendLeadDripEmail(
 
   if (step === 1) {
     subject = "Still thinking about competitive intel?";
-    body = `<p style="color:#3a3a3a;font-size:14px;line-height:1.6;">${intro}, but never finished setting up monitoring.</p>
+    body = `<p style="color:#3a3a3a;font-size:14px;line-height:1.6;">${intro}, ${introTail}.</p>
       <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
         Most competitive intel tools tell you <em>what</em> changed. Ripplewatch scores every finding against
         your own positioning, ICP, and the real reasons you've won, lost, and churned deals, so you get a
