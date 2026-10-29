@@ -9,6 +9,7 @@ import {
   fetchSnapshotTypoAlternates,
   extractDiscoveredUrls,
   fetchPricingYearAgo,
+  fetchPageText,
   withTimeout,
   type SnapshotHiring,
   type SnapshotReachability,
@@ -20,10 +21,13 @@ import {
   generateSnapshotVerdict,
   generatePersonalRead,
   summarizePricingChange,
+  summarizeProductChange,
+  summarizeBuzzSentiment,
   type PersonalRead,
   type PublicResearch,
   type RecentActivity,
 } from "@/lib/anthropic";
+import { fetchBuzzMentions } from "@/lib/reddit-hn-data";
 import type { BillingModel, Database } from "@/lib/supabase/types";
 
 // What the visitor can be told about pricing, from most to least useful:
@@ -59,6 +63,14 @@ export type SnapshotResult = {
   // changed against an archived copy from about a year ago. Null means there was nothing to
   // compare (no archive that old, or the page couldn't be read); changed=false is a real answer.
   pricingHistory?: { capturedAt: string; changed: boolean; summary: string } | null;
+  // Only filled when history was asked for AND the site gave us little (no readable pricing or no job
+  // board): other public evidence, so the read still has something to say. positioning is how their
+  // homepage message changed against a year-old archived copy; buzz is the tone of recent Reddit and
+  // Hacker News mentions. Null means we looked and found nothing usable.
+  backup?: {
+    positioning: { capturedAt: string; changed: boolean; summary: string } | null;
+    buzz: { mentions: number; summary: string | null } | null;
+  };
   // Why the homepage couldn't be read (or "ok"), so the UI can say what
   // actually happened: mistyped domain vs a site that blocks automated
   // requests vs a site that's down.
@@ -175,7 +187,7 @@ export async function buildSnapshot(
     // Also compare the pricing page with a year-old archived copy.
     history?: boolean;
     // Called as each stage finishes, so a caller can show progress while it waits.
-    onStep?: (step: "homepage" | "pricing" | "jobs" | "news" | "history") => void;
+    onStep?: (step: "homepage" | "pricing" | "jobs" | "news" | "history" | "backup") => void;
   } = {}
 ): Promise<SnapshotResult> {
   const llmAllowed = opts.llmAllowed ?? true;
@@ -375,6 +387,45 @@ export async function buildSnapshot(
   const pricingHistory = await historyPromise;
   step?.("history");
 
+  // When pricing or the job board couldn't be read, lean on other public evidence instead of a thin read.
+  const pricingReadable = pricing.state === "public" || pricing.state === "public_no_numbers" || pricing.state === "sales_led";
+  let backup: SnapshotResult["backup"];
+  if (opts.history && (!pricingReadable || hiring.status !== "ok")) {
+    const brand = activity?.companyName || home?.title?.split(/[|\u2013:-]/)[0]?.trim() || domain;
+    const [positioning, buzz] = await Promise.all([
+      home
+        ? withTimeout(
+            (async () => {
+              const past = await fetchPricingYearAgo(home.finalUrl);
+              if (!past) return null;
+              const now = await fetchPageText(home.finalUrl);
+              const diff = await summarizeProductChange(past.text, now, accountId);
+              const day = `${past.capturedAt.slice(0, 4)}-${past.capturedAt.slice(4, 6)}-${past.capturedAt.slice(6, 8)}`;
+              return { capturedAt: day, changed: diff.meaningful && Boolean(diff.summary), summary: diff.summary };
+            })().catch((err) => {
+              console.error(`snapshot positioning history failed for ${domain}:`, err);
+              return null;
+            }),
+            20_000
+          ).then((r) => r ?? null)
+        : Promise.resolve(null),
+      withTimeout(
+        (async () => {
+          const mentions = await fetchBuzzMentions(brand);
+          if (mentions.length === 0) return null;
+          const summary = await summarizeBuzzSentiment(brand, mentions.map((m) => m.title), accountId);
+          return { mentions: mentions.length, summary };
+        })().catch((err) => {
+          console.error(`snapshot buzz failed for ${domain}:`, err);
+          return null;
+        }),
+        15_000
+      ).then((r) => r ?? null),
+    ]);
+    backup = { positioning, buzz };
+  }
+  step?.("backup");
+
   // The final step, deliberately sequential (not started alongside the rest
   // above): it needs pricing/hiring/activity's actual results to synthesize
   // over, not just to run fast. Skipped when there's nothing at all to
@@ -418,6 +469,7 @@ export async function buildSnapshot(
     pricing,
     hiring,
     pricingHistory: opts.history ? pricingHistory : undefined,
+    backup,
     reachability: probe.reachability,
     research,
     activity,
