@@ -101,7 +101,7 @@ export function TrendsBoard({
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             Looks across every logged win/loss reason and scored customer-feedback entry for recurring themes.
-            Generates on its own once you&apos;ve logged enough, then refreshes monthly — Refresh pulls it forward
+            Generates on its own once you&apos;ve logged enough, then refreshes monthly. Refresh pulls it forward
             now instead of waiting.
           </p>
         </div>
@@ -145,7 +145,7 @@ export function TrendsBoard({
           <EmptyState
             icon={TrendingUp}
             title="No trends yet"
-            description="Nothing recurring enough to call a pattern in what's logged so far — check back as more comes in."
+            description="Nothing recurring enough to call a pattern in what's logged so far. Check back as more comes in."
           />
         </div>
       ) : (

@@ -9,7 +9,7 @@ export function DemoBanner() {
   return (
     <div className="flex items-center justify-center gap-2 bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground">
       <AlertOctagon className="size-4 shrink-0" />
-      DEMO — billing is disabled on this account
+      DEMO: billing is disabled on this account
     </div>
   );
 }

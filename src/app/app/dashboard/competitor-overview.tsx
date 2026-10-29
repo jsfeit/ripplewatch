@@ -385,7 +385,7 @@ export function CompetitorOverview({
       ) : null}
 
       {/* Map needs real width to read as a scatter plot, so its toggle only
-          renders at sm: and up — a phone-width visitor never sees it and
+          renders at sm: and up: a phone-width visitor never sees it and
           stays on List, the default, rather than getting a squeezed chart
           with no way back. */}
       <div className="mb-2 hidden items-center gap-1 rounded-lg border border-border bg-secondary/30 p-1 sm:inline-flex">
@@ -718,7 +718,7 @@ function CompetitorRow({
         </div>
 
         {/* w-full so this row's own flex-wrap can actually kick in on
-            mobile — without a width, a flex-wrap container just grows to
+            mobile: without a width, a flex-wrap container just grows to
             fit its content instead of wrapping, which was pushing the
             score pill off the right edge of the screen instead of onto its
             own line once the sparkline/meter were added. sm:w-auto lets it
@@ -787,7 +787,7 @@ function CompetitorRow({
                       {c.score !== null && !c.wellSupported ? (
                         <span
                           className="rounded-sm bg-amber-500/10 px-1 py-px text-[9px] font-semibold text-amber-600 dark:text-amber-400"
-                          title="Based on very little data so far — an early signal, not yet a confirmed trend."
+                          title="Based on very little data so far: an early signal, not yet a confirmed trend."
                         >
                           thin
                         </span>

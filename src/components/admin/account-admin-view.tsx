@@ -278,7 +278,7 @@ export function AccountAdminView({
           if (recrawlPollRef.current) clearInterval(recrawlPollRef.current);
           recrawlPollRef.current = null;
           setRecrawling(false);
-          setRecrawlResult("Lost track of the crawl's progress — check back in a bit.");
+          setRecrawlResult("Lost track of the crawl's progress: check back in a bit.");
         }
         return;
       }
@@ -289,13 +289,13 @@ export function AccountAdminView({
         recrawlPollRef.current = null;
         setRecrawling(false);
         if (!finished) {
-          setRecrawlResult(`Still running (${done + errored}/${total}) — check back in a bit.`);
+          setRecrawlResult(`Still running (${done + errored}/${total}): check back in a bit.`);
           return;
         }
         setRecrawlResult(
           errored > 0
-            ? `Done — ${done}/${total} succeeded, ${errored} failed.`
-            : `Done — ${total} competitor${total === 1 ? "" : "s"} crawled.`
+            ? `Done: ${done}/${total} succeeded, ${errored} failed.`
+            : `Done: ${total} competitor${total === 1 ? "" : "s"} crawled.`
         );
         // Refreshes "Last crawled" and the rest of this server-fetched page
         // data now that the run is actually finished, instead of leaving it

@@ -71,5 +71,5 @@ export function buildUnattributedAttritionContext(
     .map((c) => `${c.competitorName} (${c.title})`)
     .join(", ");
 
-  return `${volumePhrase}. Coincides with: ${factorList} — a possible factor, not a confirmed cause.`;
+  return `${volumePhrase}. Coincides with: ${factorList}: a possible factor, not a confirmed cause.`;
 }

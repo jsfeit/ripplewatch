@@ -73,7 +73,7 @@ export function SlackDigestSchedule({
         Weekly recap schedule
       </div>
       <p className="text-xs text-muted-foreground">
-        One Slack message a week with the verdict and momentum read for the week — sent at this time, in this
+        One Slack message a week with the verdict and momentum read for the week, sent at this time, in this
         timezone.
       </p>
       <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -81,7 +81,7 @@ export function SlackDigestSchedule({
           <SelectTrigger className="w-[130px]">
             {/* Base UI's SelectValue render-prop is fed an unreliable arg on
               the pre-hydration render (sometimes null, sometimes the
-              literal string "undefined") — reading the label straight from
+              literal string "undefined"): reading the label straight from
               this component's own `day`/`hour`/`timezone` state instead of
               trying to parse whatever it passes in sidesteps that entirely,
               and is also just the value this component already has. */}

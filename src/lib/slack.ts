@@ -195,8 +195,8 @@ export async function sendSlackWeeklyDigest(
       text: {
         type: "mrkdwn",
         text: hasActivity
-          ? "Signals came in this week, but nothing rose to a clear verdict yet — the dashboard has the raw feed."
-          : "Quiet week — nothing scored High or Medium relevance. Nothing needs your attention right now.",
+          ? "Signals came in this week, but nothing rose to a clear verdict yet. The dashboard has the raw feed."
+          : "Quiet week: nothing scored High or Medium relevance. Nothing needs your attention right now.",
       },
     });
   }

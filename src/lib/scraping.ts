@@ -717,7 +717,7 @@ export async function checkPricingDiff(
         title: diff.summary,
         summary:
           page.source === "wayback"
-            ? `Detected across two Wayback Machine snapshots (${capturedDate} vs ${page.capturedAt?.slice(0, 4)}-${page.capturedAt?.slice(4, 6)}-${page.capturedAt?.slice(6, 8)}) — ${competitor.name}'s pricing page blocks automated requests, so we can't confirm this is fully current.`
+            ? `Detected across two Wayback Machine snapshots (${capturedDate} vs ${page.capturedAt?.slice(0, 4)}-${page.capturedAt?.slice(4, 6)}-${page.capturedAt?.slice(6, 8)}): ${competitor.name}'s pricing page blocks automated requests, so we can't confirm this is fully current.`
             : `Detected on ${competitor.name}'s pricing page, compared against a Wayback Machine snapshot from ${capturedDate}.`,
         scored: false,
         source: "backfill",
@@ -741,7 +741,7 @@ export async function checkPricingDiff(
       title: diff.summary,
       summary:
         page.source === "wayback"
-          ? `Detected on ${competitor.name}'s pricing page (via an archived snapshot — this page blocks automated requests, so we can't confirm it's current).`
+          ? `Detected on ${competitor.name}'s pricing page (via an archived snapshot; this page blocks automated requests, so we can't confirm it's current).`
           : `Detected on ${competitor.name}'s pricing page.`,
       scored: false,
       source: "pipeline",
@@ -853,7 +853,7 @@ export async function checkPricingStructure(
   // same confidence as a page we just fetched ourselves.
   const note =
     page.source === "wayback"
-      ? `${extraction.note ? `${extraction.note} ` : ""}Based on an archived snapshot from ${page.capturedAt?.slice(0, 4)}-${page.capturedAt?.slice(4, 6)}-${page.capturedAt?.slice(6, 8)} — this page blocks automated requests, so we can't confirm it's still current.`
+      ? `${extraction.note ? `${extraction.note} ` : ""}Based on an archived snapshot from ${page.capturedAt?.slice(0, 4)}-${page.capturedAt?.slice(4, 6)}-${page.capturedAt?.slice(6, 8)}: this page blocks automated requests, so we can't confirm it's still current.`
       : extraction.note;
 
   await supabase.from("competitor_pricing").upsert(
@@ -1201,7 +1201,7 @@ export async function checkProductHuntLaunches(supabase: AdminClient, competitor
   }
 
   const launches = await fetchProductHuntLaunches(competitor.name);
-  const joined = launches.map((l) => `${l.title} — ${l.tagline}`).join("\n");
+  const joined = launches.map((l) => `${l.title} \u2014 ${l.tagline}`).join("\n");
   const newHash = hashText(joined);
   await writeSnapshot(supabase, competitor.id, "producthunt", joined);
 
@@ -1212,7 +1212,7 @@ export async function checkProductHuntLaunches(supabase: AdminClient, competitor
   if (existing.content_hash === newHash) return [];
 
   const previousEntries = new Set((existing.raw_text ?? "").split("\n").filter(Boolean));
-  const newLaunches = launches.filter((l) => !previousEntries.has(`${l.title} — ${l.tagline}`));
+  const newLaunches = launches.filter((l) => !previousEntries.has(`${l.title} \u2014 ${l.tagline}`));
   if (newLaunches.length === 0) return [];
 
   const inserted: Signal[] = [];

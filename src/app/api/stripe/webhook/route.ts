@@ -187,7 +187,7 @@ export async function POST(request: Request) {
           if (error) throw new Error(`customer.subscription.created account update failed: ${error.message}`);
         }
         if (priceId && !tier) {
-          throw new Error(`No tier mapped for Stripe price ${priceId} — check TIER_BY_PRICE / price env vars.`);
+          throw new Error(`No tier mapped for Stripe price ${priceId}: check TIER_BY_PRICE / price env vars.`);
         }
         break;
       }
@@ -241,7 +241,7 @@ export async function POST(request: Request) {
           }
         }
         if (priceId && !tier) {
-          throw new Error(`No tier mapped for Stripe price ${priceId} — check TIER_BY_PRICE / price env vars.`);
+          throw new Error(`No tier mapped for Stripe price ${priceId}: check TIER_BY_PRICE / price env vars.`);
         }
         break;
       }

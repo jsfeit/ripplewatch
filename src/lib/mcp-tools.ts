@@ -699,7 +699,7 @@ export function registerRipplewatchTools(server: McpServer) {
     {
       title: "Get the Slack connect link",
       description:
-        "Returns the link to connect Slack for a weekly Momentum digest delivered to a channel, on top of asking here directly. The link requires being signed in to the Ripplewatch account in a browser — tell the user to open it there, not paste it back here.",
+        "Returns the link to connect Slack for a weekly Momentum digest delivered to a channel, on top of asking here directly. The link requires being signed in to the Ripplewatch account in a browser, tell the user to open it there, not paste it back here.",
       inputSchema: z.object({}),
       annotations: READ_ONLY,
     },

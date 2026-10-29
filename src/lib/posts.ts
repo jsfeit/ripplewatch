@@ -18,7 +18,7 @@ export type PostEntry = {
   title: string;
   description: string;
   publishedAt: string; // ISO date, e.g. "2026-08-12"
-  updatedAt: string; // ISO timestamp — real last-edit time, written by the admin editor on save
+  updatedAt: string; // ISO timestamp: real last-edit time, written by the admin editor on save
   body: PostBlock[];
 };
 

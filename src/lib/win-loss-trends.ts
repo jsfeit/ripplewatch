@@ -66,7 +66,7 @@ export async function runWinLossTrendsForAccount(
   for (const reason of splitNotes(account.won_deal_notes)) entries.push({ reason, outcome: "won", competitorName: null });
   for (const reason of splitNotes(account.churn_notes)) entries.push({ reason, outcome: "lost", competitorName: null });
   for (const row of feedback ?? []) {
-    if (row.score === null || (row.score >= 7 && row.score <= 8)) continue; // passive — no clear direction
+    if (row.score === null || (row.score >= 7 && row.score <= 8)) continue; // passive: no clear direction
     entries.push({ reason: row.summary, outcome: row.score >= 9 ? "won" : "lost", competitorName: null });
   }
 

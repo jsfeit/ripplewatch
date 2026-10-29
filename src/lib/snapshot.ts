@@ -122,7 +122,7 @@ function describePricingForVerdict(pricing: SnapshotResult["pricing"]): string {
     case "public_no_numbers":
       return "Has a public pricing page but without clear numbers.";
     case "sales_led":
-      return "Doesn't publish pricing — sales-led.";
+      return "Doesn't publish pricing, so it's sales-led.";
     case "unreadable":
       return "Has a pricing page that couldn't be read automatically.";
     case "no_page":

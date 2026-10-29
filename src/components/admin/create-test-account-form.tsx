@@ -72,7 +72,7 @@ export function CreateTestAccountForm() {
       <CardHeader>
         <h2 className="text-sm font-semibold">Create test account</h2>
         <p className="text-xs text-muted-foreground">
-          A real account with no Stripe subscription — skips checkout, drops you straight into onboarding.
+          A real account with no Stripe subscription. It skips checkout and drops you straight into onboarding.
         </p>
       </CardHeader>
       <CardContent>

@@ -245,14 +245,14 @@ export function MomentumQuadrant({
 
           {/* Momentum (Y) and relevance (X) are two independent axes, so
               their labels get two independent positions, not four shared
-              corners — "Heating up"/"Cooling" describe vertical position
+              corners: "Heating up"/"Cooling" describe vertical position
               (top/bottom) regardless of X, so they're centered horizontally;
               "Low/High relevance" describe horizontal position regardless of
               Y, so they stay at the bottom corners where they don't collide
               with the centered pair. The previous layout put both
               temperature labels in the TOP row (just left vs right), which
               reads as a left-right axis even though dots actually move
-              up/down for momentum — correct data, mislabeled axis. */}
+              up/down for momentum: correct data, mislabeled axis. */}
           <text x={VIEW_W / 2} y={14} textAnchor="middle" className="fill-muted-foreground" fontSize="9">
             Heating up
           </text>
@@ -326,7 +326,7 @@ export function MomentumQuadrant({
                 Gone quiet
               </span>
               <span className="text-foreground">
-                <span className="font-medium">{c.name}</span> — too quiet to place on the map, which is the point: {c.goneQuiet!.reason}
+                <span className="font-medium">{c.name}</span>: too quiet to place on the map, which is the point: {c.goneQuiet!.reason}
               </span>
             </button>
           ))}

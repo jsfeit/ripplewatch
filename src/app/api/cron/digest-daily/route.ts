@@ -12,7 +12,7 @@ type Signal = Pick<
 type Account = Database["public"]["Tables"]["accounts"]["Row"];
 type AdminSupabase = ReturnType<typeof createAdminClient>;
 
-export const maxDuration = 300; // Vercel Cron functions get a longer budget than normal requests — same as crawl/discover-competitors/industry-trends, which this route's per-account LLM verdict call puts in the same category, not the lightweight crons that omit it.
+export const maxDuration = 300; // Vercel Cron functions get a longer budget than normal requests, same as crawl/discover-competitors/industry-trends, which this route's per-account LLM verdict call puts in the same category, not the lightweight crons that omit it.
 
 // Lighter per-account workload than the crawl cron (at most one verdict LLM
 // call plus one email send, vs. crawl's per-competitor fan-out), so a

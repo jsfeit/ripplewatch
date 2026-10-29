@@ -69,7 +69,7 @@ export async function fetchClosedLostDealNotes(accessToken: string): Promise<str
     .map((deal: { properties?: Record<string, string | null> }) => {
       const name = deal.properties?.dealname;
       const reason = deal.properties?.closed_lost_reason;
-      return reason ? `Lost "${name}" — ${reason}` : null;
+      return reason ? `Lost "${name}": ${reason}` : null;
     })
     .filter((line: string | null): line is string => Boolean(line));
 }
