@@ -2797,6 +2797,8 @@ Write the read.`;
 // changed?"). Same evidence rules as the single read above; the new part is ranking them.
 const FREE_READ_SYSTEM_PROMPT = `You are the analyst inside a competitive-intelligence product. A visitor told you what their company sells and to whom, and named up to three competitors. You were given real signals for each: pricing (including, when available, what changed on the pricing page over about the last year), hiring, and recent public activity.
 
+Give exactly one entry per competitor you were given, in the same order, using the domain exactly as given. Never add, repeat or invent an entry.
+
 For EACH competitor answer: are they heating up, cooling off, or holding steady, and what changed?
 
 - trend: "heating_up" when the signals point to momentum (growing hiring, funding, launches, pricing or packaging moves aimed at the visitor's buyers); "cooling_off" when they point to retrenchment (layoffs, shrinking hiring, discontinued products, silence after a busy period); "steady" when there is evidence and nothing is moving; "unclear" when there is too little to say. Prefer "unclear" over a guess.
@@ -2919,14 +2921,35 @@ Write the read.`;
         changed: clean(c.changed),
         matters: clean(c.matters),
       }))
-      .filter((c: { domain: string; headline: string }) => c.domain && c.headline);
+      .filter((c: { domain: string; headline: string; changed: string; matters: string }) => {
+        const filler = (s: string) => /^placeholder$/i.test(s.trim());
+        return c.domain && c.headline && !filler(c.headline) && !filler(c.changed) && !filler(c.matters);
+      });
+    // One entry per competitor that was asked about: drop anything extra or repeated, and fill any gap
+    // honestly instead of showing nothing for a competitor the visitor named.
+    const asked = input.competitors.map((c) => c.domain.toLowerCase());
+    const seen = new Set<string>();
+    const aligned = asked.map((domain) => {
+      const found = competitors.find((c: { domain: string }) => c.domain === domain && !seen.has(c.domain));
+      if (found) {
+        seen.add(domain);
+        return found;
+      }
+      return {
+        domain,
+        trend: "unclear" as FreeReadTrend,
+        headline: "There wasn't enough public to read this one with confidence.",
+        changed: "Nothing dated turned up that I could stand behind.",
+        matters: "Watching it over time would show whether anything is moving.",
+      };
+    });
     const read: FreeRead = {
-      competitors,
+      competitors: aligned,
       watchFirst: { domain: clean(parsed.watchFirst?.domain).toLowerCase(), reason: clean(parsed.watchFirst?.reason) },
       move: clean(parsed.move),
       question: clean(parsed.question),
     };
-    return read.competitors.length > 0 && read.move && read.question ? read : null;
+    return competitors.length > 0 && read.move && read.question ? read : null;
   } catch (err) {
     console.error("generateFreeRead: failed to parse response", text.slice(0, 500), err);
     return null;
