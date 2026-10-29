@@ -77,7 +77,7 @@ export default function PricingPage() {
           want it inside Claude or ChatGPT, {CONNECT_NAME} takes a couple of minutes to connect.
         </p>
         <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link href="/onboarding?path=connect" className={buttonVariants()}>
+          <Link href="/free-read" className={buttonVariants()}>
             Get a free competitor read
           </Link>
           <Link href="/competitor-snapshot" className={buttonVariants({ variant: "outline" })}>

@@ -638,6 +638,21 @@ function fetchLatestWaybackSnapshotText(url: string): Promise<{ text: string; ca
   return fetchWaybackSnapshotAt(url, today, MAX_USABLE_WAYBACK_AGE_DAYS);
 }
 
+// A copy of a pricing page from about a year ago, for the free read's "what changed" line. The
+// archive's closest match can be days or years off, so it only counts when it is old enough to show
+// change (4+ months) and not so old it describes a different company (under 2 years).
+export async function fetchPricingYearAgo(url: string): Promise<{ text: string; capturedAt: string } | null> {
+  const target = new Date();
+  target.setUTCDate(target.getUTCDate() - 365);
+  const snapshot = await fetchWaybackSnapshotAt(url, target.toISOString().slice(0, 10).replace(/-/g, ""));
+  if (!snapshot || snapshot.text.trim().length < 100) return null;
+  const captured = new Date(
+    `${snapshot.capturedAt.slice(0, 4)}-${snapshot.capturedAt.slice(4, 6)}-${snapshot.capturedAt.slice(6, 8)}T00:00:00Z`
+  );
+  const ageDays = (Date.now() - captured.getTime()) / 86_400_000;
+  return ageDays >= 120 && ageDays <= 730 ? snapshot : null;
+}
+
 export type PricingPageResult = {
   text: string;
   // "live" when we fetched the page ourselves this run; "wayback" when the

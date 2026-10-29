@@ -81,7 +81,7 @@ export default function HomePage() {
             log into, and nothing slips past you.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link href="/onboarding?path=connect" className={buttonVariants({ size: "lg" })}>
+            <Link href="/free-read" className={buttonVariants({ size: "lg" })}>
               Get a free competitor read
               <ArrowRight className="size-4" />
             </Link>
@@ -264,7 +264,7 @@ export default function HomePage() {
           ask your first question.
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link href="/onboarding?path=connect" className={buttonVariants({ size: "lg" })}>
+          <Link href="/free-read" className={buttonVariants({ size: "lg" })}>
             Get a free competitor read
             <ArrowRight className="size-4" />
           </Link>
