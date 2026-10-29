@@ -143,7 +143,7 @@ export function LiveReadStep({
           id="lrSell"
           value={positioning}
           onChange={(e) => setPositioning(e.target.value)}
-          placeholder="Scheduling software for dental clinics"
+          placeholder="Customer support software for B2B SaaS teams"
           maxLength={400}
         />
       </div>
@@ -153,7 +153,7 @@ export function LiveReadStep({
           id="lrIcp"
           value={icp}
           onChange={(e) => setIcp(e.target.value)}
-          placeholder="Practice managers at 2 to 10 chair clinics"
+          placeholder="Heads of support at 20 to 200 person software companies"
           maxLength={400}
         />
       </div>

@@ -16,10 +16,10 @@ const LINKS = [
 export function SiteNav() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  // "Get started" leads with Connect (the cheapest, self-serve way in) from
-  // anywhere on the site, including /pricing itself, where a Link to the page
-  // you're already on wouldn't navigate at all.
-  const getStartedHref = "/onboarding?path=connect";
+  // The button leads with the free read from anywhere on the site, including
+  // /pricing itself, where a Link to the page you're already on wouldn't
+  // navigate at all.
+  const getStartedHref = "/free-read";
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur">

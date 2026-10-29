@@ -8,6 +8,7 @@ import {
   fetchSnapshotAlternates,
   fetchSnapshotTypoAlternates,
   extractDiscoveredUrls,
+  fetchPricingYearAgo,
   withTimeout,
   type SnapshotHiring,
   type SnapshotReachability,
@@ -18,6 +19,7 @@ import {
   researchRecentActivity,
   generateSnapshotVerdict,
   generatePersonalRead,
+  summarizePricingChange,
   type PersonalRead,
   type PublicResearch,
   type RecentActivity,
@@ -53,6 +55,10 @@ export type SnapshotResult = {
     capturedAt: string | null;
   };
   hiring: SnapshotHiring;
+  // Only filled when the lookup was asked for it (opts.history): what the pricing page says
+  // changed against an archived copy from about a year ago. Null means there was nothing to
+  // compare (no archive that old, or the page couldn't be read); changed=false is a real answer.
+  pricingHistory?: { capturedAt: string; changed: boolean; summary: string } | null;
   // Why the homepage couldn't be read (or "ok"), so the UI can say what
   // actually happened: mistyped domain vs a site that blocks automated
   // requests vs a site that's down.
@@ -111,7 +117,7 @@ const ACTIVITY_TIMEOUT_MS = 25_000;
 // Plain-English inputs for generateSnapshotVerdict — the synthesis call
 // reasons over these short descriptions rather than the raw typed result, so
 // it stays simple and can't silently drift out of sync with a schema change.
-function describePricingForVerdict(pricing: SnapshotResult["pricing"]): string {
+export function describePricingForVerdict(pricing: SnapshotResult["pricing"]): string {
   switch (pricing.state) {
     case "public": {
       const cheapest = pricing.tiers.find((t) => t.price !== null);
@@ -132,7 +138,7 @@ function describePricingForVerdict(pricing: SnapshotResult["pricing"]): string {
   }
 }
 
-function describeHiringForVerdict(hiring: SnapshotHiring): string {
+export function describeHiringForVerdict(hiring: SnapshotHiring): string {
   if (hiring.status === "ok") {
     const mix = hiring.departments.map((d) => `${d.name} (${d.count})`).join(", ");
     return `${hiring.openRoles} open role${hiring.openRoles === 1 ? "" : "s"}${mix ? `, mostly ${mix}` : ""}.`;
@@ -166,6 +172,10 @@ export async function buildSnapshot(
     // Set for a signed-in customer's competitor so its LLM spend is
     // attributed to their account instead of the anonymous pool.
     accountId?: string | null;
+    // Also compare the pricing page with a year-old archived copy.
+    history?: boolean;
+    // Called as each stage finishes, so a caller can show progress while it waits.
+    onStep?: (step: "homepage" | "pricing" | "jobs" | "news" | "history") => void;
   } = {}
 ): Promise<SnapshotResult> {
   const llmAllowed = opts.llmAllowed ?? true;
@@ -177,6 +187,7 @@ export async function buildSnapshot(
   // the visitor's wait.
   const alternatesPromise = fetchSnapshotAlternates(domain);
   const probe = await probeSnapshotHomepage(domain);
+  opts.onStep?.("homepage");
   const home = probe.page;
   // A domain that doesn't load and isn't just refusing us is most likely
   // mistyped; look for the near-miss spelling while the rest runs.
@@ -266,11 +277,33 @@ export async function buildSnapshot(
       fetchSnapshotPricingText(domain, discovered.pricingUrl),
       fetchSnapshotHiring(domain, discovered.careersUrl),
     ]);
+  const step = opts.onStep;
   const [pricingFetch, hiring] = skipFetches
     ? unavailableFetches
     : wantsResearch
       ? ((await withTimeout(fetches(), BLOCKED_FETCH_BUDGET_MS)) ?? unavailableFetches)
       : await fetches();
+
+  step?.("pricing");
+  step?.("jobs");
+
+  // Started now so the archive lookup overlaps with the news search that is still running.
+  const historyPromise: Promise<NonNullable<SnapshotResult["pricingHistory"]> | null> =
+    opts.history && pricingFetch.status === "ok" && pricingFetch.source === "live"
+      ? withTimeout(
+          (async () => {
+            const past = await fetchPricingYearAgo(pricingFetch.url);
+            if (!past) return null;
+            const diff = await summarizePricingChange(past.text, pricingFetch.text, accountId);
+            const day = `${past.capturedAt.slice(0, 4)}-${past.capturedAt.slice(4, 6)}-${past.capturedAt.slice(6, 8)}`;
+            return { capturedAt: day, changed: diff.meaningful && Boolean(diff.summary), summary: diff.summary };
+          })().catch((err) => {
+            console.error(`snapshot pricing history failed for ${domain}:`, err);
+            return null;
+          }),
+          25_000
+        ).then((r) => r ?? null)
+      : Promise.resolve(null);
 
   let pricing: SnapshotResult["pricing"] = {
     state: home ? "no_page" : "unreachable",
@@ -338,6 +371,9 @@ export async function buildSnapshot(
   }
 
   const activity = await activityPromise;
+  step?.("news");
+  const pricingHistory = await historyPromise;
+  step?.("history");
 
   // The final step, deliberately sequential (not started alongside the rest
   // above): it needs pricing/hiring/activity's actual results to synthesize
@@ -381,6 +417,7 @@ export async function buildSnapshot(
     title: home?.title ?? null,
     pricing,
     hiring,
+    pricingHistory: opts.history ? pricingHistory : undefined,
     reachability: probe.reachability,
     research,
     activity,
