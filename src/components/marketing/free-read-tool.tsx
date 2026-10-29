@@ -359,7 +359,7 @@ export function FreeReadTool() {
           id="frSell"
           value={positioning}
           onChange={(e) => setPositioning(e.target.value)}
-          placeholder="Customer support software for B2B SaaS teams"
+          placeholder="Support software for B2B SaaS"
           maxLength={400}
         />
       </div>
@@ -371,7 +371,7 @@ export function FreeReadTool() {
           id="frIcp"
           value={icp}
           onChange={(e) => setIcp(e.target.value)}
-          placeholder="Heads of support at 20 to 200 person software companies"
+          placeholder="Heads of support at SaaS companies"
           maxLength={400}
         />
       </div>
