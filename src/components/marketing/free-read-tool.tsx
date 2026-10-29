@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { trackEvent } from "@/lib/analytics";
 import { readStoredUtm } from "@/components/utm-capture";
 
-type Step = "homepage" | "pricing" | "jobs" | "news" | "history";
+type Step = "homepage" | "pricing" | "jobs" | "news" | "history" | "backup";
 type Trend = "heating_up" | "cooling_off" | "steady" | "unclear";
 
 type Card = {
@@ -35,6 +35,7 @@ const STEPS: { key: Step; label: string }[] = [
   { key: "jobs", label: "Job board" },
   { key: "news", label: "Recent news" },
   { key: "history", label: "Pricing a year ago" },
+  { key: "backup", label: "How they talk about themselves" },
 ];
 
 const TREND: Record<Trend, { label: string; icon: typeof TrendingUp; tone: string }> = {

@@ -48,6 +48,22 @@ type CompetitorCard = {
   history: { capturedAt: string; changed: boolean; summary: string } | null;
 };
 
+function describeBackup(b: SnapshotResult["backup"]): string {
+  if (!b) return "";
+  const lines: string[] = [];
+  if (b.positioning) {
+    lines.push(
+      b.positioning.changed
+        ? `Homepage message vs an archived copy from ${b.positioning.capturedAt}: ${b.positioning.summary}`
+        : `Homepage message vs an archived copy from ${b.positioning.capturedAt}: no meaningful change.`
+    );
+  }
+  if (b.buzz) {
+    lines.push(`Reddit and Hacker News, ${b.buzz.mentions} recent mention${b.buzz.mentions === 1 ? "" : "s"}${b.buzz.summary ? `: ${b.buzz.summary}` : "."}`);
+  }
+  return lines.join("\n");
+}
+
 function toCard(domain: string, r: SnapshotResult): CompetitorCard {
   const evidence: string[] = [];
   if (r.pricing.state === "public") evidence.push("pricing page");
@@ -56,6 +72,8 @@ function toCard(domain: string, r: SnapshotResult): CompetitorCard {
   const newsCount = r.activity?.signals.length ?? 0;
   if (newsCount > 0) evidence.push(`${newsCount} recent news item${newsCount === 1 ? "" : "s"}`);
   if (r.pricingHistory) evidence.push("pricing history");
+  if (r.backup?.positioning) evidence.push("homepage history");
+  if (r.backup?.buzz) evidence.push("Reddit and Hacker News");
   const cheapest = r.pricing.tiers.find((t) => t.price !== null);
   return {
     domain,
@@ -191,6 +209,7 @@ export async function POST(request: Request) {
             pricingSummary: describePricingForVerdict(r.pricing),
             pricingHistory: describeHistory(r.pricingHistory ?? null),
             hiringSummary: describeHiringForVerdict(r.hiring),
+            otherEvidence: describeBackup(r.backup),
             activitySignals: r.activity?.signals ?? [],
           })),
         });
