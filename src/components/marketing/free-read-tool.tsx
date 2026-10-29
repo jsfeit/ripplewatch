@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, CircleHelp, Loader2, Mail, Minus, Plus, TrendingDown, TrendingUp } from "lucide-react";
+import { ArrowRight, Check, CircleHelp, Info, Loader2, Lock, Mail, Minus, Plus, TrendingDown, TrendingUp } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,6 +47,53 @@ const TREND: Record<Trend, { label: string; icon: typeof TrendingUp; tone: strin
 // The pricing-and-jobs fetch finishes as one stage, so both ticks arrive together.
 function stepDone(done: Set<Step>, key: Step) {
   return done.has(key);
+}
+
+// A teaser for the one number a single look can't produce. Explains what it is on hover, focus or
+// tap, and says plainly that it needs 30 days of watching and comes with the paid product.
+function MomentumTease() {
+  const [open, setOpen] = useState(false);
+  const tipId = useId();
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border border-dashed border-border bg-secondary/30 px-3 py-2 text-xs">
+      <span className="font-semibold text-muted-foreground">Momentum</span>
+      <span className="relative h-1.5 w-24 overflow-hidden rounded-full bg-border" aria-hidden="true">
+        <span className="absolute inset-y-0 left-0 w-1/3 animate-pulse rounded-full bg-primary/40" />
+      </span>
+      <span className="inline-flex items-center gap-1 text-muted-foreground">
+        <Lock className="size-3" />
+        Calculating once you start watching
+      </span>
+      <span className="relative">
+        <button
+          type="button"
+          aria-label="What is Momentum?"
+          aria-describedby={open ? tipId : undefined}
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          onMouseEnter={() => setOpen(true)}
+          onMouseLeave={() => setOpen(false)}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setOpen(false)}
+          className="inline-flex size-5 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+        >
+          <Info className="size-3.5" />
+        </button>
+        {open ? (
+          <span
+            id={tipId}
+            role="tooltip"
+            className="absolute bottom-full left-1/2 z-20 mb-2 w-64 -translate-x-1/2 rounded-lg border border-border bg-popover p-3 text-left text-xs leading-relaxed text-popover-foreground shadow-lg"
+          >
+            <span className="block font-semibold">Momentum, -100 to +100</span>
+            One number per competitor for whether they are heating up or cooling off. It blends hiring, pricing and
+            product changes, press and funding, and how your own wins and losses against them are trending, over a
+            30-day window. A one-time look has no history, so it can&apos;t be scored yet. It&apos;s part of the paid product.
+          </span>
+        ) : null}
+      </span>
+    </div>
+  );
 }
 
 export function FreeReadTool() {
@@ -242,6 +289,7 @@ export function FreeReadTool() {
                         </span>
                       </div>
                       <p className="mt-2 text-sm">{c.headline}</p>
+                      <MomentumTease />
                       <dl className="mt-3 space-y-2 text-sm">
                         <div>
                           <dt className="text-xs font-semibold text-muted-foreground">What changed</dt>
@@ -285,7 +333,7 @@ export function FreeReadTool() {
               <h2 className="text-lg font-semibold tracking-tight">That was one look. Now keep watching.</h2>
               <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
                 I can say how each one stands today. Watching over time is what catches the move before it shows up in a deal, and
-                builds the Momentum score from -100 to +100 for each competitor. $29 a month plus usage, and you ask it in Claude or ChatGPT.
+                starts the Momentum score for each competitor. $29 a month plus usage, and you ask it in Claude or ChatGPT.
               </p>
               <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <Link href="/onboarding?path=connect" className={buttonVariants({ size: "lg" })} onClick={() => trackEvent("free_read_cta_clicked")}>
