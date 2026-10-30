@@ -20,6 +20,7 @@ type Card = {
   openRoles: number | null;
   newsCount: number;
   history: { capturedAt: string; changed: boolean; summary: string } | null;
+  cached?: boolean;
 };
 
 type Read = {
@@ -254,6 +255,7 @@ export function FreeReadTool() {
                         ? "Pricing has changed since last year."
                         : "Pricing hasn't changed much in a year."
                       : ""}
+                    {cards[domain].cached ? " Checked within the last two days." : ""}
                   </p>
                 ) : null}
               </div>

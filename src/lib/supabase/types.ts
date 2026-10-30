@@ -366,6 +366,20 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["audit_log"]["Insert"]>;
         Relationships: [];
       };
+      snapshot_cache: {
+        Row: {
+          domain: string;
+          result: Record<string, unknown>;
+          fetched_at: string;
+        };
+        Insert: {
+          domain: string;
+          result: Record<string, unknown>;
+          fetched_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["snapshot_cache"]["Insert"]>;
+        Relationships: [];
+      };
       contact_messages: {
         Row: {
           id: string;
