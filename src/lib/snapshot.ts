@@ -186,6 +186,9 @@ export async function buildSnapshot(
     accountId?: string | null;
     // Also compare the pricing page with a year-old archived copy.
     history?: boolean;
+    // False skips the probes for the same name on other domain endings and for likely typos. Only the
+    // snapshot page shows those suggestions, so callers that don't can skip the extra requests.
+    alternates?: boolean;
     // Called as each stage finishes, so a caller can show progress while it waits.
     onStep?: (step: "homepage" | "pricing" | "jobs" | "news" | "history" | "backup") => void;
   } = {}
@@ -197,7 +200,8 @@ export async function buildSnapshot(
   const accountId = opts.accountId ?? null;
   // Started first so it runs alongside everything else instead of adding to
   // the visitor's wait.
-  const alternatesPromise = fetchSnapshotAlternates(domain);
+  const wantsAlternates = opts.alternates ?? true;
+  const alternatesPromise = wantsAlternates ? fetchSnapshotAlternates(domain) : Promise.resolve([]);
   const probe = await probeSnapshotHomepage(domain);
   opts.onStep?.("homepage");
   const home = probe.page;
@@ -205,7 +209,7 @@ export async function buildSnapshot(
   // mistyped; look for the near-miss spelling while the rest runs.
   const deadDomain = probe.reachability === "no_such_site" || probe.reachability === "placeholder";
   const typoPromise =
-    deadDomain || (!home && probe.reachability !== "blocked")
+    wantsAlternates && (deadDomain || (!home && probe.reachability !== "blocked"))
       ? fetchSnapshotTypoAlternates(domain)
       : Promise.resolve([]);
 

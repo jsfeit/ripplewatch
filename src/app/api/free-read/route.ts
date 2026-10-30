@@ -2,6 +2,7 @@ import { NextResponse, after } from "next/server";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { normalizeDomain, DOMAIN_PATTERN, isBlockedHost } from "@/lib/domain";
 import { buildSnapshot, describePricingForVerdict, describeHiringForVerdict, type SnapshotResult } from "@/lib/snapshot";
+import { cacheSnapshot, getCachedSnapshot } from "@/lib/snapshot-cache";
 import { generateFreeRead, type FreeRead } from "@/lib/anthropic";
 import { countUnattributedLlmCalls } from "@/lib/usage";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -14,9 +15,12 @@ import { sendCampaignEmail } from "@/lib/resend";
 // page can show the read being built instead of a spinner.
 export const maxDuration = 120;
 
-// Each read is up to three lookups at roughly $0.10 to $0.15 each plus one synthesis call, so
-// 40 reads a day is a worst case of about $20. The lookups underneath share the free snapshot
-// tool's own daily ceilings (see src/app/api/snapshot/route.ts) and cannot together exceed them.
+// Each read is up to three lookups plus one synthesis call. Measured on live reads, a lookup is
+// about $0.10 (news search $0.064, pricing $0.011, a year of pricing history $0.015) plus web search
+// fees, and the synthesis about $0.02, so 40 reads a day is a worst case of roughly $15. A competitor
+// looked up in the last two days is reused (snapshot_cache), which is most of the saving once the
+// same big names are being typed in. The lookups underneath share the free snapshot tool's own daily
+// ceilings (see src/app/api/snapshot/route.ts) and cannot together exceed them.
 const FREE_READ_DAILY_CAP = 40;
 const SNAPSHOT_DAILY_LLM_CAP = 300;
 const SNAPSHOT_DAILY_RESEARCH_CAP = 100;
@@ -46,6 +50,8 @@ type CompetitorCard = {
   openRoles: number | null;
   newsCount: number;
   history: { capturedAt: string; changed: boolean; summary: string } | null;
+  // True when this was a lookup from the last couple of days rather than one run for this visitor.
+  cached: boolean;
 };
 
 function describeBackup(b: SnapshotResult["backup"]): string {
@@ -64,7 +70,7 @@ function describeBackup(b: SnapshotResult["backup"]): string {
   return lines.join("\n");
 }
 
-function toCard(domain: string, r: SnapshotResult): CompetitorCard {
+function toCard(domain: string, r: SnapshotResult, cached: boolean): CompetitorCard {
   const evidence: string[] = [];
   if (r.pricing.state === "public") evidence.push("pricing page");
   if (r.pricing.state === "sales_led" || r.pricing.state === "public_no_numbers") evidence.push("pricing page (no public prices)");
@@ -86,8 +92,17 @@ function toCard(domain: string, r: SnapshotResult): CompetitorCard {
     openRoles: r.hiring.status === "ok" ? r.hiring.openRoles : null,
     newsCount,
     history: r.pricingHistory ?? null,
+    cached,
   };
 }
+
+// Only a complete lookup is worth reusing: one that hit a daily ceiling or lost its news search or
+// pricing read would hand the next visitor the same thin result.
+function worthCaching(r: SnapshotResult): boolean {
+  return r.reachability === "ok" && r.activity !== null && r.pricing.state !== "unreadable";
+}
+
+const ALL_STEPS = ["homepage", "pricing", "jobs", "news", "history", "backup"] as const;
 
 function describeHistory(h: SnapshotResult["pricingHistory"]): string {
   if (!h) return "No archived copy from about a year ago to compare with.";
@@ -139,6 +154,18 @@ export async function POST(request: Request) {
   if (!checkRateLimit(`freeread-ip:${ip}`, 3, 60 * 60_000) || !checkRateLimit(`freeread-email:${email}`, 2, 24 * 60 * 60_000)) {
     return NextResponse.json({ error: "That's a few reads already. Sign up and you can run as many as you like." }, { status: 429 });
   }
+  // The in-memory limits above reset whenever a serverless instance does, so the per-email limit is
+  // also counted from the reads already saved.
+  const admin = createAdminClient();
+  const { count: emailReads } = await admin
+    .from("live_reads")
+    .select("id", { count: "exact", head: true })
+    .eq("read->>kind", "free_read")
+    .eq("read->>email", email)
+    .gte("created_at", new Date(Date.now() - 24 * 60 * 60_000).toISOString());
+  if ((emailReads ?? 0) >= 2) {
+    return NextResponse.json({ error: "That's a few reads already. Sign up and you can run as many as you like." }, { status: 429 });
+  }
 
   const [readAllowed, llmAllowed, researchAllowed, activityAllowed] = await Promise.all([
     underCap("generateFreeRead", FREE_READ_DAILY_CAP),
@@ -150,8 +177,6 @@ export async function POST(request: Request) {
     console.warn(`free read cap (${FREE_READ_DAILY_CAP}/24h) reached`);
     return NextResponse.json({ error: "The free reads are busy today. Try again tomorrow, or sign up and ask directly.", reason: "busy" }, { status: 503 });
   }
-
-  const admin = createAdminClient();
 
   // The email is the price of the read, so it is recorded before any money is spent on it.
   const { data: insertedLead, error: leadError } = await admin
@@ -184,15 +209,24 @@ export async function POST(request: Request) {
         send({ t: "start", domains });
         const results = await Promise.all(
           domains.map(async (domain) => {
+            const hit = await getCachedSnapshot(domain);
+            if (hit) {
+              for (const step of ALL_STEPS) send({ t: "step", domain, step });
+              const card = toCard(domain, hit.result, true);
+              send({ t: "competitor", card });
+              return { r: hit.result, card };
+            }
             const r = await buildSnapshot(domain, {
               llmAllowed,
               researchAllowed,
               activityAllowed,
               verdictAllowed: false,
               history: true,
+              alternates: false,
               onStep: (step) => send({ t: "step", domain, step }),
             });
-            const card = toCard(domain, r);
+            if (llmAllowed && researchAllowed && activityAllowed && worthCaching(r)) await cacheSnapshot(domain, r);
+            const card = toCard(domain, r, false);
             send({ t: "competitor", card });
             return { r, card };
           })
