@@ -6,7 +6,7 @@ import { CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ConnectCheckoutModal } from "@/components/app/connect-checkout-modal";
+import { ConnectCheckoutModal, CONNECT_PROMO_KEY } from "@/components/app/connect-checkout-modal";
 import { createClient } from "@/lib/supabase/client";
 import { trackEvent } from "@/lib/analytics";
 import { readStoredUtm } from "@/components/utm-capture";
@@ -51,6 +51,7 @@ export function ConnectPurchase({
     trackEvent("connect_form_viewed");
   }, []);
   const [password, setPassword] = useState("");
+  const [promo, setPromo] = useState("");
   const [status, setStatus] = useState<"idle" | "working" | "confirm-email" | "ready">("idle");
   // Resend state for the "check your email" screen. Supabase limits how often
   // a confirmation can be re-sent per address, so the button waits out a
@@ -81,6 +82,12 @@ export function ConnectPurchase({
       setError(data.error ?? "Something went wrong. Try again.");
       setStatus("idle");
       return;
+    }
+    try {
+      if (promo.trim()) sessionStorage.setItem(CONNECT_PROMO_KEY, promo.trim());
+      else sessionStorage.removeItem(CONNECT_PROMO_KEY);
+    } catch {
+      // Private mode: the code just isn't applied.
     }
     trackEvent("sign_up", { method: "email", product: "connect" });
     trackEvent("begin_checkout", { currency: "USD", value: CONNECT_BASE_FEE_USD + fundingUsd, item_name: "connect" });
@@ -321,6 +328,11 @@ export function ConnectPurchase({
             anytime from Settings. Tax is added at checkout. The platform fee is refundable within 30 days; balance
             already used is not.
           </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="connectPromo">Promo code (optional)</Label>
+          <Input id="connectPromo" value={promo} onChange={(e) => setPromo(e.target.value)} autoComplete="off" />
         </div>
 
         {error ? <p className="text-sm text-destructive">{error}</p> : null}

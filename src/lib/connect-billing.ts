@@ -48,12 +48,37 @@ export type ConnectAccountRow = {
   demo_mode: boolean;
 };
 
-// Discounts and promo codes are deliberately off for Connect checkouts: a
-// percent-off code applies to every line, including the wallet funding, which
-// would hand out free credits (credit amount is the full funding figure).
+// Stripe's own promo-code field stays off for Connect checkouts: a percent-off
+// code applies to every line, including the wallet funding, which would hand
+// out free credits (credit amount is the full funding figure). The one way a
+// code gets in is resolveConnectPromoCode below, which only accepts a code
+// whose coupon is limited to the platform-fee product.
+export async function resolveConnectPromoCode(rawCode: string): Promise<string | null> {
+  const code = rawCode.trim().toUpperCase();
+  const priceId = getConnectPriceId();
+  if (!code || !priceId) return null;
+
+  const stripe = getStripe();
+  const price = await stripe.prices.retrieve(priceId);
+  const productId = typeof price.product === "string" ? price.product : price.product.id;
+
+  const { data } = await stripe.promotionCodes.list({
+    code,
+    active: true,
+    limit: 1,
+    expand: ["data.promotion.coupon"],
+  });
+  const promotionCode = data[0];
+  const coupon = promotionCode?.promotion.coupon;
+  if (!promotionCode || !coupon || typeof coupon === "string" || !coupon.valid) return null;
+  // A coupon with no product limit would also discount the wallet funding line.
+  if (!coupon.applies_to?.products.includes(productId)) return null;
+  return promotionCode.id;
+}
+
 export async function createConnectSignupSession(
   account: ConnectAccountRow,
-  input: { fundingUsd: number; userEmail: string; origin: string }
+  input: { fundingUsd: number; userEmail: string; origin: string; promotionCodeId?: string | null }
 ): Promise<{ clientSecret: string }> {
   const priceId = getConnectPriceId();
   if (!priceId) throw new Error("STRIPE_PRICE_CONNECT is not configured.");
@@ -65,6 +90,7 @@ export async function createConnectSignupSession(
     customer_email: account.stripe_customer_id ? undefined : input.userEmail,
     client_reference_id: account.id,
     line_items: [{ price: priceId, quantity: 1 }, fundingLineItem(input.fundingUsd)],
+    ...(input.promotionCodeId ? { discounts: [{ promotion_code: input.promotionCodeId }] } : {}),
     automatic_tax: { enabled: true },
     metadata: {
       account_id: account.id,

@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createConnectSignupSession, createConnectTopupSession, parseFundingUsd } from "@/lib/connect-billing";
+import {
+  createConnectSignupSession,
+  createConnectTopupSession,
+  parseFundingUsd,
+  resolveConnectPromoCode,
+} from "@/lib/connect-billing";
 
 // Starts an embedded Stripe Checkout for Ripplewatch Connect.
 //   kind "signup": the $29/month platform fee plus the first balance, in one
@@ -46,7 +51,17 @@ export async function POST(request: Request) {
     if (account.stripe_subscription_id) {
       return NextResponse.json({ error: "You're already subscribed. Add funds from Settings instead." }, { status: 400 });
     }
-    return NextResponse.json(await createConnectSignupSession(account, { fundingUsd, userEmail: user.email!, origin }));
+    const promoCode = typeof body?.promoCode === "string" ? body.promoCode.trim() : "";
+    let promotionCodeId: string | null = null;
+    if (promoCode) {
+      promotionCodeId = await resolveConnectPromoCode(promoCode);
+      if (!promotionCodeId) {
+        return NextResponse.json({ error: "That promo code isn't valid for Ripplewatch." }, { status: 400 });
+      }
+    }
+    return NextResponse.json(
+      await createConnectSignupSession(account, { fundingUsd, userEmail: user.email!, origin, promotionCodeId })
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Could not start checkout.";
     console.error("connect checkout failed:", message);
