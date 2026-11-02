@@ -126,6 +126,12 @@ const ELSEWHERE = [
     mark: <Rocket className="size-5 text-primary" />,
   },
   {
+    href: "https://siftfox.com/tool/ripplewatch",
+    label: "SiftFox",
+    sublabel: "View listing",
+    mark: <Rocket className="size-5 text-primary" />,
+  },
+  {
     href: "https://www.linkedin.com/company/ripplewatch/",
     label: "LinkedIn",
     sublabel: "Follow the company page",
