@@ -4,7 +4,12 @@ import { Waves } from "lucide-react";
 // lucide-react doesn't ship brand icons — inline glyph instead.
 function LinkedinIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
       <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 1 1 0-4.124 2.062 2.062 0 0 1 0 4.124zM7.114 20.452H3.558V9h3.556v11.452z" />
     </svg>
   );
@@ -89,7 +94,10 @@ export function SiteFooter() {
               <ul className="mt-4 flex flex-col gap-3">
                 {column.links.map((link) => (
                   <li key={link.label}>
-                    <Link href={link.href} className="text-sm text-muted-foreground hover:text-foreground">
+                    <Link
+                      href={link.href}
+                      className="text-sm text-muted-foreground hover:text-foreground"
+                    >
                       {link.label}
                     </Link>
                   </li>
@@ -110,17 +118,44 @@ export function SiteFooter() {
                 </li>
               ))}
             </ul>
-            <p className="text-xs text-muted-foreground">© 2026 Ripplewatch. ripplewatch.ai</p>
+            <p className="text-xs text-muted-foreground">
+              © 2026 Ripplewatch. ripplewatch.ai
+            </p>
           </div>
-          <a
-            href="https://www.linkedin.com/company/ripplewatch/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex size-6 items-center justify-center text-muted-foreground hover:text-foreground"
-            title="Ripplewatch on LinkedIn"
-          >
-            <LinkedinIcon className="size-4" />
-          </a>
+          <div className="flex items-center gap-4">
+            {/* SiftFox's free listing asks for this badge on the homepage. Plain img: it is a small remote SVG. */}
+            <a
+              href="https://siftfox.com/tool/ripplewatch"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://siftfox.com/badges/live-light.svg"
+                alt="Live on SiftFox"
+                width={168}
+                height={56}
+                className="h-10 w-auto dark:hidden"
+              />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://siftfox.com/badges/live-dark.svg"
+                alt="Live on SiftFox"
+                width={168}
+                height={56}
+                className="hidden h-10 w-auto dark:block"
+              />
+            </a>
+            <a
+              href="https://www.linkedin.com/company/ripplewatch/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex size-6 items-center justify-center text-muted-foreground hover:text-foreground"
+              title="Ripplewatch on LinkedIn"
+            >
+              <LinkedinIcon className="size-4" />
+            </a>
+          </div>
         </div>
       </div>
     </footer>
