@@ -428,6 +428,12 @@ export function FreeReadTool() {
       <p className="text-center text-xs text-muted-foreground">
         Free, no card. You&apos;ll watch it built live, and a copy goes to your email. We don&apos;t share it.
       </p>
+      <p className="text-center text-sm text-muted-foreground">
+        Rather skip this?{" "}
+        <Link href="/signup" className="font-medium text-primary underline-offset-4 hover:underline">
+          Sign up and set up your account
+        </Link>
+      </p>
     </form>
   );
 }
