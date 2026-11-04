@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
+import { PROMO_BANNER_TAG } from "@/lib/promo-campaign";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe";
 
@@ -93,6 +95,9 @@ export async function POST(request: Request) {
     : await admin.from("promo_campaigns").insert(payload);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+  // The banner in the layout is cached; show the change now rather than within a minute.
+  revalidateTag(PROMO_BANNER_TAG, { expire: 0 });
 
   return NextResponse.json({ ok: true, stripeCouponId });
 }
