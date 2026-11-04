@@ -14,6 +14,9 @@ import { computeNextBestActions, type NextBestActions } from "@/lib/next-best-ac
 import { meteredForConnect, type UsageNote } from "@/lib/connect-metering";
 import { loadFirstLook } from "@/lib/first-look";
 import { importWinLossText } from "@/lib/win-loss-import-text";
+import { loadAllDeals, withDealDate } from "@/lib/deal-store";
+import { addContextNote } from "@/lib/context-notes";
+import { getDealImpactBrief } from "@/lib/deal-impact";
 import { logCallMentions } from "@/lib/call-mentions";
 import { hasMinimumBalance } from "@/lib/connect-wallet";
 import { assistantLabel, recordAudit, type AuditAction } from "@/lib/audit";
@@ -248,7 +251,7 @@ export function registerRipplewatchTools(server: McpServer) {
               .limit(6)
           : Promise.resolve({ data: [] }),
         supabase.from("account_customer_feedback").select("score, feedback_date").eq("account_id", accountId).not("score", "is", null),
-        supabase.from("competitor_win_loss").select("outcome, created_at").eq("account_id", accountId),
+        loadAllDeals(supabase, accountId).then((rows) => ({ data: withDealDate(rows) })),
         computeNextBestActions(supabase, accountId),
       ]);
 
@@ -396,7 +399,7 @@ export function registerRipplewatchTools(server: McpServer) {
       const [momentum, { data: feedback }, { data: winLoss }] = await Promise.all([
         loadCompetitorMomentum(supabase, accountId),
         supabase.from("account_customer_feedback").select("score, feedback_date").eq("account_id", accountId).not("score", "is", null),
-        supabase.from("competitor_win_loss").select("outcome, created_at").eq("account_id", accountId),
+        loadAllDeals(supabase, accountId).then((rows) => ({ data: withDealDate(rows) })),
       ]);
       const yours = computeYourMomentum(feedback ?? [], winLoss ?? []);
       return result({
@@ -502,25 +505,32 @@ export function registerRipplewatchTools(server: McpServer) {
     {
       title: "Log a won or lost deal",
       description:
-        "Record the outcome of one deal against a competitor, with the reason if known. This is the most valuable input: it lets Ripplewatch tie a competitor's moves to real deals. A competitor that isn't tracked yet is suggested for tracking instead of rejected.",
+        "Record the outcome of one deal, with the reason if known and the date it closed. This is the most valuable input: it lets Ripplewatch tie a competitor's moves, and its own gaps, to real deals. The competitor is optional because most lost deals never learn who won: log the reason anyway and Ripplewatch will still count it. A competitor that isn't tracked yet is suggested for tracking instead of rejected. Pass the real close date (closed_on), because trends over time depend on it.",
       inputSchema: z.object({
-        competitor_name: z.string().min(1).describe("The competitor involved in the deal."),
+        competitor_name: z.string().max(200).optional().describe("The competitor that won (or was beaten), if the deal named one. Leave out when unknown."),
         outcome: z.enum(["won", "lost"]).describe("Whether the account won or lost the deal."),
         reason: z.string().max(1000).optional().describe("Why, in the customer's own words if possible."),
+        closed_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("The date the deal closed, YYYY-MM-DD. Defaults to today."),
+        amount: z.number().nonnegative().optional().describe("Deal value, if known."),
+        deal_name: z.string().max(200).optional().describe("The deal or account name, if known."),
       }),
       annotations: WRITE,
     },
-    async ({ competitor_name, outcome, reason }, ctx) => {
+    async ({ competitor_name, outcome, reason, closed_on, amount, deal_name }, ctx) => {
       const accountId = accountIdFrom(ctx as Ctx);
       const supabase = createAdminClient();
       const logged = await logWinLoss(supabase, accountId, {
-        competitorName: competitor_name,
+        competitorName: competitor_name?.trim() ?? "",
         outcome,
         reason: reason?.trim() || null,
+        closedOn: closed_on ?? null,
+        amount: amount ?? null,
+        dealName: deal_name?.trim() || null,
+        source: "assistant",
       });
       if (!logged.ok) return failure(logged.error);
       if (logged.imported > 0) {
-        await auditFromAssistant(ctx as Ctx, accountId, "deal.logged", competitor_name, { outcome, count: logged.imported });
+        await auditFromAssistant(ctx as Ctx, accountId, "deal.logged", competitor_name ?? "Unattributed deal", { outcome, count: logged.imported });
       }
       const next = await computeNextBestActions(supabase, accountId);
       return result(
@@ -541,7 +551,7 @@ export function registerRipplewatchTools(server: McpServer) {
     {
       title: "Import many won or lost deals at once",
       description:
-        "Bring in deal history in bulk. Use this when the user has a CRM, spreadsheet or other connected tool holding closed-won/closed-lost deals: read the rows there, then pass them here as raw text, one deal per line, header row first if there is one, exactly as you read them (do not summarize or rewrite). Ripplewatch classifies every row, ties tracked competitors to their reasons, and suggests competitors it isn't tracking yet. Ask the user before pulling their data, and only pass rows you actually read. Up to about 600 rows per call.",
+        "Bring in deal history in bulk. Use this when the user has a CRM, spreadsheet or other connected tool holding closed-won/closed-lost deals: read the rows there, then pass them here as raw text, one deal per line, header row first if there is one, exactly as you read them (do not summarize or rewrite). Ripplewatch works out which column is which (so any export layout works), keeps each deal's own close date, reads the reasons into themes, ties tracked competitors to their deals, and suggests competitors it isn't tracking yet. Re-importing the same deals updates them instead of duplicating. Include the close date column if the source has one, and go back as far as the source goes: trends over time need dates and enough history. Ask the user before pulling their data, and only pass rows you actually read. Up to about 600 rows per call.",
       inputSchema: z.object({
         text: z
           .string()
@@ -552,7 +562,7 @@ export function registerRipplewatchTools(server: McpServer) {
       }),
       annotations: WRITE,
     },
-    async ({ text }, ctx) => {
+    async ({ text, source }, ctx) => {
       const accountId = accountIdFrom(ctx as Ctx);
       const supabase = createAdminClient();
       try {
@@ -565,7 +575,7 @@ export function registerRipplewatchTools(server: McpServer) {
             return failure("Your usage balance is too low to import right now. Check it in your Ripplewatch settings.");
           }
         }
-        const imported = await importWinLossText(supabase, accountId, null, text, 20);
+        const imported = await importWinLossText(supabase, accountId, null, text, 20, source ?? "assistant");
         if (!imported.ok) return failure(imported.error);
         const r = imported.result;
         if (r.imported > 0) await auditFromAssistant(ctx as Ctx, accountId, "deal.logged", "Bulk import", { count: r.imported });
@@ -576,6 +586,13 @@ export function registerRipplewatchTools(server: McpServer) {
             relevant_entries_found: r.totalExtracted,
             imported: r.imported,
             already_logged: r.skipped,
+            share_with_close_date_percent: r.datedPct,
+            deal_history: {
+              total_deals: r.coverage.dealCount,
+              months_covered: r.coverage.monthsSpan,
+              level: r.coverage.level,
+              what_more_data_unlocks: r.coverage.message,
+            },
             unattributed_reasons_added: r.generalReasonsAdded + r.generalWonReasonsAdded,
             suggested_new_competitors: r.suggestedCompetitors,
             only_part_read: r.truncated,
@@ -691,6 +708,92 @@ export function registerRipplewatchTools(server: McpServer) {
       await auditFromAssistant(ctx as Ctx, accountId, "context.updated", Object.keys(update).join(", "));
       const next = await computeNextBestActions(supabase, accountId);
       return result({ updated: Object.keys(update) }, next);
+    }
+  );
+
+  server.registerTool(
+    "add_context_note",
+    {
+      title: "Add a note about the business",
+      description:
+        "Save anything free-form the team knows that no CRM holds, so Ripplewatch can line it up against why deals are lost and what competitors are doing: what they are building and when it ships, a pricing or packaging change, a customer's offhand comment, a sales-call insight, something about the market. Pass the user's words as they said them, with the date if they gave one (effective_on). The more of this, the sharper the answers. It is tagged automatically (what kind, which product areas, which loss themes, when it ships).",
+      inputSchema: z.object({
+        note: z.string().min(3).max(4000).describe("The note, in the user's own words."),
+        effective_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("When this was true or decided, YYYY-MM-DD. Defaults to today."),
+      }),
+      annotations: WRITE,
+    },
+    async ({ note, effective_on }, ctx) => {
+      const accountId = accountIdFrom(ctx as Ctx);
+      const supabase = createAdminClient();
+      try {
+        const run = await meteredForConnect(
+          { accountId, tier: tierFrom(ctx as Ctx), toolName: "add_context_note", schedule: (fn) => after(fn) },
+          () => addContextNote(supabase, accountId, null, { body: note, effectiveOn: effective_on ?? null, source: "assistant" })
+        );
+        if (!run.ok) return failure(run.message);
+        if (!run.value.ok) return failure(run.value.error);
+        await auditFromAssistant(ctx as Ctx, accountId, "context.updated", "Context note");
+        const next = await computeNextBestActions(supabase, accountId);
+        const n = run.value.note;
+        return result(
+          { saved: true, kind: n.kind, status: n.status, product_areas: n.product_areas, themes: n.themes, expected_on: n.expected_on },
+          next,
+          run.usage
+        );
+      } catch (err) {
+        console.error("mcp add_context_note failed:", err);
+        return failure("Couldn't save that note. Try again in a moment.");
+      }
+    }
+  );
+
+  server.registerTool(
+    "get_deal_impact",
+    {
+      title: "What is costing us deals",
+      description:
+        "The answer to 'which competitor moves are actually costing us deals, and what should we do about it?'. Reads every logged deal by the REASON it was lost (most never name who won), lines the recurring reasons up against competitor pricing, product and hiring moves and their Momentum, and against the team's own notes (what they are building and when). Returns ranked findings with evidence, a confidence, and a next step, plus how much deal history there is and what more would unlock. Use it when the user asks why they are losing, what to build or say next, or whether a competitor's move matters. If there is little data it says so and says what to add.",
+      inputSchema: z.object({
+        refresh: z.boolean().optional().describe("Regenerate even if nothing changed. Leave off normally."),
+      }),
+      annotations: READ_ONLY,
+    },
+    async ({ refresh }, ctx) => {
+      const accountId = accountIdFrom(ctx as Ctx);
+      const supabase = createAdminClient();
+      try {
+        const run = await meteredForConnect(
+          { accountId, tier: tierFrom(ctx as Ctx), toolName: "get_deal_impact", schedule: (fn) => after(fn) },
+          () => getDealImpactBrief(supabase, accountId, { refresh })
+        );
+        if (!run.ok) return failure(run.message);
+        const brief = run.value;
+        const next = await computeNextBestActions(supabase, accountId);
+        return result(
+          {
+            note: UNTRUSTED_NOTE,
+            deal_history: {
+              total_deals: brief.coverage.dealCount,
+              lost: brief.coverage.lostCount,
+              won: brief.coverage.wonCount,
+              months_covered: brief.coverage.monthsSpan,
+              level: brief.coverage.level,
+              share_with_close_date_percent: brief.coverage.pctDated,
+              share_with_reason_percent: brief.coverage.pctWithReason,
+              what_more_data_unlocks: brief.coverage.message,
+            },
+            findings: brief.findings,
+            generated_at: brief.generatedAt,
+            message: brief.note,
+          },
+          next,
+          run.usage
+        );
+      } catch (err) {
+        console.error("mcp get_deal_impact failed:", err);
+        return failure("Couldn't build that just now. Try again in a moment.");
+      }
     }
   );
 

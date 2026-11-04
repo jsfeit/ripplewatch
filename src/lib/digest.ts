@@ -1,4 +1,5 @@
 import "server-only";
+import { withDealDate } from "@/lib/deal-store";
 import { generateDigestVerdict, generateMomentumDigest, type VerdictSignal, type MomentumDigestInput } from "@/lib/anthropic";
 import { computeMomentum } from "@/lib/momentum";
 import { detectGoneQuiet } from "@/lib/gone-quiet";
@@ -60,10 +61,11 @@ export async function generateWeeklyAccountIntelligence(
       const fourteenDaysAgo = new Date(Date.now() - 2 * SEVEN_DAYS_MS).toISOString();
       const { data: unattributedEntries } = await supabase
         .from("competitor_win_loss")
-        .select("outcome, created_at")
+        .select("outcome, created_at, closed_on")
         .is("competitor_id", null)
         .eq("account_id", account.id)
-        .gte("created_at", fourteenDaysAgo);
+        // By the deal's own close date, so an old export uploaded today does not read as a spike.
+        .or(`closed_on.gte.${fourteenDaysAgo.slice(0, 10)},and(closed_on.is.null,created_at.gte.${fourteenDaysAgo})`);
       const competitorChanges = weekSignals
         .filter((s) => s.type === "pricing" || s.type === "product_change")
         .map((s) => ({
@@ -72,7 +74,7 @@ export async function generateWeeklyAccountIntelligence(
           title: s.title,
           occurred_on: s.occurred_on,
         }));
-      const unattributedActivity = buildUnattributedAttritionContext(unattributedEntries ?? [], competitorChanges);
+      const unattributedActivity = buildUnattributedAttritionContext(withDealDate(unattributedEntries ?? []), competitorChanges);
 
       verdict = await generateDigestVerdict(
         {

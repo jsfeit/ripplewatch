@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { withDealDate } from "@/lib/deal-store";
 import { createClient } from "@/lib/supabase/server";
 import { computeMomentum } from "@/lib/momentum";
 import type { WinLossOutcome } from "@/lib/supabase/types";
@@ -91,14 +92,14 @@ export async function POST(request: Request) {
       .gte("occurred_on", reliabilityLookbackStart.toISOString().slice(0, 10));
     const { data: momentumWinLoss } = await supabase
       .from("competitor_win_loss")
-      .select("competitor_id, outcome, created_at")
+      .select("competitor_id, outcome, created_at, closed_on")
       .eq("competitor_id", competitorId);
     const { data: momentumStateHistory } = await supabase
       .from("competitor_state_history")
       .select("competitor_id, metric, value, recorded_at")
       .eq("competitor_id", competitorId)
       .gte("recorded_at", reliabilityLookbackStart.toISOString());
-    const computed = computeMomentum(momentumSignals ?? [], momentumWinLoss ?? [], momentumStateHistory ?? []);
+    const computed = computeMomentum(momentumSignals ?? [], withDealDate(momentumWinLoss ?? []), momentumStateHistory ?? []);
     momentum = { score: computed.score, label: computed.label, confidence: computed.confidence };
   }
 

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { loadAllDeals, withDealDate } from "@/lib/deal-store";
 import { createClient } from "@/lib/supabase/server";
 import { resolveAccountContext } from "@/lib/impersonation";
 import { computeMomentum, type MomentumResult } from "@/lib/momentum";
@@ -130,7 +131,7 @@ export default async function SettingsPage({
           .select("competitor_id, type, sentiment, occurred_on, scored, relevance_score")
           .in("competitor_id", competitorIds)
           .gte("occurred_on", reliabilityLookbackStart.toISOString().slice(0, 10)),
-        db.from("competitor_win_loss").select("competitor_id, outcome, created_at").in("competitor_id", competitorIds),
+        loadAllDeals(db, accountId).then((rows) => ({ data: withDealDate(rows).filter((r) => r.competitor_id && competitorIds.includes(r.competitor_id)) })),
         db
           .from("competitor_state_history")
           .select("competitor_id, metric, value, recorded_at")

@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { computeMomentum, type MomentumResult } from "@/lib/momentum";
+import { loadAllDeals, withDealDate } from "@/lib/deal-store";
 
 type Admin = SupabaseClient<Database>;
 
@@ -37,7 +38,7 @@ export async function loadCompetitorMomentum(
       .select("competitor_id, type, sentiment, occurred_on, scored, relevance_score")
       .in("competitor_id", competitorIds)
       .gte("occurred_on", lookbackStart.toISOString().slice(0, 10)),
-    supabase.from("competitor_win_loss").select("competitor_id, outcome, created_at").in("competitor_id", competitorIds),
+    loadAllDeals(supabase, accountId).then((rows) => ({ data: withDealDate(rows).filter((r) => r.competitor_id && competitorIds.includes(r.competitor_id)) })),
     supabase
       .from("competitor_state_history")
       .select("competitor_id, metric, value, recorded_at")

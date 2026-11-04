@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { withDealDate } from "@/lib/deal-store";
 import { Sparkles, TrendingUp, Scale, Globe2, Compass, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { resolveAccountContext } from "@/lib/impersonation";
@@ -135,8 +136,8 @@ export default async function DashboardPage() {
     { data: industryTrends },
     { data: marketProfileRow },
     { data: winLossTrends },
-    { data: winLossEntries },
-    { data: unattributedWinLossEntries },
+    { data: rawWinLossEntries },
+    { data: rawUnattributedWinLossEntries },
     { data: hubspotIntegration },
     { data: customerFeedback },
   ] = await Promise.all([
@@ -225,14 +226,15 @@ export default async function DashboardPage() {
     competitorIds.length
       ? db
           .from("competitor_win_loss")
-          .select("id, competitor_id, outcome, reason, created_at")
+          .select("id, competitor_id, outcome, reason, created_at, closed_on")
           .in("competitor_id", competitorIds)
           .order("created_at", { ascending: false })
+          .limit(1000)
       : Promise.resolve({ data: [] }),
     // --- Win/loss log: unattributed (no competitor identified) ---
     db
       .from("competitor_win_loss")
-      .select("id, outcome, reason, created_at")
+      .select("id, outcome, reason, created_at, closed_on")
       .is("competitor_id", null)
       .eq("account_id", accountId)
       .order("created_at", { ascending: false }),
@@ -295,6 +297,10 @@ export default async function DashboardPage() {
   // The query below already filters .in("competitor_id", competitorIds),
   // so every row here has one in practice — narrowed explicitly since the
   // generated Row type now allows null (see 0061_win_loss_unattributed_and_churn).
+  // Entries carry the deal's own close date as created_at here, so trends and timing follow when
+  // deals closed, not when they were uploaded.
+  const winLossEntries = rawWinLossEntries ? withDealDate(rawWinLossEntries) : rawWinLossEntries;
+  const unattributedWinLossEntries = rawUnattributedWinLossEntries ? withDealDate(rawUnattributedWinLossEntries) : rawUnattributedWinLossEntries;
   const attributedWinLossEntries = (winLossEntries ?? []).filter(
     (e): e is typeof e & { competitor_id: string } => e.competitor_id !== null
   );

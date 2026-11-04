@@ -4,6 +4,8 @@ import type { Database } from "@/lib/supabase/types";
 import type { ExtractedWinLossEntry } from "@/lib/anthropic";
 import { applyExtractedWinLossEntries } from "@/lib/win-loss-import";
 import { loadCompetitorMomentum } from "@/lib/momentum-account";
+import { classifyDealReasons } from "@/lib/deal-llm";
+import { createHash } from "node:crypto";
 
 type Admin = SupabaseClient<Database>;
 
@@ -30,21 +32,81 @@ export type LogWinLossResult =
 export async function logWinLoss(
   supabase: Admin,
   accountId: string,
-  input: { competitorName: string; outcome: "won" | "lost"; reason: string | null }
+  input: {
+    // Blank when the deal never named who won (most losses): it is still logged, as a dated, themed
+    // outcome with no competitor.
+    competitorName: string;
+    outcome: "won" | "lost";
+    reason: string | null;
+    // The deal's own close date (YYYY-MM-DD). Omit and it counts as closing today.
+    closedOn?: string | null;
+    amount?: number | null;
+    dealName?: string | null;
+    source?: string;
+  }
 ): Promise<LogWinLossResult> {
   const { data: competitors } = await supabase.from("competitors").select("id, name").eq("account_id", accountId);
+  const list = competitors ?? [];
+  const name = input.competitorName.trim();
+  const tracked = name ? list.find((c) => c.name.toLowerCase() === name.toLowerCase()) : undefined;
+  const closedOn = input.closedOn && /^\d{4}-\d{2}-\d{2}$/.test(input.closedOn) ? input.closedOn : new Date().toISOString().slice(0, 10);
 
-  if (!competitors || competitors.length === 0) {
-    return { ok: false, status: 400, error: "Add a competitor before submitting win/loss data." };
+  if (!name && !input.reason) {
+    return { ok: false, status: 400, error: "Name the competitor or give a reason, so there is something to record." };
   }
 
-  const tracked = competitors.find((c) => c.name.toLowerCase() === input.competitorName.toLowerCase());
+  let suggestedCompetitors: string[] = [];
+  if (name && !tracked) {
+    // Not tracked yet: becomes a suggestion on the Competitors page, same as an import.
+    const entry: ExtractedWinLossEntry = { matchType: "untracked", competitor: name, outcome: input.outcome, reason: input.reason };
+    const applied = await applyExtractedWinLossEntries(supabase, accountId, null, list, [entry]);
+    suggestedCompetitors = applied.suggestedCompetitors;
+  }
 
-  const entry: ExtractedWinLossEntry = tracked
-    ? { matchType: "tracked", competitor: tracked.name, outcome: input.outcome, reason: input.reason }
-    : { matchType: "untracked", competitor: input.competitorName, outcome: input.outcome, reason: input.reason };
-
-  const result = await applyExtractedWinLossEntries(supabase, accountId, null, competitors, [entry]);
+  // Tracked competitor, or no competitor named: a real dated deal row. The same deal logged twice
+  // (same competitor, outcome, reason and date) is recorded once.
+  let imported = 0;
+  let skipped = 0;
+  if (tracked || !name) {
+    const dealRef =
+      "m:" + createHash("sha1").update([tracked?.id ?? "", input.outcome, input.reason ?? "", closedOn].join("\u0001")).digest("hex").slice(0, 20);
+    const { data: existing } = await supabase
+      .from("competitor_win_loss")
+      .select("id")
+      .eq("account_id", accountId)
+      .eq("deal_ref", dealRef)
+      .maybeSingle();
+    if (existing) {
+      skipped = 1;
+    } else {
+      let themes: string[] = [];
+      let detail: string | null = null;
+      if (input.reason) {
+        try {
+          const [read] = await classifyDealReasons(list.map((c) => c.name), [{ key: "1", outcome: input.outcome, competitor: tracked?.name ?? null, reason: input.reason }], accountId);
+          themes = read?.themes ?? [];
+          detail = read?.detail ?? null;
+        } catch (err) {
+          console.error("logWinLoss: could not read the reason, saving without themes", err);
+        }
+      }
+      const { error } = await supabase.from("competitor_win_loss").insert({
+        account_id: accountId,
+        competitor_id: tracked?.id ?? null,
+        outcome: input.outcome,
+        reason: input.reason,
+        closed_on: closedOn,
+        amount: input.amount ?? null,
+        deal_name: input.dealName ?? null,
+        deal_ref: dealRef,
+        source: input.source ?? "manual",
+        reason_themes: themes,
+        reason_detail: detail,
+        competitor_raw: name || null,
+      });
+      if (!error) imported = 1;
+    }
+  }
 
   // Immediate payoff: a tracked competitor's win/loss trend is now one of the
   // Momentum components, so a caller pushing data through here can see the
@@ -56,12 +118,5 @@ export async function logWinLoss(
     if (computed) momentum = { score: computed.momentum.score, label: computed.momentum.label };
   }
 
-  return {
-    ok: true,
-    matched: Boolean(tracked),
-    imported: result.imported,
-    skipped: result.skipped,
-    suggestedCompetitors: result.suggestedCompetitors,
-    momentum,
-  };
+  return { ok: true, matched: Boolean(tracked), imported, skipped, suggestedCompetitors, momentum };
 }

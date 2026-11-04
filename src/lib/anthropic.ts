@@ -61,7 +61,7 @@ async function maybeAlertCreditExhaustion(err: unknown): Promise<void> {
   }
 }
 
-async function createMessage(
+export async function createMessage(
   params: Anthropic.Messages.MessageCreateParamsNonStreaming
 ): Promise<Anthropic.Messages.Message> {
   try {
@@ -77,7 +77,7 @@ async function createMessage(
 // means only the first call in a ~5min window pays full price. Below the
 // model's cache-eligible size this is a harmless no-op (no cache entry, no
 // extra cost), so it's applied uniformly rather than sized per-prompt.
-function cachedSystemPrompt(prompt: string): Anthropic.Messages.TextBlockParam[] {
+export function cachedSystemPrompt(prompt: string): Anthropic.Messages.TextBlockParam[] {
   return [{ type: "text", text: prompt, cache_control: { type: "ephemeral" } }];
 }
 
@@ -1687,7 +1687,7 @@ export async function extractWinLossEntries(
   rawText: string,
   accountId: string | null
 ): Promise<ExtractedWinLossEntry[]> {
-  if (competitorNames.length === 0 || !rawText.trim()) return [];
+  if (!rawText.trim()) return [];
 
   const truncated = rawText.split("\n").slice(0, WIN_LOSS_EXTRACT_LINE_LIMIT).join("\n");
   const userPrompt = `Tracked competitors: ${competitorNames.join(", ")}

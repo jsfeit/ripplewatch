@@ -263,6 +263,20 @@ export interface Database {
           reason: string | null;
           created_by: string | null;
           created_at: string;
+          // The deal's own close date (created_at is only when it was logged). Read
+          // coalesce(closed_on, created_at) via dealDate() in deal-ingest.
+          closed_on: string | null;
+          amount: number | null;
+          deal_ref: string | null;
+          deal_name: string | null;
+          owner: string | null;
+          segment: string | null;
+          source: string;
+          import_id: string | null;
+          raw: Record<string, unknown> | null;
+          reason_themes: string[];
+          reason_detail: string | null;
+          competitor_raw: string | null;
         };
         Insert: {
           id?: string;
@@ -272,8 +286,98 @@ export interface Database {
           reason?: string | null;
           created_by?: string | null;
           created_at?: string;
+          closed_on?: string | null;
+          amount?: number | null;
+          deal_ref?: string | null;
+          deal_name?: string | null;
+          owner?: string | null;
+          segment?: string | null;
+          source?: string;
+          import_id?: string | null;
+          raw?: Record<string, unknown> | null;
+          reason_themes?: string[];
+          reason_detail?: string | null;
+          competitor_raw?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["competitor_win_loss"]["Insert"]>;
+        Relationships: [];
+      };
+      win_loss_imports: {
+        Row: {
+          id: string;
+          account_id: string;
+          source: string;
+          filename: string | null;
+          row_count: number;
+          imported_count: number;
+          mapping: Record<string, unknown> | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_id: string;
+          source: string;
+          filename?: string | null;
+          row_count?: number;
+          imported_count?: number;
+          mapping?: Record<string, unknown> | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["win_loss_imports"]["Insert"]>;
+        Relationships: [];
+      };
+      context_notes: {
+        Row: {
+          id: string;
+          account_id: string;
+          body: string;
+          kind: "roadmap" | "pricing" | "customer" | "sales" | "market" | "other";
+          status: "idea" | "planned" | "in_progress" | "shipped" | null;
+          product_areas: string[];
+          themes: string[];
+          effective_on: string;
+          expected_on: string | null;
+          source: string;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_id: string;
+          body: string;
+          kind?: "roadmap" | "pricing" | "customer" | "sales" | "market" | "other";
+          status?: "idea" | "planned" | "in_progress" | "shipped" | null;
+          product_areas?: string[];
+          themes?: string[];
+          effective_on?: string;
+          expected_on?: string | null;
+          source?: string;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["context_notes"]["Insert"]>;
+        Relationships: [];
+      };
+      deal_impact_briefs: {
+        Row: {
+          id: string;
+          account_id: string;
+          findings: unknown;
+          coverage: unknown;
+          input_hash: string;
+          generated_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_id: string;
+          findings?: unknown;
+          coverage?: unknown;
+          input_hash: string;
+          generated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["deal_impact_briefs"]["Insert"]>;
         Relationships: [];
       };
       live_reads: {

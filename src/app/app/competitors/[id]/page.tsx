@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { loadAllDeals, withDealDate } from "@/lib/deal-store";
 import { Globe } from "lucide-react";
 import { cn, avatarColor } from "@/lib/utils";
 import { CompetitorManager } from "@/components/app/competitor-manager";
@@ -98,7 +99,7 @@ export default async function CompetitorDetailPage({
           .select("competitor_id, type, sentiment, occurred_on, scored, relevance_score")
           .in("competitor_id", competitorIds)
           .gte("occurred_on", reliabilityLookbackStart.toISOString().slice(0, 10)),
-        db.from("competitor_win_loss").select("competitor_id, outcome, created_at").in("competitor_id", competitorIds),
+        loadAllDeals(db, accountId).then((rows) => ({ data: withDealDate(rows).filter((r) => r.competitor_id && competitorIds.includes(r.competitor_id)) })),
         db
           .from("competitor_state_history")
           .select("competitor_id, metric, value, recorded_at")
