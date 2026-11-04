@@ -101,8 +101,9 @@ export async function POST(request: Request) {
         .update({
           positioning: positioning?.trim() || null,
           icp: icp?.trim() || null,
-          has_sales_crm: Boolean(hasSalesCrm),
-          has_plg: Boolean(hasPlg),
+          // No longer asked in the wizard; only written if a caller still sends them.
+          ...(hasSalesCrm === undefined ? {} : { has_sales_crm: Boolean(hasSalesCrm) }),
+          ...(hasPlg === undefined ? {} : { has_plg: Boolean(hasPlg) }),
         })
         .eq("id", accountId),
       supabase
