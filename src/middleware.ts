@@ -96,10 +96,43 @@ export async function middleware(request: NextRequest) {
     // so it's worth the one query it costs rather than two.
     const { data: profile } = await supabase
       .from("profiles")
-      .select("accounts(subscription_status, tier)")
+      .select("account_id, accounts(subscription_status, tier, status, connect_get_started_dismissed_at)")
       .eq("id", user.id)
       .single();
     const account = Array.isArray(profile?.accounts) ? profile.accounts[0] : profile?.accounts;
+
+    // Anyone who hasn't finished signing up goes back to the step they stopped at, from any /app
+    // URL (a bookmark, the login default, an old email link), instead of landing on a page that
+    // has nothing to show them yet. The place is never stored: it's read off the account, so it
+    // holds across sessions and devices.
+    //   - signed in, no account yet: the purchase step, which remembers their company name
+    //   - account created but never paid: the same step, resumed at payment
+    //   - paid but setup unfinished: the setup wizard, which resumes where it left off
+    // /app/get-started is exempt from the unpaid check because Stripe sends people back to it
+    // before the webhook has marked the account paid. Admin "view as" sessions are exempt too.
+    if (!isImpersonating) {
+      const toOnboarding = () => {
+        const url = request.nextUrl.clone();
+        url.pathname = "/onboarding";
+        url.search = "";
+        return NextResponse.redirect(url);
+      };
+      if (!profile?.account_id) return toOnboarding();
+      const neverPaid = account?.tier === "connect" && account.status === "hold" && !account.subscription_status;
+      if (neverPaid && !pathname.startsWith("/app/get-started")) return toOnboarding();
+      if (
+        account?.tier === "connect" &&
+        !neverPaid &&
+        account.status === "active" &&
+        !account.connect_get_started_dismissed_at &&
+        !pathname.startsWith("/app/get-started")
+      ) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/app/get-started";
+        url.search = "";
+        return NextResponse.redirect(url);
+      }
+    }
     // Ripplewatch Connect accounts have no dashboard and no in-app Ask
     // (Connect already is the assistant, inside Claude, ChatGPT, or Slack):
     // their web app is just Settings (billing, balance, connector). A
