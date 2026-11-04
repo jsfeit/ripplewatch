@@ -11,6 +11,7 @@ import { TeamManager } from "@/components/app/team-manager";
 import { ApiKeysManager } from "@/components/app/api-keys-manager";
 import { ConnectedApps } from "@/components/app/connected-apps";
 import { ConnectDataPanel } from "@/components/app/connect-data-panel";
+import type { DealIntelligenceProps } from "@/components/app/deal-intelligence";
 import { ConnectPanel, type ConnectFirstLook, type ConnectLedgerRow } from "@/components/app/connect-panel";
 import { WinLossEmailAddress } from "@/components/app/win-loss-email-address";
 import { ReferralCodeManager } from "@/components/app/referral-code-manager";
@@ -77,6 +78,7 @@ export function SettingsView({
   currentUserId,
   connect,
   winLossInbox,
+  dealIntel,
 }: {
   account: Account;
   competitors: Competitor[];
@@ -88,6 +90,8 @@ export function SettingsView({
   referrals: Referral[];
   currentUserId: string;
   winLossInbox: string;
+  // Connect only: deal history, findings and notes for the Data tab.
+  dealIntel?: DealIntelligenceProps;
   // Present only for Ripplewatch Connect accounts (see the Connect tab).
   connect: {
     balanceUsd: number;
@@ -283,6 +287,7 @@ export function SettingsView({
           <ConnectDataPanel
             inboxAddress={winLossInbox}
             competitors={competitors.map((c) => ({ id: c.id, name: c.name }))}
+            dealIntel={dealIntel}
           />
         </TabsContent>
       ) : null}

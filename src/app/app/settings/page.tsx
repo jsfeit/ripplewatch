@@ -1,4 +1,9 @@
 import { redirect } from "next/navigation";
+import type { DealIntelligenceProps } from "@/components/app/deal-intelligence";
+import { loadDealCoverage } from "@/lib/deal-ingest";
+import { listContextNotes } from "@/lib/context-notes";
+import type { ImpactFinding } from "@/lib/deal-llm";
+import { loadAllDeals, withDealDate } from "@/lib/deal-store";
 import { createClient } from "@/lib/supabase/server";
 import { resolveAccountContext } from "@/lib/impersonation";
 import { computeMomentum, type MomentumResult } from "@/lib/momentum";
@@ -130,7 +135,7 @@ export default async function SettingsPage({
           .select("competitor_id, type, sentiment, occurred_on, scored, relevance_score")
           .in("competitor_id", competitorIds)
           .gte("occurred_on", reliabilityLookbackStart.toISOString().slice(0, 10)),
-        db.from("competitor_win_loss").select("competitor_id, outcome, created_at").in("competitor_id", competitorIds),
+        loadAllDeals(db, accountId).then((rows) => ({ data: withDealDate(rows).filter((r) => r.competitor_id && competitorIds.includes(r.competitor_id)) })),
         db
           .from("competitor_state_history")
           .select("competitor_id, metric, value, recorded_at")
@@ -234,6 +239,28 @@ export default async function SettingsPage({
     );
   }
 
+  // Connect's Data tab shows deal history, what is costing deals, and the team's own notes.
+  let dealIntel: DealIntelligenceProps | undefined;
+  if (connect) {
+    const [coverage, notes, { data: brief }] = await Promise.all([
+      loadDealCoverage(db, accountId),
+      listContextNotes(db, accountId, 8),
+      db
+        .from("deal_impact_briefs")
+        .select("findings, generated_at")
+        .eq("account_id", accountId)
+        .order("generated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+    dealIntel = {
+      initialCoverage: coverage,
+      initialFindings: (brief?.findings as ImpactFinding[] | undefined) ?? [],
+      initialGeneratedAt: brief?.generated_at ?? null,
+      initialNotes: notes,
+    };
+  }
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-10 sm:py-10">
       <div className="mb-8 flex items-start justify-between gap-4">
@@ -257,6 +284,7 @@ export default async function SettingsPage({
         currentUserId={user.id}
         connect={connect}
         winLossInbox={winLossInboxAddress(accountId)}
+        dealIntel={dealIntel}
       />
     </div>
   );

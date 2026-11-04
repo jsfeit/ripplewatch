@@ -1,18 +1,18 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Loader2, Plus, RefreshCw, Scale, Upload } from "lucide-react";
+import { Loader2, Plus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { EmptyState } from "@/components/app/empty-state";
 import { Panel } from "@/components/ui/panel";
 import { CardAvatar, CardFoot, CardHead } from "@/components/app/card";
 import { WinLossReasonSummary, type WinLossEntry } from "@/components/app/win-loss-reason-summary";
 import { createClient } from "@/lib/supabase/client";
 import type { WinLossOutcome } from "@/lib/supabase/types";
 import { formatWinLossImportMessage, type ImportMessageData } from "@/lib/win-loss-import";
+import { DealFileUpload } from "@/components/app/deal-file-upload";
 
 type Competitor = { id: string; name: string };
 type AccountEntry = WinLossEntry & { competitor_id: string };
@@ -78,8 +78,6 @@ export function WinLossPageClient({
   const [entries, setEntries] = useState(initialEntries);
   const [unattributedEntries, setUnattributedEntries] = useState(initialUnattributedEntries);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [importMessage, setImportMessage] = useState<string | null>(null);
 
@@ -113,28 +111,6 @@ export function WinLossPageClient({
       .is("competitor_id", null)
       .order("created_at", { ascending: false });
     if (unattributed) setUnattributedEntries(unattributed);
-  }
-
-  async function handleCsvFile(file: File) {
-    setUploading(true);
-    setImportMessage(null);
-    try {
-      const text = await file.text();
-      const res = await fetch("/api/competitors/win-loss/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Import failed.");
-      setImportMessage(formatWinLossImportMessage("CSV", data as ImportMessageData, false));
-      await refetchEntries();
-    } catch (err) {
-      setImportMessage(err instanceof Error ? err.message : "Import failed.");
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
   }
 
   async function handleHubspotSync() {
@@ -234,16 +210,6 @@ export function WinLossPageClient({
     return map;
   }, [competitors, entries]);
 
-  if (competitors.length === 0) {
-    return (
-      <EmptyState
-        icon={Scale}
-        title="No competitors yet"
-        description="Add competitors first, then come back here to log or import win/loss data against them."
-      />
-    );
-  }
-
   return (
     <div className="space-y-8">
       {showWinLoss ? (
@@ -251,20 +217,7 @@ export function WinLossPageClient({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold">Win/Loss data</h2>
             <div className="flex flex-wrap items-center gap-1.5">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv,text/csv,text/plain"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleCsvFile(file);
-                }}
-              />
-              <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-                {uploading ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
-                Upload CSV
-              </Button>
+              <DealFileUpload onDone={() => void refetchEntries()} label="Upload deals" />
               {hubspotConnected ? (
                 <Button variant="outline" size="sm" onClick={handleHubspotSync} disabled={syncing}>
                   {syncing ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
@@ -282,9 +235,9 @@ export function WinLossPageClient({
             </div>
           </div>
 
-          {uploading || syncing ? (
+          {syncing ? (
             <p className="mt-2 text-xs text-muted-foreground">
-              Processing... large files can take a minute or two, this reads every row.
+              Syncing HubSpot...
             </p>
           ) : importMessage ? (
             <p className="mt-2 text-xs text-muted-foreground">{importMessage}</p>
@@ -350,8 +303,8 @@ export function WinLossPageClient({
 
           {entries.length === 0 && unattributedEntries.length === 0 ? (
             <p className="mt-3 text-sm text-muted-foreground">
-              No wins or losses logged yet. Upload a CSV, sync HubSpot, or log one manually above: the more you
-              log, the sharper every fact sheet gets.
+              No wins or losses logged yet. Upload a CSV in any layout (go back as far as you have, and keep the close date),
+              sync HubSpot, or log one above. The more history, the sharper everything gets.
             </p>
           ) : (
             <div className="mt-4 border-t border-border pt-4">

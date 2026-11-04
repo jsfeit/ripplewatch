@@ -9,6 +9,82 @@ import type { ExtractedWinLossEntry } from "@/lib/anthropic";
 const DEAL_NOTES_MAX_CHARS = 6000;
 const MAX_NEW_SUGGESTIONS_PER_IMPORT = 10;
 
+// Untracked competitor names found in deal data become suggestions on the Competitors page, most
+// mentioned first and capped, so a company the account keeps losing to (or beating) but is not
+// tracking yet surfaces instead of vanishing.
+export async function suggestUntrackedCompetitors(
+  supabase: SupabaseClient<Database>,
+  accountId: string,
+  untracked: { competitor: string; outcome: "won" | "lost" | "churned" }[]
+): Promise<{ suggested: string[]; alreadySuggested: number }> {
+  const suggestedCompetitors: string[] = [];
+  let untrackedAlreadySuggested = 0;
+  if (untracked.length > 0) {
+    const counts = new Map<string, { name: string; won: number; lost: number }>();
+    for (const e of untracked) {
+      const key = e.competitor.toLowerCase();
+      const entry = counts.get(key) ?? { name: e.competitor, won: 0, lost: 0 };
+      if (e.outcome === "won") entry.won++;
+      else entry.lost++;
+      counts.set(key, entry);
+    }
+
+    const { data: existingSuggestions } = await supabase
+      .from("suggested_competitors")
+      .select("name")
+      .eq("account_id", accountId);
+    const existingNames = new Set((existingSuggestions ?? []).map((s) => s.name.toLowerCase()));
+
+    const allDistinct = [...counts.values()];
+    untrackedAlreadySuggested = allDistinct.filter((c) => existingNames.has(c.name.toLowerCase())).length;
+
+    const candidates = allDistinct
+      .filter((c) => !existingNames.has(c.name.toLowerCase()))
+      .sort((a, b) => b.won + b.lost - (a.won + a.lost))
+      .slice(0, MAX_NEW_SUGGESTIONS_PER_IMPORT);
+
+    for (const c of candidates) {
+      const parts = [];
+      if (c.lost > 0) parts.push(`${c.lost} lost deal${c.lost === 1 ? "" : "s"}`);
+      if (c.won > 0) parts.push(`${c.won} won deal${c.won === 1 ? "" : "s"}`);
+      const { error } = await supabase.from("suggested_competitors").insert({
+        account_id: accountId,
+        name: c.name,
+        reasoning: `Named in imported win/loss data (${parts.join(", ")}), not currently tracked.`,
+        status: "pending",
+      });
+      // A unique (account_id, lower(name)) index means a race with another
+      // import/the discovery cron just no-ops here rather than erroring.
+      if (!error) suggestedCompetitors.push(c.name);
+    }
+  }
+  return { suggested: suggestedCompetitors, alreadySuggested: untrackedAlreadySuggested };
+}
+
+// Appends reasons that name no competitor to the account's lost/won deal notes, the narrative text
+// scoring prompts read as context. Returns how many were new and how many were already there.
+export async function appendDealNotes(
+  supabase: SupabaseClient<Database>,
+  accountId: string,
+  field: "lost_deal_notes" | "won_deal_notes",
+  reasons: string[]
+): Promise<{ added: string[]; skipped: number }> {
+  if (reasons.length === 0) return { added: [], skipped: 0 };
+  const { data: account } = await supabase.from("accounts").select(field).eq("id", accountId).single();
+  const existingNotes = (account as Record<string, string | null> | null)?.[field] ?? "";
+  const distinctReasons = [...new Set(reasons.map((r) => r.trim()).filter(Boolean))];
+  const newReasons = distinctReasons.filter((r) => !existingNotes.includes(r));
+  const skipped = distinctReasons.length - newReasons.length;
+  if (newReasons.length === 0) return { added: [], skipped };
+  let combined = existingNotes ? `${existingNotes} ${newReasons.join(". ")}.` : `${newReasons.join(". ")}.`;
+  if (combined.length > DEAL_NOTES_MAX_CHARS) combined = combined.slice(combined.length - DEAL_NOTES_MAX_CHARS);
+  const { error } = await supabase
+    .from("accounts")
+    .update(field === "lost_deal_notes" ? { lost_deal_notes: combined } : { won_deal_notes: combined })
+    .eq("id", accountId);
+  return error ? { added: [], skipped } : { added: newReasons, skipped };
+}
+
 export type ApplyResult = {
   totalExtracted: number;
   imported: number;
@@ -97,47 +173,11 @@ export async function applyExtractedWinLossEntries(
   }
 
   // --- Untracked: surface as suggested competitors, most-mentioned first ---
-  const suggestedCompetitors: string[] = [];
-  let untrackedAlreadySuggested = 0;
-  if (untracked.length > 0) {
-    const counts = new Map<string, { name: string; won: number; lost: number }>();
-    for (const e of untracked) {
-      const key = e.competitor.toLowerCase();
-      const entry = counts.get(key) ?? { name: e.competitor, won: 0, lost: 0 };
-      if (e.outcome === "won") entry.won++;
-      else entry.lost++;
-      counts.set(key, entry);
-    }
-
-    const { data: existingSuggestions } = await supabase
-      .from("suggested_competitors")
-      .select("name")
-      .eq("account_id", accountId);
-    const existingNames = new Set((existingSuggestions ?? []).map((s) => s.name.toLowerCase()));
-
-    const allDistinct = [...counts.values()];
-    untrackedAlreadySuggested = allDistinct.filter((c) => existingNames.has(c.name.toLowerCase())).length;
-
-    const candidates = allDistinct
-      .filter((c) => !existingNames.has(c.name.toLowerCase()))
-      .sort((a, b) => b.won + b.lost - (a.won + a.lost))
-      .slice(0, MAX_NEW_SUGGESTIONS_PER_IMPORT);
-
-    for (const c of candidates) {
-      const parts = [];
-      if (c.lost > 0) parts.push(`${c.lost} lost deal${c.lost === 1 ? "" : "s"}`);
-      if (c.won > 0) parts.push(`${c.won} won deal${c.won === 1 ? "" : "s"}`);
-      const { error } = await supabase.from("suggested_competitors").insert({
-        account_id: accountId,
-        name: c.name,
-        reasoning: `Named in imported win/loss data (${parts.join(", ")}), not currently tracked.`,
-        status: "pending",
-      });
-      // A unique (account_id, lower(name)) index means a race with another
-      // import/the discovery cron just no-ops here rather than erroring.
-      if (!error) suggestedCompetitors.push(c.name);
-    }
-  }
+  const { suggested: suggestedCompetitors, alreadySuggested: untrackedAlreadySuggested } = await suggestUntrackedCompetitors(
+    supabase,
+    accountId,
+    untracked
+  );
 
   // --- General lost reasons: roll into the account's lost_deal_notes ---
   let generalReasonsAdded = 0;

@@ -8,6 +8,8 @@ type Client = SupabaseClient<Database>;
 // Below this many total win/loss + scored-feedback reasons, theme detection is
 // mostly noise — same threshold the trends engine itself uses.
 const MIN_REASONS_FOR_TRENDS = 5;
+// About how many closed deals it takes before reasons and timing say anything; see deal-coverage.ts.
+const DEALS_FOR_PATTERNS = 15;
 const HOT_SIGNAL_WINDOW_DAYS = 21;
 
 export type NextActionTool =
@@ -15,6 +17,8 @@ export type NextActionTool =
   | "set_context"
   | "log_win_loss"
   | "import_win_loss"
+  | "add_context_note"
+  | "get_deal_impact"
   | "log_customer_feedback"
   | "ask";
 
@@ -60,7 +64,7 @@ export async function computeNextBestActions(supabase: Client, accountId: string
   ]);
   const competitorIds = (competitors ?? []).map((c) => c.id);
 
-  const [{ data: hotSignals }, { data: winLoss }, { count: feedbackCount }, { count: scoredFeedbackCount }, momentum] =
+  const [{ data: hotSignals }, { data: winLoss }, { count: dealCount }, { count: notesCount }, { count: feedbackCount }, momentum] =
     await Promise.all([
       competitorIds.length
         ? supabase
@@ -73,20 +77,17 @@ export async function computeNextBestActions(supabase: Client, accountId: string
             .limit(50)
         : Promise.resolve({ data: [] }),
       supabase.from("competitor_win_loss").select("competitor_id").eq("account_id", accountId),
+      supabase.from("competitor_win_loss").select("id", { count: "exact", head: true }).eq("account_id", accountId),
+      supabase.from("context_notes").select("id", { count: "exact", head: true }).eq("account_id", accountId),
       supabase.from("account_customer_feedback").select("id", { count: "exact", head: true }).eq("account_id", accountId),
-      supabase
-        .from("account_customer_feedback")
-        .select("id", { count: "exact", head: true })
-        .eq("account_id", accountId)
-        .not("score", "is", null),
       loadCompetitorMomentum(supabase, accountId),
     ]);
 
   const competitorList = competitors ?? [];
   const winLossRows = winLoss ?? [];
-  const totalWinLoss = winLossRows.length;
+  // The exact count: the row list above is capped at 1,000 and only feeds per-competitor tallies.
+  const totalWinLoss = dealCount ?? winLossRows.length;
   const winLossFor = (competitorId: string) => winLossRows.filter((r) => r.competitor_id === competitorId).length;
-  const totalReasons = totalWinLoss + (scoredFeedbackCount ?? 0);
   const hasPositioning = Boolean(account?.positioning?.trim());
   const hasIcp = Boolean(account?.icp?.trim());
 
@@ -176,15 +177,37 @@ export async function computeNextBestActions(supabase: Client, accountId: string
     });
   }
 
-  if (totalReasons < MIN_REASONS_FOR_TRENDS && competitorList.length > 0) {
-    const remaining = MIN_REASONS_FOR_TRENDS - totalReasons;
+  if (totalWinLoss < DEALS_FOR_PATTERNS && competitorList.length > 0) {
+    const remaining = DEALS_FOR_PATTERNS - totalWinLoss;
     candidates.push({
       id: "reach-trend-threshold",
-      tool: "log_win_loss",
-      headline: `Log ${remaining} more won or lost deal${remaining === 1 ? "" : "s"} with the reason.`,
-      why: `You're at ${totalReasons} of ${MIN_REASONS_FOR_TRENDS} reasons needed before I can detect patterns.`,
-      payoff: "I'll start surfacing recurring themes and tie them to what competitors changed.",
+      tool: "import_win_loss",
+      headline: `Add ${remaining} more won or lost deal${remaining === 1 ? "" : "s"}, as far back as you have.`,
+      why: `You're at ${totalWinLoss} of about ${DEALS_FOR_PATTERNS} deals I need to see patterns over time. A CRM export is the fastest way: any layout works, and the close dates matter.`,
+      payoff: "I'll start surfacing why you lose, how that is changing, and which competitor moves line up with it. More history makes it sharper.",
       value: 60,
+    });
+  }
+
+  if (totalWinLoss >= 5 && (notesCount ?? 0) === 0) {
+    candidates.push({
+      id: "add-context-notes",
+      tool: "add_context_note",
+      headline: "Tell me what you're building and when it ships, or anything customers keep saying.",
+      why: "I can see why deals are lost, but not what you're already doing about it.",
+      payoff: "I'll line your roadmap up against the reasons you lose and say how many recent losses each item could address.",
+      value: 55,
+    });
+  }
+
+  if (totalWinLoss >= 8) {
+    candidates.push({
+      id: "see-deal-impact",
+      tool: "get_deal_impact",
+      headline: "Ask me what's costing you deals.",
+      why: `You have ${totalWinLoss} deals logged, enough for me to read the reasons you lose against what competitors have done.`,
+      payoff: "You get ranked findings with evidence and a next step, and I'll say what more data would sharpen.",
+      value: 50,
     });
   }
 

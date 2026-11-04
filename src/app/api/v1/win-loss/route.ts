@@ -17,14 +17,26 @@ export async function POST(request: Request) {
   const outcome = body?.outcome === "won" || body?.outcome === "lost" ? body.outcome : null;
   const reason = typeof body?.reason === "string" && body.reason.trim() ? body.reason.trim() : null;
 
-  if (!competitorName) {
-    return NextResponse.json({ error: "competitor_name is required." }, { status: 400 });
+  const closedOn = typeof body?.closed_on === "string" ? body.closed_on.trim() : null;
+  const amount = typeof body?.amount === "number" && Number.isFinite(body.amount) ? body.amount : null;
+  const dealName = typeof body?.deal_name === "string" && body.deal_name.trim() ? body.deal_name.trim().slice(0, 200) : null;
+
+  if (!competitorName && !reason) {
+    return NextResponse.json({ error: "Send a competitor_name, a reason, or both." }, { status: 400 });
   }
   if (!outcome) {
     return NextResponse.json({ error: "outcome must be \"won\" or \"lost\"." }, { status: 400 });
   }
 
-  const result = await logWinLoss(createAdminClient(), auth.accountId, { competitorName, outcome, reason });
+  const result = await logWinLoss(createAdminClient(), auth.accountId, {
+    competitorName,
+    outcome,
+    reason,
+    closedOn,
+    amount,
+    dealName,
+    source: "api",
+  });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
 
   return NextResponse.json({
