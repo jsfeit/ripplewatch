@@ -25,6 +25,8 @@ export const CONNECT_FEATURES = [
 // tier's own card features (see tiers.ts) so the two cards land at the same
 // height without empty space or a stretched one.
 export const CONNECT_PRICING_FEATURES = [
+  "A Momentum score for every competitor you track",
+  "Every move checked against your won and lost deals",
   "Ask about competitors in plain language",
   "A weekly briefing on what changed and why",
   "Log deals and feedback by just telling it",

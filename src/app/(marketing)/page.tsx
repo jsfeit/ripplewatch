@@ -241,7 +241,7 @@ export default function HomePage() {
       <section className="border-t border-border bg-secondary/40">
         <div className="mx-auto max-w-6xl px-6 py-20">
           <h2 className="text-center text-3xl font-semibold tracking-tight">
-            Simple pricing
+            One plan, one price
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-center text-muted-foreground">
             One flat platform fee, plus usage you prepay for. Pay only for what you use, never on credit.
