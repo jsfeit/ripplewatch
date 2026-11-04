@@ -2,17 +2,18 @@
 
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Loader2, Plus, RefreshCw, Scale, Upload } from "lucide-react";
+import { Loader2, Plus, RefreshCw, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { EmptyState } from "@/components/app/empty-state";
 import { Panel } from "@/components/ui/panel";
 import { CardAvatar, CardFoot, CardHead } from "@/components/app/card";
 import { WinLossReasonSummary, type WinLossEntry } from "@/components/app/win-loss-reason-summary";
 import { createClient } from "@/lib/supabase/client";
 import type { WinLossOutcome } from "@/lib/supabase/types";
 import { formatWinLossImportMessage, type ImportMessageData } from "@/lib/win-loss-import";
+import { DealImportReview } from "@/components/app/deal-import-review";
+import type { DealImportPreview } from "@/lib/deal-ingest";
 
 type Competitor = { id: string; name: string };
 type AccountEntry = WinLossEntry & { competitor_id: string };
@@ -82,6 +83,9 @@ export function WinLossPageClient({
   const [uploading, setUploading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [importMessage, setImportMessage] = useState<string | null>(null);
+  // A file that has been read but not yet saved: the user checks the column mapping first.
+  const [pending, setPending] = useState<{ text: string; filename: string; preview: DealImportPreview } | null>(null);
+  const [committing, setCommitting] = useState(false);
 
   const [formOpen, setFormOpen] = useState(false);
   const [selectedCompetitorId, setSelectedCompetitorId] = useState(competitors[0]?.id ?? UNKNOWN_COMPETITOR);
@@ -118,22 +122,62 @@ export function WinLossPageClient({
   async function handleCsvFile(file: File) {
     setUploading(true);
     setImportMessage(null);
+    setPending(null);
     try {
       const text = await file.text();
-      const res = await fetch("/api/competitors/win-loss/import", {
+      const res = await fetch("/api/win-loss/import/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
       });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not read that file.");
+      setPending({ text, filename: file.name, preview: data as DealImportPreview });
+    } catch (err) {
+      setImportMessage(err instanceof Error ? err.message : "Could not read that file.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  // The user changed a column: re-read the file with it so the numbers shown stay true.
+  async function remapPending(mapping: DealImportPreview["mapping"]) {
+    if (!pending) return;
+    setPending({ ...pending, preview: { ...pending.preview, mapping } });
+    try {
+      const res = await fetch("/api/win-loss/import/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: pending.text, mapping }),
+      });
+      const data = await res.json();
+      if (res.ok) setPending((p) => (p ? { ...p, preview: data as DealImportPreview } : p));
+    } catch {
+      // Keep showing the previous numbers; confirming still uses the chosen mapping.
+    }
+  }
+
+  async function confirmPending() {
+    if (!pending) return;
+    setCommitting(true);
+    try {
+      const res = await fetch("/api/win-loss/import/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: pending.text, mapping: pending.preview.mapping, filename: pending.filename }),
+      });
+      const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Import failed.");
-      setImportMessage(formatWinLossImportMessage("CSV", data as ImportMessageData, false));
+      setImportMessage(
+        `${formatWinLossImportMessage("CSV", data as ImportMessageData, false)} ${(data as { coverage?: { message?: string } }).coverage?.message ?? ""}`.trim()
+      );
+      setPending(null);
       await refetchEntries();
     } catch (err) {
       setImportMessage(err instanceof Error ? err.message : "Import failed.");
     } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      setCommitting(false);
     }
   }
 
@@ -234,16 +278,6 @@ export function WinLossPageClient({
     return map;
   }, [competitors, entries]);
 
-  if (competitors.length === 0) {
-    return (
-      <EmptyState
-        icon={Scale}
-        title="No competitors yet"
-        description="Add competitors first, then come back here to log or import win/loss data against them."
-      />
-    );
-  }
-
   return (
     <div className="space-y-8">
       {showWinLoss ? (
@@ -284,10 +318,20 @@ export function WinLossPageClient({
 
           {uploading || syncing ? (
             <p className="mt-2 text-xs text-muted-foreground">
-              Processing... large files can take a minute or two, this reads every row.
+              Reading your file...
             </p>
           ) : importMessage ? (
             <p className="mt-2 text-xs text-muted-foreground">{importMessage}</p>
+          ) : null}
+
+          {pending ? (
+            <DealImportReview
+              preview={pending.preview}
+              busy={committing}
+              onChange={remapPending}
+              onConfirm={confirmPending}
+              onCancel={() => setPending(null)}
+            />
           ) : null}
 
           {momentumMessage ? (
@@ -350,8 +394,8 @@ export function WinLossPageClient({
 
           {entries.length === 0 && unattributedEntries.length === 0 ? (
             <p className="mt-3 text-sm text-muted-foreground">
-              No wins or losses logged yet. Upload a CSV, sync HubSpot, or log one manually above: the more you
-              log, the sharper every fact sheet gets.
+              No wins or losses logged yet. Upload a CSV in any layout (go back as far as you have, and keep the close date),
+              sync HubSpot, or log one above. The more history, the sharper everything gets.
             </p>
           ) : (
             <div className="mt-4 border-t border-border pt-4">

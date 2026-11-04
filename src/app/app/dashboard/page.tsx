@@ -12,6 +12,10 @@ import { TrendsBoard } from "../trends/trends-board";
 import { PricingBoard } from "../pricing/pricing-board";
 import { HiringBoard } from "../hiring/hiring-board";
 import { WinLossPageClient } from "../win-loss/win-loss-page-client";
+import { DealIntelligencePanel } from "@/components/app/deal-intelligence";
+import { loadDealCoverage } from "@/lib/deal-ingest";
+import { listContextNotes } from "@/lib/context-notes";
+import type { ImpactFinding } from "@/lib/deal-llm";
 import { CustomerVoiceBoard } from "./customer-voice-board";
 import { YourMomentumCard } from "./your-momentum-card";
 import { computeYourMomentum } from "@/lib/your-momentum";
@@ -333,6 +337,18 @@ export default async function DashboardPage() {
     recentCompetitorChanges
   );
 
+  const [dealCoverage, contextNotes, { data: latestBrief }] = await Promise.all([
+    loadDealCoverage(db, accountId),
+    listContextNotes(db, accountId, 8),
+    db
+      .from("deal_impact_briefs")
+      .select("findings, generated_at")
+      .eq("account_id", accountId)
+      .order("generated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-10 sm:py-10">
       <AutoProductTour hasSeenTour={hasSeenTour} />
@@ -458,7 +474,13 @@ export default async function DashboardPage() {
             {wonCount + lostCount} logged deals.
           </InsightCallout>
         ) : null}
-        <div className="mt-4">
+        <div className="mt-4 space-y-4">
+          <DealIntelligencePanel
+            initialCoverage={dealCoverage}
+            initialFindings={(latestBrief?.findings as ImpactFinding[] | undefined) ?? []}
+            initialGeneratedAt={latestBrief?.generated_at ?? null}
+            initialNotes={contextNotes}
+          />
           <WinLossPageClient
             competitors={(competitors ?? []).map((c) => ({ id: c.id, name: c.name }))}
             initialEntries={attributedWinLossEntries}
