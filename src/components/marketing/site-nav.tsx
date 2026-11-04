@@ -16,10 +16,8 @@ const LINKS = [
 export function SiteNav() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  // The button leads with the free read from anywhere on the site, including
-  // /pricing itself, where a Link to the page you're already on wouldn't
-  // navigate at all.
-  const getStartedHref = "/free-read";
+  // The button goes straight to signup from anywhere on the site.
+  const getStartedHref = "/signup";
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur">
@@ -45,7 +43,7 @@ export function SiteNav() {
             Sign in
           </Link>
           <Link href={getStartedHref} className={cn(buttonVariants(), "hidden sm:inline-flex")}>
-            Free competitor read
+            Sign up
           </Link>
           <button
             type="button"
@@ -83,7 +81,7 @@ export function SiteNav() {
             className={cn(buttonVariants(), "mt-2 w-full")}
             onClick={() => setOpen(false)}
           >
-            Free competitor read
+            Sign up
           </Link>
         </nav>
       ) : null}
