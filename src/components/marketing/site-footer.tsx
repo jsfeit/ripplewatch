@@ -76,7 +76,7 @@ export function SiteFooter() {
               Ripplewatch
             </div>
             <p className="max-w-[22ch] text-sm text-muted-foreground">
-              The AI competitive intelligence analyst in Claude and ChatGPT.
+              Competitor Momentum scores, checked against your won and lost deals.
             </p>
             <Link
               href="/login"

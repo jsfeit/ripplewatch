@@ -51,7 +51,7 @@ const STRUCTURED_DATA = {
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   description:
-    "Not alerts. Not data. Answers. Ripplewatch is an AI competitive intelligence analyst that works inside Claude and other AI assistants over MCP. It tracks your competitors' pricing, hiring, press and product changes, scores each one against your positioning and win/loss history, and tells product marketing and revenue teams which competitors are becoming a real threat.",
+    "Ripplewatch gives every competitor a Momentum score (Heating up, Steady or Cooling) and checks each one against your own won and lost deals. It tracks pricing, hiring, press and product changes, works inside Claude, ChatGPT and other AI assistants over MCP, and tells product marketing and revenue teams which competitors are actually costing them deals.",
   offers: [
     { "@type": "Offer", name: CONNECT_NAME, price: String(CONNECT_BASE_FEE_USD), priceCurrency: "USD" },
   ],
@@ -71,14 +71,14 @@ export default function HomePage() {
             Now inside Claude and ChatGPT
           </span>
           <h1 className="mt-6 text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-            Your competitors,
+            Every competitor gets a Momentum score,
             <br />
-            <span className="text-primary">inside the AI you already use.</span>
+            <span className="text-primary">checked against the deals you won and lost.</span>
           </h1>
           <p className="mx-auto mt-6 max-w-3xl text-lg leading-relaxed text-muted-foreground text-balance">
-            Stop checking competitor sites by hand. Ripplewatch watches their pricing, hiring, press and product
-            changes every day, and tells you in Claude or ChatGPT which moves matter for your deals. Nothing new to
-            log into, and nothing slips past you.
+            Heating up, Steady or Cooling, built from their pricing, hiring, press and product changes every day. Then
+            Ripplewatch checks each one against your own win/loss history, so you see which moves are actually costing
+            you deals. Just ask in Claude or ChatGPT. Nothing new to log into.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link href="/free-read" className={buttonVariants({ size: "lg" })}>
@@ -241,7 +241,7 @@ export default function HomePage() {
       <section className="border-t border-border bg-secondary/40">
         <div className="mx-auto max-w-6xl px-6 py-20">
           <h2 className="text-center text-3xl font-semibold tracking-tight">
-            Simple pricing
+            One plan, one price
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-center text-muted-foreground">
             One flat platform fee, plus usage you prepay for. Pay only for what you use, never on credit.
