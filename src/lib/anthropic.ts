@@ -1383,7 +1383,7 @@ The person reading this already runs a company in this market and already unders
 - Every dynamic must be specific and current (something happening now, not an evergreen truism like "competition is increasing" or "customers want better tools"). If you can't find something specific, return fewer dynamics rather than padding with something generic.
 - Prefer a dynamic drawn from or corroborated by the given industry trends or company research over a freshly searched one when both are available, that material was already found through careful, source-checked research, so reusing it is not a shortcut, it's the more reliable path.
 - Every dynamic needs a source: reuse the exact source {name, url} from the industry trend or company research it's drawn from, or a real URL from a fresh search. Never fabricate a source and never attach a generic homepage URL to a specific claim.
-- maturity and growthDirection are qualitative calls, not numbers, never invent a market-size or revenue figure; if you don't have a defensible qualitative read, pick the closest honest one and let growthReason carry the nuance.
+- maturity and growthDirection are qualitative calls, not numbers, never invent a market-size or revenue figure; if you don't have a defensible qualitative read, pick the closest honest one and let growthReason carry the caveats.
 - productSummary is about THIS company's own product: what it does, roughly where it sits in the market (budget vs. premium, self-serve vs. sales-led, if that's inferable), based on its positioning/ICP and company research, not invented feature claims.
 
 Respond with strict JSON only, no markdown, matching this shape exactly:

@@ -11,9 +11,8 @@ import {
 } from "@/lib/deal-csv";
 import { CLASSIFY_BATCH, classifyDealReasons, profileDealColumns, type DealReadResult } from "@/lib/deal-llm";
 import { appendDealNotes, suggestUntrackedCompetitors, type ApplyResult } from "@/lib/win-loss-import";
-import { computeDealCoverage, type DealCoverage } from "@/lib/deal-coverage";
+import { coverageFromStats, type DealCoverage } from "@/lib/deal-coverage";
 import { mapWithConcurrency } from "@/lib/crawl";
-import { loadAllDeals } from "@/lib/deal-store";
 
 type Admin = SupabaseClient<Database>;
 
@@ -257,6 +256,41 @@ export async function importDealText(
   return { ok: true, result: await commitDealImport(supabase, accountId, userId, text, mapping, meta) };
 }
 
+// Counted in the database rather than by loading every deal: this runs each time the Data tab or the
+// dashboard opens, and a large account has thousands of rows.
 export async function loadDealCoverage(supabase: Admin, accountId: string): Promise<DealCoverage> {
-  return computeDealCoverage(await loadAllDeals(supabase, accountId));
+  const base = () => supabase.from("competitor_win_loss").select("id", { count: "exact", head: true }).eq("account_id", accountId);
+  const edge = (column: "closed_on" | "created_at", ascending: boolean, undatedOnly: boolean) => {
+    let q = supabase.from("competitor_win_loss").select(column).eq("account_id", accountId);
+    q = undatedOnly ? q.is("closed_on", null) : q.not("closed_on", "is", null);
+    return q.order(column, { ascending }).limit(1);
+  };
+  const [total, won, lost, churned, dated, withReason, withCompetitor, firstDated, lastDated, firstUndated, lastUndated] =
+    await Promise.all([
+      base(),
+      base().eq("outcome", "won"),
+      base().eq("outcome", "lost"),
+      base().eq("outcome", "churned"),
+      base().not("closed_on", "is", null),
+      base().not("reason", "is", null),
+      base().not("competitor_id", "is", null),
+      edge("closed_on", true, false),
+      edge("closed_on", false, false),
+      edge("created_at", true, true),
+      edge("created_at", false, true),
+    ]);
+  const first = (r: { data: unknown }, col: string) => ((r.data as Record<string, string>[] | null)?.[0]?.[col] ?? null)?.slice(0, 10) ?? null;
+  const candidates = [first(firstDated, "closed_on"), first(firstUndated, "created_at")].filter((d): d is string => Boolean(d)).sort();
+  const lasts = [first(lastDated, "closed_on"), first(lastUndated, "created_at")].filter((d): d is string => Boolean(d)).sort();
+  return coverageFromStats({
+    dealCount: total.count ?? 0,
+    wonCount: won.count ?? 0,
+    lostCount: lost.count ?? 0,
+    churnedCount: churned.count ?? 0,
+    datedCount: dated.count ?? 0,
+    reasonCount: withReason.count ?? 0,
+    competitorCount: withCompetitor.count ?? 0,
+    earliest: candidates[0] ?? null,
+    latest: lasts[lasts.length - 1] ?? null,
+  });
 }

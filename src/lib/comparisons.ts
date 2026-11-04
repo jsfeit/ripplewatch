@@ -52,7 +52,7 @@ export const COMPARISONS: ComparisonEntry[] = [
       "Auto-updating battlecards are a genuinely useful default: sales teams get maintained competitive collateral without a PM manually refreshing slides every quarter. The CRM tie-in (Salesforce/HubSpot) that ties win/loss outcomes back to a specific competitor is a real integration strength, and Semrush's backing brings SEO/traffic data most standalone tools don't have.",
     theirMechanism: "daily scraping feeding auto-generated, always-current battlecards",
     differentiator:
-      "A battlecard is the same battlecard for every rep and every deal: comprehensive, but it doesn't rank which of today's changes actually matters right now versus which is background noise. Ripplewatch scores each finding against your specific positioning and real win/loss history, so a pricing change that's dangerous for one company can be irrelevant for another.",
+      "A battlecard is the same battlecard for every rep and every deal: thorough, but it doesn't rank which of today's changes actually matters right now versus which is background noise. Ripplewatch scores each finding against your specific positioning and real win/loss history, so a pricing change that's dangerous for one company can be irrelevant for another.",
     bestFor: "Sales teams who need auto-updating battlecards synced to their CRM",
     howPrioritized: "One battlecard for every rep and every deal",
     switchGain:
@@ -229,7 +229,7 @@ export const COMPARISONS: ComparisonEntry[] = [
     tagline:
       "An AI-native battlecard platform that combines LLM-driven research with intel sales reps log directly from live deal conversations, plus win/loss learning.",
     whatTheyDoWell:
-      "Capturing competitive intel from what reps actually hear in real deals, not just external scraping, is a genuinely distinct mechanism worth crediting; it surfaces the kind of nuance (an objection, a specific competitor claim in a live deal) that pure automation misses.",
+      "Capturing competitive intel from what reps actually hear in real deals, not just external scraping, is a genuinely distinct mechanism worth crediting; it surfaces the kind of detail (an objection, a specific competitor claim in a live deal) that pure automation misses.",
     theirMechanism: "rep-sourced field intel combined with LLM research, searchable from Slack",
     differentiator:
       "Rep-sourced intel is a real strength for capturing what happens inside deals, but it doesn't independently score external signals (a competitor's pricing change, a funding round, a hiring spike) the way Ripplewatch does. The two mechanisms are complementary more than substitutes: one captures what your team hears, the other scores what's happening outside your deals.",
@@ -238,7 +238,7 @@ export const COMPARISONS: ComparisonEntry[] = [
     switchGain:
       "You add independent scoring of external signals, like a pricing change or a hiring spike, that rep-sourced intel alone doesn't cover, since it depends on your team happening to hear about it in a live deal.",
     switchConsider:
-      "Playwise's rep-logged intel captures nuance from actual deal conversations that no automated tool, Ripplewatch included, can fully replace; the two are genuinely complementary rather than substitutes.",
+      "Playwise's rep-logged intel captures detail from actual deal conversations that no automated tool, Ripplewatch included, can fully replace; the two are genuinely complementary rather than substitutes.",
   },
   {
     slug: "watchmycompetitor",
@@ -247,7 +247,7 @@ export const COMPARISONS: ComparisonEntry[] = [
     tagline:
       "A UK-based market-intelligence platform combining AI monitoring of competitor websites, pricing, social, and financials with human-analyst curation.",
     whatTheyDoWell:
-      "The hybrid AI-plus-human-analyst model is a genuine differentiator versus fully-automated tools: a person reviewing what the AI surfaces can catch nuance and context that pure automation misses, especially for less structured signals.",
+      "The hybrid AI-plus-human-analyst model is a genuine differentiator versus fully-automated tools: a person reviewing what the AI surfaces can catch context that pure automation misses, especially for less structured signals.",
     theirMechanism: "AI monitoring reviewed and curated by human analysts",
     differentiator:
       "Human curation adds real judgment, but also cost and lag compared to fully-automated scoring, and it isn't tuned to your specific positioning or ICP: the analyst is applying general judgment, not your company's own definition of what matters. Ripplewatch's relevance score is computed against your own positioning and win/loss history specifically, and updates as fast as the underlying signal does.",
@@ -256,7 +256,7 @@ export const COMPARISONS: ComparisonEntry[] = [
     switchGain:
       "You get scoring computed against your own positioning and win/loss history that updates as fast as the underlying signal does, without the added cost and lag of a human-curation step, and you ask for it from inside Claude or another MCP assistant.",
     switchConsider:
-      "If nuanced human judgment on less-structured signals is worth the added cost and lag to you, WatchMyCompetitor's analyst layer is a genuine tradeoff to weigh against faster, fully-automated scoring.",
+      "If human judgment on less-structured signals is worth the added cost and lag to you, WatchMyCompetitor's analyst layer is a genuine tradeoff to weigh against faster, fully-automated scoring.",
   },
   {
     slug: "competitors-app",
@@ -400,7 +400,7 @@ export const COMPARISONS: ComparisonEntry[] = [
     switchGain:
       "Your existing CRM win/loss reasons feed directly into the same relevance-scored system tracking competitor pricing, hiring, and news, continuously and at self-serve pricing, instead of a separate interview process that depends on buyer availability.",
     switchConsider:
-      "A real buyer interview, especially Clozd's live, human-conducted calls, surfaces nuance a CRM dropdown reason never will; if that depth of qualitative feedback is what you need most, it's a genuinely different tool than Ripplewatch, not a straight substitute.",
+      "A real buyer interview, especially Clozd's live, human-conducted calls, surfaces detail a CRM dropdown reason never will; if that depth of qualitative feedback is what you need most, it's a genuinely different tool than Ripplewatch, not a straight substitute.",
   },
 ];
 
