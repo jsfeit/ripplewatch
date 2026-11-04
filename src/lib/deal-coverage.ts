@@ -39,21 +39,42 @@ function pct(n: number, d: number): number {
   return d === 0 ? 0 : Math.round((n / d) * 100);
 }
 
+// The numbers coverage is built from. Counted in the database for big accounts (see loadDealCoverage),
+// or tallied from rows when they are already in memory.
+export type CoverageStats = {
+  dealCount: number;
+  wonCount: number;
+  lostCount: number;
+  churnedCount: number;
+  datedCount: number;
+  reasonCount: number;
+  competitorCount: number;
+  earliest: string | null;
+  latest: string | null;
+};
+
 export function computeDealCoverage(deals: CoverageDeal[]): DealCoverage {
-  const dealCount = deals.length;
   const dates = deals.map(dealDate).sort();
-  const earliest = dates[0] ?? null;
-  const latest = dates[dates.length - 1] ?? null;
-  const monthsSpan =
-    earliest && latest ? Math.max(0, Math.round(((new Date(latest).getTime() - new Date(earliest).getTime()) / 86400000 / 30.4) * 10) / 10) : 0;
-  const counts = {
+  return coverageFromStats({
+    dealCount: deals.length,
     wonCount: deals.filter((d) => d.outcome === "won").length,
     lostCount: deals.filter((d) => d.outcome === "lost").length,
     churnedCount: deals.filter((d) => d.outcome === "churned").length,
-  };
-  const pctDated = pct(deals.filter((d) => d.closed_on).length, dealCount);
-  const pctWithReason = pct(deals.filter((d) => d.reason && d.reason.trim()).length, dealCount);
-  const pctNamedCompetitor = pct(deals.filter((d) => d.competitor_id).length, dealCount);
+    datedCount: deals.filter((d) => d.closed_on).length,
+    reasonCount: deals.filter((d) => d.reason && d.reason.trim()).length,
+    competitorCount: deals.filter((d) => d.competitor_id).length,
+    earliest: dates[0] ?? null,
+    latest: dates[dates.length - 1] ?? null,
+  });
+}
+
+export function coverageFromStats(stats: CoverageStats): DealCoverage {
+  const { dealCount, earliest, latest } = stats;
+  const monthsSpan =
+    earliest && latest ? Math.max(0, Math.round(((new Date(latest).getTime() - new Date(earliest).getTime()) / 86400000 / 30.4) * 10) / 10) : 0;
+  const pctDated = pct(stats.datedCount, dealCount);
+  const pctWithReason = pct(stats.reasonCount, dealCount);
+  const pctNamedCompetitor = pct(stats.competitorCount, dealCount);
 
   let level: DealCoverage["level"] = "thin";
   if (dealCount === 0) level = "none";
@@ -63,7 +84,9 @@ export function computeDealCoverage(deals: CoverageDeal[]): DealCoverage {
   return {
     level,
     dealCount,
-    ...counts,
+    wonCount: stats.wonCount,
+    lostCount: stats.lostCount,
+    churnedCount: stats.churnedCount,
     earliest,
     latest,
     monthsSpan,
