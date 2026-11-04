@@ -4,7 +4,7 @@
 // rename is a one-line change.
 
 export const CONNECT_NAME = "Ripplewatch";
-export const CONNECT_TAGLINE = "Your AI competitive intelligence analyst, built into Claude or ChatGPT.";
+export const CONNECT_TAGLINE = "Competitor Momentum scores, checked against your won and lost deals, inside Claude or ChatGPT.";
 export const CONNECT_MCP_URL = "https://www.ripplewatch.ai/api/mcp";
 
 export const CONNECT_ASSISTANTS = ["Claude", "ChatGPT", "Cursor", "Something else"] as const;
@@ -50,7 +50,7 @@ export const CONNECT_QUICK_ANSWERS = [
   {
     question: "What is Ripplewatch?",
     answer:
-      "An AI competitive intelligence analyst that works inside Claude and other AI assistants over MCP. It watches your competitors' pricing, hiring, press and product changes, and scores each one against your positioning and your win/loss history.",
+      "An AI competitive intelligence analyst that gives every competitor a Momentum score and checks each move against your own win/loss history. It watches pricing, hiring, press and product changes, and works inside Claude and other AI assistants over MCP.",
   },
   {
     question: "Who is it for?",

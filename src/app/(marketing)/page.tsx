@@ -51,7 +51,7 @@ const STRUCTURED_DATA = {
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   description:
-    "Not alerts. Not data. Answers. Ripplewatch is an AI competitive intelligence analyst that works inside Claude and other AI assistants over MCP. It tracks your competitors' pricing, hiring, press and product changes, scores each one against your positioning and win/loss history, and tells product marketing and revenue teams which competitors are becoming a real threat.",
+    "Ripplewatch gives every competitor a Momentum score (Heating up, Steady or Cooling) and checks each one against your own won and lost deals. It tracks pricing, hiring, press and product changes, works inside Claude, ChatGPT and other AI assistants over MCP, and tells product marketing and revenue teams which competitors are actually costing them deals.",
   offers: [
     { "@type": "Offer", name: CONNECT_NAME, price: String(CONNECT_BASE_FEE_USD), priceCurrency: "USD" },
   ],

@@ -5,6 +5,6 @@ export { size, contentType };
 export default function Image() {
   return renderOgImage(
     "From raw signal to a Momentum score",
-    "Not alerts. Not data. Answers. See how a competitor change gets scored, then rolled into one directional score."
+    "See how a competitor change gets scored against your won and lost deals, then rolled into one Momentum score."
   );
 }

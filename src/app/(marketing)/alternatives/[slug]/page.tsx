@@ -67,7 +67,7 @@ export default async function AlternativePage({ params }: { params: Promise<{ sl
             name: "Ripplewatch",
             applicationCategory: "BusinessApplication",
             operatingSystem: "Web",
-            description: `Looking for a ${entry.name} alternative? Ripplewatch is an AI analyst that works inside Claude and other assistants over MCP, with pricing published up front.`,
+            description: `Looking for a ${entry.name} alternative? Ripplewatch gives every competitor a Momentum score checked against your won and lost deals, with pricing published up front.`,
             offers: TIERS.map((tier) => ({
               "@type": "Offer",
               name: tier.name,
