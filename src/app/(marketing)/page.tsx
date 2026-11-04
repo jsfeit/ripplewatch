@@ -71,14 +71,14 @@ export default function HomePage() {
             Now inside Claude and ChatGPT
           </span>
           <h1 className="mt-6 text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-            Your competitors,
+            Every competitor gets a Momentum score,
             <br />
-            <span className="text-primary">inside the AI you already use.</span>
+            <span className="text-primary">checked against the deals you won and lost.</span>
           </h1>
           <p className="mx-auto mt-6 max-w-3xl text-lg leading-relaxed text-muted-foreground text-balance">
-            Stop checking competitor sites by hand. Ripplewatch watches their pricing, hiring, press and product
-            changes every day, and tells you in Claude or ChatGPT which moves matter for your deals. Nothing new to
-            log into, and nothing slips past you.
+            Heating up, Steady or Cooling, built from their pricing, hiring, press and product changes every day. Then
+            Ripplewatch checks each one against your own win/loss history, so you see which moves are actually costing
+            you deals. Just ask in Claude or ChatGPT. Nothing new to log into.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link href="/free-read" className={buttonVariants({ size: "lg" })}>
