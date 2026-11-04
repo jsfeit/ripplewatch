@@ -8,7 +8,7 @@ import { Panel } from "@/components/ui/panel";
 import type { DealCoverage } from "@/lib/deal-coverage";
 import type { ImpactFinding } from "@/lib/deal-llm";
 
-type Note = {
+export type DealNote = {
   id: string;
   body: string;
   kind: string;
@@ -35,17 +35,14 @@ const CONFIDENCE_STYLE: Record<ImpactFinding["confidence"], string> = {
 
 // What is costing deals, how much history backs it, and the team's own notes, in one place. The
 // history meter is deliberate: more deals and more months visibly sharpen the answer.
-export function DealIntelligencePanel({
-  initialCoverage,
-  initialFindings,
-  initialGeneratedAt,
-  initialNotes,
-}: {
+export type DealIntelligenceProps = {
   initialCoverage: DealCoverage;
   initialFindings: ImpactFinding[];
   initialGeneratedAt: string | null;
-  initialNotes: Note[];
-}) {
+  initialNotes: DealNote[];
+};
+
+export function DealIntelligencePanel({ initialCoverage, initialFindings, initialGeneratedAt, initialNotes }: DealIntelligenceProps) {
   const [coverage, setCoverage] = useState(initialCoverage);
   const [findings, setFindings] = useState(initialFindings);
   const [generatedAt, setGeneratedAt] = useState(initialGeneratedAt);
@@ -91,7 +88,7 @@ export function DealIntelligencePanel({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not save that.");
-      setNotes((prev) => [data.note as Note, ...prev]);
+      setNotes((prev) => [data.note as DealNote, ...prev]);
       setDraft("");
     } catch (err) {
       setNoteError(err instanceof Error ? err.message : "Could not save that.");

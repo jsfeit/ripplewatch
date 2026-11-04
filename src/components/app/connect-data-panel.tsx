@@ -1,12 +1,13 @@
 "use client";
 
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Copy, Loader2, Upload } from "lucide-react";
+import { Check, Copy, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { WinLossEmailAddress } from "@/components/app/win-loss-email-address";
-import { formatWinLossImportMessage, type ImportMessageData } from "@/lib/win-loss-import";
+import { DealFileUpload } from "@/components/app/deal-file-upload";
+import { DealIntelligencePanel, type DealIntelligenceProps } from "@/components/app/deal-intelligence";
 import { cn } from "@/lib/utils";
 import {
   DEAL_TOOLS,
@@ -29,12 +30,16 @@ const NOT_SURE = "none";
 // upload a file, or have their assistant pull it from a tool it can already
 // reach. There is deliberately no OAuth here: the assistant reads the other
 // tool through that tool's own MCP and hands the rows to Ripplewatch.
-export function ConnectDataPanel({ inboxAddress, competitors }: { inboxAddress: string; competitors: Competitor[] }) {
+export function ConnectDataPanel({
+  inboxAddress,
+  competitors,
+  dealIntel,
+}: {
+  inboxAddress: string;
+  competitors: Competitor[];
+  dealIntel?: DealIntelligenceProps;
+}) {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
-
   const [outcome, setOutcome] = useState<"won" | "lost">("lost");
   const [competitorId, setCompetitorId] = useState(competitors[0]?.id ?? NOT_SURE);
   const [reason, setReason] = useState("");
@@ -111,28 +116,6 @@ export function ConnectDataPanel({ inboxAddress, competitors }: { inboxAddress: 
     }
   }
 
-  async function handleFile(file: File) {
-    setUploading(true);
-    setUploadMessage(null);
-    try {
-      const text = await file.text();
-      const res = await fetch("/api/competitors/win-loss/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Import failed.");
-      setUploadMessage(formatWinLossImportMessage("Upload", data as ImportMessageData, false));
-      router.refresh();
-    } catch (err) {
-      setUploadMessage(err instanceof Error ? err.message : "Import failed.");
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  }
-
   const noCompetitors = competitors.length === 0;
 
   return (
@@ -141,9 +124,11 @@ export function ConnectDataPanel({ inboxAddress, competitors }: { inboxAddress: 
         <h2 className="text-lg font-semibold">Make the answers yours</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           The deals you win and lose are what turn generic competitor news into answers about your market. Add them
-          whichever way is easiest. Even one helps.
+          whichever way is easiest. Even one helps, and more is better.
         </p>
       </div>
+
+      {dealIntel ? <DealIntelligencePanel {...dealIntel} /> : null}
 
       <div className="rounded-xl border border-border bg-card p-6">
         <h3 className="text-base font-semibold">Tell me about a deal</h3>
@@ -210,33 +195,12 @@ export function ConnectDataPanel({ inboxAddress, competitors }: { inboxAddress: 
       <div className="rounded-xl border border-border bg-card p-6">
         <h3 className="text-base font-semibold">Upload a file</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          A CRM export or a plain list of deals. I&apos;ll pull out the win/loss and churn reasons for each competitor.
+          A CRM export in any layout, as far back as you have. I work out which column is which and show you before I
+          save anything. More history, with close dates, makes every answer sharper.
         </p>
-        {noCompetitors ? (
-          <p className="mt-3 text-sm text-muted-foreground">Add a competitor first, then come back to upload here.</p>
-        ) : (
-          <div className="mt-3">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv,text/csv,text/plain"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void handleFile(file);
-              }}
-            />
-            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-              {uploading ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
-              Upload a file
-            </Button>
-            {uploading ? (
-              <p className="mt-2 text-xs text-muted-foreground">Reading it now. A large file can take a minute or two.</p>
-            ) : uploadMessage ? (
-              <p className="mt-2 text-xs text-muted-foreground">{uploadMessage}</p>
-            ) : null}
-          </div>
-        )}
+        <div className="mt-3">
+          <DealFileUpload onDone={() => router.refresh()} />
+        </div>
       </div>
 
       <div className="rounded-xl border border-border bg-card p-6">
