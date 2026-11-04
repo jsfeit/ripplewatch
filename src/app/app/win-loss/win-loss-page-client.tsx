@@ -13,7 +13,14 @@ import { createClient } from "@/lib/supabase/client";
 import type { WinLossOutcome } from "@/lib/supabase/types";
 import { formatWinLossImportMessage, type ImportMessageData } from "@/lib/win-loss-import";
 import { DealImportReview } from "@/components/app/deal-import-review";
-import type { DealImportPreview } from "@/lib/deal-ingest";
+import type { DealImportPreview, DealImportSummary } from "@/lib/deal-ingest";
+import { splitCsvIntoBatches } from "@/lib/csv-split";
+import type { DealCoverage } from "@/lib/deal-coverage";
+import { DealDataGuide } from "@/components/app/deal-data-guide";
+
+// Columns are worked out from the first rows; the full file is then sent in batches that fit one request.
+const PREVIEW_ROWS = 1500;
+const COMMIT_ROWS = 1000;
 
 type Competitor = { id: string; name: string };
 type AccountEntry = WinLossEntry & { competitor_id: string };
@@ -84,7 +91,8 @@ export function WinLossPageClient({
   const [syncing, setSyncing] = useState(false);
   const [importMessage, setImportMessage] = useState<string | null>(null);
   // A file that has been read but not yet saved: the user checks the column mapping first.
-  const [pending, setPending] = useState<{ text: string; filename: string; preview: DealImportPreview } | null>(null);
+  const [pending, setPending] = useState<{ text: string; filename: string; totalRows: number; preview: DealImportPreview } | null>(null);
+  const [progress, setProgress] = useState<string | null>(null);
   const [committing, setCommitting] = useState(false);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -125,14 +133,17 @@ export function WinLossPageClient({
     setPending(null);
     try {
       const text = await file.text();
+      // The columns are worked out from the start of the file; the whole file is imported on confirm.
+      const { totalRows, batches } = splitCsvIntoBatches(text, PREVIEW_ROWS);
+      if (batches.length === 0) throw new Error("That file looks empty.");
       const res = await fetch("/api/win-loss/import/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text: batches[0] }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not read that file.");
-      setPending({ text, filename: file.name, preview: data as DealImportPreview });
+      setPending({ text, filename: file.name, totalRows, preview: data as DealImportPreview });
     } catch (err) {
       setImportMessage(err instanceof Error ? err.message : "Could not read that file.");
     } finally {
@@ -149,7 +160,7 @@ export function WinLossPageClient({
       const res = await fetch("/api/win-loss/import/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: pending.text, mapping }),
+        body: JSON.stringify({ text: splitCsvIntoBatches(pending.text, PREVIEW_ROWS).batches[0], mapping }),
       });
       const data = await res.json();
       if (res.ok) setPending((p) => (p ? { ...p, preview: data as DealImportPreview } : p));
@@ -162,21 +173,56 @@ export function WinLossPageClient({
     if (!pending) return;
     setCommitting(true);
     try {
-      const res = await fetch("/api/win-loss/import/commit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: pending.text, mapping: pending.preview.mapping, filename: pending.filename }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Import failed.");
-      setImportMessage(
-        `${formatWinLossImportMessage("CSV", data as ImportMessageData, false)} ${(data as { coverage?: { message?: string } }).coverage?.message ?? ""}`.trim()
-      );
+      const { totalRows, batches } = splitCsvIntoBatches(pending.text, COMMIT_ROWS);
+      const total: DealImportSummary = {
+        totalExtracted: 0,
+        imported: 0,
+        skipped: 0,
+        generalReasonsAdded: 0,
+        generalReasonsSkipped: 0,
+        generalWonReasonsAdded: 0,
+        generalWonReasonsSkipped: 0,
+        suggestedCompetitors: [],
+        untrackedAlreadySuggested: 0,
+        rowsConsidered: totalRows,
+        totalRows,
+        truncated: false,
+        updated: 0,
+        datedPct: 0,
+        coverage: undefined as unknown as DealCoverage,
+        importId: null,
+      };
+      let dated = 0;
+      for (let i = 0; i < batches.length; i++) {
+        setProgress(batches.length > 1 ? `Importing deals ${i * COMMIT_ROWS + 1} to ${Math.min(totalRows, (i + 1) * COMMIT_ROWS)} of ${totalRows}...` : null);
+        const res = await fetch("/api/win-loss/import/commit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: batches[i], mapping: pending.preview.mapping, filename: pending.filename }),
+        });
+        const data = (await res.json()) as DealImportSummary & { error?: string };
+        if (!res.ok) throw new Error(`${data.error ?? "Import failed."}${i > 0 ? ` The first ${i * COMMIT_ROWS} deals were saved; uploading the file again picks up where it stopped.` : ""}`);
+        total.totalExtracted += data.totalExtracted;
+        total.imported += data.imported;
+        total.skipped += data.skipped;
+        total.updated += data.updated;
+        total.generalReasonsAdded += data.generalReasonsAdded;
+        total.generalReasonsSkipped += data.generalReasonsSkipped;
+        total.generalWonReasonsAdded += data.generalWonReasonsAdded;
+        total.generalWonReasonsSkipped += data.generalWonReasonsSkipped;
+        total.suggestedCompetitors = [...new Set([...total.suggestedCompetitors, ...data.suggestedCompetitors])];
+        total.untrackedAlreadySuggested = Math.max(total.untrackedAlreadySuggested, data.untrackedAlreadySuggested);
+        total.coverage = data.coverage;
+        dated += (data.datedPct / 100) * data.totalExtracted;
+      }
+      total.datedPct = total.totalExtracted === 0 ? 0 : Math.round((dated / total.totalExtracted) * 100);
+      setImportMessage(`${formatWinLossImportMessage("CSV", total as ImportMessageData, false)} ${total.coverage.message ?? ""}`.trim());
       setPending(null);
       await refetchEntries();
     } catch (err) {
       setImportMessage(err instanceof Error ? err.message : "Import failed.");
     } finally {
+      setProgress(null);
       setCommitting(false);
     }
   }
@@ -316,6 +362,8 @@ export function WinLossPageClient({
             </div>
           </div>
 
+          <DealDataGuide />
+
           {uploading || syncing ? (
             <p className="mt-2 text-xs text-muted-foreground">
               Reading your file...
@@ -324,6 +372,8 @@ export function WinLossPageClient({
             <p className="mt-2 text-xs text-muted-foreground">{importMessage}</p>
           ) : null}
 
+          {progress ? <p className="mt-2 text-xs text-muted-foreground">{progress}</p> : null}
+
           {pending ? (
             <DealImportReview
               preview={pending.preview}
@@ -331,6 +381,7 @@ export function WinLossPageClient({
               onChange={remapPending}
               onConfirm={confirmPending}
               onCancel={() => setPending(null)}
+              fileRows={pending.totalRows}
             />
           ) : null}
 

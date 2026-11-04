@@ -26,12 +26,15 @@ export function DealImportReview({
   onChange,
   onConfirm,
   onCancel,
+  fileRows,
 }: {
   preview: DealImportPreview;
   busy: boolean;
   onChange: (mapping: Mapping) => void;
   onConfirm: () => void;
   onCancel: () => void;
+  // Rows in the whole file; the columns were worked out from the first rows only.
+  fileRows: number;
 }) {
   const { mapping, report, columns } = preview;
   const datedPct = report.usable === 0 ? 0 : Math.round((report.withDate / report.usable) * 100);
@@ -42,6 +45,7 @@ export function DealImportReview({
       <div>
         <p className="text-sm font-semibold">Here&rsquo;s how I read your file</p>
         <p className="mt-1 text-xs text-muted-foreground">
+          {fileRows > report.totalRows ? `From the first ${report.totalRows.toLocaleString()} of your ${fileRows.toLocaleString()} rows: ` : ""}
           {report.usable.toLocaleString()} of {report.totalRows.toLocaleString()} rows are closed deals
           {report.skippedOpen > 0 ? ` (${report.skippedOpen} still open, skipped)` : ""}. Dates on {datedPct}% of them
           ({span}). Reasons on {report.usable === 0 ? 0 : Math.round((report.withReason / report.usable) * 100)}%.
@@ -146,17 +150,13 @@ export function DealImportReview({
           </table>
         </div>
       ) : null}
-      {preview.truncated ? (
-        <p className="text-[11px] text-muted-foreground">This file is very large, so only the first rows are included. Upload the rest in a second file.</p>
-      ) : null}
-
       <div className="flex justify-end gap-2">
         <Button variant="ghost" size="sm" onClick={onCancel} disabled={busy}>
           Cancel
         </Button>
         <Button size="sm" onClick={onConfirm} disabled={busy || report.usable === 0}>
           {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
-          Import {report.usable.toLocaleString()} deals
+          Import {fileRows > report.totalRows ? `all ${fileRows.toLocaleString()} rows` : `${report.usable.toLocaleString()} deals`}
         </Button>
       </div>
     </Panel>

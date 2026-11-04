@@ -17,9 +17,10 @@ import { loadAllDeals } from "@/lib/deal-store";
 
 type Admin = SupabaseClient<Database>;
 
-// Bounds model cost and request time on a pathological file. The cost is per DISTINCT reason, not per
-// row, so this is generous: a 5,000-row export usually has a few hundred distinct reasons.
-export const MAX_DEAL_ROWS = 5000;
+// What one request will read. This is a limit on request time, not on how much a customer can upload: the
+// browser sends bigger files in batches (see csv-split.ts), and every batch is idempotent. Model cost
+// follows DISTINCT reasons, not rows.
+export const MAX_DEAL_ROWS = 2000;
 const CLASSIFY_CONCURRENCY = 6;
 const UPSERT_CHUNK = 200;
 
