@@ -1,7 +1,7 @@
 import { FreeReadTool } from "@/components/marketing/free-read-tool";
 
 const description =
-  "Name up to three competitors. Watch Ripplewatch read their pricing (with a year of history), hiring and news, then tell you who is heating up, who is cooling off, and what it means for you.";
+  "Name up to three competitors. Watch Ripplewatch read their pricing (with a year of history), hiring and news, then tell you who is heating up and who is cooling off. Connect your won and lost deals later to see which moves are costing you.";
 
 export const metadata = {
   title: "Free competitor read",

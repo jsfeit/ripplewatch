@@ -6,7 +6,7 @@ import { CONNECT_NAME } from "@/lib/connect";
 import { CONNECT_BASE_FEE_USD } from "@/lib/connect-pricing";
 
 const description =
-  "Ripplewatch is an AI competitive intelligence analyst in Claude and ChatGPT. $29 a month plus usage you prepay for, published up front.";
+  "Competitor Momentum scores checked against your won and lost deals, in Claude and ChatGPT. $29 a month plus usage you prepay for, published up front.";
 
 export const metadata = {
   title: "Pricing",

@@ -22,13 +22,13 @@ const geistMono = Geist_Mono({
 });
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-const TITLE = "Ripplewatch | Not alerts. Not data. Answers.";
+const TITLE = "Ripplewatch | Competitor Momentum, scored against your deals";
 // Search results show about 155 characters, so the page description is a short one; the long
 // DESCRIPTION below stays for the structured data, where length is not cut off.
 const META_DESCRIPTION =
-  "An AI competitive intelligence analyst inside Claude and ChatGPT. It tracks competitor pricing, hiring and press, and scores each move against your deals.";
+  "Every competitor gets a Momentum score checked against the deals you won and lost. Pricing, hiring and press, answered inside Claude or ChatGPT.";
 const DESCRIPTION =
-  "Ripplewatch is an AI competitive intelligence analyst that works inside Claude and other AI assistants over MCP. It tracks your competitors' pricing, hiring, press and product changes, scores each one against your positioning and your win/loss history, and tells product marketing and revenue teams which competitors are becoming a real threat.";
+  "Ripplewatch gives every competitor a Momentum score (Heating up, Steady or Cooling) and checks each one against your own won and lost deals. It tracks pricing, hiring, press and product changes, works inside Claude, ChatGPT and other AI assistants over MCP, and tells product marketing and revenue teams which competitors are actually costing them deals.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
