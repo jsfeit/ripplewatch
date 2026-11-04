@@ -73,8 +73,11 @@ export function GetStartedFlow({
   const [intro] = useState(() => (typeof window === "undefined" ? null : loadIntro()));
   const [positioning, setPositioning] = useState(intro?.positioning ?? "");
   const [icp, setIcp] = useState(intro?.icp ?? "");
+  // Three rows to start, so it's clear more than one is expected; more can be added.
   const [competitors, setCompetitors] = useState<CompetitorInput[]>([
     intro?.competitor ? { name: intro.competitor.name, domain: intro.competitor.domain } : { name: "", domain: "" },
+    { name: "", domain: "" },
+    { name: "", domain: "" },
   ]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -390,7 +393,8 @@ export function GetStartedFlow({
                   value={c}
                   onChange={(field, val) => updateCompetitor(i, field, val)}
                   onRemove={() => removeCompetitor(i)}
-                  removeDisabled={competitors.length <= 1}
+                  removeDisabled={competitors.length <= 3}
+                  domainOnly
                 />
               ))}
             </div>
