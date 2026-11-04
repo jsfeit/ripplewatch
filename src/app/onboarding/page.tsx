@@ -8,9 +8,13 @@ export const metadata = { title: "Set up your workspace", robots: { index: false
 
 export default async function OnboardingPage() {
   const supabase = await createClient();
+  // Only shapes the form (is there a session, whose company name). Middleware already verified the
+  // session with Supabase on this request, and every write is checked again server-side, so this
+  // reads it from the cookie instead of paying for a second network round trip.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user ?? null;
 
   // Distinct from `initiallySignedIn`: a user can have a session (e.g. their
   // signUp() succeeded moments ago) without an account yet, if the page
