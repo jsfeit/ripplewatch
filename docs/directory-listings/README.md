@@ -8,7 +8,7 @@
   https://glama.ai/mcp/connectors/ai.ripplewatch/ripplewatch . Uptime was 79.5% over 16 days because of
   120s timeouts on POST /api/mcp (see commit "MCP: sharper tool descriptions ... 100s tool timeout").
 - **awesome-remote-mcp-servers:** PR #2772 open since 2026-10-24, submission check passing, repo starred.
-- **mcp.so:** not listed. The public repo (github.com/jsfeit/ripplewatch-mcp) now exists, so the old
+- **mcp.so:** LIVE as of 2026-11-05 (paid $39 premium submission, "Verified" and "Featured" markers). https://mcp.so/servers/ripplewatch . Edit at mcp.so/settings/submissions. Its tool list shows "not available yet" because the server needs OAuth.
   private-repo blocker is gone. Submit as "Remote Server" at https://mcp.so/submit?type=server (needs sign-in).
 - **PulseMCP:** submissions paused on their side; it ingests from the official registry. Recheck later.
 - **Smithery:** no longer an option. Accounts, API keys and publishing ended 2026-10-31.
