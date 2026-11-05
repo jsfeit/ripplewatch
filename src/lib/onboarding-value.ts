@@ -19,8 +19,8 @@ export const ONBOARDING_VALUE: Record<OnboardingStepKey, { unlocks: string; unlo
       `Watching ${n} competitor${n === 1 ? "" : "s"} now. First findings usually land within a few minutes.`,
   },
   tools: {
-    unlocks: "Tell me where your deals and calls live and I'll give you the exact words to have your assistant pull them in, so you don't have to type them up.",
-    unlocked: () => "Got it. I'll tailor the prompts to your tools.",
+    unlocks: "Upload a won and lost export from your CRM, in any layout, and I'll read it. More history is better: I can see trends over time and which competitor moves lined up with your losses. Or tell me where your deals live and I'll give you the words to have your assistant pull them in.",
+    unlocked: () => "Got it. Your deals are in, and every answer can now be checked against them.",
   },
   dealHistory: {
     unlocks: "Even one deal tells me which competitor moves actually cost you business, so my answers stop being general.",

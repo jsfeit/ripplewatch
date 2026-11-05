@@ -10,7 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CompetitorRow, type CompetitorInput } from "@/components/app/competitor-row";
 import { Confetti } from "@/components/app/confetti";
-import { FirstQuestions } from "@/components/app/first-questions";
+import { DealsImportCard, FirstQuestions } from "@/components/app/first-questions";
+import { DealFileUpload } from "@/components/app/deal-file-upload";
 import { McpConnectStep } from "@/components/app/mcp-connect-step";
 import { MomentumTease, ReadinessMeter, type Skill } from "@/components/app/momentum-tease";
 import { SuggestedCompetitors, type SuggestedCompetitor } from "@/components/app/suggested-competitors";
@@ -34,7 +35,7 @@ const TOTAL_STEPS = 5;
 const WIZARD_STEPS: { title: string; optional: boolean; key: OnboardingStepKey }[] = [
   { title: "Tell it about your business", optional: true, key: "business" },
   { title: "Add your competitors", optional: false, key: "competitors" },
-  { title: "Where do your deals live?", optional: true, key: "tools" },
+  { title: "Add your deals", optional: true, key: "tools" },
   { title: "Connect Slack", optional: true, key: "slack" },
 ];
 
@@ -47,11 +48,14 @@ const wizardIndex = (step: number) => (step < CONNECT_STEP ? step : step - 1);
 export function GetStartedFlow({
   companyName,
   mcpLastConnectedAt,
+  connectedAssistants,
   contextSaved,
   savedCompetitorName,
 }: {
   companyName: string;
   mcpLastConnectedAt: string | null;
+  // Assistants recorded as connected, so "Open in ..." only offers those.
+  connectedAssistants: string[];
   // Business context and competitors are already saved (a reload partway through).
   contextSaved: boolean;
   savedCompetitorName: string | null;
@@ -84,6 +88,8 @@ export function GetStartedFlow({
   const [celebrating, setCelebrating] = useState(false);
   // A deal told in plain words on the deals step, saved with everything else at the end.
   const [dealNote, setDealNote] = useState("");
+  // A deal export uploaded on the deals step: committed as soon as it is confirmed, not at the end.
+  const [uploadedDeals, setUploadedDeals] = useState(false);
   const [dealResult, setDealResult] = useState<{ imported: number; skipped: number } | null>(null);
   // This browser's saved choice. Read lazily and only on the client; the chips
   // that show it appear on a later step, so the server render never differs.
@@ -143,7 +149,7 @@ export function GetStartedFlow({
     { label: "Briefings", on: Boolean(mcpLastConnectedAt) && hasCompetitor, hint: "Needs your assistant connected and a competitor" },
     { label: "Momentum", on: hasCompetitor, hint: "Needs at least one competitor" },
     { label: "Relevance scoring", on: Boolean(positioning.trim() || icp.trim()), hint: "Needs what you sell or who buys it" },
-    { label: "Deal-aware answers", on: Boolean(dealNote.trim()), hint: "Needs a deal you won or lost" },
+    { label: "Deal-aware answers", on: Boolean(dealNote.trim()) || uploadedDeals, hint: "Needs a deal you won or lost" },
   ];
 
   function updateCompetitor(index: number, field: keyof CompetitorInput, value: string) {
@@ -234,6 +240,7 @@ export function GetStartedFlow({
       <>
         <McpConnectStep
           mcpLastConnectedAt={mcpLastConnectedAt}
+          connectedAssistants={connectedAssistants}
           stepNumber={step + 1}
           totalSteps={TOTAL_STEPS}
           firstQuestionCompetitor={filledCompetitors[0]?.name ?? savedCompetitorName}
@@ -277,17 +284,8 @@ export function GetStartedFlow({
             ) : (
               <MomentumTease names={filledCompetitors.map((c) => c.name)} />
             )}
-            <FirstQuestions competitor={lead} />
-            <Button
-              type="button"
-              onClick={() => {
-                router.push("/app/settings?tab=data");
-                router.refresh();
-              }}
-            >
-              Next: bring in your deals
-              <ArrowRight className="size-4" />
-            </Button>
+            <FirstQuestions competitor={lead} assistants={connectedAssistants} />
+<DealsImportCard assistants={connectedAssistants} settingsHref="/app/settings?tab=data" />
           </CardContent>
         </Card>
       </>
@@ -315,7 +313,7 @@ export function GetStartedFlow({
     } else if (wizardStep === 2) {
       // Remembered in this browser so the Data tab can name these tools in its prompts.
       saveDealTools(dealTools);
-      setJustUnlocked(dealTools.length > 0 ? ONBOARDING_VALUE.tools.unlocked() : null);
+      setJustUnlocked(dealTools.length > 0 || uploadedDeals ? ONBOARDING_VALUE.tools.unlocked() : null);
     }
     setStep((s) => s + 1);
   }
@@ -349,7 +347,7 @@ export function GetStartedFlow({
             : wizardStep === 1
               ? "Required. Your assistant can't compare you to anyone until it knows who to compare you to. Saving this starts your first check, so it's already running when you ask your first question."
               : wizardStep === 2
-                ? "Your deals are what make answers specific to you. If they live in a tool your assistant can reach, it can pull them in for you."
+                ? "Your deals are what make answers specific to you. Upload an export from your CRM, tell me about a deal, or, if they live in a tool your assistant can reach, have it pull them in for you."
                 : "Slack is the shared feed: alerts and recaps land in a channel your whole team sees. Skip it if you're the only one using Ripplewatch."}
         </p>
         {wizardStep === 3 ? null : (
@@ -429,6 +427,15 @@ export function GetStartedFlow({
                 your deals, not just the market. Skip it and add real data later.
               </p>
             </div>
+            <div className="space-y-2">
+              <Label>Upload your won and lost deals</Label>
+              <DealFileUpload onDone={() => setUploadedDeals(true)} />
+              <p className="text-xs text-muted-foreground">
+                Any CSV from your CRM, in any layout: I&apos;ll work out the columns and show you how I read them before
+                anything is saved. Go back as far as you have. More history lets me spot trends over time and see which
+                competitor moves lined up with your losses.
+              </p>
+            </div>
             <div className="space-y-3">
             <p className="text-sm text-muted-foreground">Pick any that apply. You can change this later in Settings, under Data.</p>
             <div className="flex flex-wrap gap-2">
@@ -482,10 +489,15 @@ export function GetStartedFlow({
               <ArrowRight className="size-4" />
             </Button>
           ) : (
-            <Button type="button" onClick={() => void finish()} disabled={submitting}>
-              {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
-              Finish without Slack
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="ghost" className="text-muted-foreground" onClick={() => void finish()} disabled={submitting}>
+                Skip
+              </Button>
+              <Button type="button" onClick={() => void finish("slack")} disabled={submitting}>
+                {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
+                Finish with Slack
+              </Button>
+            </div>
           )}
         </div>
       </CardContent>
