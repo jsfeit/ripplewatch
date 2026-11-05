@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CompetitorRow, type CompetitorInput } from "@/components/app/competitor-row";
 import { Confetti } from "@/components/app/confetti";
 import { FirstQuestions } from "@/components/app/first-questions";
+import { DealFileUpload } from "@/components/app/deal-file-upload";
 import { McpConnectStep } from "@/components/app/mcp-connect-step";
 import { MomentumTease, ReadinessMeter, type Skill } from "@/components/app/momentum-tease";
 import { SuggestedCompetitors, type SuggestedCompetitor } from "@/components/app/suggested-competitors";
@@ -34,7 +35,7 @@ const TOTAL_STEPS = 5;
 const WIZARD_STEPS: { title: string; optional: boolean; key: OnboardingStepKey }[] = [
   { title: "Tell it about your business", optional: true, key: "business" },
   { title: "Add your competitors", optional: false, key: "competitors" },
-  { title: "Where do your deals live?", optional: true, key: "tools" },
+  { title: "Add your deals", optional: true, key: "tools" },
   { title: "Connect Slack", optional: true, key: "slack" },
 ];
 
@@ -84,6 +85,8 @@ export function GetStartedFlow({
   const [celebrating, setCelebrating] = useState(false);
   // A deal told in plain words on the deals step, saved with everything else at the end.
   const [dealNote, setDealNote] = useState("");
+  // A deal export uploaded on the deals step: committed as soon as it is confirmed, not at the end.
+  const [uploadedDeals, setUploadedDeals] = useState(false);
   const [dealResult, setDealResult] = useState<{ imported: number; skipped: number } | null>(null);
   // This browser's saved choice. Read lazily and only on the client; the chips
   // that show it appear on a later step, so the server render never differs.
@@ -143,7 +146,7 @@ export function GetStartedFlow({
     { label: "Briefings", on: Boolean(mcpLastConnectedAt) && hasCompetitor, hint: "Needs your assistant connected and a competitor" },
     { label: "Momentum", on: hasCompetitor, hint: "Needs at least one competitor" },
     { label: "Relevance scoring", on: Boolean(positioning.trim() || icp.trim()), hint: "Needs what you sell or who buys it" },
-    { label: "Deal-aware answers", on: Boolean(dealNote.trim()), hint: "Needs a deal you won or lost" },
+    { label: "Deal-aware answers", on: Boolean(dealNote.trim()) || uploadedDeals, hint: "Needs a deal you won or lost" },
   ];
 
   function updateCompetitor(index: number, field: keyof CompetitorInput, value: string) {
@@ -315,7 +318,7 @@ export function GetStartedFlow({
     } else if (wizardStep === 2) {
       // Remembered in this browser so the Data tab can name these tools in its prompts.
       saveDealTools(dealTools);
-      setJustUnlocked(dealTools.length > 0 ? ONBOARDING_VALUE.tools.unlocked() : null);
+      setJustUnlocked(dealTools.length > 0 || uploadedDeals ? ONBOARDING_VALUE.tools.unlocked() : null);
     }
     setStep((s) => s + 1);
   }
@@ -349,7 +352,7 @@ export function GetStartedFlow({
             : wizardStep === 1
               ? "Required. Your assistant can't compare you to anyone until it knows who to compare you to. Saving this starts your first check, so it's already running when you ask your first question."
               : wizardStep === 2
-                ? "Your deals are what make answers specific to you. If they live in a tool your assistant can reach, it can pull them in for you."
+                ? "Your deals are what make answers specific to you. Upload an export from your CRM, tell me about a deal, or, if they live in a tool your assistant can reach, have it pull them in for you."
                 : "Slack is the shared feed: alerts and recaps land in a channel your whole team sees. Skip it if you're the only one using Ripplewatch."}
         </p>
         {wizardStep === 3 ? null : (
@@ -427,6 +430,15 @@ export function GetStartedFlow({
               <p className="text-xs text-muted-foreground">
                 Won or lost, one deal or several, however you&apos;d say it out loud. It makes your first answers about
                 your deals, not just the market. Skip it and add real data later.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Upload your won and lost deals</Label>
+              <DealFileUpload onDone={() => setUploadedDeals(true)} />
+              <p className="text-xs text-muted-foreground">
+                Any CSV from your CRM, in any layout: I&apos;ll work out the columns and show you how I read them before
+                anything is saved. Go back as far as you have. More history lets me spot trends over time and see which
+                competitor moves lined up with your losses.
               </p>
             </div>
             <div className="space-y-3">
