@@ -12,6 +12,12 @@
   private-repo blocker is gone. Submit as "Remote Server" at https://mcp.so/submit?type=server (needs sign-in).
 - **PulseMCP:** submissions paused on their side; it ingests from the official registry. Recheck later.
 - **Smithery:** no longer an option. Accounts, API keys and publishing ended 2026-10-31.
+- **Screenshots refreshed 2026-11-05** (source files in `docs/directory-listings/screenshots/`, zip at
+  `docs/directory-listings/ripplewatch-screenshots.zip`; listing-sized copies in `listing-1270x760/` and
+  `listing-1600x800/`): mcp.so (4 images), Product Hunt gallery (4 images, 1270x760), BetaList draft
+  (4 images, still unpaid and unsubmitted), SaaSWorthy Media (5 slots, 2:1), AlternativeTo (4 images with
+  descriptions). Not yet done: G2 and Capterra media (managed on G2.com), Product Hunt launch post, and the
+  SaaSWorthy pricing screenshot (still the old competitor-pricing image).
 
 
 Prepared 2026-10-20. Nothing has been submitted yet. Every directory needs a login or
