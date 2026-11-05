@@ -494,10 +494,15 @@ export function GetStartedFlow({
               <ArrowRight className="size-4" />
             </Button>
           ) : (
-            <Button type="button" onClick={() => void finish()} disabled={submitting}>
-              {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
-              Finish without Slack
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="ghost" className="text-muted-foreground" onClick={() => void finish()} disabled={submitting}>
+                Skip
+              </Button>
+              <Button type="button" onClick={() => void finish("slack")} disabled={submitting}>
+                {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
+                Finish with Slack
+              </Button>
+            </div>
           )}
         </div>
       </CardContent>
