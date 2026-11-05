@@ -1,5 +1,19 @@
 # MCP directory listings for Ripplewatch
 
+## Status as of 2026-11-05 (supersedes the older notes below where they differ)
+
+- **Official MCP Registry:** live as `ai.ripplewatch/ripplewatch` v0.1.0. Only re-publish (bump `version` in
+  `server.json`) when the registry description or remote URL changes. Tool changes need no re-publish.
+- **Glama:** live as a connector, ownership verified, OAuth works, quality score A 3.9/5 (scored 2026-11-04).
+  https://glama.ai/mcp/connectors/ai.ripplewatch/ripplewatch . Uptime was 79.5% over 16 days because of
+  120s timeouts on POST /api/mcp (see commit "MCP: sharper tool descriptions ... 100s tool timeout").
+- **awesome-remote-mcp-servers:** PR #2772 open since 2026-10-24, submission check passing, repo starred.
+- **mcp.so:** not listed. The public repo (github.com/jsfeit/ripplewatch-mcp) now exists, so the old
+  private-repo blocker is gone. Submit as "Remote Server" at https://mcp.so/submit?type=server (needs sign-in).
+- **PulseMCP:** submissions paused on their side; it ingests from the official registry. Recheck later.
+- **Smithery:** no longer an option. Accounts, API keys and publishing ended 2026-10-31.
+
+
 Prepared 2026-10-20. Nothing has been submitted yet. Every directory needs a login or
 account that only you can create, so each one below is down to a few minutes of clicking.
 
