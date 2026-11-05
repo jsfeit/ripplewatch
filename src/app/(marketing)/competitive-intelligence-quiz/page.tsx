@@ -6,9 +6,13 @@ import { TIERS } from "@/lib/quiz-tiers";
 const description =
   "A free, 2-minute competitive intelligence questionnaire: 5 questions to find out if yours is Reactive, Aware, Systematic or Predictive, and what to do next.";
 
+// Search snippet copy. The page's intro paragraph keeps the `description` above.
+const metaDescription =
+  "Answer 5 questions to see if your competitive intelligence is Reactive, Aware, Systematic or Predictive, and get your next steps. Free, takes 2 minutes.";
+
 export const metadata = {
-  title: fitTitle("Competitive Intelligence Questionnaire: 5-Question Self-Test"),
-  description,
+  title: fitTitle("Free Competitive Intelligence Questionnaire (2 Minutes)"),
+  description: metaDescription,
   alternates: { canonical: "/competitive-intelligence-quiz" },
   openGraph: { title: "Competitive Intelligence Maturity Quiz | Ripplewatch", description, images: ["/opengraph-image"] },
   twitter: {
