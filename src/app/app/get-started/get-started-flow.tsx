@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CompetitorRow, type CompetitorInput } from "@/components/app/competitor-row";
 import { Confetti } from "@/components/app/confetti";
@@ -26,7 +25,7 @@ import { ONBOARDING_VALUE, type OnboardingStepKey } from "@/lib/onboarding-value
 const TOTAL_STEPS = 5;
 
 // Only the Slack step is genuinely optional. Business context (positioning,
-// ICP, how the team sells) is soft: the fields aren't required, but there's
+// ICP) is soft: the fields aren't required, but there's
 // no "skip all of this" shortcut anymore, because that shortcut used to let
 // someone reach Settings with zero competitors tracked, and an assistant
 // with nothing to compare you against can't produce anything useful. See
@@ -74,10 +73,11 @@ export function GetStartedFlow({
   const [intro] = useState(() => (typeof window === "undefined" ? null : loadIntro()));
   const [positioning, setPositioning] = useState(intro?.positioning ?? "");
   const [icp, setIcp] = useState(intro?.icp ?? "");
-  const [hasSalesCrm, setHasSalesCrm] = useState(false);
-  const [hasPlg, setHasPlg] = useState(false);
+  // Three rows to start, so it's clear more than one is expected; more can be added.
   const [competitors, setCompetitors] = useState<CompetitorInput[]>([
     intro?.competitor ? { name: intro.competitor.name, domain: intro.competitor.domain } : { name: "", domain: "" },
+    { name: "", domain: "" },
+    { name: "", domain: "" },
   ]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -167,8 +167,6 @@ export function GetStartedFlow({
         stage: "core",
         positioning,
         icp,
-        hasSalesCrm,
-        hasPlg,
         competitors: filledCompetitors,
         liveReadId: intro?.readId ?? null,
       }),
@@ -383,29 +381,6 @@ export function GetStartedFlow({
                 rows={3}
               />
             </div>
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">How does your team sell? Check both if you&apos;re hybrid.</p>
-              <label className="flex items-start gap-3 rounded-lg border border-border p-4">
-                <Checkbox checked={hasSalesCrm} onCheckedChange={(v) => setHasSalesCrm(Boolean(v))} />
-                <div>
-                  <p className="text-sm font-medium">We have a sales team / CRM</p>
-                  <p className="text-xs text-muted-foreground">We run sales-led or hybrid deals through a CRM.</p>
-                </div>
-              </label>
-              <label className="flex items-start gap-3 rounded-lg border border-border p-4">
-                <Checkbox checked={hasPlg} onCheckedChange={(v) => setHasPlg(Boolean(v))} />
-                <div>
-                  <p className="text-sm font-medium">We&apos;re self-serve / PLG</p>
-                  <p className="text-xs text-muted-foreground">Customers sign up and churn without a sales conversation.</p>
-                </div>
-              </label>
-            </div>
-            {hasSalesCrm || hasPlg ? (
-              <p className="text-xs text-muted-foreground">
-                Add win/loss and churn reasons once you&apos;re set up: tell your assistant directly, or upload a CRM
-                export from Settings → Connect.
-              </p>
-            ) : null}
           </div>
         )}
 
@@ -418,7 +393,8 @@ export function GetStartedFlow({
                   value={c}
                   onChange={(field, val) => updateCompetitor(i, field, val)}
                   onRemove={() => removeCompetitor(i)}
-                  removeDisabled={competitors.length <= 1}
+                  removeDisabled={competitors.length <= 3}
+                  domainOnly
                 />
               ))}
             </div>

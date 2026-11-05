@@ -58,3 +58,11 @@ export function isBlockedUrl(url: string): boolean {
     return true;
   }
 }
+
+// A readable company name from a bare domain, for when nothing better is known yet:
+// "www.campfire.ai" -> "Campfire". Replaced by the site's own name when it can be read.
+export function nameFromDomain(input: string): string {
+  const host = normalizeDomain(input).toLowerCase().replace(/^www\./, "");
+  const label = host.split(".").slice(0, -1).pop() ?? host.split(".")[0] ?? "";
+  return label ? label.charAt(0).toUpperCase() + label.slice(1) : "";
+}

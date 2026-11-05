@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +28,8 @@ const OPENING_BALANCE_USD = CONNECT_DEFAULT_RELOAD_USD;
 // onboarding because it asks for far less (no competitors or positioning: the
 // assistant collects those as you use it). The account is created on hold and
 // only switched on by the Stripe webhook after the payment clears.
+const FUNNEL_DRAFT_KEY = "rw_connect_draft";
+
 export function ConnectPurchase({
   initiallySignedIn,
   pendingCompanyName,
@@ -43,7 +44,6 @@ export function ConnectPurchase({
   // links in a new tab). See /onboarding/page.tsx.
   pendingCompanyName?: string | null;
 }) {
-  const router = useRouter();
   const [companyName, setCompanyName] = useState("");
   const [email, setEmail] = useState("");
   // The top of the signup funnel: how many people reach the form at all.
@@ -65,6 +65,34 @@ export function ConnectPurchase({
   // Anyone already signed in (back from the email link or from Google) has
   // moved past it.
   const [phase, setPhase] = useState<"read" | "form">(initiallySignedIn ? "form" : "read");
+
+  // A visitor who gets as far as the account form and leaves comes back to it, filled in, not to
+  // the start. Only the company name and email are kept (never the password), in this browser.
+  // Signed-in people don't need this: their place is read off their account.
+  useEffect(() => {
+    if (initiallySignedIn) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem(FUNNEL_DRAFT_KEY) ?? "null") as { companyName?: string; email?: string } | null;
+      if (saved?.companyName) {
+        // Reading the browser's saved draft on arrival: it can't be known during the server render.
+        /* eslint-disable react-hooks/set-state-in-effect */
+        setCompanyName(saved.companyName);
+        if (saved.email) setEmail(saved.email);
+        setPhase("form");
+        /* eslint-enable react-hooks/set-state-in-effect */
+      }
+    } catch {
+      // Storage blocked or unreadable: they start from the top.
+    }
+  }, [initiallySignedIn]);
+  useEffect(() => {
+    if (initiallySignedIn || phase !== "form" || !companyName.trim()) return;
+    try {
+      localStorage.setItem(FUNNEL_DRAFT_KEY, JSON.stringify({ companyName: companyName.trim(), email: email.trim() }));
+    } catch {
+      // Storage blocked: nothing is held, the flow still works.
+    }
+  }, [initiallySignedIn, phase, companyName, email]);
 
   const canSubmit =
     Boolean(companyName.trim()) &&
@@ -88,6 +116,11 @@ export function ConnectPurchase({
       else sessionStorage.removeItem(CONNECT_PROMO_KEY);
     } catch {
       // Private mode: the code just isn't applied.
+    }
+    try {
+      localStorage.removeItem(FUNNEL_DRAFT_KEY);
+    } catch {
+      // ignore
     }
     trackEvent("sign_up", { method: "email", product: "connect" });
     trackEvent("begin_checkout", { currency: "USD", value: CONNECT_BASE_FEE_USD + fundingUsd, item_name: "connect" });
@@ -271,11 +304,11 @@ export function ConnectPurchase({
         open={checkout !== null}
         onOpenChange={(open) => {
           if (!open) {
-            // Closed without paying: the account exists (on hold) and Settings
-            // offers to finish the purchase.
+            // Closed without paying: the account exists (on hold) and this page is where it
+            // stays, on the payment step, until they pay. Middleware sends them back here
+            // from anywhere else in the app.
             setCheckout(null);
-            router.push("/app/settings?tab=connect");
-            router.refresh();
+            setStatus("ready");
           }
         }}
         kind="signup"

@@ -14,7 +14,8 @@ export const metadata = { title: "Get started" };
 // step blocks Continue until it's actually connected, and the server rejects
 // a competitor-less save in /api/connect/onboarding/complete. An account only stops landing here once
 // connect_get_started_dismissed_at is set, by that same complete route.
-export default async function GetStartedPage() {
+export default async function GetStartedPage({ searchParams }: { searchParams: Promise<{ checkout?: string }> }) {
+  const { checkout } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -27,7 +28,7 @@ export default async function GetStartedPage() {
   const [{ data: account }, { data: firstCompetitor, count: competitorCount }] = await Promise.all([
     supabase
       .from("accounts")
-      .select("id, name, tier, connect_get_started_dismissed_at, mcp_last_connected_at")
+      .select("id, name, tier, status, subscription_status, connect_get_started_dismissed_at, mcp_last_connected_at")
       .eq("id", profile.account_id)
       .single(),
     // Context and competitors are saved before the assistant is connected, so
@@ -40,6 +41,10 @@ export default async function GetStartedPage() {
       .limit(1),
   ]);
   if (!account || account.tier !== "connect") redirect("/app/settings");
+
+  // Never paid and not just back from paying (the webhook can lag the redirect by a few seconds):
+  // back to the purchase step, not into setup for an account that isn't switched on.
+  if (account.status === "hold" && !account.subscription_status && checkout !== "success") redirect("/onboarding");
 
   if (account.connect_get_started_dismissed_at) redirect("/app/settings?tab=connect");
 

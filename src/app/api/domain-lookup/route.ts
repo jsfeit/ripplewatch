@@ -37,7 +37,15 @@ export async function GET(request: Request) {
       $("title").text().trim() ||
       null;
 
-    return NextResponse.json({ description: description ? description.slice(0, 160) : null });
+    // The company's own name for itself: the site name tag if it has one, otherwise the first part of
+    // the page title ("Campfire | AI-native ERP" -> "Campfire"). Left null when neither looks like a name,
+    // and the caller falls back to the domain.
+    const siteName =
+      $('meta[property="og:site_name"]').attr("content")?.trim() || $('meta[name="application-name"]').attr("content")?.trim() || "";
+    const titleHead = $("title").text().split(/\s[|\u2013\u2014\u00b7:-]\s|[|\u2013\u2014\u00b7]/)[0]?.trim() ?? "";
+    const name = [siteName, titleHead].find((n) => n && n.length >= 2 && n.length <= 40) ?? null;
+
+    return NextResponse.json({ description: description ? description.slice(0, 160) : null, name });
   } catch {
     // Unreachable, timed out, or blocked us — fail quiet, this is a nice-to-have preview.
     return NextResponse.json({ description: null });

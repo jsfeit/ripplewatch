@@ -22,13 +22,21 @@ export default async function OnboardingPage() {
   // the full flow (account + competitors + plan/checkout), just without the
   // email/password fields — see onboarding-flow.tsx's `hasAccount` handling.
   let hasAccount = false;
+  // An account that was created but never paid (they closed the payment window, or came back
+  // another day) is not "another account": it resumes at payment under the name they gave.
+  let unpaidCompanyName: string | null = null;
   if (user) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("account_id")
+      .select("account_id, accounts(name, tier, status, subscription_status)")
       .eq("id", user.id)
       .single();
     hasAccount = Boolean(profile?.account_id);
+    const account = Array.isArray(profile?.accounts) ? profile.accounts[0] : profile?.accounts;
+    if (account && account.tier === "connect" && account.status === "hold" && !account.subscription_status) {
+      hasAccount = false;
+      unpaidCompanyName = account.name;
+    }
   }
 
   // Set at signUp() time (see connect-purchase.tsx) so the company name
@@ -36,7 +44,7 @@ export default async function OnboardingPage() {
   // tab/window than the one that filled the form — the common case, and
   // the reason people were landing back on a blank "company name" field
   // after already typing it once.
-  const pendingCompanyName = (user?.user_metadata?.company_name as string | undefined) ?? null;
+  const pendingCompanyName = unpaidCompanyName ?? (user?.user_metadata?.company_name as string | undefined) ?? null;
 
   return (
     <div className="min-h-screen bg-secondary/30">
