@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CompetitorRow, type CompetitorInput } from "@/components/app/competitor-row";
 import { Confetti } from "@/components/app/confetti";
 import { DealsImportCard, FirstQuestions } from "@/components/app/first-questions";
+import { QuickGuide } from "@/components/app/quick-guide";
 import { DealFileUpload } from "@/components/app/deal-file-upload";
 import { McpConnectStep } from "@/components/app/mcp-connect-step";
 import { MomentumTease, ReadinessMeter, type Skill } from "@/components/app/momentum-tease";
@@ -285,6 +286,7 @@ export function GetStartedFlow({
               <MomentumTease names={filledCompetitors.map((c) => c.name)} />
             )}
             <FirstQuestions competitor={lead} assistants={connectedAssistants} />
+            <QuickGuide />
 <DealsImportCard assistants={connectedAssistants} settingsHref="/app/settings?tab=data" />
           </CardContent>
         </Card>
