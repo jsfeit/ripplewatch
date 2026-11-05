@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CompetitorRow, type CompetitorInput } from "@/components/app/competitor-row";
 import { Confetti } from "@/components/app/confetti";
-import { FirstQuestions } from "@/components/app/first-questions";
+import { DealsImportCard, FirstQuestions } from "@/components/app/first-questions";
 import { DealFileUpload } from "@/components/app/deal-file-upload";
 import { McpConnectStep } from "@/components/app/mcp-connect-step";
 import { MomentumTease, ReadinessMeter, type Skill } from "@/components/app/momentum-tease";
@@ -285,16 +285,7 @@ export function GetStartedFlow({
               <MomentumTease names={filledCompetitors.map((c) => c.name)} />
             )}
             <FirstQuestions competitor={lead} assistants={connectedAssistants} />
-            <Button
-              type="button"
-              onClick={() => {
-                router.push("/app/settings?tab=data");
-                router.refresh();
-              }}
-            >
-              Next: bring in your deals
-              <ArrowRight className="size-4" />
-            </Button>
+<DealsImportCard assistants={connectedAssistants} settingsHref="/app/settings?tab=data" />
           </CardContent>
         </Card>
       </>

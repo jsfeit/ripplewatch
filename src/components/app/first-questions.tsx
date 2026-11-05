@@ -170,3 +170,70 @@ export function FirstQuestions({ competitor, assistants }: { competitor: string 
     </div>
   );
 }
+
+// Asked of the person's own assistant: read the deals (an attached export, or their CRM) and hand them to
+// import_win_loss. Batches stay under what one call accepts (about 600 rows), rows go through verbatim so
+// Ripplewatch can map any column layout itself, and the assistant reports what actually came in.
+export const DEALS_PROMPT =
+  "Using Ripplewatch: import my deal history. If I've attached a CSV or spreadsheet, read that. Otherwise pull my closed-won and closed-lost deals from my CRM, and ask me before you read anything. Send the rows to Ripplewatch with import_win_loss exactly as they appear, header row first, close dates included, in batches of about 500 rows, going back as far as the data goes. Then tell me how many deals came in.";
+
+// The finish-screen step after the first question: put deal history in through the assistant they just
+// connected. Same "Open in ..." rule as the first question; the settings upload stays as the fallback.
+export function DealsImportCard({ assistants, settingsHref }: { assistants?: string[]; settingsHref: string }) {
+  const [copied, setCopied] = useState(false);
+  const open = openInChoices(assistants);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(DEALS_PROMPT);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // Clipboard blocked: the open-in links still work.
+    }
+  }
+
+  return (
+    <div className="space-y-4 rounded-xl border border-border p-5">
+      <div>
+        <p className="text-sm font-semibold">Bring in your deals</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Won and lost deals let every answer be checked against what actually happened. Open your assistant, attach a
+          CSV or spreadsheet export (or let it read your CRM), and it sends them straight to Ripplewatch. Any column
+          layout works, and the more history the better.
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {open.claude ? (
+          <a
+            href={`https://claude.ai/new?q=${encodeURIComponent(DEALS_PROMPT)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => trackEvent("deals_import_opened", { assistant: "claude" })}
+            className={LINK_CLASS}
+          >
+            Open in Claude <ExternalLink className="size-3" />
+          </a>
+        ) : null}
+        {open.chatgpt ? (
+          <a
+            href={`https://chatgpt.com/?q=${encodeURIComponent(DEALS_PROMPT)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => trackEvent("deals_import_opened", { assistant: "chatgpt" })}
+            className={LINK_CLASS}
+          >
+            Open in ChatGPT <ExternalLink className="size-3" />
+          </a>
+        ) : null}
+        <button type="button" onClick={() => void copy()} className={LINK_CLASS}>
+          {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
+          {copied ? "Copied" : "Copy"}
+        </button>
+        <a href={settingsHref} className="ml-auto text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+          Or upload a file here
+        </a>
+      </div>
+    </div>
+  );
+}
