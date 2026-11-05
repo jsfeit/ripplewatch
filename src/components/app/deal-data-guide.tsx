@@ -27,6 +27,12 @@ const EXAMPLES: Example[] = [
       "Using Ripplewatch: log a lost deal. We lost Northwind, about $48k, closed yesterday. They went with Acme because it plugs into their data warehouse and we only have a CSV export.",
   },
   {
+    title: "Tell it what you're building",
+    note: "Roadmap and pricing context gets lined up against why you lose deals.",
+    prompt:
+      "Using Ripplewatch: add a context note. We're shipping a native Snowflake integration in January, and moving to usage-based pricing for new customers next quarter. Then tell me which recent losses that would have changed.",
+  },
+  {
     title: "Teach it who you sell to",
     note: "Everything Ripplewatch scores is judged against this. It replaces what was saved, so it checks with you first.",
     prompt:
