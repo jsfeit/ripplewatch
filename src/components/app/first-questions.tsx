@@ -31,6 +31,15 @@ function displayQuestion(q: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+// Which "Open in ..." links to offer. Only the assistants the person has actually connected: Claude,
+// ChatGPT, or both. If a different assistant is connected (Cursor and the like) neither is offered and
+// Copy is the way in; if nothing is recorded we can't tell, so both are shown.
+function openInChoices(assistants: string[] | undefined): { claude: boolean; chatgpt: boolean } {
+  const known = (assistants ?? []).filter((a) => a !== "unknown");
+  if (known.length === 0) return { claude: true, chatgpt: true };
+  return { claude: known.includes("claude"), chatgpt: known.includes("chatgpt") };
+}
+
 const LINK_CLASS =
   "inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs font-medium text-muted-foreground hover:border-primary/50 hover:text-foreground";
 
@@ -38,8 +47,9 @@ const LINK_CLASS =
 // whether a competitor is heating up or cooling off, and what changed. It is
 // the question that shows the Momentum score, which is what Ripplewatch does
 // that a chat on its own can't.
-export function FirstQuestionCard({ competitor }: { competitor: string | null }) {
+export function FirstQuestionCard({ competitor, assistants }: { competitor: string | null; assistants?: string[] }) {
   const [copied, setCopied] = useState(false);
+  const open = openInChoices(assistants);
   const q = firstQuestions(competitor)[0];
 
   async function copy() {
@@ -64,24 +74,28 @@ export function FirstQuestionCard({ competitor }: { competitor: string | null })
       </div>
       <p className="rounded-lg border border-border bg-background px-4 py-3 text-sm font-medium">{displayQuestion(q)}</p>
       <div className="flex flex-wrap gap-2">
-        <a
-          href={`https://claude.ai/new?q=${encodeURIComponent(q)}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={() => trackEvent("first_question_opened", { assistant: "claude", index: 0, where: "connect" })}
-          className={LINK_CLASS}
-        >
-          Open in Claude <ExternalLink className="size-3" />
-        </a>
-        <a
-          href={`https://chatgpt.com/?q=${encodeURIComponent(q)}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={() => trackEvent("first_question_opened", { assistant: "chatgpt", index: 0, where: "connect" })}
-          className={LINK_CLASS}
-        >
-          Open in ChatGPT <ExternalLink className="size-3" />
-        </a>
+        {open.claude ? (
+          <a
+            href={`https://claude.ai/new?q=${encodeURIComponent(q)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => trackEvent("first_question_opened", { assistant: "claude", index: 0, where: "connect" })}
+            className={LINK_CLASS}
+          >
+            Open in Claude <ExternalLink className="size-3" />
+          </a>
+        ) : null}
+        {open.chatgpt ? (
+          <a
+            href={`https://chatgpt.com/?q=${encodeURIComponent(q)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => trackEvent("first_question_opened", { assistant: "chatgpt", index: 0, where: "connect" })}
+            className={LINK_CLASS}
+          >
+            Open in ChatGPT <ExternalLink className="size-3" />
+          </a>
+        ) : null}
         <button type="button" onClick={() => void copy()} className={LINK_CLASS}>
           {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
           {copied ? "Copied" : "Copy"}
@@ -91,8 +105,9 @@ export function FirstQuestionCard({ competitor }: { competitor: string | null })
   );
 }
 
-export function FirstQuestions({ competitor }: { competitor: string | null }) {
+export function FirstQuestions({ competitor, assistants }: { competitor: string | null; assistants?: string[] }) {
   const [copied, setCopied] = useState<number | null>(null);
+  const open = openInChoices(assistants);
   const questions = firstQuestions(competitor);
 
   async function copy(q: string, i: number) {
@@ -122,24 +137,28 @@ export function FirstQuestions({ competitor }: { competitor: string | null }) {
           <li key={q} className="rounded-lg border border-border bg-secondary/40 p-3">
             <p className="text-sm">{displayQuestion(q)}</p>
             <div className="mt-2 flex flex-wrap gap-2">
-              <a
-                href={`https://claude.ai/new?q=${encodeURIComponent(q)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => trackEvent("first_question_opened", { assistant: "claude", index: i })}
-                className={linkClass}
-              >
-                Open in Claude <ExternalLink className="size-3" />
-              </a>
-              <a
-                href={`https://chatgpt.com/?q=${encodeURIComponent(q)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => trackEvent("first_question_opened", { assistant: "chatgpt", index: i })}
-                className={linkClass}
-              >
-                Open in ChatGPT <ExternalLink className="size-3" />
-              </a>
+              {open.claude ? (
+                <a
+                  href={`https://claude.ai/new?q=${encodeURIComponent(q)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => trackEvent("first_question_opened", { assistant: "claude", index: i })}
+                  className={linkClass}
+                >
+                  Open in Claude <ExternalLink className="size-3" />
+                </a>
+              ) : null}
+              {open.chatgpt ? (
+                <a
+                  href={`https://chatgpt.com/?q=${encodeURIComponent(q)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => trackEvent("first_question_opened", { assistant: "chatgpt", index: i })}
+                  className={linkClass}
+                >
+                  Open in ChatGPT <ExternalLink className="size-3" />
+                </a>
+              ) : null}
               <button type="button" onClick={() => void copy(q, i)} className={linkClass}>
                 {copied === i ? <Check className="size-3" /> : <Copy className="size-3" />}
                 {copied === i ? "Copied" : "Copy"}

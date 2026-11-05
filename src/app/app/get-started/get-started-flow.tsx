@@ -48,11 +48,14 @@ const wizardIndex = (step: number) => (step < CONNECT_STEP ? step : step - 1);
 export function GetStartedFlow({
   companyName,
   mcpLastConnectedAt,
+  connectedAssistants,
   contextSaved,
   savedCompetitorName,
 }: {
   companyName: string;
   mcpLastConnectedAt: string | null;
+  // Assistants recorded as connected, so "Open in ..." only offers those.
+  connectedAssistants: string[];
   // Business context and competitors are already saved (a reload partway through).
   contextSaved: boolean;
   savedCompetitorName: string | null;
@@ -237,6 +240,7 @@ export function GetStartedFlow({
       <>
         <McpConnectStep
           mcpLastConnectedAt={mcpLastConnectedAt}
+          connectedAssistants={connectedAssistants}
           stepNumber={step + 1}
           totalSteps={TOTAL_STEPS}
           firstQuestionCompetitor={filledCompetitors[0]?.name ?? savedCompetitorName}
@@ -280,7 +284,7 @@ export function GetStartedFlow({
             ) : (
               <MomentumTease names={filledCompetitors.map((c) => c.name)} />
             )}
-            <FirstQuestions competitor={lead} />
+            <FirstQuestions competitor={lead} assistants={connectedAssistants} />
             <Button
               type="button"
               onClick={() => {

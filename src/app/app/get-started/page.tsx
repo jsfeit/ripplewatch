@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { GetStartedFlow } from "./get-started-flow";
 import { connectedAt } from "@/lib/connect-setup";
+import { loadConnectedAssistants } from "@/lib/connected-assistants";
 
 export const metadata = { title: "Get started" };
 
@@ -49,11 +50,14 @@ export default async function GetStartedPage({ searchParams }: { searchParams: P
 
   if (account.connect_get_started_dismissed_at) redirect("/app/settings?tab=connect");
 
+  const connectedAssistants = await loadConnectedAssistants(account.id);
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-10">
       <GetStartedFlow
         companyName={account.name}
         mcpLastConnectedAt={connectedAt(account.mcp_last_connected_at)}
+        connectedAssistants={connectedAssistants}
         contextSaved={(competitorCount ?? 0) > 0}
         savedCompetitorName={firstCompetitor?.[0]?.name ?? null}
       />
