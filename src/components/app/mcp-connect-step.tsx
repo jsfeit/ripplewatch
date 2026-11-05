@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 // first question to ask: whether that competitor is heating up or cooling off.
 export function McpConnectStep({
   mcpLastConnectedAt,
+  connectedAssistants,
   stepNumber,
   totalSteps,
   firstQuestionCompetitor,
@@ -26,6 +27,8 @@ export function McpConnectStep({
   skipping,
 }: {
   mcpLastConnectedAt: string | null;
+  // The assistants this account has connected, so the first question only offers those.
+  connectedAssistants?: string[];
   // Where this sits in the wizard, so the header can't fall behind when a step is added.
   stepNumber: number;
   totalSteps: number;
@@ -141,7 +144,7 @@ export function McpConnectStep({
         </p>
       </CardHeader>
       <CardContent>
-        {connected ? <FirstQuestionCard competitor={firstQuestionCompetitor} /> : null}
+        {connected ? <FirstQuestionCard competitor={firstQuestionCompetitor} assistants={connectedAssistants} /> : null}
         {connected ? null : (
         <Tabs defaultValue="claude">
           <TabsList>
