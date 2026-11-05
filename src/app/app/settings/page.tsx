@@ -10,6 +10,7 @@ import { computeMomentum, type MomentumResult } from "@/lib/momentum";
 import { SettingsView } from "./settings-view";
 import { winLossInboxAddress } from "@/lib/win-loss-inbox";
 import type { ConnectLedgerRow } from "@/components/app/connect-panel";
+import { connectedAt } from "@/lib/connect-setup";
 import { FeedbackButton } from "@/components/app/feedback-button";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadFirstLook, type FirstLook } from "@/lib/first-look";
@@ -204,7 +205,7 @@ export default async function SettingsPage({
         description: r.description,
         createdAt: r.created_at,
       })),
-      mcpLastConnectedAt: account.mcp_last_connected_at,
+      mcpLastConnectedAt: connectedAt(account.mcp_last_connected_at),
       slackConnected: (integrations ?? []).some((i) => i.provider === "slack" && i.connected),
       timezone: account.timezone,
       slackDigestDay: account.slack_digest_day,

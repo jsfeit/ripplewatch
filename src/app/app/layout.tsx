@@ -5,7 +5,7 @@ import { ActivityBeacon } from "@/components/app/activity-beacon";
 import { DemoBanner } from "@/components/app/demo-banner";
 import { createClient } from "@/lib/supabase/server";
 import { resolveAccountContext } from "@/lib/impersonation";
-import { setupProgress } from "@/lib/connect-setup";
+import { connectedAt, setupProgress } from "@/lib/connect-setup";
 
 export default async function AppShellLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -50,7 +50,7 @@ export default async function AppShellLayout({ children }: { children: React.Rea
         db.from("competitor_win_loss").select("id", { count: "exact", head: true }).eq("account_id", accountId),
       ]);
       const progress = setupProgress({
-        connected: Boolean(account.mcp_last_connected_at),
+        connected: Boolean(connectedAt(account.mcp_last_connected_at)),
         hasPositioning: Boolean(account.positioning?.trim() || account.icp?.trim()),
         competitorCount: competitorNames.length,
         slackConnected: (slack ?? []).length > 0,
