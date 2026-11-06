@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { GetStartedFlow } from "./get-started-flow";
 import { connectedAt } from "@/lib/connect-setup";
 import { loadConnectedAssistants } from "@/lib/connected-assistants";
+import { StagingFakeConnect } from "@/components/app/staging-fake-connect";
 
 export const metadata = { title: "Get started" };
 
@@ -54,6 +55,7 @@ export default async function GetStartedPage({ searchParams }: { searchParams: P
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-10">
+      {process.env.VERCEL_GIT_COMMIT_REF === "staging" && !account.mcp_last_connected_at ? <StagingFakeConnect /> : null}
       <GetStartedFlow
         companyName={account.name}
         mcpLastConnectedAt={connectedAt(account.mcp_last_connected_at)}

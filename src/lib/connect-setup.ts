@@ -19,13 +19,8 @@ export function setupProgress(input: SetupInput): { done: number; total: number 
   return { done: steps.filter(Boolean).length, total: steps.length };
 }
 
-// Testing shortcut for the staging deployment only: there is no real assistant to sign in from, so the
-// "connected" step can be made to read as done. Off by default so staging shows the real connect step,
-// including that it blocks Continue until an assistant connects. Turn it on by setting
-// STAGING_FAKE_CONNECT=1 on the staging branch in Vercel, to look at the screens after connecting.
-// Also keyed on Vercel's branch name, which production never has.
+// Staging used to fake "connected" here. It now behaves exactly like production, and staging has a
+// "Fake connect" button instead (see StagingFakeConnect), so the real connect step is what you see first.
 export function connectedAt(real: string | null): string | null {
-  if (real) return real;
-  const fake = process.env.STAGING_FAKE_CONNECT === "1" && process.env.VERCEL_GIT_COMMIT_REF === "staging";
-  return fake ? new Date().toISOString() : null;
+  return real;
 }
