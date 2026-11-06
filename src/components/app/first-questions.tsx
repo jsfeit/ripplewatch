@@ -237,3 +237,128 @@ export function DealsImportCard({ assistants, settingsHref }: { assistants?: str
     </div>
   );
 }
+
+// What to try first, one tab per thing Ripplewatch does. Shown the moment the assistant connects so the
+// next move is obvious: pick what you want, open it in your assistant with the prompt already typed, or copy it.
+// "Using Ripplewatch" leads each prompt so the assistant reaches for the tool instead of answering from memory.
+export function firstPrompts(competitor: string | null): { id: string; label: string; blurb: string; prompt: string }[] {
+  const c = competitor?.trim();
+  return [
+    {
+      id: "heating",
+      label: "Who's heating up",
+      blurb: "A Momentum score, Heating up, Steady or Cooling, with the signals pulling it that way.",
+      prompt: firstQuestions(competitor)[0],
+    },
+    {
+      id: "briefing",
+      label: "Weekly briefing",
+      blurb: c ? `What changed across your competitors, starting with ${c}, and what to do about it.` : "What changed across your competitors and what to do about it.",
+      prompt: "Using Ripplewatch: give me my competitive briefing for this week.",
+    },
+    {
+      id: "deals",
+      label: "What's costing us deals",
+      blurb: "Ranked reasons you lose, checked against the deals you have told it about.",
+      prompt: "Using Ripplewatch: what is costing us deals, and what should we do about it?",
+    },
+    {
+      id: "log",
+      label: "Log a deal",
+      blurb: "Tell it how a deal went in plain words. It records it against the right competitor.",
+      prompt:
+        "Using Ripplewatch: log a deal for me. I'll tell you how it went: who it was against, whether we won or lost, and why. Ask me for anything that's missing.",
+    },
+    {
+      id: "import",
+      label: "Import deals",
+      blurb: "Attach a CSV or let it read your CRM. Any column layout works.",
+      prompt: DEALS_PROMPT,
+    },
+  ];
+}
+
+export function FirstPromptPicker({ competitor, assistants }: { competitor: string | null; assistants?: string[] }) {
+  const prompts = firstPrompts(competitor);
+  const [activeId, setActiveId] = useState(prompts[0].id);
+  const [copied, setCopied] = useState(false);
+  const open = openInChoices(assistants);
+  const active = prompts.find((p) => p.id === activeId) ?? prompts[0];
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(active.prompt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // Clipboard blocked: the open-in links still work.
+    }
+  }
+
+  return (
+    <div className="space-y-4 rounded-xl border border-primary/30 bg-primary/[0.06] p-5">
+      <div>
+        <p className="text-sm font-semibold text-primary">You&apos;re connected. Try one of these first</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Your first check on {competitor?.trim() || "your competitors"} is running now, so the read gets richer over the
+          next few minutes. Pick what you want to do and it opens in your assistant ready to send.
+        </p>
+      </div>
+      <div role="tablist" aria-label="First things to try" className="flex flex-wrap gap-2">
+        {prompts.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            role="tab"
+            aria-selected={p.id === activeId}
+            onClick={() => {
+              setActiveId(p.id);
+              setCopied(false);
+            }}
+            className={`rounded-full border px-3 py-1 text-xs font-medium ${
+              p.id === activeId
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+      <div className="space-y-2" role="tabpanel">
+        <p className="text-xs text-muted-foreground">{active.blurb}</p>
+        <p className="rounded-lg border border-border bg-background px-4 py-3 text-sm font-medium">
+          {displayQuestion(active.prompt)}
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {open.claude ? (
+          <a
+            href={`https://claude.ai/new?q=${encodeURIComponent(active.prompt)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => trackEvent("first_question_opened", { assistant: "claude", prompt: active.id, where: "connect" })}
+            className={LINK_CLASS}
+          >
+            Open in Claude <ExternalLink className="size-3" />
+          </a>
+        ) : null}
+        {open.chatgpt ? (
+          <a
+            href={`https://chatgpt.com/?q=${encodeURIComponent(active.prompt)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => trackEvent("first_question_opened", { assistant: "chatgpt", prompt: active.id, where: "connect" })}
+            className={LINK_CLASS}
+          >
+            Open in ChatGPT <ExternalLink className="size-3" />
+          </a>
+        ) : null}
+        <button type="button" onClick={() => void copy()} className={LINK_CLASS}>
+          {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+    </div>
+  );
+}
