@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Circle, Copy, Check, Loader2, ArrowRight } from "lucide-react";
+import { CheckCircle2, Circle, Copy, Check, Loader2, ArrowRight, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CONNECT_MCP_URL } from "@/lib/connect";
 import { timeAgo } from "@/lib/date";
 import { ONBOARDING_VALUE } from "@/lib/onboarding-value";
-import { FirstQuestionCard } from "@/components/app/first-questions";
+import { FirstPromptPicker } from "@/components/app/first-questions";
 import { cn } from "@/lib/utils";
 
 // Connecting the assistant, the step that makes the purchase actually do
@@ -117,6 +117,23 @@ export function McpConnectStep({
     }
   }
 
+  const [copiedConfig, setCopiedConfig] = useState<string | null>(null);
+  async function copyConfig(which: string, text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedConfig(which);
+      setTimeout(() => setCopiedConfig(null), 1800);
+    } catch {
+      // clipboard blocked: the text is still selectable on screen
+    }
+  }
+
+  // One-click installs. Cursor takes the server config as base64, VS Code as URL-encoded JSON.
+  const cursorConfig = JSON.stringify({ mcpServers: { ripplewatch: { url: CONNECT_MCP_URL } } }, null, 2);
+  const cursorLink = `cursor://anysphere.cursor-deeplink/mcp/install?name=ripplewatch&config=${btoa(JSON.stringify({ url: CONNECT_MCP_URL }))}`;
+  const vscodeConfig = JSON.stringify({ servers: { ripplewatch: { type: "http", url: CONNECT_MCP_URL } } }, null, 2);
+  const vscodeLink = `vscode:mcp/install?${encodeURIComponent(JSON.stringify({ name: "ripplewatch", type: "http", url: CONNECT_MCP_URL }))}`;
+
   const claudeCodeCommand = `claude mcp add --transport http ripplewatch ${CONNECT_MCP_URL} \\\n  --header "Authorization: Bearer ${apiKey ?? "<generate a key below>"}"`;
 
   return (
@@ -144,17 +161,20 @@ export function McpConnectStep({
         </p>
       </CardHeader>
       <CardContent>
-        {connected ? <FirstQuestionCard competitor={firstQuestionCompetitor} assistants={connectedAssistants} /> : null}
+        {connected ? <FirstPromptPicker competitor={firstQuestionCompetitor} assistants={connectedAssistants} /> : null}
         {connected ? null : (
         <Tabs defaultValue="claude">
           <TabsList>
             <TabsTrigger value="claude">Claude</TabsTrigger>
             <TabsTrigger value="chatgpt">ChatGPT</TabsTrigger>
             <TabsTrigger value="claude-code">Claude Code</TabsTrigger>
+            <TabsTrigger value="cursor">Cursor</TabsTrigger>
+            <TabsTrigger value="vscode">VS Code</TabsTrigger>
             <TabsTrigger value="other">Other / API key</TabsTrigger>
           </TabsList>
 
           <TabsContent value="claude" className="mt-4">
+            <OpenLink href="https://claude.ai/settings/connectors" label="Open Claude connector settings" />
             <Steps
               url={CONNECT_MCP_URL}
               copied={copiedUrl}
@@ -214,6 +234,7 @@ export function McpConnectStep({
           </TabsContent>
 
           <TabsContent value="chatgpt" className="mt-4">
+            <OpenLink href="https://chatgpt.com/#settings/Connectors" label="Open ChatGPT connector settings" />
             <Steps
               url={CONNECT_MCP_URL}
               copied={copiedUrl}
@@ -265,6 +286,18 @@ export function McpConnectStep({
               onGenerate={ensureApiKey}
               onCopy={() => apiKey && copyText(apiKey, setCopiedKey)}
             />
+          </TabsContent>
+
+          <TabsContent value="cursor" className="mt-4 space-y-4">
+            <p className="text-sm">One click adds Ripplewatch to Cursor. Sign in to Ripplewatch when Cursor asks.</p>
+            <OpenLink href={cursorLink} label="Add to Cursor" />
+            <ConfigBlock value={cursorConfig} copied={copiedConfig === "cursor"} onCopy={() => copyConfig("cursor", cursorConfig)} note="Or paste this into your Cursor MCP settings (mcp.json)." />
+          </TabsContent>
+
+          <TabsContent value="vscode" className="mt-4 space-y-4">
+            <p className="text-sm">One click adds Ripplewatch to VS Code. Sign in to Ripplewatch when it asks.</p>
+            <OpenLink href={vscodeLink} label="Add to VS Code" />
+            <ConfigBlock value={vscodeConfig} copied={copiedConfig === "vscode"} onCopy={() => copyConfig("vscode", vscodeConfig)} note="Or paste this into your VS Code mcp.json." />
           </TabsContent>
 
           <TabsContent value="other" className="mt-4 space-y-4">
@@ -431,6 +464,36 @@ function CopyField({
         <Button type="button" variant="outline" size="sm" onClick={() => onCopy(label, value)}>
           {copiedField === label ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
           {copiedField === label ? "Copied" : "Copy"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function OpenLink({ href, label }: { href: string; label: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mb-4 inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:border-primary/50"
+    >
+      {label} <ExternalLink className="size-3.5" />
+    </a>
+  );
+}
+
+function ConfigBlock({ value, copied, onCopy, note }: { value: string; copied: boolean; onCopy: () => void; note: string }) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground">{note}</p>
+      <div className="mt-1.5 flex items-start gap-2">
+        <pre className="min-w-0 flex-1 overflow-x-auto rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs">
+          <code>{value}</code>
+        </pre>
+        <Button variant="outline" size="sm" className="shrink-0" onClick={onCopy}>
+          {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+          {copied ? "Copied" : "Copy"}
         </Button>
       </div>
     </div>
