@@ -15,9 +15,13 @@ import {
 const description =
   "A survey of 20+ competitive intelligence tools: what each delivers and what's missing. Answers in your AI assistant, scored against your deals.";
 
+// Search snippet copy. The hero paragraph keeps the shorter `description` above.
+const metaDescription =
+  "We compared 20+ competitive intelligence tools across three tiers, from enterprise leaders to lean AI-native options. See what each delivers and what's missing.";
+
 export const metadata = {
-  title: fitTitle("State of Competitive Intelligence Tools: 20+ compared"),
-  description,
+  title: fitTitle("Competitive Intelligence Tools 2026: Market Survey of 20+"),
+  description: metaDescription,
   alternates: { canonical: "/state-of-competitive-intelligence" },
   openGraph: {
     title: "State of Competitive Intelligence Tools: 20+ compared | Ripplewatch",
