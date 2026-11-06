@@ -2,10 +2,11 @@ import { Check, Lock, Radar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CompanyLogo } from "@/components/app/company-logo";
 
-// A sneak peek at Momentum during setup. Nothing here is a made-up score: a
-// brand-new competitor honestly reads "Not enough history yet" (the same label
-// the product shows), and the four real labels are shown as the legend so
-// people know what they're about to get. The six drivers are the ones
+// A sneak peek at Momentum during setup. Nothing here is a made-up score. Every
+// competitor is brand new at this point, so rather than flag "not enough history"
+// (which would be true of everyone), each row says the read is being calculated
+// and builds over time. The four real labels are shown as the legend so people
+// know what they're about to get. The six drivers are the ones
 // computeMomentum actually uses (see src/lib/momentum.ts).
 const LABELS: { name: string; dot: string; meaning: string }[] = [
   { name: "Heating up", dot: "bg-orange-500", meaning: "More moves than usual" },
@@ -48,7 +49,7 @@ export function MomentumTease({
                 <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary/50 motion-reduce:hidden" />
                 <span className="relative inline-flex size-2 rounded-full bg-primary" />
               </span>
-              Reading… not enough history yet
+              Calculating, builds over the first few days
             </span>
           </li>
         ))}
@@ -63,8 +64,8 @@ export function MomentumTease({
         ))}
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        First findings usually land within minutes. Momentum firms up as history builds, and gets sharper every time you
-        log a deal.
+        Momentum is calculated over time. First findings usually land within minutes, and each score firms up over the
+        first few days as Ripplewatch sees more of what they do. It gets sharper every time you log a deal.
       </p>
     </div>
   );
