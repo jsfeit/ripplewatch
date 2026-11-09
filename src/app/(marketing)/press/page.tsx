@@ -132,6 +132,24 @@ const ELSEWHERE = [
     mark: <Rocket className="size-5 text-primary" />,
   },
   {
+    href: "https://mcp.so/servers/ripplewatch",
+    label: "mcp.so",
+    sublabel: "MCP server listing",
+    mark: <Rocket className="size-5 text-primary" />,
+  },
+  {
+    href: "https://glama.ai/mcp/connectors/ai.ripplewatch/ripplewatch",
+    label: "Glama",
+    sublabel: "MCP connector listing",
+    mark: <Rocket className="size-5 text-primary" />,
+  },
+  {
+    href: "https://github.com/jsfeit/ripplewatch-mcp",
+    label: "GitHub",
+    sublabel: "Ripplewatch MCP server",
+    mark: <Rocket className="size-5 text-primary" />,
+  },
+  {
     href: "https://www.linkedin.com/company/ripplewatch/",
     label: "LinkedIn",
     sublabel: "Follow the company page",
