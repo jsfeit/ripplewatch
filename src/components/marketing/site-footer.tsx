@@ -84,6 +84,25 @@ export function SiteFooter() {
             >
               Sign in
             </Link>
+            {/* Smol Hunt's featured badge: a plain, followed link, which their free launch requires. */}
+            <a href="https://smolhunt.com/projects/ripplewatch?utm_source=badge" target="_blank" rel="noopener noreferrer" className="w-fit">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://smolhunt.com/smolhunt/images/badges/featured-on-light.svg"
+                alt="Featured on Smol Hunt"
+                style={{ height: 44, width: "auto" }}
+                className="dark:hidden"
+                loading="lazy"
+              />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://smolhunt.com/smolhunt/images/badges/featured-on-dark.svg"
+                alt="Featured on Smol Hunt"
+                style={{ height: 44, width: "auto" }}
+                className="hidden dark:block"
+                loading="lazy"
+              />
+            </a>
           </div>
 
           {COLUMNS.map((column) => (
