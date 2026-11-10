@@ -66,6 +66,9 @@ export async function POST(request: Request) {
     researchAllowed,
     activityAllowed,
     verdictAllowed: true,
+    // The look-alike and typo domain probes only feed the snapshot page's
+    // suggestions; this read never shows them, so don't make the visitor wait.
+    alternates: false,
     visitor: { companyName: companyName || null, positioning, icp },
   });
 

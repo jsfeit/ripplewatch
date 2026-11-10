@@ -105,22 +105,50 @@ export function GetStartedFlow({
     (hasCompetitor ? 35 : 0) +
     (dealTools.length > 0 ? 15 : 0);
 
-  // Likely competitors, fetched once when the competitors step first opens (it needs what
-  // they said about their business). null = not asked yet, [] = nothing to suggest.
+  // Likely competitors (they need what was said about the business). The call takes a few
+  // seconds, so it starts on the business step: once they've written a real sentence and
+  // paused, it runs once in the background. Opening the competitors step only asks again if
+  // what they wrote changed since. null = not asked yet, [] = nothing to suggest.
   const [suggestions, setSuggestions] = useState<SuggestedCompetitor[] | null>(null);
-  const suggestionsAskedRef = useRef(false);
+  const suggestionsKeyRef = useRef<string | null>(null);
+  const prefetchedRef = useRef(false);
   const onCompetitorsStep = step === 1;
-  useEffect(() => {
-    if (!onCompetitorsStep || suggestionsAskedRef.current) return;
-    suggestionsAskedRef.current = true;
+
+  function askForSuggestions() {
+    const key = [positioning, icp].map((s) => s.trim()).join("|");
+    if (suggestionsKeyRef.current === key) return;
+    suggestionsKeyRef.current = key;
     fetch("/api/onboarding/suggest-competitors", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ companyName, positioning, icp }),
     })
       .then((res) => res.json())
-      .then((data) => setSuggestions(Array.isArray(data.competitors) ? data.competitors : []))
-      .catch(() => setSuggestions([]));
+      .then((data) => {
+        if (suggestionsKeyRef.current === key) setSuggestions(Array.isArray(data.competitors) ? data.competitors : []);
+      })
+      .catch(() => {
+        if (suggestionsKeyRef.current === key) setSuggestions([]);
+      });
+  }
+
+  useEffect(() => {
+    if (step !== 0 || prefetchedRef.current || positioning.trim().length < 15) return;
+    const timer = setTimeout(() => {
+      prefetchedRef.current = true;
+      askForSuggestions();
+    }, 1500);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, positioning, icp]);
+
+  useEffect(() => {
+    if (!onCompetitorsStep) return;
+    const key = [positioning, icp].map((s) => s.trim()).join("|");
+    if (suggestionsKeyRef.current === key) return;
+    setSuggestions(null);
+    askForSuggestions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onCompetitorsStep, companyName, positioning, icp]);
 
   function toggleSuggestion(suggestion: SuggestedCompetitor) {
