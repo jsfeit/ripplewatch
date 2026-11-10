@@ -645,11 +645,13 @@ export type DomainCheck = {
 // to sanity-check a domain a person typed, like a customer adding a
 // competitor.
 export async function checkDomain(domain: string): Promise<DomainCheck> {
+  // Started before the homepage probe so the two overlap, as buildSnapshot does.
+  const tldAlternatesPromise = fetchSnapshotAlternates(domain);
   const probe = await probeSnapshotHomepage(domain);
   const home = probe.page;
   const dead = probe.reachability === "no_such_site" || probe.reachability === "placeholder";
   const [tldAlternates, typoAlternates] = await Promise.all([
-    fetchSnapshotAlternates(domain),
+    tldAlternatesPromise,
     dead || (!home && probe.reachability !== "blocked") ? fetchSnapshotTypoAlternates(domain) : Promise.resolve([]),
   ]);
 
