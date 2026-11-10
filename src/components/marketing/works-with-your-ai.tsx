@@ -1,5 +1,6 @@
 import { Link2, MessagesSquare, PlugZap } from "lucide-react";
 import { Panel } from "@/components/ui/panel";
+import { CHATGPT_PLUGIN_URL } from "@/lib/connect";
 
 const POINTS = [
   {
@@ -15,7 +16,7 @@ const POINTS = [
   {
     icon: PlugZap,
     title: "Connected in a couple of minutes",
-    body: "Paste one connector URL into your assistant, sign in, and ask your first question.",
+    body: "Add Ripplewatch from ChatGPT's plugin directory, or paste one connector URL into Claude. Sign in, and ask your first question.",
   },
 ];
 
@@ -48,7 +49,16 @@ export function WorksWithYourAI() {
             https://www.ripplewatch.ai/api/mcp
           </code>
           <p className="mt-3 text-xs text-muted-foreground">
-            The connector URL. ChatGPT connects through its developer mode, which is in beta.
+            The connector URL for Claude and other assistants. In ChatGPT,{" "}
+            <a
+              href={CHATGPT_PLUGIN_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              add Ripplewatch from the plugin directory
+            </a>
+            .
           </p>
         </div>
       </div>

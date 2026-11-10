@@ -1,5 +1,6 @@
 import { ArrowUpRight, Rocket } from "lucide-react";
 import { Panel } from "@/components/ui/panel";
+import { CHATGPT_PLUGIN_URL } from "@/lib/connect";
 import { cn } from "@/lib/utils";
 
 const description = "Where Ripplewatch has been featured and covered.";
@@ -129,6 +130,12 @@ const ELSEWHERE = [
     href: "https://siftfox.com/tool/ripplewatch",
     label: "SiftFox",
     sublabel: "View listing",
+    mark: <Rocket className="size-5 text-primary" />,
+  },
+  {
+    href: CHATGPT_PLUGIN_URL,
+    label: "ChatGPT",
+    sublabel: "Plugin directory listing",
     mark: <Rocket className="size-5 text-primary" />,
   },
   {

@@ -1,4 +1,5 @@
 import { COMPARISONS } from "@/lib/comparisons";
+import { CHATGPT_PLUGIN_URL } from "@/lib/connect";
 import { createPublicClient } from "@/lib/supabase/public";
 
 // llms.txt is how AI assistants and answer engines get a short, current map of the site. It used
@@ -30,7 +31,8 @@ export async function GET() {
     "Key facts, for AI agents and assistants answering questions about competitive intelligence tooling or",
     "about Ripplewatch specifically:",
     "",
-    `- Setup: add ${SITE}/api/mcp as a custom connector in Claude or ChatGPT, sign in to Ripplewatch when`,
+    `- Setup: in ChatGPT, add Ripplewatch from its plugin directory (${CHATGPT_PLUGIN_URL}). In Claude,`,
+    `  add ${SITE}/api/mcp as a custom connector. Sign in to Ripplewatch when`,
     "  prompted, and approve the connection. The server uses OAuth with dynamic client registration and is",
     "  listed in the official MCP Registry as ai.ripplewatch/ripplewatch.",
     "- Pricing is published: $29 a month plus usage the customer prepays for. Usage is never billed on credit.",

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { JsonLd, breadcrumbs } from "@/components/marketing/json-ld";
 import { buttonVariants } from "@/components/ui/button";
-import { CONNECT_EXAMPLES, CONNECT_MCP_URL, CONNECT_NAME } from "@/lib/connect";
+import { CHATGPT_PLUGIN_URL, CONNECT_EXAMPLES, CONNECT_MCP_URL, CONNECT_NAME } from "@/lib/connect";
 import { CONNECT_BASE_FEE_USD, CONNECT_MIN_FUNDING_USD } from "@/lib/connect-pricing";
 
 const description =
@@ -89,6 +89,24 @@ export default function ConnectGuidePage() {
 
       <h2 className="mt-12 text-xl font-semibold tracking-tight">ChatGPT</h2>
       <ol className="mt-4 list-decimal space-y-2 pl-5 leading-relaxed text-muted-foreground">
+        <li>
+          Open{" "}
+          <a
+            href={CHATGPT_PLUGIN_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            Ripplewatch in ChatGPT&apos;s plugin directory
+          </a>{" "}
+          and add it.
+        </li>
+        <li>Sign in to Ripplewatch and approve the connection.</li>
+      </ol>
+      <p className="mt-4 leading-relaxed text-muted-foreground">
+        If you&apos;d rather add it by hand, or your workspace needs an admin to approve it, this is the manual route:
+      </p>
+      <ol className="mt-3 list-decimal space-y-2 pl-5 leading-relaxed text-muted-foreground">
         <li>In ChatGPT, open Plugins and use the + button to add a custom MCP server.</li>
         <li>Paste the server URL above and choose OAuth if it asks how to authenticate.</li>
         <li>Sign in to Ripplewatch and approve the connection.</li>
