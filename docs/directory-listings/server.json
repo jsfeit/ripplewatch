@@ -3,8 +3,20 @@
   "name": "ai.ripplewatch/ripplewatch",
   "title": "Ripplewatch",
   "description": "Competitive analyst inside Claude or ChatGPT. Ask who's heating up and why.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "websiteUrl": "https://www.ripplewatch.ai",
+  "repository": {
+    "url": "https://github.com/jsfeit/ripplewatch-mcp",
+    "source": "github",
+    "id": "1431509597"
+  },
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/jsfeit/ripplewatch/main/docs/directory-listings/ripplewatch-logo-512.png",
+      "mimeType": "image/png",
+      "sizes": ["512x512"]
+    }
+  ],
   "remotes": [
     {
       "type": "streamable-http",
