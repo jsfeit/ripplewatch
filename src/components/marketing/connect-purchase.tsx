@@ -33,8 +33,11 @@ const FUNNEL_DRAFT_KEY = "rw_connect_draft";
 export function ConnectPurchase({
   initiallySignedIn,
   pendingCompanyName,
+  skipRead = false,
 }: {
   initiallySignedIn: boolean;
+  // Straight to the account form: for people sent here by an assistant's Connect button.
+  skipRead?: boolean;
   // Set when a signed-in user's account carries a company name from
   // signUp() but has no Connect account yet — i.e. they're back from
   // confirming their email. Read server-side from auth user_metadata
@@ -64,7 +67,7 @@ export function ConnectPurchase({
   // New visitors get one free read on a competitor before the account form.
   // Anyone already signed in (back from the email link or from Google) has
   // moved past it.
-  const [phase, setPhase] = useState<"read" | "form">(initiallySignedIn ? "form" : "read");
+  const [phase, setPhase] = useState<"read" | "form">(initiallySignedIn || skipRead ? "form" : "read");
 
   // A visitor who gets as far as the account form and leaves comes back to it, filled in, not to
   // the start. Only the company name and email are kept (never the password), in this browser.

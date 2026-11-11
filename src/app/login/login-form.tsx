@@ -11,9 +11,15 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import { GoogleButton, OrDivider } from "@/components/auth/google-button";
 
+// People who land here from an assistant's Connect button (ChatGPT, Claude) arrive with the pending
+// approval as `next`. They usually don't have an account yet, so this page says what's happening
+// and sends new people to the purchase flow instead of a bare login form.
+const ASSISTANT_CONNECT_PATH = "/oauth/consent";
+
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const fromAssistant = (searchParams.get("next") ?? "").startsWith(ASSISTANT_CONNECT_PATH);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -56,9 +62,23 @@ export function LoginForm() {
   return (
     <Card>
       <CardHeader>
-        <h1 className="text-lg font-semibold">Log in</h1>
+        <h1 className="text-lg font-semibold">{fromAssistant ? "Connect Ripplewatch" : "Log in"}</h1>
+        {fromAssistant ? (
+          <p className="text-sm text-muted-foreground">
+            Log in to approve the connection from your AI assistant. New here? Ripplewatch is {"$"}29 a month plus
+            usage you prepay for, and setup takes a couple of minutes.
+          </p>
+        ) : null}
       </CardHeader>
       <CardContent className="space-y-4">
+        {fromAssistant ? (
+          <>
+            <Link href="/onboarding?src=assistant" className="block">
+              <Button type="button" className="w-full">Create a Ripplewatch account</Button>
+            </Link>
+            <OrDivider />
+          </>
+        ) : null}
         <GoogleButton next={searchParams.get("next") ?? "/app/dashboard"} />
         <OrDivider />
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -95,7 +115,7 @@ export function LoginForm() {
           </Button>
           <p className="text-center text-sm text-muted-foreground">
             No account?{" "}
-            <Link href="/signup" className="text-primary hover:underline">
+            <Link href={fromAssistant ? "/onboarding?src=assistant" : "/signup"} className="text-primary hover:underline">
               Sign up
             </Link>
           </p>
