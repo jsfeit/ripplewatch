@@ -76,7 +76,7 @@ export function LoginForm() {
             <Link href="/onboarding?src=assistant" className="block">
               <Button type="button" className="w-full">Create a Ripplewatch account</Button>
             </Link>
-            <OrDivider />
+            <p className="text-center text-xs text-muted-foreground">Already have an account? Log in below.</p>
           </>
         ) : null}
         <GoogleButton next={searchParams.get("next") ?? "/app/dashboard"} />
