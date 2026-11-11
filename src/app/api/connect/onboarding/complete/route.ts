@@ -6,7 +6,7 @@ import { suggestCompetitorCategories, researchCompanyContext } from "@/lib/anthr
 import { enqueueCrawlForAccount } from "@/lib/crawl";
 import { importWinLossText } from "@/lib/win-loss-import-text";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 type CompetitorInput = { name: string; domain: string };
 
@@ -41,6 +41,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "This account isn't set up for Ripplewatch." }, { status: 400 });
   }
 
+  const origin = new URL(request.url).origin;
   const body = await request.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Invalid request." }, { status: 400 });
 
@@ -206,6 +207,19 @@ export async function POST(request: Request) {
         if (fullAccount) await enqueueCrawlForAccount(admin, fullAccount);
       } catch (err) {
         console.error("connect onboarding backfill crawl enqueue failed:", err);
+      }
+      // Run the crawl worker now instead of waiting for its next 2-minute tick, so a person who
+      // goes straight from setup to asking their assistant (the ChatGPT directory path) finds
+      // signals waiting. The worker is its own function with its own time budget, and its job
+      // claim is atomic, so this can't double-process anything the cron picks up. Best effort:
+      // if it fails the scheduled tick still does the work.
+      try {
+        const secret = process.env.CRON_SECRET;
+        if (secret) {
+          await fetch(`${origin}/api/cron/crawl-worker`, { headers: { authorization: `Bearer ${secret}` } });
+        }
+      } catch (err) {
+        console.error("connect onboarding crawl worker kick failed:", err);
       }
     });
   }

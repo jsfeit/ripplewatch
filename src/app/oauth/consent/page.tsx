@@ -11,7 +11,7 @@ export const metadata = { title: "Connect an app", robots: { index: false, follo
 
 const ERRORS: Record<string, string> = {
   invalid: "That authorization request isn't valid. Go back to the app and try connecting again.",
-  plan: "Connecting an AI assistant is part of Ripplewatch Connect.",
+  plan: "Connecting an AI assistant is part of Ripplewatch ($29 a month plus usage you prepay for). Get it, then come back to your assistant and press Connect again.",
   inactive:
     "Your Ripplewatch subscription isn't active yet, so an assistant can't connect. If you haven't finished paying, do that in Settings, then connect again. If it was paused, email hello@ripplewatch.ai.",
   failed: "Something went wrong approving that. Go back to the app and try connecting again.",
@@ -150,9 +150,9 @@ export default async function ConsentPage({
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">{inactive ? ERRORS.inactive : ERRORS.plan}</p>
               <div className="flex gap-3">
-                <Link href={inactive ? "/app/settings?tab=connect" : "/connect"} className="flex-1">
+                <Link href={inactive ? "/app/settings?tab=connect" : "/onboarding?src=assistant"} className="flex-1">
                   <Button type="button" className="w-full">
-                    {inactive ? "Open Settings" : "About Connect"}
+                    {inactive ? "Open Settings" : "Get Ripplewatch"}
                   </Button>
                 </Link>
                 <form action={decideAuthorization} className="flex-1">
