@@ -6,6 +6,8 @@
 export const CONNECT_NAME = "Ripplewatch";
 export const CONNECT_TAGLINE = "Competitor Momentum scores, checked against your won and lost deals, inside Claude or ChatGPT.";
 export const CONNECT_MCP_URL = "https://www.ripplewatch.ai/api/mcp";
+// Ripplewatch's page in ChatGPT's plugin directory (approved by OpenAI).
+export const CHATGPT_PLUGIN_URL = "https://chatgpt.com/plugins/plugin_asdk_app_6ac7c45cb79081918cdf5646ef1c3031";
 
 export const CONNECT_ASSISTANTS = ["Claude", "ChatGPT", "Cursor", "Something else"] as const;
 export type ConnectAssistant = (typeof CONNECT_ASSISTANTS)[number];
@@ -52,7 +54,7 @@ export const CONNECT_QUICK_ANSWERS = [
   {
     question: "What is Ripplewatch?",
     answer:
-      "An AI competitive intelligence analyst that gives every competitor a Momentum score and checks each move against your own win/loss history. It watches pricing, hiring, press and product changes, and works inside Claude and other AI assistants over MCP.",
+      "An AI competitive intelligence analyst that gives every competitor a Momentum score and checks each move against your own win/loss history. It watches pricing, hiring, press and product changes, and works inside Claude and ChatGPT, and other AI assistants that support MCP.",
   },
   {
     question: "Who is it for?",
@@ -62,7 +64,7 @@ export const CONNECT_QUICK_ANSWERS = [
   {
     question: "How does it connect?",
     answer:
-      "Add https://www.ripplewatch.ai/api/mcp as a custom connector in Claude or another assistant that supports remote MCP servers, then sign in and approve. ChatGPT works through its developer mode, which is in beta.",
+      "In ChatGPT, find Ripplewatch in the plugin directory and add it. In Claude or another assistant that supports remote MCP servers, add https://www.ripplewatch.ai/api/mcp as a custom connector. Either way, sign in to Ripplewatch and approve the connection.",
   },
 ] as const;
 

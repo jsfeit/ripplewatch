@@ -6,7 +6,7 @@ import { CheckCircle2, Circle, Copy, Check, Loader2, ArrowRight, ExternalLink } 
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { CONNECT_MCP_URL } from "@/lib/connect";
+import { CHATGPT_PLUGIN_URL, CONNECT_MCP_URL } from "@/lib/connect";
 import { timeAgo } from "@/lib/date";
 import { ONBOARDING_VALUE } from "@/lib/onboarding-value";
 import { FirstPromptPicker } from "@/components/app/first-questions";
@@ -234,18 +234,27 @@ export function McpConnectStep({
           </TabsContent>
 
           <TabsContent value="chatgpt" className="mt-4">
-            <OpenLink href="https://chatgpt.com/#settings/Connectors" label="Open ChatGPT connector settings" />
-            <Steps
-              url={CONNECT_MCP_URL}
-              copied={copiedUrl}
-              onCopy={() => copyText(CONNECT_MCP_URL, setCopiedUrl)}
-              clientSteps={[
-                "Open Plugins and use the + button to add a custom MCP server.",
-                "Paste the URL and choose OAuth if it asks how to authenticate.",
-                "Sign in to Ripplewatch and approve when it asks.",
-              ]}
-              note="Don't see the option? Your ChatGPT plan or workspace may not allow custom MCP servers yet, and on some plans connections are read-only, so logging deals won't work. Claude is the most complete way to use Ripplewatch today."
-            />
+            <OpenLink href={CHATGPT_PLUGIN_URL} label="Open Ripplewatch in ChatGPT" />
+            <p className="mb-4 text-sm text-muted-foreground">
+              Add Ripplewatch from the page that opens, then sign in to Ripplewatch and approve when it asks.
+            </p>
+            <details className="rounded-md border border-border px-3 py-2 text-sm">
+              <summary className="cursor-pointer font-medium">Add it by hand instead</summary>
+              <div className="mt-3">
+                <OpenLink href="https://chatgpt.com/#settings/Connectors" label="Open ChatGPT connector settings" />
+                <Steps
+                  url={CONNECT_MCP_URL}
+                  copied={copiedUrl}
+                  onCopy={() => copyText(CONNECT_MCP_URL, setCopiedUrl)}
+                  clientSteps={[
+                    "Open Plugins and use the + button to add a custom MCP server.",
+                    "Paste the URL and choose OAuth if it asks how to authenticate.",
+                    "Sign in to Ripplewatch and approve when it asks.",
+                  ]}
+                  note="Don't see the option? Your ChatGPT plan or workspace may not allow custom MCP servers yet, and on some plans connections are read-only, so logging deals won't work."
+                />
+              </div>
+            </details>
           </TabsContent>
 
           <TabsContent value="claude-code" className="mt-4 space-y-4">
