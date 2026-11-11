@@ -7,6 +7,20 @@ export const dynamic = "force-dynamic";
 
 const DAY = 24 * 60 * 60 * 1000;
 
+// The day Ripplewatch went live in ChatGPT's plugin directory. ChatGPT connections before this came
+// from the manual developer-mode setup; after it, mostly from the directory.
+const CHATGPT_LAUNCH = "2026-11-10";
+const WEEKS_SHOWN = 12;
+
+// Monday 00:00 UTC of the week containing the date, as YYYY-MM-DD.
+function weekStart(iso: string): string {
+  const d = new Date(iso);
+  const day = (d.getUTCDay() + 6) % 7;
+  d.setUTCHours(0, 0, 0, 0);
+  d.setUTCDate(d.getUTCDate() - day);
+  return d.toISOString().slice(0, 10);
+}
+
 function nowMs(): number {
   return Date.now();
 }
@@ -69,6 +83,25 @@ export default async function AdminConnectionsPage() {
     };
   }).filter((a) => a.accounts > 0);
 
+  // New customer connections per week, newest first, one column per assistant that has any.
+  const thisWeek = new Date(weekStart(new Date(now).toISOString()) + "T00:00:00Z").getTime();
+  const weeks = Array.from({ length: WEEKS_SHOWN }, (_, i) => new Date(thisWeek - i * 7 * DAY).toISOString().slice(0, 10));
+  const weekly = new Map<string, Map<string, Set<string>>>();
+  for (const r of real) {
+    if (!r.first_connected_at) continue;
+    const wk = weekStart(r.first_connected_at);
+    const byA = weekly.get(wk) ?? new Map<string, Set<string>>();
+    const set = byA.get(r.assistant) ?? new Set<string>();
+    set.add(r.account_id);
+    byA.set(r.assistant, set);
+    weekly.set(wk, byA);
+  }
+  const weeklyCols = byAssistant.map((a) => a.assistant);
+  const launchWeek = weekStart(CHATGPT_LAUNCH + "T12:00:00Z");
+  const chatgptRows = real.filter((r) => r.assistant === "chatgpt" && r.first_connected_at);
+  const chatgptBefore = new Set(chatgptRows.filter((r) => r.first_connected_at! < CHATGPT_LAUNCH).map((r) => r.account_id)).size;
+  const chatgptSince = new Set(chatgptRows.filter((r) => r.first_connected_at! >= CHATGPT_LAUNCH).map((r) => r.account_id)).size;
+
   return (
     <div className="mx-auto max-w-5xl px-8 py-10">
       <div className="mb-6">
@@ -98,6 +131,47 @@ export default async function AdminConnectionsPage() {
       ) : (
         <p className="mb-6 rounded-md border border-border bg-secondary/40 p-4 text-sm">No customer connections recorded yet.</p>
       )}
+
+      {weeklyCols.length ? (
+        <Card className="mb-6">
+          <CardHeader>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">New connections per week</p>
+            <p className="text-sm text-muted-foreground">
+              Accounts connecting for the first time, by the week of their first connection (weeks start Monday, UTC).
+              ChatGPT plugin directory launch: {CHATGPT_LAUNCH}. ChatGPT accounts before launch: {chatgptBefore}. Since: {chatgptSince}.
+            </p>
+          </CardHeader>
+          <CardContent className="overflow-x-auto p-0">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-border text-xs text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-2 font-medium">Week of</th>
+                  {weeklyCols.map((a) => (
+                    <th key={a} className="px-4 py-2 text-right font-medium">{LABEL[a]}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {weeks.map((wk) => (
+                  <tr key={wk} className={`border-b border-border/60 last:border-0 ${wk === launchWeek ? "bg-primary/5" : ""}`}>
+                    <td className="whitespace-nowrap px-4 py-2">
+                      {wk}
+                      {wk === launchWeek ? (
+                        <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                          ChatGPT plugin live
+                        </span>
+                      ) : null}
+                    </td>
+                    {weeklyCols.map((a) => (
+                      <td key={a} className="px-4 py-2 text-right tabular-nums">{weekly.get(wk)?.get(a)?.size ?? 0}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardContent className="overflow-x-auto p-0">
