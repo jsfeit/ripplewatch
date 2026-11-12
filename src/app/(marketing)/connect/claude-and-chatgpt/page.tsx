@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { DemoVideo } from "@/components/marketing/demo-video";
 import { JsonLd, breadcrumbs } from "@/components/marketing/json-ld";
 import { buttonVariants } from "@/components/ui/button";
 import { CHATGPT_PLUGIN_URL, CONNECT_EXAMPLES, CONNECT_MCP_URL, CONNECT_NAME } from "@/lib/connect";
@@ -40,10 +41,26 @@ const HOW_TO = {
   ],
 };
 
+const DEMO_VIDEO_ID = "fMO0-pta3js";
+const DEMO_VIDEO_TITLE = "Ripplewatch in ChatGPT: your competitive analyst in about a minute";
+
+const VIDEO_LD = {
+  "@context": "https://schema.org",
+  "@type": "VideoObject",
+  name: DEMO_VIDEO_TITLE,
+  description:
+    "Add Ripplewatch from ChatGPT's plugin directory, sign in and approve, ask for this week's competitive briefing, and log a lost deal. Shown with a sample company.",
+  thumbnailUrl: `${SITE}/video/chatgpt-demo-poster.jpg`,
+  uploadDate: "2026-11-11",
+  duration: "PT1M7S",
+  embedUrl: `https://www.youtube-nocookie.com/embed/${DEMO_VIDEO_ID}`,
+};
+
 export default function ConnectGuidePage() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-20">
       <JsonLd data={HOW_TO} />
+      <JsonLd data={VIDEO_LD} />
       <JsonLd
         data={breadcrumbs(SITE, [
           { name: "Product", path: "/connect" },
@@ -56,6 +73,14 @@ export default function ConnectGuidePage() {
         call outside tools, so once Ripplewatch is added you ask about your competitors in the chat you already have
         open. Setup takes about two minutes and works the same way in any assistant that supports remote MCP servers.
       </p>
+
+      <div className="mt-8">
+        <DemoVideo videoId={DEMO_VIDEO_ID} title={DEMO_VIDEO_TITLE} poster="/video/chatgpt-demo-poster.jpg" />
+        <p className="mt-2 text-sm text-muted-foreground">
+          67 seconds: adding Ripplewatch in ChatGPT, asking for a briefing, and logging a deal. Shown with a sample
+          company.
+        </p>
+      </div>
 
       <h2 className="mt-12 text-xl font-semibold tracking-tight">What you need</h2>
       <ul className="mt-4 list-disc space-y-2 pl-5 leading-relaxed text-muted-foreground">
