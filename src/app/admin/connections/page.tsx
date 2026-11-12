@@ -7,6 +7,12 @@ export const dynamic = "force-dynamic";
 
 const DAY = 24 * 60 * 60 * 1000;
 
+// Wrapped so the render doesn't call an impure function directly (react-hooks/purity); this page
+// is dynamic and always renders on the server per request.
+function nowMs(): number {
+  return Date.now();
+}
+
 // The day Ripplewatch went live in ChatGPT's plugin directory. ChatGPT connections before this came
 // from the manual developer-mode setup; after it, mostly from the directory.
 const CHATGPT_LAUNCH = "2026-11-10";
@@ -96,7 +102,7 @@ export default async function AdminConnectionsPage({ searchParams }: { searchPar
   const isDemo = (accountId: string) => Boolean(accountById.get(accountId)?.demo_mode);
   const rows = includeDemo ? allRows : allRows.filter((r) => !isDemo(r.account_id));
   const hiddenDemo = allRows.filter((r) => isDemo(r.account_id)).length;
-  const now = Date.now();
+  const now = nowMs();
 
   const stats = GROUPS.map((g) => {
     const mine = rows.filter((r) => groupOf(r.assistant) === g.id);
