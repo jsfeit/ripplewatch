@@ -18,17 +18,18 @@ function nowMs(): number {
 const CHATGPT_LAUNCH = "2026-11-10";
 const WEEKS_SHOWN = 8;
 
-type Group = "claude" | "chatgpt" | "other";
+type Group = "claude" | "chatgpt" | "cursor" | "other";
 
 const GROUPS: { id: Group; label: string; dot: string; bar: string }[] = [
   { id: "claude", label: "Claude", dot: "bg-amber-500", bar: "bg-amber-500/70" },
   { id: "chatgpt", label: "ChatGPT", dot: "bg-emerald-500", bar: "bg-emerald-500/70" },
+  { id: "cursor", label: "Cursor", dot: "bg-sky-500", bar: "bg-sky-500/70" },
   { id: "other", label: "Other", dot: "bg-slate-400", bar: "bg-slate-400/60" },
 ];
 
-// Cursor, Glama's health checker, unknown clients and anything else all roll up into Other.
+// Glama's health checker, unknown clients, VS Code and anything else all roll up into Other.
 function groupOf(assistant: string): Group {
-  return assistant === "claude" || assistant === "chatgpt" ? assistant : "other";
+  return assistant === "claude" || assistant === "chatgpt" || assistant === "cursor" ? assistant : "other";
 }
 
 // Monday 00:00 UTC of the week containing the date, as YYYY-MM-DD.
@@ -133,7 +134,7 @@ export default async function AdminConnectionsPage({ searchParams }: { searchPar
   const weekly = new Map<string, Record<Group, Set<string>>>();
   for (const r of rows) {
     const wk = weekStart(r.first_connected_at);
-    const entry = weekly.get(wk) ?? { claude: new Set(), chatgpt: new Set(), other: new Set() };
+    const entry = weekly.get(wk) ?? { claude: new Set(), chatgpt: new Set(), cursor: new Set(), other: new Set() };
     entry[groupOf(r.assistant)].add(r.account_id);
     weekly.set(wk, entry);
   }
@@ -151,8 +152,8 @@ export default async function AdminConnectionsPage({ searchParams }: { searchPar
         </p>
       </div>
 
-      {/* Claude and ChatGPT side by side, always shown, even at zero. */}
-      <section aria-label="Claude and ChatGPT" className="grid gap-4 sm:grid-cols-2">
+      {/* Claude, ChatGPT and Cursor side by side, always shown, even at zero. */}
+      <section aria-label="Claude, ChatGPT and Cursor" className="grid gap-4 sm:grid-cols-3">
         {main.map((s) => (
           <Card key={s.id}>
             <CardContent className="space-y-5 p-6">
@@ -198,7 +199,7 @@ export default async function AdminConnectionsPage({ searchParams }: { searchPar
       {showOther ? (
         <p className="-mt-4 text-sm text-muted-foreground">
           Also connected: <span className="font-medium text-foreground tabular-nums">{other.accounts}</span> through other
-          clients (Cursor, VS Code, API keys and the like), {other.active} active in the last 7 days.
+          clients (VS Code, API keys and the like), {other.active} active in the last 7 days.
         </p>
       ) : null}
 
@@ -287,9 +288,7 @@ export default async function AdminConnectionsPage({ searchParams }: { searchPar
                         <td className="whitespace-nowrap px-4 py-3">
                           <span className="inline-flex items-center gap-1.5 font-medium">
                             <span className={`size-2 rounded-full ${g.dot}`} aria-hidden />
-                            {r.assistant === "claude" || r.assistant === "chatgpt"
-                              ? g.label
-                              : r.assistant.charAt(0).toUpperCase() + r.assistant.slice(1)}
+                            {g.id !== "other" ? g.label : r.assistant.charAt(0).toUpperCase() + r.assistant.slice(1)}
                           </span>
                         </td>
                         <td className="px-4 py-3">

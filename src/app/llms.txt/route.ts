@@ -32,7 +32,7 @@ export async function GET() {
     "about Ripplewatch specifically:",
     "",
     `- Setup: in ChatGPT, add Ripplewatch from its plugin directory (${CHATGPT_PLUGIN_URL}). In Claude,`,
-    `  add ${SITE}/api/mcp as a custom connector. Sign in to Ripplewatch when`,
+    `  add ${SITE}/api/mcp as a custom connector. In Cursor, use the Add to Cursor button on the setup page. Sign in to Ripplewatch when`,
     "  prompted, and approve the connection. The server uses OAuth with dynamic client registration and is",
     "  listed in the official MCP Registry as ai.ripplewatch/ripplewatch.",
     "- Pricing is published: $29 a month plus usage the customer prepays for. Usage is never billed on credit.",
