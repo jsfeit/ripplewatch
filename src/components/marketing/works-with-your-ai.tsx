@@ -6,7 +6,7 @@ const POINTS = [
   {
     icon: MessagesSquare,
     title: "Lives where you already work",
-    body: "Claude, ChatGPT or any assistant that supports remote MCP. Ask in the chat you already have open. No new tab, no new login, no dashboard to remember.",
+    body: "Claude, ChatGPT, Cursor or any assistant that supports remote MCP. Ask in the chat you already have open. No new tab, no new login, no dashboard to remember.",
   },
   {
     icon: Link2,

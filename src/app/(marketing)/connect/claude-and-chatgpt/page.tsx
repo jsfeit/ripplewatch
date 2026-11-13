@@ -24,6 +24,13 @@ export const metadata = {
 
 const SITE = "https://www.ripplewatch.ai";
 
+// One-click install for Cursor: the deeplink carries the server config as base64. Same link the
+// in-app connect step uses, so a visitor who hasn't signed up yet can still try it.
+const CURSOR_INSTALL_LINK = `cursor://anysphere.cursor-deeplink/mcp/install?name=ripplewatch&config=${Buffer.from(
+  JSON.stringify({ url: CONNECT_MCP_URL })
+).toString("base64")}`;
+const CURSOR_CONFIG = JSON.stringify({ mcpServers: { ripplewatch: { url: CONNECT_MCP_URL } } }, null, 2);
+
 // Mirrors the numbered steps on the page. Search engines no longer show HowTo
 // rich results, but assistants that read structured data use it to lift steps.
 const HOW_TO = {
@@ -144,9 +151,32 @@ export default function ConnectGuidePage() {
         Ripplewatch instead of using an API key.
       </p>
 
-      <h2 className="mt-12 text-xl font-semibold tracking-tight">Claude Code, Cursor and other developer tools</h2>
+      <h2 className="mt-12 text-xl font-semibold tracking-tight">Cursor</h2>
+      <ol className="mt-4 list-decimal space-y-2 pl-5 leading-relaxed text-muted-foreground">
+        <li>
+          Click <strong className="font-medium text-foreground">Add to Cursor</strong> below. Cursor opens and asks you
+          to confirm the install.
+        </li>
+        <li>Sign in to Ripplewatch and approve the connection when Cursor opens the browser.</li>
+        <li>Open a chat in Cursor and ask what changed with your competitors this week.</li>
+      </ol>
+      <p className="mt-4">
+        <a href={CURSOR_INSTALL_LINK} className={buttonVariants({ variant: "outline" })}>
+          Add to Cursor
+        </a>
+      </p>
       <p className="mt-4 leading-relaxed text-muted-foreground">
-        These connect with an API key sent as a bearer token. In Claude Code:
+        If the button does nothing, add it by hand: open Cursor&apos;s MCP settings and paste this into{" "}
+        <code>mcp.json</code>.
+      </p>
+      <pre className="mt-3 overflow-x-auto rounded-md border border-border bg-secondary/40 px-4 py-3 text-sm">
+        <code>{CURSOR_CONFIG}</code>
+      </pre>
+
+      <h2 className="mt-12 text-xl font-semibold tracking-tight">Claude Code and other developer tools</h2>
+      <p className="mt-4 leading-relaxed text-muted-foreground">
+        Tools that can&apos;t open a sign-in window connect with an API key sent as a bearer token. Create a key in
+        Ripplewatch under Settings. In Claude Code:
       </p>
       <pre className="mt-3 overflow-x-auto rounded-md border border-border bg-secondary/40 px-4 py-3 text-sm">
         <code>{`claude mcp add --transport http ripplewatch ${CONNECT_MCP_URL} \\

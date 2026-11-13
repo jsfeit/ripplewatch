@@ -54,7 +54,7 @@ export const CONNECT_QUICK_ANSWERS = [
   {
     question: "What is Ripplewatch?",
     answer:
-      "An AI competitive intelligence analyst that gives every competitor a Momentum score and checks each move against your own win/loss history. It watches pricing, hiring, press and product changes, and works inside Claude and ChatGPT, and other AI assistants that support MCP.",
+      "An AI competitive intelligence analyst that gives every competitor a Momentum score and checks each move against your own win/loss history. It watches pricing, hiring, press and product changes, and works inside Claude, ChatGPT, Cursor and other AI assistants that support MCP.",
   },
   {
     question: "Who is it for?",
@@ -64,7 +64,7 @@ export const CONNECT_QUICK_ANSWERS = [
   {
     question: "How does it connect?",
     answer:
-      "In ChatGPT, find Ripplewatch in the plugin directory and add it. In Claude or another assistant that supports remote MCP servers, add https://www.ripplewatch.ai/api/mcp as a custom connector. Either way, sign in to Ripplewatch and approve the connection.",
+      "In ChatGPT, find Ripplewatch in the plugin directory and add it. In Cursor, use the Add to Cursor button on the setup page. In Claude or another assistant that supports remote MCP servers, add https://www.ripplewatch.ai/api/mcp as a custom connector. Either way, sign in to Ripplewatch and approve the connection.",
   },
 ] as const;
 
