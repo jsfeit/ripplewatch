@@ -172,18 +172,6 @@ export default function ConnectGuidePage() {
       <pre className="mt-3 overflow-x-auto rounded-md border border-border bg-secondary/40 px-4 py-3 text-sm">
         <code>{CURSOR_CONFIG}</code>
       </pre>
-      <p className="mt-4 leading-relaxed text-muted-foreground">
-        Ripplewatch is also listed in{" "}
-        <a
-          href="https://cursor.directory/plugins/ripplewatch"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline underline-offset-2 hover:text-foreground"
-        >
-          Cursor Directory
-        </a>
-        .
-      </p>
 
       <h2 className="mt-12 text-xl font-semibold tracking-tight">Claude Code and other developer tools</h2>
       <p className="mt-4 leading-relaxed text-muted-foreground">
