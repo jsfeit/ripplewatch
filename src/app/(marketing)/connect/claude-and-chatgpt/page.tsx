@@ -173,6 +173,19 @@ export default function ConnectGuidePage() {
         <code>{CURSOR_CONFIG}</code>
       </pre>
 
+      <p className="mt-4 leading-relaxed text-muted-foreground">
+        Ripplewatch is also listed in{" "}
+        <a
+          href="https://cursor.directory/plugins/ripplewatch"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline underline-offset-2 hover:text-foreground"
+        >
+          Cursor Directory
+        </a>
+        .
+      </p>
+
       <h2 className="mt-12 text-xl font-semibold tracking-tight">Claude Code and other developer tools</h2>
       <p className="mt-4 leading-relaxed text-muted-foreground">
         Tools that can&apos;t open a sign-in window connect with an API key sent as a bearer token. Create a key in
