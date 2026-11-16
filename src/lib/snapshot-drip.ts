@@ -62,7 +62,6 @@ export function buildSnapshotDripEmail(
 ): SnapshotDripEmail {
   const { lookups, appUrl } = opts;
   const phrase = lookedUpPhrase(lookups);
-  const snapshotUrl = `${appUrl}/competitor-snapshot`;
 
   switch (step) {
     case 1: {
@@ -90,9 +89,9 @@ export function buildSnapshotDripEmail(
         subject: "How most teams find out a competitor changed their pricing",
         bodyHtml: `<p ${P}>Often it's a prospect who brings it up on a call, or a customer who forwards a screenshot. By then the change can be weeks old.</p>
           <p ${P}>Ripplewatch checks every day, so you hear about it when it happens, with a note on whether it matters for the deals you're actually in.</p>
-          <p ${P}>If you want to see it on another competitor, the snapshot tool is still free.</p>`,
-        ctaLabel: "Try another competitor",
-        ctaUrl: snapshotUrl,
+          <p ${P}>It's $29 a month. If it's not useful in your first 30 days, you get that back, plus any balance you haven't used.</p>`,
+        ctaLabel: "See pricing and the refund terms",
+        ctaUrl: `${appUrl}/pricing`,
       };
     case 3:
       return {
@@ -114,17 +113,17 @@ export function buildSnapshotDripEmail(
       return {
         subject: "It's been a month since your snapshot",
         bodyHtml: `<p ${P}>Competitor pages change quietly, so what you saw for ${phrase} a month ago has probably shifted a bit.</p>
-          <p ${P}>You can run the snapshot again any time, or let Ripplewatch track it so you don't have to remember. Ripplewatch is $29 a month plus usage you prepay for, with a 30-day money-back guarantee.</p>`,
+          <p ${P}>Ripplewatch can track it for you so you don't have to remember. It's $29 a month plus usage you prepay for, and the 30-day money-back guarantee covers the $29 and anything you haven't used.</p>`,
         ctaLabel: "See pricing",
         ctaUrl: `${appUrl}/pricing`,
       };
     case 6:
       return {
         subject: "Should I stop emailing?",
-        bodyHtml: `<p ${P}>This is my last note for now. If competitive intel isn't a priority, that's completely fine, and I won't email again unless you come back.</p>
-          <p ${P}>If it is, the snapshot tool is always free, and you can reply to this email any time.</p>`,
-        ctaLabel: "Run another snapshot",
-        ctaUrl: snapshotUrl,
+        bodyHtml: `<p ${P}>This is my last note for now. If competitive intel isn't a priority, no problem, and I won't email again unless you come back.</p>
+          <p ${P}>If it is, the 30-day refund means trying it costs you very little. And you can reply to this email any time.</p>`,
+        ctaLabel: "See pricing",
+        ctaUrl: `${appUrl}/pricing`,
       };
   }
 }

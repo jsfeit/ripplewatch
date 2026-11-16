@@ -351,9 +351,9 @@ export function CompetitiveIntelQuiz() {
               <Link href="/contact" className={buttonVariants({ variant: "outline" })}>Questions? Contact us</Link>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Want to see it, not just read about it?{" "}
-              <Link href="/competitor-snapshot" className="font-medium text-primary hover:underline">
-                Get a live snapshot of one real competitor
+              Want to try it instead of reading about it? You get 30 days, and a refund if it&apos;s not for you.{" "}
+              <Link href="/pricing" className="font-medium text-primary hover:underline">
+                See pricing
               </Link>
               .
             </p>

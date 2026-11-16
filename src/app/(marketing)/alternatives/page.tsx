@@ -58,10 +58,10 @@ export default function AlternativesIndexPage() {
           stacks up against each tool
         </Link>
         . Or skip the reading and{" "}
-        <Link href="/competitor-snapshot" className="text-primary hover:underline">
-          run a free snapshot
-        </Link>{" "}
-        on a competitor to see what Ripplewatch would actually catch.
+        <Link href="/pricing" className="text-primary hover:underline">
+          try it for 30 days
+        </Link>
+        . If it&apos;s not for you, the $29 comes back.
       </p>
 
       <div className="mt-8">

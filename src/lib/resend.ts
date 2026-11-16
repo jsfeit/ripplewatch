@@ -264,10 +264,10 @@ export async function sendLeadDripEmail(
         signal to your actual win/loss history so you only hear about the ones that matter to you.
       </p>
       <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
-        You can see it working on your own competitors before creating an account; every plan also comes
-        with a 30-day money-back guarantee, so there's no real risk in trying it for real.
+        Every plan comes with a 30-day money-back guarantee, so there's no real risk in trying it. If it's
+        not for you, the $29 and any balance you haven't used come back.
       </p>`;
-    ctaLabel = "Try it on your competitors";
+    ctaLabel = "See pricing and the refund terms";
   } else {
     subject = promo ? promo.bannerText : "One last look at Ripplewatch";
     body = `<p style="color:#3a3a3a;font-size:14px;line-height:1.6;">

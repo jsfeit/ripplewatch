@@ -46,9 +46,9 @@ export default function CompetitiveIntelligenceQuizPage() {
         </dl>
       </div>
       <p className="mt-10 text-center text-sm text-muted-foreground">
-        Want proof, not a self-assessment?{" "}
-        <Link href="/competitor-snapshot" className="font-medium text-primary hover:underline">
-          Get a live snapshot of one real competitor
+        Want to try the real thing? It&apos;s $29 a month, refundable for 30 days.{" "}
+        <Link href="/pricing" className="font-medium text-primary hover:underline">
+          See pricing
         </Link>
         .
       </p>

@@ -13,7 +13,7 @@ export default function NotFound() {
     { href: "/connect", label: "Product", note: "Momentum scores checked against your deals" },
     { href: "/compare", label: "Compare", note: "Ripplewatch against Crayon, Klue and others" },
     { href: "/blog", label: "Blog", note: "Notes on competitive intelligence and win/loss" },
-    { href: "/competitor-snapshot", label: "Free competitor snapshot", note: "A one-time read on any competitor" },
+    { href: "/pricing", label: "Pricing", note: "$29 a month, refundable for 30 days" },
   ];
   return (
     <div className="flex min-h-screen flex-col">

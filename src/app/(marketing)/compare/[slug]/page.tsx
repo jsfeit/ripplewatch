@@ -62,8 +62,8 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
       a: `Ripplewatch publishes its price: $${CONNECT_BASE_FEE_USD} per month plus a prepaid balance (from $${CONNECT_MIN_FUNDING_USD}) that pays for usage, with unused balance refundable. For ${entry.name}'s current pricing, check ${entry.domain}.`,
     },
     {
-      q: `Can I see Ripplewatch work on ${entry.name} before signing up?`,
-      a: `Yes. The free competitor snapshot reads ${entry.domain}'s pricing page, job board and recent news with no account.`,
+      q: `Is there a risk in trying Ripplewatch instead of ${entry.name}?`,
+      a: `Very little. The $${CONNECT_BASE_FEE_USD} platform fee and any balance you haven't used are refundable within 30 days. Only usage you've already spent isn't.`,
     },
   ];
 
