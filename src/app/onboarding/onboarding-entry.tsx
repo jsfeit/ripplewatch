@@ -61,7 +61,6 @@ export function OnboardingEntry({
       <ConnectPurchase
         initiallySignedIn={initiallySignedIn}
         pendingCompanyName={pendingCompanyName}
-        skipRead={fromAssistant}
       />
     </div>
   );
