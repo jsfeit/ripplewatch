@@ -10,7 +10,6 @@ import { createClient } from "@/lib/supabase/client";
 import { trackEvent } from "@/lib/analytics";
 import { readStoredUtm } from "@/components/utm-capture";
 import { GoogleButton, OrDivider } from "@/components/auth/google-button";
-import { LiveReadStep } from "@/components/marketing/live-read-step";
 import { CONNECT_BASE_FEE_USD, CONNECT_DEFAULT_RELOAD_USD } from "@/lib/connect-pricing";
 import { CONNECT_NAME } from "@/lib/connect";
 
@@ -33,11 +32,9 @@ const FUNNEL_DRAFT_KEY = "rw_connect_draft";
 export function ConnectPurchase({
   initiallySignedIn,
   pendingCompanyName,
-  skipRead = false,
 }: {
   initiallySignedIn: boolean;
   // Straight to the account form: for people sent here by an assistant's Connect button.
-  skipRead?: boolean;
   // Set when a signed-in user's account carries a company name from
   // signUp() but has no Connect account yet — i.e. they're back from
   // confirming their email. Read server-side from auth user_metadata
@@ -64,11 +61,6 @@ export function ConnectPurchase({
   const [error, setError] = useState("");
   const [checkout, setCheckout] = useState<number | null>(null);
   const startedRef = useRef(false);
-  // New visitors get one free read on a competitor before the account form.
-  // Anyone already signed in (back from the email link or from Google) has
-  // moved past it.
-  const [phase, setPhase] = useState<"read" | "form">(initiallySignedIn || skipRead ? "form" : "read");
-
   // A visitor who gets as far as the account form and leaves comes back to it, filled in, not to
   // the start. Only the company name and email are kept (never the password), in this browser.
   // Signed-in people don't need this: their place is read off their account.
@@ -81,7 +73,6 @@ export function ConnectPurchase({
         /* eslint-disable react-hooks/set-state-in-effect */
         setCompanyName(saved.companyName);
         if (saved.email) setEmail(saved.email);
-        setPhase("form");
         /* eslint-enable react-hooks/set-state-in-effect */
       }
     } catch {
@@ -89,13 +80,13 @@ export function ConnectPurchase({
     }
   }, [initiallySignedIn]);
   useEffect(() => {
-    if (initiallySignedIn || phase !== "form" || !companyName.trim()) return;
+    if (initiallySignedIn || !companyName.trim()) return;
     try {
       localStorage.setItem(FUNNEL_DRAFT_KEY, JSON.stringify({ companyName: companyName.trim(), email: email.trim() }));
     } catch {
       // Storage blocked: nothing is held, the flow still works.
     }
-  }, [initiallySignedIn, phase, companyName, email]);
+  }, [initiallySignedIn, companyName, email]);
 
   const canSubmit =
     Boolean(companyName.trim()) &&
@@ -282,22 +273,6 @@ export function ConnectPurchase({
           Continue to payment
         </Button>
       </div>
-    );
-  }
-
-  if (phase === "read") {
-    return (
-      <LiveReadStep
-        initialCompany={companyName}
-        onDone={(name) => {
-          if (name) setCompanyName(name);
-          setPhase("form");
-        }}
-        onSkip={(name) => {
-          if (name) setCompanyName(name);
-          setPhase("form");
-        }}
-      />
     );
   }
 

@@ -81,8 +81,8 @@ export default function HomePage() {
             you deals. Just ask in Claude or ChatGPT. Nothing new to log into.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link href="/free-read" className={buttonVariants({ size: "lg" })}>
-              Get a free competitor read
+            <Link href="/onboarding?path=connect" className={buttonVariants({ size: "lg" })}>
+              Try it risk free
               <ArrowRight className="size-4" />
             </Link>
             <Link href="/connect" className={buttonVariants({ size: "lg", variant: "outline" })}>
@@ -90,9 +90,10 @@ export default function HomePage() {
             </Link>
           </div>
           <p className="mt-5 text-sm text-muted-foreground">
-            The read is free and needs no signup. To keep it going: ${CONNECT_BASE_FEE_USD}/month plus a $
-            {CONNECT_DEFAULT_RELOAD_USD} starting balance (${CONNECT_BASE_FEE_USD + CONNECT_DEFAULT_RELOAD_USD} up
-            front), and unused balance is refundable within 30 days.{" "}
+            ${CONNECT_BASE_FEE_USD}/month plus a ${CONNECT_DEFAULT_RELOAD_USD} starting balance ($
+            {CONNECT_BASE_FEE_USD + CONNECT_DEFAULT_RELOAD_USD} up front). If it&apos;s not for you, email us within 30
+            days and we&apos;ll refund the ${CONNECT_BASE_FEE_USD} and any balance you haven&apos;t used. Only usage
+            you&apos;ve already spent isn&apos;t refundable.{" "}
             <Link href="/pricing" className="font-medium text-primary hover:underline">
               See pricing
             </Link>
@@ -260,12 +261,12 @@ export default function HomePage() {
       <section className="mx-auto max-w-3xl px-6 py-20 text-center">
         <h2 className="text-3xl font-semibold tracking-tight">Ready to stop guessing what matters?</h2>
         <p className="mt-3 text-muted-foreground">
-          Get a free read on one competitor in about a minute. Then connect Ripplewatch to Claude or ChatGPT and
-          ask your first question.
+          Connect Ripplewatch to Claude or ChatGPT and ask your first question. If it&apos;s not useful in the first
+          30 days, you get your ${CONNECT_BASE_FEE_USD} back, plus any balance you haven&apos;t used.
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link href="/free-read" className={buttonVariants({ size: "lg" })}>
-            Get a free competitor read
+          <Link href="/onboarding?path=connect" className={buttonVariants({ size: "lg" })}>
+            Try it risk free
             <ArrowRight className="size-4" />
           </Link>
           <Link href="/pricing" className={buttonVariants({ size: "lg", variant: "outline" })}>

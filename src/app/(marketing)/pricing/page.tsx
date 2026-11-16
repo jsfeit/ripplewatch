@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
 import { PricingCards } from "@/components/marketing/pricing-cards";
 import { CONNECT_NAME } from "@/lib/connect";
 import { CONNECT_BASE_FEE_USD } from "@/lib/connect-pricing";
@@ -48,7 +47,8 @@ export default function PricingPage() {
         <h1 className="text-4xl font-semibold tracking-tight">Simple pricing</h1>
         <p className="mt-4 text-muted-foreground">
           No dedicated CI analyst to hire, Ripplewatch is the AI one. Connect it to Claude or ChatGPT and pay only
-          for what you use.
+          for what you use. Try it risk free: if it&apos;s not for you, you get your ${CONNECT_BASE_FEE_USD} back
+          within 30 days.
         </p>
       </div>
 
@@ -68,22 +68,6 @@ export default function PricingPage() {
           </Link>
           .
         </p>
-      </div>
-
-      <div className="mx-auto mt-8 max-w-2xl rounded-xl border border-border bg-secondary/40 p-8 text-center">
-        <h3 className="text-lg font-semibold">Want to see it work first?</h3>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Run the free competitor snapshot to see what Ripplewatch reads about any competitor, no signup. When you
-          want it inside Claude or ChatGPT, {CONNECT_NAME} takes a couple of minutes to connect.
-        </p>
-        <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link href="/free-read" className={buttonVariants()}>
-            Get a free competitor read
-          </Link>
-          <Link href="/competitor-snapshot" className={buttonVariants({ variant: "outline" })}>
-            Try the free snapshot
-          </Link>
-        </div>
       </div>
     </div>
   );
