@@ -181,8 +181,8 @@ export default async function AlternativePage({ params }: { params: Promise<{ sl
               <span className="text-primary">·</span>
               <span>
                 <span className="font-medium text-foreground">Fast, self-serve setup</span>: you should be
-                able to see it working on your own competitors before deciding whether to switch, not sit
-                through a sales call first.
+                able to sign up yourself and be running on your own competitors in minutes, with no sales
+                call first.
               </span>
             </li>
             <li className="flex gap-2">
@@ -194,8 +194,8 @@ export default async function AlternativePage({ params }: { params: Promise<{ sl
             </li>
           </ul>
           <p className="mt-3 leading-relaxed text-muted-foreground">
-            Ripplewatch is built around all three: try it on your own competitors first, no account required
-            until you decide it&apos;s worth it.
+            Ripplewatch is built around all three, and if it&apos;s not for you the $29 comes back within 30
+            days.
           </p>
         </div>
       </div>
@@ -214,9 +214,9 @@ export default async function AlternativePage({ params }: { params: Promise<{ sl
 
       <div className="mt-16 rounded-xl border border-dashed border-border p-6 text-center">
         <p className="text-sm text-muted-foreground">
-          Want to see it work on {entry.name} itself, right now, no signup?{" "}
-          <Link href="/competitor-snapshot" className="font-medium text-primary hover:underline">
-            Run a free snapshot on {entry.domain}
+          Not sure yet? You get 30 days to decide, and the $29 plus any balance you haven&apos;t used comes back if it&apos;s not for you.{" "}
+          <Link href="/pricing" className="font-medium text-primary hover:underline">
+            See pricing and the refund terms
           </Link>
           .
         </p>

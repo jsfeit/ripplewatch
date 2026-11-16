@@ -22,7 +22,6 @@ const COLUMNS = [
       { href: "/connect", label: "Overview" },
       { href: "/how-it-works", label: "How it works" },
       { href: "/pricing", label: "Pricing" },
-      { href: "/competitor-snapshot", label: "Competitor Snapshot" },
     ],
   },
   {
