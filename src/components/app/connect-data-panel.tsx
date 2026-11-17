@@ -1,5 +1,6 @@
 "use client";
 
+import { forAssistant } from "@/lib/first-prompts";
 import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Copy, Loader2 } from "lucide-react";
@@ -102,7 +103,7 @@ export function ConnectDataPanel({
 
   async function copyPrompt(text: string) {
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(forAssistant(text));
       setCopiedPrompt(text);
       setTimeout(() => setCopiedPrompt(null), 1800);
     } catch {

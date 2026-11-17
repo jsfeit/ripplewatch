@@ -31,6 +31,14 @@ export const DEALS_PROMPT =
 
 const USING = "Using Ripplewatch: ";
 
+// What actually gets copied or sent to an assistant. A plain question ("What changed at Acme?") is read by
+// Claude or ChatGPT as a general question and answered from the web; starting with "Using Ripplewatch:" is
+// what makes it reach for the connected tools. Prompts that already start that way are left alone.
+export function forAssistant(text: string): string {
+  const t = text.trim();
+  return /^using ripplewatch\b/i.test(t) ? t : `${USING}${t}`;
+}
+
 function clean(names: string[]): string[] {
   return names.map((n) => n.trim()).filter(Boolean);
 }

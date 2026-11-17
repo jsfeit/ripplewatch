@@ -1,5 +1,6 @@
 "use client";
 
+import { forAssistant } from "@/lib/first-prompts";
 import { useEffect, useState, type ReactNode } from "react";
 import { Check, Copy, ExternalLink, Loader2 } from "lucide-react";
 import { LINK_CLASS, openInChoices } from "@/components/app/first-questions";
@@ -85,7 +86,7 @@ export function AssistantHandoff({
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(prompt);
+      await navigator.clipboard.writeText(forAssistant(prompt));
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
@@ -115,7 +116,7 @@ export function AssistantHandoff({
         <div className="flex flex-wrap items-center gap-2">
           {open.claude ? (
             <a
-              href={`https://claude.ai/new?q=${encodeURIComponent(prompt)}`}
+              href={`https://claude.ai/new?q=${encodeURIComponent(forAssistant(prompt))}`}
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => trackEvent("setup_data_handoff_opened", { assistant: "claude", kind })}
@@ -126,7 +127,7 @@ export function AssistantHandoff({
           ) : null}
           {open.chatgpt ? (
             <a
-              href={`https://chatgpt.com/?q=${encodeURIComponent(prompt)}`}
+              href={`https://chatgpt.com/?q=${encodeURIComponent(forAssistant(prompt))}`}
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => trackEvent("setup_data_handoff_opened", { assistant: "chatgpt", kind })}
