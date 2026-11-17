@@ -5,10 +5,10 @@ import { Check, Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { CopyPromptButton } from "@/components/app/copy-prompt-button";
-import { periodChurn, type MetricPeriod, type MetricsRead } from "@/lib/customer-metrics";
+import { ATTACH_PROMPT, isTooDetailed, periodChurn, TOO_DETAILED_MESSAGE, type MetricPeriod, type MetricsRead } from "@/lib/customer-metrics";
 import { cn } from "@/lib/utils";
 
-const MAX_FILE_BYTES = 200_000;
+const MAX_FILE_BYTES = 100_000;
 
 // What the server adds once numbers are saved: whether churn started rising near a competitor's move,
 // and how it sits against a published range. Both arrive behind the scenes; nothing here asks for more.
@@ -30,7 +30,6 @@ function monthLabel(periodStart: string): string {
   return new Date(`${periodStart}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
 }
 
-const PULL_PROMPT = "Pull my last 12 months of churn, customers and revenue from my billing tool and add them to Ripplewatch. Tell me what you read first.";
 const SURVEY_PROMPT = (names: string[]) =>
   `Draft a cancellation survey for my company using Ripplewatch. Three questions, under 30 seconds, plain language. Offer my tracked competitors${names.length > 0 ? ` (${names.join(", ")})` : ""} as answers, and include "I use both" and "I'm not switching". Tell me where to put it, and I'll place it myself. When answers come in, count them by answer and log the totals to Ripplewatch.`;
 
@@ -57,6 +56,8 @@ export function ChurnDataCard({
   const [read, setRead] = useState<MetricsRead | null>(null);
   const [insight, setInsight] = useState<Insight | null>(null);
   const [keptAsNote, setKeptAsNote] = useState(false);
+  // Too long, or a row per customer: sent to the customer's own assistant, which can count properly.
+  const [tooMuch, setTooMuch] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Show what is already saved, so coming back here shows the read instead of an empty box.
@@ -80,9 +81,14 @@ export function ChurnDataCard({
   // the earlier ones, so reading it again after a fix is safe.
   async function submit(source: string) {
     if (source.trim().length < 8) return;
-    setBusy(true);
     setError("");
     setKeptAsNote(false);
+    setTooMuch(false);
+    if (isTooDetailed(source)) {
+      setTooMuch(true);
+      return;
+    }
+    setBusy(true);
     try {
       const preview = await fetch("/api/connect/metrics/preview", {
         method: "POST",
@@ -90,6 +96,10 @@ export function ChurnDataCard({
         body: JSON.stringify({ text: source }),
       });
       const found = await preview.json().catch(() => ({}));
+      if (preview.status === 422 && found.code === "use_assistant") {
+        setTooMuch(true);
+        return;
+      }
       if (preview.status === 422) {
         // No months in it: keep it as a note about customers instead of rejecting it, where there is
         // somewhere to keep it. Otherwise say so rather than pretend it was saved.
@@ -129,7 +139,9 @@ export function ChurnDataCard({
   async function onFile(file: File | undefined) {
     if (!file) return;
     if (file.size > MAX_FILE_BYTES) {
-      setError("That file is too big. Paste just the monthly rows, or the last 12 to 24 months.");
+      setError("");
+      setKeptAsNote(false);
+      setTooMuch(true);
       return;
     }
     const content = await file.text();
@@ -146,6 +158,7 @@ export function ChurnDataCard({
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={4}
+        className="max-h-44 overflow-y-auto"
         maxLength={20000}
         aria-label="Your churn, in your own words or as a table"
         placeholder={"Churn was 4.8% in September and 6.2% in October.\nOr paste a table from your billing tool, any layout."}
@@ -173,6 +186,12 @@ export function ChurnDataCard({
       </div>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {tooMuch ? (
+        <div role="alert" className="space-y-2 rounded-md border border-border bg-secondary/30 p-3">
+          <p className="text-sm">{TOO_DETAILED_MESSAGE}</p>
+          <CopyPromptButton text={ATTACH_PROMPT} label="Copy the prompt" />
+        </div>
+      ) : null}
       {keptAsNote ? (
         <p className="flex items-center gap-1.5 text-sm text-primary">
           <Check className="size-4" />
@@ -249,12 +268,17 @@ export function ChurnDataCard({
         </div>
       ) : null}
 
-      <p className="text-xs text-muted-foreground">
-        Use Stripe, Shopify or Intercom with Claude or ChatGPT? Your assistant can pull this for you, so there&apos;s nothing to connect here.
-      </p>
-      <div className="flex flex-wrap gap-2">
-        <CopyPromptButton text={PULL_PROMPT} label="Copy a prompt to pull it" />
-      </div>
+      {tooMuch ? null : (
+        <>
+          <p className="text-xs text-muted-foreground">
+            Have a big export or a list of customers? Attach it in Claude or ChatGPT instead: it can count the rows properly, then add the
+            months here. It can pull from Stripe, Shopify or Intercom too, so there&apos;s nothing to connect.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <CopyPromptButton text={ATTACH_PROMPT} label="Copy a prompt for it" />
+          </div>
+        </>
+      )}
 
       <details open={rising} className="rounded-md border border-border p-3">
         <summary className="cursor-pointer select-none text-sm font-medium">

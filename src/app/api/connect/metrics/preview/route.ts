@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAccount } from "@/lib/route-account";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { analyzeMetrics } from "@/lib/customer-metrics";
+import { analyzeMetrics, isTooDetailed, TOO_DETAILED_MESSAGE } from "@/lib/customer-metrics";
 import { extractMetricPeriods } from "@/lib/customer-metrics-llm";
 
 // Reads pasted or uploaded churn and growth numbers in any layout and shows the read, without
@@ -17,6 +17,11 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const text = typeof body?.text === "string" ? body.text.trim() : "";
   if (text.length < 8) return NextResponse.json({ error: "Paste your churn numbers first." }, { status: 400 });
+
+  // Too long, or a row per customer: hand it to the customer's assistant instead of guessing at counts.
+  if (isTooDetailed(text)) {
+    return NextResponse.json({ error: TOO_DETAILED_MESSAGE, code: "use_assistant" }, { status: 422 });
+  }
 
   const periods = await extractMetricPeriods(text, auth.accountId);
   if (periods.length === 0) {
