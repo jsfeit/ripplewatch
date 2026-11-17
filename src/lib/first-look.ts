@@ -1,6 +1,8 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
+import { starterPrompts, type PromptContext } from "@/lib/first-prompts";
+import { parseAudience } from "@/lib/sales-motion";
 import { computeNextBestActions, type NextBestActions } from "@/lib/next-best-action";
 
 type Client = SupabaseClient<Database>;
@@ -21,24 +23,8 @@ export type FirstLook = {
 // account's own competitor names so the very first thing they try already
 // sounds like their market, not a demo. Deterministic on purpose: it has to
 // be instant and identical between the assistant and the web app.
-export function buildStarterPrompts(competitors: string[], hasWinLoss: boolean): string[] {
-  const [first, second] = competitors;
-  if (!first) {
-    return [
-      "Start tracking the competitor we lose deals to most.",
-      "What can you tell me about my competitors?",
-    ];
-  }
-  const prompts = [
-    `What changed at ${first} in the last two weeks, and does it matter to us?`,
-    "Which of my competitors is heating up the most right now?",
-    second
-      ? `How does ${first}'s pricing compare to ${second}'s?`
-      : `Should we be worried about ${first}'s latest move?`,
-    `Write a short battlecard I can use when a prospect brings up ${first}.`,
-  ];
-  if (!hasWinLoss) prompts.push(`I want to log a recent deal I won or lost against ${first}.`);
-  return prompts;
+export function buildStarterPrompts(ctx: PromptContext, has: { deals: boolean; churn: boolean }): string[] {
+  return starterPrompts(ctx, has);
 }
 
 // What a new customer needs to see in their first few minutes: that the
@@ -47,8 +33,8 @@ export function buildStarterPrompts(competitors: string[], hasWinLoss: boolean):
 // start_here tool and the Settings "first look" card so both say the same
 // thing.
 export async function loadFirstLook(supabase: Client, accountId: string): Promise<FirstLook> {
-  const [{ data: account }, { data: competitors }, { data: run }, next, { count: winLossCount }] = await Promise.all([
-    supabase.from("accounts").select("name").eq("id", accountId).single(),
+  const [{ data: account }, { data: competitors }, { data: run }, next, { count: winLossCount }, { count: churnMonths }] = await Promise.all([
+    supabase.from("accounts").select("name, sells_to").eq("id", accountId).single(),
     supabase.from("competitors").select("id, name").eq("account_id", accountId).order("created_at", { ascending: true }),
     supabase
       .from("crawl_runs")
@@ -59,6 +45,7 @@ export async function loadFirstLook(supabase: Client, accountId: string): Promis
       .maybeSingle(),
     computeNextBestActions(supabase, accountId),
     supabase.from("competitor_win_loss").select("id", { count: "exact", head: true }).eq("account_id", accountId),
+    supabase.from("customer_metrics").select("id", { count: "exact", head: true }).eq("account_id", accountId),
   ]);
 
   const competitorRows = competitors ?? [];
@@ -96,8 +83,8 @@ export async function loadFirstLook(supabase: Client, accountId: string): Promis
       date: s.occurred_on,
     })),
     starterPrompts: buildStarterPrompts(
-      competitorRows.map((c) => c.name),
-      (winLossCount ?? 0) > 0
+      { company: account?.name ?? null, sellsTo: parseAudience(account?.sells_to), competitors: competitorRows.map((c) => c.name) },
+      { deals: (winLossCount ?? 0) > 0, churn: (churnMonths ?? 0) > 0 }
     ),
     hasDealHistory: (winLossCount ?? 0) > 0,
     next,

@@ -10,6 +10,7 @@ import { CHATGPT_PLUGIN_URL, CONNECT_MCP_URL } from "@/lib/connect";
 import { timeAgo } from "@/lib/date";
 import { ONBOARDING_VALUE } from "@/lib/onboarding-value";
 import { FirstPromptPicker } from "@/components/app/first-questions";
+import type { PromptContext } from "@/lib/first-prompts";
 import { cn } from "@/lib/utils";
 
 // Connecting the assistant, the step that makes the purchase actually do
@@ -21,7 +22,7 @@ export function McpConnectStep({
   connectedAssistants,
   stepNumber,
   totalSteps,
-  firstQuestionCompetitor,
+  promptContext,
   onContinue,
   onSkip,
   skipping,
@@ -33,8 +34,8 @@ export function McpConnectStep({
   // Where this sits in the wizard, so the header can't fall behind when a step is added.
   stepNumber: number;
   totalSteps: number;
-  // The competitor the first question is about (the one they named earlier).
-  firstQuestionCompetitor: string | null;
+  // Who this is for, so the first things to try are about their company, their competitors and how they sell.
+  promptContext: PromptContext;
   onContinue: () => void;
   // Finish setup now, leaving deals and Slack for later.
   onSkip: () => void;
@@ -164,7 +165,7 @@ export function McpConnectStep({
         </p>
       </CardHeader>
       <CardContent>
-        {connected ? <FirstPromptPicker competitor={firstQuestionCompetitor} assistants={connectedAssistants} /> : null}
+        {connected ? <FirstPromptPicker context={promptContext} assistants={connectedAssistants} /> : null}
         {connected ? null : (
         <Tabs defaultValue="claude">
           <TabsList>
