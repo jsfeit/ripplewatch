@@ -7,7 +7,7 @@ import { CONNECT_EXAMPLES, CONNECT_FEATURES, CONNECT_NAME, CONNECT_TAGLINE } fro
 import { CONNECT_BASE_FEE_USD, CONNECT_MIN_FUNDING_USD } from "@/lib/connect-pricing";
 
 const description =
-  "Every competitor gets a Momentum score checked against your won and lost deals, inside Claude and ChatGPT. $29/mo plus usage.";
+  "Your assistant answers once. Ripplewatch watches every day and scores each competitor's Momentum against your deals, in Claude and ChatGPT. $29/mo plus usage.";
 
 export const metadata = {
   title: "Competitive intelligence in Claude and ChatGPT",
@@ -64,10 +64,11 @@ export default function ConnectPage() {
           <Sparkles className="size-3.5" />
           New
         </span>
-        <h1 className="mt-4 text-4xl font-semibold tracking-tight">Know which competitors are costing you deals</h1>
+        <h1 className="mt-4 text-4xl font-semibold tracking-tight text-balance">Your assistant answers once. Ripplewatch keeps watching.</h1>
         <p className="mt-4 text-muted-foreground">
-          {CONNECT_TAGLINE} Ask what your competitors did this week, tell it how your deals went, and it scores each
-          competitor&apos;s Momentum against your wins and losses, all in the chat, no dashboard to remember to open.
+          {CONNECT_TAGLINE} Ask what your competitors did this week, tell it how your deals went or how many customers
+          you&apos;re losing, and Ripplewatch checks each move against that. It&apos;s all in the chat, with no
+          dashboard to remember to open.
         </p>
         <div className="mt-8 flex justify-center">
           <Link href={GET_STARTED} className={buttonVariants({ size: "lg" })}>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Radar, Sparkles, Send, Waves, CircleDashed } from "lucide-react";
+import { ArrowRight, Brain, Eye, Gauge, Radar, Sparkles, Send, Waves, CircleDashed } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/panel";
@@ -26,21 +26,47 @@ export const metadata = { alternates: { canonical: "/" } };
 // unscored signals render in the actual product.
 const PRICE_HIKE_TITLE = "Northlane raised its Growth plan from $149 to $199/mo";
 
+// The three things a chat on its own can't do, in plain terms. Cadence matches the crawler: pricing
+// pages and job boards are checked daily, the slower sources (news searches, reviews, buzz, ads) weekly.
+const WHAT_KEEPS_RUNNING = [
+  {
+    icon: Brain,
+    title: "It remembers",
+    chat: "Starts fresh each time. Last month's pricing page isn't saved anywhere, so it can't say what changed.",
+    ripplewatch:
+      "Keeps what it saw each time it looked, plus your won and lost deals and your churn, so it can say what changed and tie it to what you lost.",
+  },
+  {
+    icon: Eye,
+    title: "It watches",
+    chat: "Only looks when you ask, so a price cut on Tuesday waits until you think to check.",
+    ripplewatch:
+      "Checks pricing pages and job boards every day, and news, reviews, buzz and ads every week, then flags what's worth your attention.",
+  },
+  {
+    icon: Gauge,
+    title: "It scores",
+    chat: "Gives you a summary that reads a little different every time you ask.",
+    ripplewatch:
+      "Turns up to ten inputs into one Momentum score per competitor, calculated the same way each time, so you can see who's heating up and who's cooling.",
+  },
+];
+
 const STEPS = [
   {
     icon: Radar,
-    title: "Connect your context",
-    body: "In Claude or ChatGPT, tell it your positioning, your ICP, and why deals don't close and customers churn, not simply who direct competitors are.",
+    title: "Tell your assistant about your business",
+    body: "In Claude or ChatGPT, give it your positioning, who buys, and why deals are lost and customers leave. Say it in a sentence or attach a file.",
   },
   {
     icon: Sparkles,
-    title: "An analyst reads every signal",
-    body: "News, pricing, job postings, funding, and sales-call mentions, checked against your context by an analyst that already knows your business, not a keyword scanner counting mentions.",
+    title: "Ripplewatch keeps watching",
+    body: "It checks pricing pages and job boards every day, plus press, reviews and product changes, against what you told it. It keeps the history, so it knows what changed.",
   },
   {
     icon: Send,
-    title: "You get the read, not a pile of alerts",
-    body: "Every competitor gets a Momentum score (Heating up, Steady, or Cooling) built from hiring, pricing, press, and product activity. Just ask for it.",
+    title: "Ask for the read",
+    body: "Every competitor gets a Momentum score (Heating up, Steady or Cooling). Ask in Claude or ChatGPT, or get a Slack alert when something big moves.",
   },
 ];
 
@@ -51,7 +77,7 @@ const STRUCTURED_DATA = {
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   description:
-    "Ripplewatch gives every competitor a Momentum score (Heating up, Steady or Cooling) and checks each one against your own won and lost deals. It tracks pricing, hiring, press and product changes, works inside Claude, ChatGPT and other AI assistants over MCP, and tells product marketing and revenue teams which competitors are actually costing them deals.",
+    "Ripplewatch is the memory and the watcher your AI assistant doesn't have. It keeps your won and lost deals and your churn, checks competitors' pricing pages and job boards every day along with press, reviews and product changes, and gives each competitor a Momentum score (Heating up, Steady or Cooling) scored against your own data. It works inside Claude, ChatGPT and other AI assistants over MCP.",
   offers: [
     { "@type": "Offer", name: CONNECT_NAME, price: String(CONNECT_BASE_FEE_USD), priceCurrency: "USD" },
   ],
@@ -71,14 +97,14 @@ export default function HomePage() {
             Now inside Claude and ChatGPT
           </span>
           <h1 className="mt-6 text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-            Every competitor gets a Momentum score,
+            Your assistant answers once.
             <br />
-            <span className="text-primary">checked against the deals you won and lost.</span>
+            <span className="text-primary">Ripplewatch watches every day.</span>
           </h1>
           <p className="mx-auto mt-6 max-w-3xl text-lg leading-relaxed text-muted-foreground text-balance">
-            Heating up, Steady or Cooling, built from their pricing, hiring, press and product changes every day. Then
-            Ripplewatch checks each one against your own win/loss history, so you see which moves are actually costing
-            you deals. Just ask in Claude or ChatGPT. Nothing new to log into.
+            It keeps your deals and your churn, checks every competitor&apos;s pricing, hiring, press and product
+            changes against them, and gives each competitor a Momentum score: Heating up, Steady or Cooling. Ask in
+            Claude or ChatGPT. Nothing new to log into.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link href="/onboarding?path=connect" className={buttonVariants({ size: "lg" })}>
@@ -90,10 +116,8 @@ export default function HomePage() {
             </Link>
           </div>
           <p className="mt-5 text-sm text-muted-foreground">
-            ${CONNECT_BASE_FEE_USD}/month plus a ${CONNECT_DEFAULT_RELOAD_USD} starting balance ($
-            {CONNECT_BASE_FEE_USD + CONNECT_DEFAULT_RELOAD_USD} up front). If it&apos;s not for you, email us within 30
-            days and we&apos;ll refund the ${CONNECT_BASE_FEE_USD} and any balance you haven&apos;t used. Only usage
-            you&apos;ve already spent isn&apos;t refundable.{" "}
+            {/* One string, so a line break can't swallow the space after a price. */}
+            {`$${CONNECT_BASE_FEE_USD}/month plus a $${CONNECT_DEFAULT_RELOAD_USD} starting balance ($${CONNECT_BASE_FEE_USD + CONNECT_DEFAULT_RELOAD_USD} up front). If it's not for you, email us within 30 days and we'll refund the $${CONNECT_BASE_FEE_USD} and any balance you haven't used. Only usage you've already spent isn't refundable.`}{" "}
             <Link href="/pricing" className="font-medium text-primary hover:underline">
               See pricing
             </Link>
@@ -103,6 +127,32 @@ export default function HomePage() {
         <p className="mt-4 text-center text-xs text-muted-foreground">
           Illustrative example. Company names and scores are made up.
         </p>
+      </section>
+
+      <section className="border-t border-border">
+        <div className="mx-auto max-w-6xl px-6 py-20">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-semibold tracking-tight text-balance">A chat answers once. Here&apos;s what keeps running.</h2>
+            <p className="mt-3 text-muted-foreground">
+              Claude and ChatGPT are good at reading something once. They don&apos;t keep a history, and they don&apos;t
+              look unless you ask. That&apos;s the part Ripplewatch does, inside the assistant you already use.
+            </p>
+          </div>
+          <div className="mt-12 grid gap-6 sm:grid-cols-3">
+            {WHAT_KEEPS_RUNNING.map((item) => (
+              <Panel key={item.title} className="p-6">
+                <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <item.icon className="size-5" />
+                </div>
+                <h3 className="mt-4 text-lg font-medium">{item.title}</h3>
+                <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">A chat on its own</p>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{item.chat}</p>
+                <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-primary">With Ripplewatch</p>
+                <p className="mt-1 text-sm leading-relaxed">{item.ripplewatch}</p>
+              </Panel>
+            ))}
+          </div>
+        </div>
       </section>
 
       <WorksWithYourAI />

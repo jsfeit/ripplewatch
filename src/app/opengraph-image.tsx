@@ -52,11 +52,11 @@ export default function OpengraphImage() {
             maxWidth: 980,
           }}
         >
-          <div style={{ display: "flex" }}>Competitor Momentum scores,</div>
-          <div style={{ display: "flex", color: "#0d7d6f" }}>checked against your deals.</div>
+          <div style={{ display: "flex" }}>Your assistant answers once.</div>
+          <div style={{ display: "flex", color: "#0d7d6f" }}>Ripplewatch watches every day.</div>
         </div>
         <div style={{ display: "flex", marginTop: 40, fontSize: 26, color: "#66756e" }}>
-          Your competitive analyst inside Claude or ChatGPT. $29/mo plus usage.
+          Competitor Momentum inside Claude or ChatGPT. $29/mo plus usage.
         </div>
       </div>
     ),

@@ -74,7 +74,7 @@ export function SiteFooter() {
               Ripplewatch
             </div>
             <p className="max-w-[22ch] text-sm text-muted-foreground">
-              Competitor Momentum scores, checked against your won and lost deals.
+              Competitor Momentum, watched every day and scored against your deals.
             </p>
             <Link
               href="/login"

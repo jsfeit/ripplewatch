@@ -10,7 +10,7 @@ export const metadata = { title: "Page not found", robots: { index: false, follo
 // This keeps the site's header and footer and points to the pages people actually want.
 export default function NotFound() {
   const links = [
-    { href: "/connect", label: "Product", note: "Momentum scores checked against your deals" },
+    { href: "/connect", label: "Product", note: "Competitor Momentum, watched every day" },
     { href: "/compare", label: "Compare", note: "Ripplewatch against Crayon, Klue and others" },
     { href: "/blog", label: "Blog", note: "Notes on competitive intelligence and win/loss" },
     { href: "/pricing", label: "Pricing", note: "$29 a month, refundable for 30 days" },
