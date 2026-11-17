@@ -1727,6 +1727,73 @@ async function ensureReviewUrls(supabase: AdminClient, competitor: Competitor): 
   return updated ?? competitor;
 }
 
+// --- Consumer review sources (App Store, Trustpilot) -----------------------
+
+// Consumer products are rated on the App Store and Trustpilot, not G2 and Capterra. Only looked at
+// for accounts that sell to consumers (or both), and never for a competitor known to sell only to
+// businesses. Nothing here asks the customer for anything.
+const ITUNES_TIMEOUT_MS = 8_000;
+
+function registrableHost(host: string): string {
+  return host.toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").split(/[/?#]/)[0];
+}
+
+// The App Store listing for a competitor, found through Apple's own search API. Accepts a result only
+// when its seller site matches the competitor's domain or its name matches exactly, so a lookalike app
+// is never mistaken for the competitor. Returns null when nothing matches confidently.
+export async function findAppStoreId(name: string, domain: string | null): Promise<string | null> {
+  try {
+    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(name)}&entity=software&country=us&limit=8`, {
+      signal: AbortSignal.timeout(ITUNES_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { results?: { trackId?: number; trackName?: string; sellerName?: string; artistName?: string; sellerUrl?: string }[] };
+    const wanted = domain ? registrableHost(domain) : null;
+    const lower = name.trim().toLowerCase();
+    for (const r of data.results ?? []) {
+      if (!r.trackId) continue;
+      const seller = r.sellerUrl ? registrableHost(r.sellerUrl) : null;
+      const domainMatch = Boolean(wanted && seller && (seller === wanted || seller.endsWith(`.${wanted}`) || wanted.endsWith(`.${seller}`)));
+      const nameMatch = [r.trackName, r.sellerName, r.artistName].some((n) => n && n.trim().toLowerCase() === lower);
+      if (domainMatch || (nameMatch && !wanted)) return String(r.trackId);
+    }
+  } catch {
+    // Apple's API unreachable: try again on a later crawl.
+  }
+  return null;
+}
+
+export async function fetchAppStoreStats(appId: string): Promise<{ rating: number | null; reviewCount: number | null }> {
+  try {
+    const res = await fetch(`https://itunes.apple.com/lookup?id=${encodeURIComponent(appId)}&country=us`, { signal: AbortSignal.timeout(ITUNES_TIMEOUT_MS) });
+    if (!res.ok) return { rating: null, reviewCount: null };
+    const data = (await res.json()) as { results?: { averageUserRating?: number; userRatingCount?: number }[] };
+    const r = data.results?.[0];
+    const rating = typeof r?.averageUserRating === "number" && r.averageUserRating > 0 && r.averageUserRating <= 5 ? r.averageUserRating : null;
+    return { rating, reviewCount: typeof r?.userRatingCount === "number" ? r.userRatingCount : null };
+  } catch {
+    return { rating: null, reviewCount: null };
+  }
+}
+
+// Whether the consumer sources apply to this competitor, and sets them up the first time. The App
+// Store id is stored as "" once looked for and not found, so a miss is not repeated on every crawl.
+async function ensureConsumerSources(supabase: AdminClient, competitor: Competitor): Promise<Competitor> {
+  if (competitor.sells_to === "business") return competitor;
+  const { data: account } = await supabase.from("accounts").select("sells_to").eq("id", competitor.account_id).single();
+  if (account?.sells_to !== "consumer" && account?.sells_to !== "both") return competitor;
+
+  const patch: { appstore_id?: string; trustpilot_url?: string } = {};
+  if (competitor.appstore_id === null) patch.appstore_id = (await findAppStoreId(competitor.name, competitor.domain)) ?? "";
+  if (competitor.trustpilot_url === null && competitor.domain) {
+    const host = registrableHost(competitor.domain);
+    if (host) patch.trustpilot_url = `https://www.trustpilot.com/review/${host}`;
+  }
+  if (Object.keys(patch).length === 0) return competitor;
+  const { data: updated } = await supabase.from("competitors").update(patch).eq("id", competitor.id).select("*").single();
+  return updated ?? { ...competitor, ...patch };
+}
+
 // Structured current-state read (rating + review count per source), weekly-
 // gated like the homepage check — ratings move slowly, so a daily Claude
 // call here would mostly burn cost re-reading the same number. The rating
@@ -1734,8 +1801,9 @@ async function ensureReviewUrls(supabase: AdminClient, competitor: Competitor): 
 // (weighted toward whichever source has more reviews when both exist,
 // since a 4.8 from 12 reviews and a 4.2 from 4,000 shouldn't count equally).
 export async function checkReviewSentiment(supabase: AdminClient, competitor: Competitor): Promise<void> {
-  const withUrls = await ensureReviewUrls(supabase, competitor);
-  if (!withUrls.g2_url && !withUrls.capterra_url) return;
+  const withUrls = await ensureConsumerSources(supabase, await ensureReviewUrls(supabase, competitor));
+  const appStoreId = withUrls.appstore_id || null;
+  if (!withUrls.g2_url && !withUrls.capterra_url && !appStoreId && !withUrls.trustpilot_url) return;
 
   const { data: existing } = await supabase
     .from("competitor_reviews")
@@ -1747,23 +1815,28 @@ export async function checkReviewSentiment(supabase: AdminClient, competitor: Co
     if (daysSinceCheck < REVIEW_CHECK_INTERVAL_DAYS) return;
   }
 
-  const [g2Text, capterraText] = await Promise.all([
+  const [g2Text, capterraText, trustpilotText] = await Promise.all([
     withUrls.g2_url ? fetchPageText(withUrls.g2_url).catch(() => null) : Promise.resolve(null),
     withUrls.capterra_url ? fetchPageText(withUrls.capterra_url).catch(() => null) : Promise.resolve(null),
+    withUrls.trustpilot_url ? fetchPageText(withUrls.trustpilot_url).catch(() => null) : Promise.resolve(null),
   ]);
 
-  const [g2Stats, capterraStats] = await Promise.all([
+  const [g2Stats, capterraStats, trustpilotStats, appStoreStats] = await Promise.all([
     g2Text ? extractReviewStats(g2Text, withUrls.account_id) : Promise.resolve({ rating: null, reviewCount: null }),
     capterraText
       ? extractReviewStats(capterraText, withUrls.account_id)
       : Promise.resolve({ rating: null, reviewCount: null }),
+    trustpilotText
+      ? extractReviewStats(trustpilotText, withUrls.account_id)
+      : Promise.resolve({ rating: null, reviewCount: null }),
+    appStoreId ? fetchAppStoreStats(appStoreId) : Promise.resolve({ rating: null, reviewCount: null }),
   ]);
 
   // Both sources unreachable/unparseable this run (bot-blocked, page
   // structure changed) — leave the existing row alone rather than
   // overwriting good data with nulls, same stance as checkPricingStructure's
   // Claude-failure branch.
-  if (g2Stats.rating === null && capterraStats.rating === null) return;
+  if (g2Stats.rating === null && capterraStats.rating === null && trustpilotStats.rating === null && appStoreStats.rating === null) return;
 
   await supabase.from("competitor_reviews").upsert(
     {
@@ -1772,6 +1845,10 @@ export async function checkReviewSentiment(supabase: AdminClient, competitor: Co
       g2_review_count: g2Stats.reviewCount,
       capterra_rating: capterraStats.rating,
       capterra_review_count: capterraStats.reviewCount,
+      appstore_rating: appStoreStats.rating,
+      appstore_review_count: appStoreStats.reviewCount,
+      trustpilot_rating: trustpilotStats.rating,
+      trustpilot_review_count: trustpilotStats.reviewCount,
       last_checked_at: new Date().toISOString(),
     },
     { onConflict: "competitor_id" }
@@ -1784,6 +1861,10 @@ export async function checkReviewSentiment(supabase: AdminClient, competitor: Co
   if (g2Stats.rating !== null) weightedRatings.push({ rating: g2Stats.rating, weight: g2Stats.reviewCount ?? 1 });
   if (capterraStats.rating !== null)
     weightedRatings.push({ rating: capterraStats.rating, weight: capterraStats.reviewCount ?? 1 });
+  if (trustpilotStats.rating !== null)
+    weightedRatings.push({ rating: trustpilotStats.rating, weight: trustpilotStats.reviewCount ?? 1 });
+  if (appStoreStats.rating !== null)
+    weightedRatings.push({ rating: appStoreStats.rating, weight: appStoreStats.reviewCount ?? 1 });
   const totalWeight = weightedRatings.reduce((sum, r) => sum + r.weight, 0);
   const blendedRating = weightedRatings.reduce((sum, r) => sum + r.rating * r.weight, 0) / totalWeight;
 

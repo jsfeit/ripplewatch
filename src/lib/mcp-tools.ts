@@ -18,7 +18,7 @@ import { loadAllDeals, withDealDate } from "@/lib/deal-store";
 import { addContextNote } from "@/lib/context-notes";
 import { getDealImpactBrief } from "@/lib/deal-impact";
 import { logCallMentions } from "@/lib/call-mentions";
-import { analyzeMetrics, type MetricPeriod } from "@/lib/customer-metrics";
+import { loadChurnInsight } from "@/lib/churn-insight";
 import { cleanPeriods } from "@/lib/customer-metrics-llm";
 import { hasMinimumBalance } from "@/lib/connect-wallet";
 import { assistantLabel, recordAudit, type AuditAction } from "@/lib/audit";
@@ -650,26 +650,49 @@ export function registerRipplewatchTools(server: McpServer) {
         { onConflict: "account_id,segment,period_start" }
       );
       if (error) return failure("Could not save those months. Try again in a moment.");
-      const { data: all } = await supabase
-        .from("customer_metrics")
-        .select("period_start, customers_start, new_customers, cancelled_customers, customers_end, revenue, churn_pct")
-        .eq("account_id", accountId)
-        .eq("segment", segment ?? "consumer")
-        .order("period_start", { ascending: true });
-      const saved: MetricPeriod[] = (all ?? []).map((r) => ({
-        periodStart: r.period_start,
-        customersStart: r.customers_start,
-        newCustomers: r.new_customers,
-        cancelledCustomers: r.cancelled_customers,
-        customersEnd: r.customers_end,
-        revenue: r.revenue,
-        churnPct: r.churn_pct,
-      }));
+      const insight = await loadChurnInsight(supabase, accountId, segment ?? "consumer", { refreshBenchmark: true });
       const next = await computeNextBestActions(supabase, accountId);
       return result(
-        { saved_months: periods.length, read: analyzeMetrics(saved), note: "This shows when churn moved, not why. Say how many months it rests on when you report it." },
+        {
+          saved_months: periods.length,
+          read: insight.read,
+          timing: insight.timing?.sentence ?? null,
+          benchmark: insight.comparison?.sentence ?? null,
+          note: "This shows when churn moved, not why. Say how many months it rests on and that the timing is a lead, not proof, when you report it.",
+        },
         next
       );
+    }
+  );
+
+  server.registerTool(
+    "get_churn_and_growth",
+    {
+      title: "Read churn and growth",
+      description:
+        "What Ripplewatch knows about a company's churn and growth: the read of the monthly numbers it has (whether churn is rising, how fast customers are growing), whether churn started rising near a tracked competitor's pricing or product move, and how the churn rate sits against a published range for that kind of product, with its source. Use it when the user asks whether churn is a problem, why it might be rising, or how they compare to their industry. It shows timing, never cause: say how many months the read rests on and that a competitor move landing nearby is a lead, not proof. If there are no numbers yet, say so and offer log_customer_metrics.",
+      inputSchema: z.object({
+        segment: z.enum(["business", "consumer"]).optional().describe("Which side of the business. Defaults to consumer."),
+      }),
+      annotations: READ_ONLY,
+    },
+    async ({ segment }, ctx) => {
+      const accountId = accountIdFrom(ctx as Ctx);
+      const insight = await loadChurnInsight(createAdminClient(), accountId, segment ?? "consumer");
+      if (!insight.read) {
+        return result({ has_data: false, note: "No churn or growth numbers yet. Offer to read them from the user's billing tool and save them with log_customer_metrics." });
+      }
+      return result({
+        has_data: true,
+        read: insight.read,
+        timing: insight.timing?.sentence ?? null,
+        competitor_moves_nearby: insight.timing?.events ?? [],
+        benchmark: insight.benchmark
+          ? { category: insight.benchmark.category, range_pct: [insight.benchmark.lowPct, insight.benchmark.highPct], source: insight.benchmark.sourceName, link: insight.benchmark.sourceUrl, comparison: insight.comparison?.sentence ?? null }
+          : null,
+        market_growth: insight.marketGrowth,
+        note: "Timing only, not proof of cause. Say how many months this rests on.",
+      });
     }
   );
 
@@ -685,32 +708,19 @@ export function registerRipplewatchTools(server: McpServer) {
     async (_args, ctx) => {
       const accountId = accountIdFrom(ctx as Ctx);
       const supabase = createAdminClient();
-      const [{ data: account }, { data: competitors }, { data: rows }] = await Promise.all([
+      const [{ data: account }, { data: competitors }, insight] = await Promise.all([
         supabase.from("accounts").select("name, sells_to, company_overview").eq("id", accountId).single(),
         supabase.from("competitors").select("name").eq("account_id", accountId).order("created_at", { ascending: true }),
-        supabase
-          .from("customer_metrics")
-          .select("period_start, customers_start, new_customers, cancelled_customers, customers_end, revenue, churn_pct")
-          .eq("account_id", accountId)
-          .eq("segment", "consumer")
-          .order("period_start", { ascending: true }),
+        loadChurnInsight(supabase, accountId, "consumer"),
       ]);
-      const periods: MetricPeriod[] = (rows ?? []).map((r) => ({
-        periodStart: r.period_start,
-        customersStart: r.customers_start,
-        newCustomers: r.new_customers,
-        cancelledCustomers: r.cancelled_customers,
-        customersEnd: r.customers_end,
-        revenue: r.revenue,
-        churnPct: r.churn_pct,
-      }));
       const names = (competitors ?? []).map((c) => c.name);
       return result({
         company: account?.name ?? null,
         sells_to: account?.sells_to ?? null,
         overview: account?.company_overview ?? null,
         tracked_competitors: names,
-        churn_read: periods.length > 0 ? analyzeMetrics(periods) : null,
+        churn_read: insight.read,
+        churn_timing: insight.timing?.sentence ?? null,
         questions: [
           {
             ask: "What's the main reason you're cancelling?",

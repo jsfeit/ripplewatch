@@ -669,7 +669,7 @@ export function computeMomentum(
       topSignal: null,
     },
     reviewSentiment: {
-      label: "Review sentiment (G2/Capterra)",
+      label: "Review sentiment",
       score: reviewSentimentScore,
       recentCount: reviewRecentValue ?? 0,
       priorCount: reviewPriorValue ?? 0,

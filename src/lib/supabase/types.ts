@@ -134,6 +134,8 @@ export interface Database {
           website: string | null;
           sells_to: "business" | "consumer" | "both" | null;
           company_overview: string | null;
+          industry_benchmark: Record<string, unknown> | null;
+          industry_benchmark_updated_at: string | null;
           onboarding_email_day2_sent_at: string | null;
           onboarding_email_day7_sent_at: string | null;
           onboarding_emails_unsubscribed_at: string | null;
@@ -184,6 +186,8 @@ export interface Database {
           website?: string | null;
           sells_to?: "business" | "consumer" | "both" | null;
           company_overview?: string | null;
+          industry_benchmark?: Record<string, unknown> | null;
+          industry_benchmark_updated_at?: string | null;
           onboarding_email_day2_sent_at?: string | null;
           onboarding_email_day7_sent_at?: string | null;
           onboarding_emails_unsubscribed_at?: string | null;
@@ -230,6 +234,9 @@ export interface Database {
           github_repo: string | null;
           g2_url: string | null;
           capterra_url: string | null;
+          sells_to: "business" | "consumer" | "both" | null;
+          appstore_id: string | null;
+          trustpilot_url: string | null;
           fact_sheet_why_we_win: string | null;
           fact_sheet_why_we_lose: string | null;
           fact_sheet_generated_at: string | null;
@@ -250,6 +257,9 @@ export interface Database {
           github_repo?: string | null;
           g2_url?: string | null;
           capterra_url?: string | null;
+          sells_to?: "business" | "consumer" | "both" | null;
+          appstore_id?: string | null;
+          trustpilot_url?: string | null;
           fact_sheet_why_we_win?: string | null;
           fact_sheet_why_we_lose?: string | null;
           fact_sheet_generated_at?: string | null;
@@ -943,6 +953,10 @@ export interface Database {
           g2_review_count: number | null;
           capterra_rating: number | null;
           capterra_review_count: number | null;
+          appstore_rating: number | null;
+          appstore_review_count: number | null;
+          trustpilot_rating: number | null;
+          trustpilot_review_count: number | null;
           last_checked_at: string;
           created_at: string;
         };
@@ -953,6 +967,10 @@ export interface Database {
           g2_review_count?: number | null;
           capterra_rating?: number | null;
           capterra_review_count?: number | null;
+          appstore_rating?: number | null;
+          appstore_review_count?: number | null;
+          trustpilot_rating?: number | null;
+          trustpilot_review_count?: number | null;
           last_checked_at?: string;
           created_at?: string;
         };

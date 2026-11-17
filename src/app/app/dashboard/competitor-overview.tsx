@@ -69,7 +69,7 @@ const DRIVER_ICONS: Record<string, LucideIcon> = {
   "Relevance trend": Target,
   "Win rate trend": Trophy,
   "Product activity (GitHub)": GitBranch,
-  "Review sentiment (G2/Capterra)": Star,
+  "Review sentiment": Star,
   "Buzz (Reddit/Hacker News)": MessageSquare,
   "Ad activity (Meta)": Megaphone,
   "Call mentions (Gong/Zoom)": Phone,

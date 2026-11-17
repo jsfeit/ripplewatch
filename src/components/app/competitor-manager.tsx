@@ -17,7 +17,8 @@ import type { Database } from "@/lib/supabase/types";
 type Competitor = Pick<
   Database["public"]["Tables"]["competitors"]["Row"],
   "id" | "name" | "domain" | "category" | "github_repo" | "created_at"
->;
+> &
+  Partial<Pick<Database["public"]["Tables"]["competitors"]["Row"], "sells_to">>;
 type Tier = Database["public"]["Tables"]["accounts"]["Row"]["tier"];
 
 type SortOption = "momentum" | "name" | "date";
@@ -35,6 +36,7 @@ export function CompetitorManager({
   activeId,
   momentum,
   goneQuiet,
+  showSide = false,
 }: {
   competitors: Competitor[];
   tier: Tier;
@@ -51,6 +53,9 @@ export function CompetitorManager({
   // so a competitor doesn't read "Gone quiet" on the dashboard and
   // something else here.
   goneQuiet?: Record<string, GoneQuietResult | null>;
+  // For an account that sells to both businesses and consumers: show which side each competitor
+  // competes on (read from its website), with a way to correct it.
+  showSide?: boolean;
 }) {
   const router = useRouter();
   const [competitors, setCompetitors] = useState(initialCompetitors);
@@ -180,6 +185,20 @@ export function CompetitorManager({
       router.push("/app/competitors");
     } else {
       router.refresh();
+    }
+  }
+
+  async function changeSide(id: string, value: "business" | "consumer" | "both") {
+    const previous = competitors;
+    setCompetitors((prev) => prev.map((c) => (c.id === id ? { ...c, sells_to: value } : c)));
+    const res = await fetch(`/api/competitors/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sells_to: value }),
+    });
+    if (!res.ok) {
+      setCompetitors(previous);
+      setError("Couldn't save that.");
     }
   }
 
@@ -444,6 +463,19 @@ export function CompetitorManager({
                       </p>
                     </div>
                   )}
+                  {showSide ? (
+                    <select
+                      aria-label={`Which side ${c.name} competes on`}
+                      title="Which side of your business this competitor competes on. Read from its website; change it if that's wrong."
+                      value={c.sells_to ?? "both"}
+                      onChange={(e) => void changeSide(c.id, e.target.value as "business" | "consumer" | "both")}
+                      className="h-6 shrink-0 rounded-full border border-border bg-transparent px-2 text-[10px] font-semibold text-muted-foreground"
+                    >
+                      <option value="business">B2B</option>
+                      <option value="consumer">B2C</option>
+                      <option value="both">Both</option>
+                    </select>
+                  ) : null}
                   {!monitoredIds.has(c.id) ? (
                     <Badge variant="outline" className="shrink-0 text-muted-foreground">
                       Not monitored
