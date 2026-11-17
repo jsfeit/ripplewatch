@@ -19,10 +19,12 @@ import { SuggestedCompetitors, type SuggestedCompetitor } from "@/components/app
 import { PersonalReadCard } from "@/components/app/personal-read-card";
 import { SlackStep } from "@/components/app/slack-step";
 import { clearIntro, loadIntro } from "@/lib/connect-intro";
-import { DEAL_TOOLS, loadDealTools, saveDealTools } from "@/lib/deal-tools";
+import { loadDealTools, saveDealTools, toolsForAudience } from "@/lib/deal-tools";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
 import { ONBOARDING_VALUE, type OnboardingStepKey } from "@/lib/onboarding-value";
+import { dataCopy } from "@/lib/sales-motion";
+import { AudiencePicker, useAudience } from "@/components/app/audience-picker";
 
 const TOTAL_STEPS = 5;
 
@@ -89,6 +91,12 @@ export function GetStartedFlow({
   const [celebrating, setCelebrating] = useState(false);
   // A deal told in plain words on the deals step, saved with everything else at the end.
   const [dealNote, setDealNote] = useState("");
+  // Who they sell to decides the wording and tools on the deals step. With both,
+  // a note is labelled by side so it reads back clearly.
+  const audience = useAudience();
+  const copy = dataCopy(audience);
+  const [noteSide, setNoteSide] = useState<"business" | "consumer">("business");
+  const noteToSave = audience === "both" && dealNote.trim() ? `${noteSide === "consumer" ? "Consumer customers" : "Business deal"}: ${dealNote.trim()}` : dealNote;
   // A deal export uploaded on the deals step: committed as soon as it is confirmed, not at the end.
   const [uploadedDeals, setUploadedDeals] = useState(false);
   const [dealResult, setDealResult] = useState<{ imported: number; skipped: number } | null>(null);
@@ -223,7 +231,7 @@ export function GetStartedFlow({
     const res = await fetch("/api/connect/onboarding/complete", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stage: "extras", dealNote }),
+      body: JSON.stringify({ stage: "extras", dealNote: noteToSave }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -370,20 +378,20 @@ export function GetStartedFlow({
             </span>
           ) : null}
         </div>
-        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+        <h1 className="text-xl font-semibold tracking-tight">{wizardStep === 2 ? copy.title : title}</h1>
         <p className="text-sm text-muted-foreground">
           {wizardStep === 0
             ? `This is what your assistant uses to judge whether something is actually relevant to ${companyName}, not just noise. Skip it and every answer defaults to generic.`
             : wizardStep === 1
               ? "Required. Your assistant can't compare you to anyone until it knows who to compare you to. Saving this starts your first check, so it's already running when you ask your first question."
               : wizardStep === 2
-                ? "Your deals are what make answers specific to you. Upload an export from your CRM, tell me about a deal, or, if they live in a tool your assistant can reach, have it pull them in for you."
+                ? copy.intro
                 : "Slack is the shared feed: alerts and recaps land in a channel your whole team sees. Skip it if you're the only one using Ripplewatch."}
         </p>
         {wizardStep === 3 ? null : (
           <p className="mt-1 rounded-md bg-primary/[0.06] px-3 py-2 text-sm">
             <span className="font-semibold text-primary">Why this matters: </span>
-            {ONBOARDING_VALUE[key].unlocks}
+            {wizardStep === 2 ? copy.unlocks : ONBOARDING_VALUE[key].unlocks}
           </p>
         )}
       </CardHeader>
@@ -399,6 +407,7 @@ export function GetStartedFlow({
                 placeholder="Relevance-scored competitive intel for startup marketing teams"
               />
             </div>
+            <AudiencePicker />
             <div className="space-y-2">
               <Label htmlFor="icp">Ideal customer profile</Label>
               <Textarea
@@ -442,34 +451,50 @@ export function GetStartedFlow({
 
         {wizardStep === 2 ? (
           <div className="space-y-5">
+            <AudiencePicker />
             <div className="space-y-2">
-              <Label htmlFor="dealNote">Tell me about a deal, in your own words</Label>
+              <Label htmlFor="dealNote">{copy.noteLabel}</Label>
+              {audience === "both" ? (
+                <div className="flex gap-2" role="radiogroup" aria-label="Which side is this about?">
+                  {([
+                    ["business", "A business deal"],
+                    ["consumer", "Consumer customers"],
+                  ] as const).map(([side, label]) => (
+                    <button
+                      key={side}
+                      type="button"
+                      role="radio"
+                      aria-checked={noteSide === side}
+                      onClick={() => setNoteSide(side)}
+                      className={cn(
+                        "rounded-md border px-3 py-1.5 text-sm font-medium",
+                        noteSide === side ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
               <Textarea
                 id="dealNote"
                 value={dealNote}
                 onChange={(e) => setDealNote(e.target.value)}
                 rows={3}
                 maxLength={2000}
-                placeholder={`We lost a deal to ${filledCompetitors[0]?.name || "a competitor"}. They were cheaper and said setup was faster.`}
+                placeholder={copy.notePlaceholder(filledCompetitors[0]?.name || "a competitor")}
               />
-              <p className="text-xs text-muted-foreground">
-                Won or lost, one deal or several, however you&apos;d say it out loud. It makes your first answers about
-                your deals, not just the market. Skip it and add real data later.
-              </p>
+              <p className="text-xs text-muted-foreground">{copy.noteHelp}</p>
             </div>
             <div className="space-y-2">
-              <Label>Upload your won and lost deals</Label>
-              <DealFileUpload onDone={() => setUploadedDeals(true)} />
-              <p className="text-xs text-muted-foreground">
-                Any CSV from your CRM, in any layout: I&apos;ll work out the columns and show you how I read them before
-                anything is saved. Go back as far as you have. More history lets me spot trends over time and see which
-                competitor moves lined up with your losses.
-              </p>
+              <Label>{copy.uploadLabel}</Label>
+              <DealFileUpload label={copy.uploadButton} onDone={() => setUploadedDeals(true)} />
+              <p className="text-xs text-muted-foreground">{copy.uploadHelp}</p>
             </div>
             <div className="space-y-3">
             <p className="text-sm text-muted-foreground">Pick any that apply. You can change this later in Settings, under Data.</p>
             <div className="flex flex-wrap gap-2">
-              {DEAL_TOOLS.map((t) => {
+              {toolsForAudience(audience).map((t) => {
                 const on = dealTools.includes(t.id);
                 return (
                   <button
@@ -487,11 +512,7 @@ export function GetStartedFlow({
                 );
               })}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Once you&apos;re set up, your assistant can pull from these on a schedule, so new deals arrive without you.
-              Don&apos;t see yours, or don&apos;t use any? That&apos;s fine: you can always just tell your assistant how a
-              deal went.
-            </p>
+            <p className="text-xs text-muted-foreground">{copy.toolsHelp}</p>
             </div>
           </div>
         ) : null}

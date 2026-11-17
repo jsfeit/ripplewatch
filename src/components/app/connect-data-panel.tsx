@@ -9,8 +9,9 @@ import { WinLossEmailAddress } from "@/components/app/win-loss-email-address";
 import { DealFileUpload } from "@/components/app/deal-file-upload";
 import { DealIntelligencePanel, type DealIntelligenceProps } from "@/components/app/deal-intelligence";
 import { cn } from "@/lib/utils";
+import { AudiencePicker, useAudience } from "@/components/app/audience-picker";
 import {
-  DEAL_TOOLS,
+  toolsForAudience,
   dealToolsServerSnapshot,
   dealToolsSnapshot,
   parseDealTools,
@@ -40,6 +41,7 @@ export function ConnectDataPanel({
   dealIntel?: DealIntelligenceProps;
 }) {
   const router = useRouter();
+  const audience = useAudience();
   const [outcome, setOutcome] = useState<"won" | "lost">("lost");
   const [competitorId, setCompetitorId] = useState(competitors[0]?.id ?? NOT_SURE);
   const [reason, setReason] = useState("");
@@ -72,7 +74,22 @@ export function ConnectDataPanel({
     const p = promptForTool(id, first);
     return p ? [p] : [];
   });
-  const toolPrompts = tailored.length > 0 ? tailored : genericPrompts;
+  const consumerPrompts = [
+    {
+      tool: "Billing or store (Stripe, Shopify)",
+      text: "From my billing tool, find customers who cancelled in the last 90 days, with the reason if there is one, and add them to Ripplewatch.",
+    },
+    {
+      tool: "Support inbox (Intercom, Zendesk)",
+      text: "From my support tool, find recent cancellations and why customers left, and add them to Ripplewatch.",
+    },
+    {
+      tool: "Surveys (Typeform)",
+      text: `From my survey tool, pull recent responses that say why customers chose us or left, especially any that name ${first}, and add them to Ripplewatch.`,
+    },
+  ];
+  const fallbackPrompts = audience === "consumer" ? consumerPrompts : audience === "both" ? [...genericPrompts.slice(0, 1), ...consumerPrompts] : genericPrompts;
+  const toolPrompts = tailored.length > 0 ? tailored : fallbackPrompts;
 
   async function copyPrompt(text: string) {
     try {
@@ -125,6 +142,14 @@ export function ConnectDataPanel({
         <p className="mt-1 text-sm text-muted-foreground">
           The deals you win and lose are what turn generic competitor news into answers about your market. Add them
           whichever way is easiest. Even one helps, and more is better.
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-6">
+        <AudiencePicker />
+        <p className="mt-2 text-xs text-muted-foreground">
+          This changes the wording and the tools offered below. A consumer company has cancellations and reviews rather
+          than sales deals, and a company with both can use everything.
         </p>
       </div>
 
@@ -213,7 +238,7 @@ export function ConnectDataPanel({
         <div className="mt-4">
           <p className="text-xs font-medium text-muted-foreground">Which tools do you use?</p>
           <div className="mt-2 flex flex-wrap gap-2">
-            {DEAL_TOOLS.map((t) => {
+            {toolsForAudience(audience).map((t) => {
               const on = selectedTools.includes(t.id);
               return (
                 <button
@@ -264,7 +289,7 @@ export function ConnectDataPanel({
             Ripplewatch.
           </p>
           <ul className="mt-3 space-y-3">
-            {scheduledRecipes(selectedTools).map((r) => (
+            {scheduledRecipes(selectedTools, audience).map((r) => (
               <li key={r.id}>
                 <p className="text-xs font-medium text-muted-foreground">
                   {r.title} · {r.cadence}
