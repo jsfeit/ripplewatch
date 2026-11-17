@@ -48,7 +48,7 @@ export function SlackTroubleHelp() {
         ))}
       </ul>
       <div className="mt-4 flex flex-wrap gap-2">
-        <a href="/api/integrations/slack/connect?next=%2Fapp%2Fsettings%3Ftab%3Dconnect" className={buttonVariants({ size: "sm" })}>
+        <a href="/api/integrations/slack/connect?next=%2Fapp%2Fsettings%3Ftab%3Dconnect" target="_blank" rel="noopener" className={buttonVariants({ size: "sm" })}>
           Try Slack again
         </a>
         <CopyPromptButton text={ADMIN_NOTE} label="Copy a note for your Slack admin" />

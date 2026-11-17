@@ -86,7 +86,7 @@ export function IntegrationConnector({
           </Link>
         )
       ) : (
-        <Link href={connectHref} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+        <Link href={connectHref} target={provider === "slack" ? "_blank" : undefined} rel={provider === "slack" ? "noopener" : undefined} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
           Connect
         </Link>
       )}
