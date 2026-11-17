@@ -8,7 +8,7 @@ import { CopyPromptButton } from "@/components/app/copy-prompt-button";
 // says what usually went wrong in plain words, who can fix it, and what to do meanwhile. Email alerts keep
 // working the whole time, so Slack is never a blocker.
 const ADMIN_NOTE =
-  "Hi, could you approve the Ripplewatch app for our Slack workspace? It posts a short daily competitor update to one channel. It only needs permission to post to the channel we choose, and it can't read messages. When it's approved I'll connect it from Ripplewatch Settings, or you can: https://www.ripplewatch.ai/app/settings?tab=connect";
+  "Hi, could you approve the Ripplewatch app for our Slack workspace? It posts a short daily competitor update to one channel. It only needs permission to post to the channel we choose, and it can't read messages. When it's approved I'll connect it from Ripplewatch Settings, or you can: https://www.ripplewatch.ai/app/settings?tab=manage";
 
 const REASONS: { title: string; body: string }[] = [
   {
@@ -48,7 +48,7 @@ export function SlackTroubleHelp() {
         ))}
       </ul>
       <div className="mt-4 flex flex-wrap gap-2">
-        <a href="/api/integrations/slack/connect?next=%2Fapp%2Fsettings%3Ftab%3Dconnect" target="_blank" rel="noopener" className={buttonVariants({ size: "sm" })}>
+        <a href="/api/integrations/slack/connect?next=%2Fapp%2Fsettings%3Ftab%3Dmanage" target="_blank" rel="noopener" className={buttonVariants({ size: "sm" })}>
           Try Slack again
         </a>
         <CopyPromptButton text={ADMIN_NOTE} label="Copy a note for your Slack admin" />

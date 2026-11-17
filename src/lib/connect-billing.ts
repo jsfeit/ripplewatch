@@ -161,7 +161,7 @@ export async function createConnectTopupSession(
       purpose: "connect_topup",
       funding_cents: String(input.fundingUsd * 100),
     },
-    return_url: `${input.origin}/app/settings?tab=connect&checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+    return_url: `${input.origin}/app/settings?tab=manage&checkout=success&session_id={CHECKOUT_SESSION_ID}`,
   });
   if (!session.client_secret) throw new Error("Stripe returned no client secret.");
   return { clientSecret: session.client_secret };

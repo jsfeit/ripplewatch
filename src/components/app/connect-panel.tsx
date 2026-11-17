@@ -63,6 +63,8 @@ export function ConnectPanel({
   hasDealHistory,
   firstLook,
   disconnectIntegrationAction,
+  view,
+  mcpAssistant,
 }: {
   balanceUsd: number;
   hasSubscription: boolean;
@@ -90,6 +92,11 @@ export function ConnectPanel({
   hasDealHistory: boolean;
   firstLook: ConnectFirstLook;
   disconnectIntegrationAction: (formData: FormData) => void;
+  // The Connect tab ("overview": status, first look, checklist) and the Delivery & billing tab ("manage":
+  // assistant steps, Slack, email, balance) are the same component so they share one set of state.
+  view: "overview" | "manage";
+  // "Claude", "ChatGPT"...; null when the connection could not be named.
+  mcpAssistant: string | null;
 }) {
   // Whether this account has the product at all: a paying subscription, or an
   // account that's active by other means (demo, switched on by hand).
@@ -161,6 +168,8 @@ export function ConnectPanel({
   }
 
   const connected = Boolean(mcpLastConnectedAt);
+  const overview = view === "overview";
+  const manage = view === "manage";
 
   const connectAssistantCard = (
     <div id="connect-assistant" className="scroll-mt-6 rounded-xl border border-border bg-card p-6">
@@ -173,12 +182,12 @@ export function ConnectPanel({
           )}
         >
           {connected ? <CheckCircle2 className="size-3.5" /> : <Circle className="size-3.5" />}
-          {connected ? `Connected · active ${timeAgo(mcpLastConnectedAt!)}` : "Not connected yet"}
+          {connected ? `Connected${mcpAssistant ? ` to ${mcpAssistant}` : ""} · active ${timeAgo(mcpLastConnectedAt!)}` : "Not connected yet"}
         </span>
       </div>
       <p className="mt-1 text-sm text-muted-foreground">
         {connected
-          ? "Your assistant is talking to Ripplewatch. Add it to another one (or disconnect an old one) from the Developer tab."
+          ? `${mcpAssistant ?? "Your assistant"} is talking to Ripplewatch. Add it to another one (or disconnect an old one) from the Developer tab.`
           : "This is the one thing left to do. Three steps, about a minute."}
       </p>
 
@@ -359,7 +368,7 @@ export function ConnectPanel({
       label: "Connect your assistant",
       value: ONBOARDING_VALUE.connect,
       done: connected,
-      hint: <a href="#connect-assistant" className="underline underline-offset-2 hover:text-foreground">See steps below</a>,
+      hint: <Link href="/app/settings?tab=manage#connect-assistant" className="underline underline-offset-2 hover:text-foreground">See the steps</Link>,
     },
     {
       label: "Tell it about your business",
@@ -391,7 +400,7 @@ export function ConnectPanel({
       label: "Connect Slack (optional)",
       value: ONBOARDING_VALUE.slack,
       done: slackConnected,
-      hint: <a href="#connect-slack" className="underline underline-offset-2 hover:text-foreground">See below</a>,
+      hint: <Link href="/app/settings?tab=manage#connect-slack" className="underline underline-offset-2 hover:text-foreground">Set it up</Link>,
     },
   ];
   const { done: doneCount } = setupProgress({ connected, hasPositioning, competitorCount, slackConnected, hasDealHistory });
@@ -438,12 +447,12 @@ export function ConnectPanel({
       <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
         <div className="min-w-0">
           <p className="text-xs text-muted-foreground">Your assistant</p>
-          <p className="text-sm font-medium">{mcpLastConnectedAt ? "Connected" : "Not connected yet"}</p>
+          <p className="text-sm font-medium">{mcpLastConnectedAt ? (mcpAssistant ? `Connected to ${mcpAssistant}` : "Connected") : "Not connected yet"}</p>
         </div>
         {mcpLastConnectedAt ? null : (
-          <a href="#connect-assistant" className="text-sm font-medium text-primary hover:underline">
+          <Link href="/app/settings?tab=manage#connect-assistant" className="text-sm font-medium text-primary hover:underline">
             Connect
-          </a>
+          </Link>
         )}
       </div>
       <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
@@ -451,16 +460,16 @@ export function ConnectPanel({
           <p className="text-xs text-muted-foreground">Slack, your team&apos;s feed</p>
           <p className="text-sm font-medium">{slackConnected ? "Connected" : "Not connected yet"}</p>
         </div>
-        <a href="#connect-slack" className="text-sm font-medium text-primary hover:underline">
+        <Link href="/app/settings?tab=manage#connect-slack" className="text-sm font-medium text-primary hover:underline">
           {slackConnected ? "Settings" : "Connect Slack"}
-        </a>
+        </Link>
       </div>
     </div>
   );
 
   return (
     <div className="min-w-0 space-y-6">
-      {slackNotice ? (
+      {manage && slackNotice ? (
         <div
           className={cn(
             "flex items-start gap-2 rounded-lg border p-4 text-sm",
@@ -471,22 +480,22 @@ export function ConnectPanel({
           <p>{slackNotice.text}</p>
         </div>
       ) : null}
-      {slackNotice && !slackNotice.ok ? <SlackTroubleHelp /> : null}
+      {manage && slackNotice && !slackNotice.ok ? <SlackTroubleHelp /> : null}
 
-      {justPaid ? (
+      {manage && justPaid ? (
         <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/10 p-4 text-sm">
           <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
           <p>Payment received. Your balance can take a few seconds to show up here.</p>
         </div>
       ) : null}
 
-      {hasAccess ? connectionStrip : null}
+      {overview && hasAccess ? connectionStrip : null}
 
-      {hasAccess && competitorCount > 0 ? firstLookCard : null}
-      {checklistCard}
-      {hasAccess ? connectAssistantCard : null}
-      {hasAccess ? slackCard : null}
-      {hasAccess ? (
+      {overview && hasAccess && competitorCount > 0 ? firstLookCard : null}
+      {overview ? checklistCard : null}
+      {manage && hasAccess ? connectAssistantCard : null}
+      {manage && hasAccess ? slackCard : null}
+      {manage && hasAccess ? (
         <ConnectNotifications
           initialDailyAlert={dailyAlertEnabled}
           initialMonthlyRecap={monthlyRecapEnabled}
@@ -519,7 +528,7 @@ export function ConnectPanel({
             </p>
           ) : null}
         </div>
-      ) : (
+      ) : manage ? (
         <div className="rounded-xl border border-border bg-card p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -552,11 +561,11 @@ export function ConnectPanel({
             </Button>
           </div>
         </div>
-      )}
+      ) : null}
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-      {hasSubscription ? (
+      {manage && hasSubscription ? (
         <div className="rounded-xl border border-border bg-card p-6">
           <h2 className="text-base font-semibold">Auto-reload</h2>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -613,6 +622,7 @@ export function ConnectPanel({
         </div>
       ) : null}
 
+      {manage ? (
       <div className="rounded-xl border border-border bg-card p-6">
         <h2 className="text-base font-semibold">Balance history</h2>
         {ledger.length === 0 ? (
@@ -644,6 +654,7 @@ export function ConnectPanel({
           </div>
         )}
       </div>
+      ) : null}
 
       {checkout ? (
         <ConnectCheckoutModal

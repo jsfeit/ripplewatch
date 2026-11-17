@@ -35,6 +35,9 @@ function slackNoticeFrom(params: { connected?: string; error?: string }): { ok: 
   return text ? { ok: false, text } : null;
 }
 
+// Only the assistants we can name. "other" and "unknown" stay unnamed, so the page says plain "Connected".
+const ASSISTANT_LABEL: Record<string, string> = { claude: "Claude", chatgpt: "ChatGPT", cursor: "Cursor", glama: "Glama" };
+
 export default async function SettingsPage({
   searchParams,
 }: {
@@ -168,9 +171,10 @@ export default async function SettingsPage({
     competitorCount: number;
     hasDealHistory: boolean;
     firstLook: Pick<FirstLook, "companyName" | "crawl" | "topSignals" | "starterPrompts">;
+    mcpAssistant: string | null;
   } | null = null;
   if (account.tier === "connect") {
-    const [{ data: wallet }, { data: ledgerRows }, firstLook, { count: dealCount }] = await Promise.all([
+    const [{ data: wallet }, { data: ledgerRows }, firstLook, { data: lastConnection }, { count: dealCount }] = await Promise.all([
       db
         .from("connect_wallets")
         .select("balance_micros, auto_reload_enabled, reload_amount_cents, reload_threshold_cents, reload_failed_at")
@@ -185,6 +189,15 @@ export default async function SettingsPage({
       // Admin client: crawl_runs/crawl_jobs aren't customer-readable, and
       // accountId here is already resolved server-side, so this stays scoped.
       loadFirstLook(createAdminClient(), accountId),
+      // Which assistant connected most recently (Claude, ChatGPT, Cursor...). Admin client: the table has
+      // no customer policies, and accountId is already resolved server-side.
+      createAdminClient()
+        .from("mcp_connections")
+        .select("assistant")
+        .eq("account_id", accountId)
+        .order("last_seen_at", { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle(),
       db.from("competitor_win_loss").select("id", { count: "exact", head: true }).eq("account_id", accountId),
     ]);
     connect = {
@@ -217,6 +230,7 @@ export default async function SettingsPage({
       hasPositioning: Boolean(account.positioning?.trim() || account.icp?.trim()),
       competitorCount: (competitors ?? []).length,
       hasDealHistory: (dealCount ?? 0) > 0,
+      mcpAssistant: ASSISTANT_LABEL[lastConnection?.assistant ?? ""] ?? null,
       firstLook: {
         companyName: firstLook.companyName,
         crawl: firstLook.crawl,
