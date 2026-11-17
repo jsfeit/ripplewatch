@@ -145,8 +145,13 @@ export function SettingsView({
   // Finish setup, or Add a deal on the Connect tab) keeps this component mounted:
   // without it the URL changes and nothing on screen does.
   const isConnectAccount = account.tier === "connect";
-  const [activeTab, setActiveTab] = useState(isConnectAccount ? "connect" : "integrations");
+  const defaultTab = isConnectAccount ? "connect" : "integrations";
   const urlTab = useSearchParams().get("tab");
+  // The tab named in ?tab= is used on the very first render, on the server too (this page is rendered per
+  // request, so the query string is known), so a deep link opens on the right tab with no flash of the default
+  // tab and nothing waiting on an effect. Only the legacy #hash form needs the effect below, because a hash
+  // never reaches the server.
+  const [activeTab, setActiveTab] = useState(urlTab && (KNOWN_TABS as readonly string[]).includes(urlTab) ? urlTab : defaultTab);
   const sawFirstUrl = useRef(false);
 
   useEffect(() => {
@@ -172,15 +177,17 @@ export function SettingsView({
       sawFirstUrl.current = true;
       return;
     }
-    if (!urlTab || !(KNOWN_TABS as readonly string[]).includes(urlTab)) return;
-    // Syncing from an external system (the URL), which is what this effect is for.
+    // A bare /app/settings link (the sidebar's Settings item) means the default tab, even from another tab.
     // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!urlTab) return void setActiveTab(defaultTab);
+    if (!(KNOWN_TABS as readonly string[]).includes(urlTab)) return;
+    // Syncing from an external system (the URL), which is what this effect is for.
     setActiveTab(urlTab);
     const anchor = window.location.hash.slice(1);
     if (anchor && !(KNOWN_TABS as readonly string[]).includes(anchor)) {
       window.setTimeout(() => document.getElementById(anchor)?.scrollIntoView({ block: "start" }), 60);
     }
-  }, [urlTab]);
+  }, [urlTab, defaultTab]);
 
   // Keeps the address bar in sync with whichever tab is showing, so it is copy-pasteable and so a later
   // link to another tab is seen as a change. It writes ?tab= (not only a #hash): Next keeps useSearchParams in
