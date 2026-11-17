@@ -18,7 +18,7 @@ function parseJson(text: string): unknown {
 // 1. Which column is which
 // ---------------------------------------------------------------------------
 
-const PROFILE_SYSTEM_PROMPT = `You map the columns of a sales deal export (CRM report, spreadsheet, anything) onto a fixed set of roles. You are given the column names, a few sample rows, and the distinct values of columns that have few distinct values.
+const PROFILE_SYSTEM_PROMPT = `You map the columns of a deal or customer export (a CRM report of won and lost deals, a list of cancellations or churned customers, a spreadsheet, anything) onto a fixed set of roles. You are given the column names, a few sample rows, and the distinct values of columns that have few distinct values.
 
 Roles (use null when no column fits; copy column names EXACTLY as given):
 - closeDate: when the deal closed or was decided. Prefer a close/decision/won/lost date over a created date. If only a created date exists, use it.
@@ -143,7 +143,7 @@ const CLASSIFY_SYSTEM_PROMPT = `You read why sales deals were won or lost. For e
 
 For every item return:
 - competitorKind: "tracked" if the competitor names one of the TRACKED competitors (copy the tracked name exactly; spelling or capitalization differences are fine, but never force a fuzzy match to a different company); "untracked" if it names a real, specific competing company that is not tracked (use the company's proper name); "none" if no competing company is named. "No decision", "none", "status quo", "in-house", "unknown", "n/a" and blanks are NOT competitors.
-- themes: one to three of ${DEAL_THEMES.join(", ")}. Pick what the reason actually says. "No decision" or a deal that went dark is no_decision; staying with the current tool or building it themselves is status_quo; budget, timing or procurement is timing_budget; a champion leaving is champion_change. If the reason is empty, return ["other"].
+- themes: one to three of ${DEAL_THEMES.join(", ")}. Pick what the reason actually says. "No decision" or a deal that went dark is no_decision; staying with the current tool or building it themselves is status_quo; budget, timing or procurement is timing_budget; a champion leaving is champion_change. For customers who left: going to a named competitor is switched_to_competitor, using us and another service is uses_both, not needing the product any more is no_longer_needed, pausing or moving to a cheaper plan is paused_or_downgraded, and a cancellation with no reason given is unknown. If the reason is empty on a deal, return ["other"]; on a churned customer, return ["unknown"].
 - detail: the specific thing in a few words when the reason names one (a missing feature, an integration, a pricing structure, a certification). Otherwise null. Lowercase, no punctuation.
 
 Never invent a reason or competitor that is not in the item. Return one result per item, same keys.`;

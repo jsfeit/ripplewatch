@@ -356,7 +356,8 @@ function winRateDelta(sortedEntries: WinLossEntry[]): number | null {
 function describeWinLossMix(entries: WinLossEntry[]): string {
   const won = entries.filter((e) => e.outcome === "won").length;
   const lost = entries.filter((e) => e.outcome === "lost").length;
-  return `${won}W-${lost}L`;
+  const churned = entries.filter((e) => e.outcome === "churned").length;
+  return churned > 0 ? `${won}W-${lost}L-${churned}C` : `${won}W-${lost}L`;
 }
 
 // How consistently a component has had real data for THIS competitor,

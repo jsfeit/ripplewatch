@@ -2,16 +2,30 @@
 // the exact words to have their assistant pull from them. Chosen during setup
 // and kept in this browser only: it's a convenience for tailoring prompts, not
 // account data, and the assistant works fine without it.
-export type DealToolKind = "crm" | "calls" | "support";
+import type { Audience } from "@/lib/sales-motion";
 
-export const DEAL_TOOLS: { id: string; label: string; kind: DealToolKind }[] = [
-  { id: "hubspot", label: "HubSpot", kind: "crm" },
-  { id: "salesforce", label: "Salesforce", kind: "crm" },
-  { id: "gong", label: "Gong", kind: "calls" },
-  { id: "zoom", label: "Zoom", kind: "calls" },
-  { id: "intercom", label: "Intercom", kind: "support" },
-  { id: "zendesk", label: "Zendesk", kind: "support" },
+export type DealToolKind = "crm" | "calls" | "support" | "billing" | "feedback";
+
+// `for` is who the tool is useful to: support tools serve both kinds of company.
+export const DEAL_TOOLS: { id: string; label: string; kind: DealToolKind; for: "business" | "consumer" | "both" }[] = [
+  { id: "hubspot", label: "HubSpot", kind: "crm", for: "business" },
+  { id: "salesforce", label: "Salesforce", kind: "crm", for: "business" },
+  { id: "gong", label: "Gong", kind: "calls", for: "business" },
+  { id: "zoom", label: "Zoom", kind: "calls", for: "business" },
+  { id: "intercom", label: "Intercom", kind: "support", for: "both" },
+  { id: "zendesk", label: "Zendesk", kind: "support", for: "both" },
+  { id: "stripe", label: "Stripe", kind: "billing", for: "consumer" },
+  { id: "shopify", label: "Shopify", kind: "billing", for: "consumer" },
+  { id: "typeform", label: "Typeform", kind: "feedback", for: "consumer" },
 ];
+
+// The tools worth offering to someone who sells to this audience. Unset shows
+// the business set, which is what the step offered before there was a choice.
+export function toolsForAudience(audience: Audience | null) {
+  if (audience === "both") return DEAL_TOOLS;
+  const want = audience === "consumer" ? "consumer" : "business";
+  return DEAL_TOOLS.filter((t) => t.for === want || t.for === "both");
+}
 
 const STORAGE_KEY = "ripplewatch-deal-tools";
 
@@ -80,6 +94,18 @@ export function promptForTool(toolId: string, competitor: string): { tool: strin
       text: `In ${tool.label}, find calls from the last 30 days where ${competitor} came up, and log those mentions in Ripplewatch. A one-line summary of each is fine.`,
     };
   }
+  if (tool.kind === "billing") {
+    return {
+      tool: tool.label,
+      text: `From ${tool.label}, find customers who cancelled or stopped buying in the last 90 days, with the reason if there is one, and add them to Ripplewatch.`,
+    };
+  }
+  if (tool.kind === "feedback") {
+    return {
+      tool: tool.label,
+      text: `From ${tool.label}, pull recent responses about why customers chose us or left, especially any that name ${competitor}, and add them to Ripplewatch.`,
+    };
+  }
   return {
     tool: tool.label,
     text: `From ${tool.label}, find recent cancellations and why customers left, and add them to Ripplewatch.`,
@@ -100,10 +126,11 @@ function namesOf(kind: DealToolKind, selected: string[], fallback: string): stri
 
 // With no tools chosen, the CRM recipe is the useful default. Otherwise one
 // recipe per kind of tool they use.
-export function scheduledRecipes(selected: string[]): ScheduledRecipe[] {
+export function scheduledRecipes(selected: string[], audience: Audience | null = null): ScheduledRecipe[] {
   const has = (kind: DealToolKind) => DEAL_TOOLS.some((t) => t.kind === kind && selected.includes(t.id));
   const recipes: ScheduledRecipe[] = [];
-  if (has("crm") || selected.length === 0) {
+  // A consumer company has no CRM to default to; its default is cancellations.
+  if (has("crm") || (selected.length === 0 && audience !== "consumer")) {
     recipes.push({
       id: "crm",
       cadence: "Every Friday",
@@ -117,6 +144,22 @@ export function scheduledRecipes(selected: string[]): ScheduledRecipe[] {
       cadence: "First of the month",
       title: "Competitor mentions on calls",
       text: `On the first of every month, find calls from the past month in ${namesOf("calls", selected, "my call recorder")} where a competitor I track came up, and log those mentions in Ripplewatch. A one-line summary of each is fine. Tell me how many you logged.`,
+    });
+  }
+  if (has("billing") || (selected.length === 0 && audience !== "business" && audience !== null)) {
+    recipes.push({
+      id: "billing",
+      cadence: "Every Friday",
+      title: "Customers who cancelled",
+      text: `Every Friday at 9am, find the customers who cancelled or stopped buying this week in ${namesOf("billing", selected, "my billing or store tool")}, with the reason if there is one, and add them to Ripplewatch. Tell me how many you added.`,
+    });
+  }
+  if (has("feedback")) {
+    recipes.push({
+      id: "feedback",
+      cadence: "First of the month",
+      title: "What customers say about us and others",
+      text: `On the first of every month, pull the past month's responses from ${namesOf("feedback", selected, "my survey tool")} that say why customers chose us or left, especially any that name a competitor I track, and add them to Ripplewatch. Tell me how many you added.`,
     });
   }
   if (has("support")) {

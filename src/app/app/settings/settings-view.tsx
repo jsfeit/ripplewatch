@@ -11,6 +11,7 @@ import { TeamManager } from "@/components/app/team-manager";
 import { ApiKeysManager } from "@/components/app/api-keys-manager";
 import { ConnectedApps } from "@/components/app/connected-apps";
 import { ConnectDataPanel } from "@/components/app/connect-data-panel";
+import { parseAudience } from "@/lib/sales-motion";
 import type { DealIntelligenceProps } from "@/components/app/deal-intelligence";
 import { ConnectPanel, type ConnectFirstLook, type ConnectLedgerRow } from "@/components/app/connect-panel";
 import { WinLossEmailAddress } from "@/components/app/win-loss-email-address";
@@ -36,6 +37,7 @@ import type { Database } from "@/lib/supabase/types";
 type Account = Pick<
   Database["public"]["Tables"]["accounts"]["Row"],
   | "id"
+  | "sells_to"
   | "tier"
   | "status"
   | "subscription_status"
@@ -288,6 +290,7 @@ export function SettingsView({
             inboxAddress={winLossInbox}
             competitors={competitors.map((c) => ({ id: c.id, name: c.name }))}
             dealIntel={dealIntel}
+            sellsTo={parseAudience(account.sells_to)}
           />
         </TabsContent>
       ) : null}
