@@ -1,5 +1,6 @@
 import "server-only";
 import * as Sentry from "@sentry/nextjs";
+import { classifyCompetitorSide } from "@/lib/competitor-side";
 import {
   fetchCompetitorPricingText,
   checkPricingDiff,
@@ -365,6 +366,8 @@ export async function crawlOneCompetitor(
     // self-gates on a missing credential (Meta Ad Library), so there's no
     // per-tier cost to restrict.
     checkReviewSentiment(supabase, competitor).then(() => []),
+    // Which side (business or consumer) this competitor serves, for accounts that sell to both. Self-gates.
+    classifyCompetitorSide(supabase, competitor).then(() => []),
     checkBuzzMentions(supabase, competitor).then(() => []),
     checkAdActivity(supabase, competitor).then(() => []),
   ].filter((p): p is Promise<Signal[]> => p !== null);

@@ -50,7 +50,7 @@ export default function ApiDocsPage() {
         <li><code>ask</code> - a free-form question answered against your positioning, ICP and the last 90 days of signals.</li>
         <li><code>list_competitors</code>, <code>get_competitor</code>, <code>get_momentum</code>, <code>get_trends</code> - read what Ripplewatch knows.</li>
         <li><code>add_competitor</code>, <code>log_win_loss</code>, <code>log_customer_feedback</code>, <code>set_context</code> - record what you tell the assistant.</li>
-        <li><code>log_customer_metrics</code>, <code>draft_cancellation_survey</code> - for consumer products: record churn and growth by month, and get a short cancellation survey drafted from your tracked competitors.</li>
+        <li><code>log_customer_metrics</code>, <code>get_churn_and_growth</code>, <code>draft_cancellation_survey</code> - for consumer products: record churn and growth by month, read whether churn is rising and how it lines up with competitor moves and a published range, and get a short cancellation survey drafted from your tracked competitors.</li>
         <li><code>get_next_step</code> - the one thing you could share that would make answers more specific.</li>
       </ul>
       <p>

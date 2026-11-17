@@ -78,7 +78,7 @@ export default async function SettingsPage({
       .single(),
     db
       .from("competitors")
-      .select("id, name, domain, category, github_repo, created_at")
+      .select("id, name, domain, category, github_repo, sells_to, created_at")
       .eq("account_id", accountId)
       .order("created_at", { ascending: true }),
     db.from("integrations").select("provider, connected").eq("account_id", accountId),

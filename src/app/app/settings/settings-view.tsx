@@ -302,6 +302,7 @@ export function SettingsView({
           tier={account.tier}
           demoMode={demoMode}
           momentum={momentum}
+          showSide={parseAudience(account.sells_to) === "both"}
         />
       </TabsContent>
 

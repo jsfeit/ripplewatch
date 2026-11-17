@@ -24,6 +24,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const pricingUrl = typeof body?.pricing_url === "string" ? body.pricing_url.trim() : undefined;
   const careersUrl = typeof body?.careers_url === "string" ? body.careers_url.trim() : undefined;
   const githubRepoRaw = typeof body?.github_repo === "string" ? body.github_repo.trim() : undefined;
+  // Which side the competitor competes on, for accounts that sell to both.
+  const sellsTo = body?.sells_to === "business" || body?.sells_to === "consumer" || body?.sells_to === "both" ? body.sells_to : undefined;
   if (name !== undefined && !name) {
     return NextResponse.json({ error: "Name is required." }, { status: 400 });
   }
@@ -75,9 +77,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       ...(pricingUrl !== undefined ? { pricing_url: pricingUrl || null } : {}),
       ...(careersUrl !== undefined ? { careers_url: careersUrl || null } : {}),
       ...(githubRepo !== undefined ? { github_repo: githubRepo || null } : {}),
+      ...(sellsTo !== undefined ? { sells_to: sellsTo } : {}),
     })
     .eq("id", id)
-    .select("id, name, domain, category, github_repo, created_at, account_id")
+    .select("id, name, domain, category, github_repo, sells_to, created_at, account_id")
     .single();
 
   if (error) {

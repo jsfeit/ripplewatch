@@ -11,6 +11,22 @@ import { cn } from "@/lib/utils";
 
 const MAX_FILE_BYTES = 200_000;
 
+// What the server adds once numbers are saved: whether churn started rising near a competitor's move,
+// and how it sits against a published range. Both arrive behind the scenes; nothing here asks for more.
+type Insight = {
+  timing: { sentence: string } | null;
+  comparison: { sentence: string } | null;
+  benchmark: { sourceName: string; sourceUrl: string } | null;
+  marketGrowth: { direction: string; reason: string | null } | null;
+};
+const MARKET_WORDS: Record<string, string> = { heating_up: "heating up", steady: "steady", cooling: "cooling off" };
+const pickInsight = (d: Partial<Insight>): Insight => ({
+  timing: d.timing ?? null,
+  comparison: d.comparison ?? null,
+  benchmark: d.benchmark ?? null,
+  marketGrowth: d.marketGrowth ?? null,
+});
+
 function monthLabel(periodStart: string): string {
   return new Date(`${periodStart}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
 }
@@ -67,6 +83,7 @@ export function ChurnDataCard({
   const [periods, setPeriods] = useState<MetricPeriod[] | null>(null);
   const [read, setRead] = useState<MetricsRead | null>(null);
   const [saved, setSaved] = useState(false);
+  const [insight, setInsight] = useState<Insight | null>(null);
   const [lastMonth, setLastMonth] = useState("");
   const [monthBefore, setMonthBefore] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -80,6 +97,7 @@ export function ChurnDataCard({
         if (cancelled || !data?.read) return;
         setPeriods(data.periods as MetricPeriod[]);
         setRead(data.read as MetricsRead);
+        setInsight(pickInsight(data));
         setSaved(true);
       })
       .catch(() => {});
@@ -92,6 +110,7 @@ export function ChurnDataCard({
     setBusy("read");
     setError("");
     setSaved(false);
+    setInsight(null);
     try {
       const res = await fetch("/api/connect/metrics/preview", {
         method: "POST",
@@ -126,6 +145,7 @@ export function ChurnDataCard({
     ];
     setError("");
     setSaved(false);
+    setInsight(null);
     setPeriods(next);
     setRead(analyzeMetrics(next));
   }
@@ -157,6 +177,9 @@ export function ChurnDataCard({
         return;
       }
       setSaved(true);
+      if (data.periods) setPeriods(data.periods as MetricPeriod[]);
+      if (data.read) setRead(data.read as MetricsRead);
+      setInsight(pickInsight(data));
       onSaved?.();
     } catch {
       setError("I couldn't reach Ripplewatch. Try again.");
@@ -273,10 +296,32 @@ export function ChurnDataCard({
             </table>
           </div>
           {saved ? (
-            <p className="flex items-center gap-1.5 text-sm text-primary">
-              <Check className="size-4" />
-              Saved. Your assistant can use this now.
-            </p>
+            <div className="space-y-2">
+              <p className="flex items-center gap-1.5 text-sm text-primary">
+                <Check className="size-4" />
+                Saved. Your assistant can use this now.
+              </p>
+              {insight?.timing ? <p className="text-sm">{insight.timing.sentence}</p> : null}
+              {insight?.comparison ? (
+                <p className="text-sm">
+                  {insight.comparison.sentence}{" "}
+                  {insight.benchmark ? (
+                    <a href={insight.benchmark.sourceUrl} target="_blank" rel="noreferrer noopener" className="text-primary hover:underline">
+                      Source
+                    </a>
+                  ) : null}
+                </p>
+              ) : null}
+              {insight?.marketGrowth ? (
+                <p className="text-sm text-muted-foreground">
+                  Your market is {MARKET_WORDS[insight.marketGrowth.direction] ?? "moving"} overall{insight.marketGrowth.reason ? `: ${insight.marketGrowth.reason.replace(/\.$/, "")}.` : "."}
+                </p>
+              ) : null}
+              <p className="text-xs text-muted-foreground">
+                I&apos;ll keep lining this up against competitor moves and a typical range for your kind of product as they
+                come in. Nothing else to do here.
+              </p>
+            </div>
           ) : (
             <div className="flex items-center gap-3">
               <Button type="button" size="sm" onClick={() => void save()} disabled={busy !== null}>
