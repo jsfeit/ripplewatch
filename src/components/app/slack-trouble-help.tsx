@@ -52,7 +52,7 @@ export function SlackTroubleHelp() {
           Try Slack again
         </a>
         <CopyPromptButton text={ADMIN_NOTE} label="Copy a note for your Slack admin" />
-        <a href="/faq" target="_blank" rel="noopener" className={buttonVariants({ variant: "outline", size: "sm" })}>
+        <a href="/faq#slack-connect" target="_blank" rel="noopener" className={buttonVariants({ variant: "outline", size: "sm" })}>
           More tips
         </a>
         <a href="mailto:hello@ripplewatch.ai?subject=Help%20connecting%20Slack" className={buttonVariants({ variant: "outline", size: "sm" })}>
