@@ -14,7 +14,7 @@ npx tsx --conditions react-server scripts/publish-draft.ts docs/content/drafts/<
 | `best-mcp-servers-sales-marketing.md` | New post. Set `publish_date` before applying | scheduled Mon 2026-10-26 |
 | `pricing-study-key-findings.md` | Adds a Key findings list after the first paragraph of the pricing study | scheduled Wed 2026-10-28, with PR #162 |
 | `ripplewatch-now-in-chatgpt.md` | New post. Announces the ChatGPT plugin listing. Do not apply until the plugin is published and PR #210 is merged; set `publish_date` to the go-live date | published 2026-11-10 |
-| `is-ripplewatch-just-a-wrapper.md` | New post. Answers the 'just another wrapper' argument: concedes what's true, the turn-the-model-off test, what a chat can't do, a labelled made-up example, and when not to use Ripplewatch. Set `publish_date` to the go-live date before applying | draft, not applied |
+| `is-ripplewatch-just-a-wrapper.md` | New post. Answers the 'just another wrapper' argument: concedes what's true, the turn-the-model-off test, what a chat can't do, a labelled made-up example, and when not to use Ripplewatch. Set `publish_date` to the go-live date before applying | published 2026-11-17 |
 | `expand-competitor-analysis-101.md` | Replaces the body (289 words to about 740) | scheduled Tue 2026-10-27 |
 | `expand-weekly-ci-review.md` | Replaces the body (298 words to about 700) | scheduled Thu 2026-10-29 |
 | `expand-what-ci-software-automates.md` | Replaces the body (327 words to about 700) | scheduled Fri 2026-10-30 |

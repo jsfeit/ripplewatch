@@ -3,7 +3,7 @@ action: new-post
 slug: is-ripplewatch-just-a-wrapper
 title: "Is Ripplewatch just a wrapper?"
 description: "A fair question. Here's what we share with a wrapper, and what's still left when you turn the model off."
-publish_date: 2026-11-18   # set to the real go-live date when applying
+publish_date: 2026-11-17
 status: draft
 ---
 
@@ -13,7 +13,7 @@ A wrapper, the way people use the word, is a thin layer on top of a model: a tex
 
 ## What the skeptics get right
 
-The model isn't ours. We use the same large language models as everyone else, including the ones behind the assistants you already pay for. We don't have a secret one, and if we said we did, you shouldn't believe us.
+The model isn't ours. We call the same kind of large language models as everyone else. We don't have a secret one, and if we said we did, you shouldn't believe us.
 
 A chat can also do a good one-off competitor read. Ask Claude or ChatGPT about a competitor today and you'll get a solid summary in a minute. If that's all you need, use it. We wrote about [where a single prompt holds up and where it stops](/blog/why-not-just-ask-claude-or-chatgpt-to-research-your-competitors), including a free prompt you can run yourself.
 
