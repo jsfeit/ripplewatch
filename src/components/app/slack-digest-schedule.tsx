@@ -21,17 +21,27 @@ const HOURS = Array.from({ length: 24 }, (_, hour) => ({
   label: new Date(2026, 0, 1, hour).toLocaleTimeString("en-US", { hour: "numeric", hour12: true }),
 }));
 
-// Real IANA zone names read live from the runtime rather than a hand-kept
-// list — Intl.supportedValuesOf("timeZone") is what both this browser and
-// the server (see updateSlackDigestScheduleAction's validation, and the
-// slack-digest-weekly cron that later reads this value back) already agree
-// constitutes a valid zone, so there's no separate list to keep in sync.
-function timezoneOptions(): string[] {
-  try {
-    return Intl.supportedValuesOf("timeZone");
-  } catch {
-    return ["UTC"];
-  }
+// The zones people actually pick: UTC and the US ones. The full list is about 400 names and reads as noise.
+// Values are real IANA names, which the save action and the weekly cron already accept. A zone that is not
+// in this list but is already saved, or is the browser's own (the "Use my timezone" link), is added to the
+// end so the picker never shows a blank.
+const COMMON_ZONES: { value: string; label: string }[] = [
+  { value: "America/New_York", label: "Eastern (New York)" },
+  { value: "America/Chicago", label: "Central (Chicago)" },
+  { value: "America/Denver", label: "Mountain (Denver)" },
+  { value: "America/Phoenix", label: "Arizona (Phoenix, no daylight saving)" },
+  { value: "America/Los_Angeles", label: "Pacific (Los Angeles)" },
+  { value: "America/Anchorage", label: "Alaska (Anchorage)" },
+  { value: "Pacific/Honolulu", label: "Hawaii (Honolulu)" },
+  { value: "UTC", label: "UTC" },
+];
+
+function zoneLabel(tz: string): string {
+  return COMMON_ZONES.find((z) => z.value === tz)?.label ?? tz.replace(/_/g, " ");
+}
+
+function timezoneOptions(current: string): { value: string; label: string }[] {
+  return COMMON_ZONES.some((z) => z.value === current) ? COMMON_ZONES : [...COMMON_ZONES, { value: current, label: zoneLabel(current) }];
 }
 
 export function SlackDigestSchedule({
@@ -108,13 +118,13 @@ export function SlackDigestSchedule({
           </SelectContent>
         </Select>
         <Select value={timezone} onValueChange={(v) => v && setTimezone(v)}>
-          <SelectTrigger className="w-[220px]">
-            <SelectValue>{() => timezone.replace(/_/g, " ")}</SelectValue>
+          <SelectTrigger className="w-[260px]">
+            <SelectValue>{() => zoneLabel(timezone)}</SelectValue>
           </SelectTrigger>
-          <SelectContent className="max-h-72">
-            {timezoneOptions().map((tz) => (
-              <SelectItem key={tz} value={tz}>
-                {tz.replace(/_/g, " ")}
+          <SelectContent>
+            {timezoneOptions(timezone).map((tz) => (
+              <SelectItem key={tz.value} value={tz.value}>
+                {tz.label}
               </SelectItem>
             ))}
           </SelectContent>
@@ -138,7 +148,7 @@ export function SlackDigestSchedule({
             onClick={() => setTimezone(browserTimezone)}
             className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
           >
-            Use my timezone ({browserTimezone.replace(/_/g, " ")})
+            Use my timezone ({zoneLabel(browserTimezone)})
           </button>
         ) : null}
         {error ? <span className="text-xs text-destructive">{error}</span> : null}
