@@ -67,6 +67,11 @@ type ApiKey = Pick<
 >;
 type Referral = Pick<Database["public"]["Tables"]["referrals"]["Row"], "id" | "referred_at" | "qualified_at">;
 
+// Tabs that exist for each kind of account. A link to a tab the account does not have (for example the
+// dashboard plans' ?tab=plan, opened by a Connect account) falls back to the default tab instead of
+// selecting nothing and leaving an empty panel.
+const CONNECT_TABS = ["connect", "manage", "data", "competitors", "team", "developer", "appearance"] as const;
+const DASHBOARD_TABS = ["competitors", "integrations", "team", "plan", "referrals", "digest", "developer", "appearance"] as const;
 const KNOWN_TABS = ["connect", "manage", "data", "competitors", "integrations", "team", "plan", "referrals", "digest", "developer", "appearance"] as const;
 
 export function SettingsView({
@@ -146,12 +151,13 @@ export function SettingsView({
   // without it the URL changes and nothing on screen does.
   const isConnectAccount = account.tier === "connect";
   const defaultTab = isConnectAccount ? "connect" : "integrations";
+  const accountTabs: readonly string[] = isConnectAccount ? CONNECT_TABS : DASHBOARD_TABS;
   const urlTab = useSearchParams().get("tab");
   // The tab named in ?tab= is used on the very first render, on the server too (this page is rendered per
   // request, so the query string is known), so a deep link opens on the right tab with no flash of the default
   // tab and nothing waiting on an effect. Only the legacy #hash form needs the effect below, because a hash
   // never reaches the server.
-  const [activeTab, setActiveTab] = useState(urlTab && (KNOWN_TABS as readonly string[]).includes(urlTab) ? urlTab : defaultTab);
+  const [activeTab, setActiveTab] = useState(urlTab && accountTabs.includes(urlTab) ? urlTab : defaultTab);
   const sawFirstUrl = useRef(false);
 
   useEffect(() => {
@@ -160,13 +166,15 @@ export function SettingsView({
     // both keep working rather than picking one and breaking the other.
     const hashTab = window.location.hash.slice(1);
     const queryTab = new URLSearchParams(window.location.search).get("tab");
-    const tab = [hashTab, queryTab].find((t) => t && (KNOWN_TABS as readonly string[]).includes(t));
+    const tab = [hashTab, queryTab].find((t) => t && accountTabs.includes(t));
     if (tab) {
       // Syncing one-time from an external system (the URL) on mount —
       // the case the rule's own guidance calls out as fine.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab(tab);
     }
+    // Runs once on mount: the tab list is fixed for the life of the page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Follows ?tab= when an in-app link changes it after the page is already showing. Skipped on the first
@@ -180,14 +188,14 @@ export function SettingsView({
     // A bare /app/settings link (the sidebar's Settings item) means the default tab, even from another tab.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!urlTab) return void setActiveTab(defaultTab);
-    if (!(KNOWN_TABS as readonly string[]).includes(urlTab)) return;
+    if (!accountTabs.includes(urlTab)) return void setActiveTab(defaultTab);
     // Syncing from an external system (the URL), which is what this effect is for.
     setActiveTab(urlTab);
     const anchor = window.location.hash.slice(1);
     if (anchor && !(KNOWN_TABS as readonly string[]).includes(anchor)) {
       window.setTimeout(() => document.getElementById(anchor)?.scrollIntoView({ block: "start" }), 60);
     }
-  }, [urlTab, defaultTab]);
+  }, [urlTab, defaultTab, accountTabs]);
 
   // Keeps the address bar in sync with whichever tab is showing, so it is copy-pasteable and so a later
   // link to another tab is seen as a change. It writes ?tab= (not only a #hash): Next keeps useSearchParams in

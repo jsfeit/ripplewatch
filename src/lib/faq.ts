@@ -15,7 +15,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "Who is Ripplewatch for?",
         answer:
-          "Product marketing, sales and revenue teams at B2B software companies that track a handful of competitors and want a straight answer when someone asks whether a competitor's move matters. If you already have a competitive intelligence program run by a dedicated team and want battlecards deployed into your CRM, a platform like Crayon or Klue may fit better; <a href=\"/blog/klue-vs-crayon-vs-ripplewatch-enterprise-grade-cost\">here is how they differ</a>.",
+          "Teams that sell software to businesses, apps that sell to consumers, and companies that do both. If you want a straight answer when someone asks whether a competitor's move matters, and you track a handful of competitors, it fits. A B2B team connects its won and lost deals; a consumer app connects its churn and how people rate its competitors. If you already have a competitive intelligence program run by a dedicated team and want battlecards deployed into your CRM, a platform like Crayon or Klue may fit better; <a href=\"/blog/klue-vs-crayon-vs-ripplewatch-enterprise-grade-cost\">here is how they differ</a>.",
       },
       {
         question: "How does Ripplewatch compare to Crayon and Klue?",
@@ -30,7 +30,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "What data sources does it monitor?",
         answer:
-          "Pricing pages, job postings, news coverage, and funding announcements, continuously, for every competitor you track. If you tell your assistant about sales calls, lost deals or customer feedback, it also draws on those to sharpen its judgment.",
+          "Competitor pricing pages and job postings every day. News coverage, funding announcements, customer reviews, social buzz and ads every week. If you tell your assistant about lost deals, churn, sales calls or customer feedback, it remembers them and uses them to judge which moves actually matter to you.",
       },
       {
         question: "Does it use my sales calls or deal data?",
@@ -38,9 +38,9 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
           "Only what you choose to tell it. You can log call mentions, win/loss outcomes and customer feedback by talking to your assistant, and they are used only to add context to scoring, for example recognizing that a competitor's price cut matches a reason you've actually lost a deal.",
       },
       {
-        question: "What is the Ask feature?",
+        question: "Where do I ask questions?",
         answer:
-          "A chat interface scoped to your own tracked competitors and business context. Instead of waiting for the next update, you can ask something like \"what has this competitor changed recently that matters to us?\" and get an answer grounded in your last 90 days of signals.",
+          "Asking is how you use Ripplewatch, and it happens in your own assistant (Claude, ChatGPT, Cursor) or in Slack, not in a separate chat window. Ask something like \"what has this competitor changed recently that matters to us?\" and the answer is grounded in what Ripplewatch has watched and remembered about your business.",
       },
       {
         question: "What is Momentum?",
@@ -90,7 +90,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "Is there a dashboard I have to log into?",
         answer:
-          "No. Ripplewatch lives in Claude or ChatGPT, so you ask about your competitors where you already work. Your account has Ask and Settings (billing, balance, connector, competitors).",
+          "No. Ripplewatch lives in Claude or ChatGPT, so you ask about your competitors where you already work. The web app is just Settings: billing and balance, connecting your assistant and Slack, your competitors and your data.",
       },
       {
         question: "Can I cancel anytime?",
@@ -164,11 +164,12 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "How do I get started?",
         answer:
-          'With Ripplewatch, sign up and walk through a short onboarding flow: tell us your positioning, your ICP, and the competitors you want tracked, and scored updates start showing up as soon as the first crawl runs.',
+          "Sign up, tell us your company and the competitors you want watched, and connect Ripplewatch to your assistant. That takes a few minutes, and your first read arrives as soon as the first check finishes. Adding your won and lost deals, or your churn if you sell to consumers, makes the answers sharper.",
       },
       {
         question: "What integrations do you support?",
-        answer: "Slack for delivery, and HubSpot, Gong, and Zoom for extra context on scoring.",
+        answer:
+          "It works inside Claude, ChatGPT, Cursor and other AI assistants that support MCP, and it delivers alerts and a weekly recap to Slack and email. To bring in deals, churn or call notes, ask your assistant to read them from your CRM, billing tool or call recorder and send them to Ripplewatch; there is nothing separate to connect.",
       },
       {
         question: "How do I contact support, and how fast do you respond?",

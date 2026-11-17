@@ -939,7 +939,7 @@ export async function sendConnectWelcomeEmail(to: string, companyName: string, a
       <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
         Your usage balance, auto-reload and connector details are under Settings.
       </p>
-      <a href="${appUrl}/app/settings?tab=connect" style="${CONNECT_EMAIL_BUTTON}">Open Settings</a>
+      <a href="${appUrl}/app/settings?tab=manage" style="${CONNECT_EMAIL_BUTTON}">Open Settings</a>
       <p style="color:#888;font-size:12px;margin-top:24px;">Questions? Just reply; a person reads every one.</p>
     </div>`,
   });
@@ -1044,7 +1044,7 @@ export async function sendConnectDailyAlertEmail(
       ${email.moreCount > 0 ? `<p style="color:#666;font-size:13px;">Plus ${email.moreCount} more. Ask your assistant for the full list.</p>` : ""}
       <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">Want to dig in? Ask your assistant: <em>"${escapeHtml(email.tryAsking)}"</em></p>
       <p style="color:#888;font-size:12px;margin-top:24px;">
-        You get this only on days something important changes. <a href="${appUrl}/app/settings?tab=connect" style="color:#888;">Manage</a>
+        You get this only on days something important changes. <a href="${appUrl}/app/settings?tab=manage" style="color:#888;">Manage</a>
         &middot; <a href="${unsubscribeUrl}" style="color:#888;">Stop daily alerts</a>
       </p>
     </div>`,
@@ -1101,7 +1101,7 @@ export async function sendConnectMonthlyRecapEmail(
       <p style="color:#3a3a3a;font-size:14px;margin:16px 0 4px;">Try asking your assistant:</p>
       <ul style="color:#3a3a3a;font-size:14px;line-height:1.6;padding-left:20px;">${ask}</ul>
       <p style="color:#888;font-size:12px;margin-top:24px;">
-        <a href="${appUrl}/app/settings?tab=connect" style="color:#888;">Manage</a>
+        <a href="${appUrl}/app/settings?tab=manage" style="color:#888;">Manage</a>
         &middot; <a href="${unsubscribeUrl}" style="color:#888;">Stop the monthly recap</a>
       </p>
     </div>`,
@@ -1127,7 +1127,7 @@ export async function sendConnectReloadFailedEmail(to: string, companyName: stri
       <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
         Update your card under Manage billing, then turn auto-reload back on, or add funds by hand.
       </p>
-      <a href="${appUrl}/app/settings?tab=connect" style="${CONNECT_EMAIL_BUTTON}">Fix it in Settings</a>
+      <a href="${appUrl}/app/settings?tab=manage" style="${CONNECT_EMAIL_BUTTON}">Fix it in Settings</a>
     </div>`,
   });
   if (result.error) throw new Error(result.error.message);
@@ -1160,7 +1160,7 @@ export async function sendConnectLowBalanceEmail(
             : "Auto-reload is off, so answers and monitoring will pause when it reaches zero."
         }
       </p>
-      <a href="${appUrl}/app/settings?tab=connect" style="${CONNECT_EMAIL_BUTTON}">Add funds</a>
+      <a href="${appUrl}/app/settings?tab=manage" style="${CONNECT_EMAIL_BUTTON}">Add funds</a>
     </div>`,
   });
   if (result.error) throw new Error(result.error.message);
@@ -1189,7 +1189,7 @@ export async function sendConnectWeeklyEmail(
         Want the detail? Ask your assistant: <em>"What changed with my competitors this week, and what should I worry about?"</em>
       </p>
       <p style="color:#888;font-size:12px;margin-top:24px;">
-        Usage balance: $${balanceUsd.toFixed(2)}. <a href="${appUrl}/app/settings?tab=connect" style="color:#888;">Manage</a>
+        Usage balance: $${balanceUsd.toFixed(2)}. <a href="${appUrl}/app/settings?tab=manage" style="color:#888;">Manage</a>
       </p>
     </div>`,
   });
