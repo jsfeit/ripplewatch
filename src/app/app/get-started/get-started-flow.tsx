@@ -48,6 +48,15 @@ const WIZARD_STEPS: { title: string; optional: boolean; key: OnboardingStepKey }
 const CONNECT_STEP = 2;
 const wizardIndex = (step: number) => (step < CONNECT_STEP ? step : step - 1);
 
+// The suggestion list sometimes includes the company itself (it is read from the same site). Never offer someone
+// their own company as a competitor, by domain or by name.
+function isOwnCompany(c: { name: string; domain: string }, companyName: string, website: string): boolean {
+  const host = (v: string) => v.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").split(/[/?#]/)[0];
+  const own = host(website);
+  if (own && host(c.domain) === own) return true;
+  return c.name.trim().toLowerCase() === companyName.trim().toLowerCase();
+}
+
 export function GetStartedFlow({
   companyName,
   mcpLastConnectedAt,
@@ -558,7 +567,7 @@ export function GetStartedFlow({
                 id="positioning"
                 value={positioning}
                 onChange={(e) => setPositioning(e.target.value)}
-                placeholder="Relevance-scored competitive intel for startup marketing teams"
+                placeholder={sellsTo === "consumer" ? "A free budgeting app that helps people stop overspending" : sellsTo === "both" ? "Scheduling software, free for individuals and paid for teams" : "Relevance-scored competitive intel for startup marketing teams"}
               />
               {suggested?.positioning ? (
                 <button type="button" className="text-left text-xs text-primary hover:underline" onClick={() => { setPositioning(suggested.positioning); setSuggested((cur) => (cur ? { ...cur, positioning: "" } : cur)); }}>
@@ -572,7 +581,7 @@ export function GetStartedFlow({
                 id="icp"
                 value={icp}
                 onChange={(e) => setIcp(e.target.value)}
-                placeholder="Marketing and product leads at 5-100 person SaaS startups without a dedicated CI function"
+                placeholder={sellsTo === "consumer" ? "Adults in their 20s and 30s paid hourly, living paycheck to paycheck" : sellsTo === "both" ? "Freelancers who start free, and the small teams they bring along" : "Marketing and product leads at 5-100 person SaaS startups without a dedicated CI function"}
                 rows={3}
               />
               {suggested?.icp ? (
@@ -619,7 +628,7 @@ export function GetStartedFlow({
               Add competitor
             </Button>
             <SuggestedCompetitors
-              suggestions={suggestions}
+              suggestions={suggestions ? suggestions.filter((c) => !isOwnCompany(c, companyName, website)) : suggestions}
               loading={suggestions === null}
               selectedNames={selectedNames}
               onToggle={toggleSuggestion}
