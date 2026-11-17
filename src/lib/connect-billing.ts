@@ -52,8 +52,18 @@ export type ConnectAccountRow = {
 // code applies to every line, including the wallet funding, which would hand
 // out free credits (credit amount is the full funding figure). The one way a
 // code gets in is resolveConnectPromoCode below, which only accepts a code
-// whose coupon is limited to the platform-fee product.
-export async function resolveConnectPromoCode(rawCode: string): Promise<string | null> {
+// whose coupon is limited to the platform-fee product, or a deliberate
+// "free signup" coupon (see below).
+//
+// A free-signup coupon is created by hand in Stripe: 100% off, duration
+// "forever" (so a renewal never asks for a card that was never collected), and
+// metadata free_signup=true. It discounts every line, funding included, so the
+// signup totals $0 and skips the card; the account still gets the normal
+// opening balance. Only someone with Stripe access can create one, which is the
+// safeguard: no other coupon, however generous, can ever zero the funding line.
+export type ResolvedPromo = { id: string; free: boolean };
+
+export async function resolveConnectPromoCode(rawCode: string): Promise<ResolvedPromo | null> {
   const code = rawCode.trim().toUpperCase();
   const priceId = getConnectPriceId();
   if (!code || !priceId) return null;
@@ -71,14 +81,31 @@ export async function resolveConnectPromoCode(rawCode: string): Promise<string |
   const promotionCode = data[0];
   const coupon = promotionCode?.promotion.coupon;
   if (!promotionCode || !coupon || typeof coupon === "string" || !coupon.valid) return null;
+  if (coupon.metadata?.free_signup === "true") {
+    // Must be exactly the shape described above, or it is refused outright.
+    if (coupon.percent_off !== 100 || coupon.duration !== "forever") return null;
+    return { id: promotionCode.id, free: true };
+  }
   // A coupon with no product limit would also discount the wallet funding line.
   if (!coupon.applies_to?.products.includes(productId)) return null;
-  return promotionCode.id;
+  return { id: promotionCode.id, free: false };
+}
+
+// True once a Connect checkout is settled and safe to act on: Stripe reports it
+// paid, or it is a free-signup session (flagged by this server when it created
+// the session) whose total really is $0.
+export function isSettledConnectCheckout(session: Stripe.Checkout.Session): boolean {
+  if (session.payment_status === "paid") return true;
+  return (
+    session.metadata?.free_signup === "true" &&
+    session.amount_total === 0 &&
+    session.payment_status === "no_payment_required"
+  );
 }
 
 export async function createConnectSignupSession(
   account: ConnectAccountRow,
-  input: { fundingUsd: number; userEmail: string; origin: string; promotionCodeId?: string | null }
+  input: { fundingUsd: number; userEmail: string; origin: string; promotionCodeId?: string | null; freeSignup?: boolean }
 ): Promise<{ clientSecret: string }> {
   const priceId = getConnectPriceId();
   if (!priceId) throw new Error("STRIPE_PRICE_CONNECT is not configured.");
@@ -91,12 +118,15 @@ export async function createConnectSignupSession(
     client_reference_id: account.id,
     line_items: [{ price: priceId, quantity: 1 }, fundingLineItem(input.fundingUsd)],
     ...(input.promotionCodeId ? { discounts: [{ promotion_code: input.promotionCodeId }] } : {}),
+    // A free-signup code brings the total to $0, so no card is collected.
+    ...(input.freeSignup ? { payment_method_collection: "if_required" as const } : {}),
     automatic_tax: { enabled: true },
     metadata: {
       account_id: account.id,
       tier: "connect",
       purpose: "connect_signup",
       funding_cents: String(input.fundingUsd * 100),
+      ...(input.freeSignup ? { free_signup: "true" } : {}),
     },
     subscription_data: { metadata: { account_id: account.id, tier: "connect" } },
     // Straight to the context step (positioning, ICP, competitors), not
@@ -148,7 +178,7 @@ export async function creditWalletFromCheckout(
 ): Promise<{ credited: boolean; reason?: string }> {
   const purpose = session.metadata?.purpose;
   if (purpose !== "connect_signup" && purpose !== "connect_topup") return { credited: false, reason: "not a connect session" };
-  if (session.payment_status !== "paid") return { credited: false, reason: `payment_status ${session.payment_status}` };
+  if (!isSettledConnectCheckout(session)) return { credited: false, reason: `payment_status ${session.payment_status}` };
 
   const accountId = session.metadata?.account_id;
   const fundingCents = Number(session.metadata?.funding_cents);

@@ -4,7 +4,12 @@ import { getStripe, TIER_BY_PRICE } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPlanChangeEmail, sendPaymentReceivedEmail, sendPaymentFailedEmail, sendReferralWelcomeEmail, sendReferralSignedUpEmail, sendConnectWelcomeEmail } from "@/lib/resend";
 import { recordAudit } from "@/lib/audit";
-import { creditWalletFromCheckout, creditWalletFromReloadInvoice, saveDefaultPaymentMethod } from "@/lib/connect-billing";
+import {
+  creditWalletFromCheckout,
+  creditWalletFromReloadInvoice,
+  isSettledConnectCheckout,
+  saveDefaultPaymentMethod,
+} from "@/lib/connect-billing";
 import { handleDispute } from "@/lib/connect-disputes";
 import { notifyLead } from "@/lib/lead-alerts";
 
@@ -42,7 +47,7 @@ export async function POST(request: Request) {
         const connectPurpose = session.metadata?.purpose;
         if (connectPurpose === "connect_signup" || connectPurpose === "connect_topup") {
           if (!accountId) throw new Error(`connect checkout ${session.id} has no account id`);
-          if (connectPurpose === "connect_signup" && session.payment_status === "paid") {
+          if (connectPurpose === "connect_signup" && isSettledConnectCheckout(session)) {
             const { error } = await supabase
               .from("accounts")
               .update({
