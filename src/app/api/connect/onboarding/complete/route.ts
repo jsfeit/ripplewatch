@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   if (!profile?.account_id) return NextResponse.json({ error: "No account yet." }, { status: 400 });
   const accountId = profile.account_id;
 
-  const { data: account } = await supabase.from("accounts").select("id, name, tier").eq("id", accountId).single();
+  const { data: account } = await supabase.from("accounts").select("id, name, tier, website, sells_to").eq("id", accountId).single();
   if (!account || account.tier !== "connect") {
     return NextResponse.json({ error: "This account isn't set up for Ripplewatch." }, { status: 400 });
   }
@@ -160,7 +160,7 @@ export async function POST(request: Request) {
     // brand-new account with zero signals is the worst possible first
     // impression, so this queues the backfill crawl right away instead of
     // waiting for the next scheduled cron run.
-    const researchPromise = researchCompanyContext(account.name, positioning?.trim() || null, accountId)
+    const researchPromise = researchCompanyContext(account.name, positioning?.trim() || null, accountId, { website: account.website, sellsTo: account.sells_to })
       .then((summary) =>
         supabase
           .from("accounts")

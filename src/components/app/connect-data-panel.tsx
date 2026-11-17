@@ -9,7 +9,9 @@ import { WinLossEmailAddress } from "@/components/app/win-loss-email-address";
 import { DealFileUpload } from "@/components/app/deal-file-upload";
 import { DealIntelligencePanel, type DealIntelligenceProps } from "@/components/app/deal-intelligence";
 import { cn } from "@/lib/utils";
-import { AudiencePicker, useAudience } from "@/components/app/audience-picker";
+import { AudiencePicker, saveSellsTo } from "@/components/app/audience-picker";
+import { ChurnDataCard } from "@/components/app/churn-data-card";
+import type { Audience } from "@/lib/sales-motion";
 import {
   toolsForAudience,
   dealToolsServerSnapshot,
@@ -35,13 +37,20 @@ export function ConnectDataPanel({
   inboxAddress,
   competitors,
   dealIntel,
+  sellsTo,
 }: {
   inboxAddress: string;
   competitors: Competitor[];
   dealIntel?: DealIntelligenceProps;
+  // Saved on the account: B2B, B2C or both. Null until chosen.
+  sellsTo: Audience | null;
 }) {
   const router = useRouter();
-  const audience = useAudience();
+  const [audience, setAudience] = useState<Audience | null>(sellsTo);
+  function chooseAudience(next: Audience) {
+    setAudience(next);
+    saveSellsTo(next);
+  }
   const [outcome, setOutcome] = useState<"won" | "lost">("lost");
   const [competitorId, setCompetitorId] = useState(competitors[0]?.id ?? NOT_SURE);
   const [reason, setReason] = useState("");
@@ -146,12 +155,25 @@ export function ConnectDataPanel({
       </div>
 
       <div className="rounded-xl border border-border bg-card p-6">
-        <AudiencePicker />
+        <AudiencePicker value={audience} onChange={chooseAudience} />
         <p className="mt-2 text-xs text-muted-foreground">
-          This changes the wording and the tools offered below. A consumer company has cancellations and reviews rather
-          than sales deals, and a company with both can use everything.
+          This changes the wording and the tools offered below, and your assistant reads it too. A consumer company has
+          churn and cancellations rather than sales deals, and a company with both can use everything.
         </p>
       </div>
+
+      {audience === "consumer" || audience === "both" ? (
+        <div className="rounded-xl border border-border bg-card p-6">
+          <h3 className="text-base font-semibold">Churn and growth</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Most consumer companies can&apos;t say why each customer left, but they know their numbers. Give me churn over
+            time and I&apos;ll show whether it&apos;s rising and which competitor moves line up with it.
+          </p>
+          <div className="mt-4">
+            <ChurnDataCard competitorNames={competitors.map((c) => c.name)} onSaved={() => router.refresh()} />
+          </div>
+        </div>
+      ) : null}
 
       {dealIntel ? <DealIntelligencePanel {...dealIntel} /> : null}
 

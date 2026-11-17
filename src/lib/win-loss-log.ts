@@ -36,12 +36,15 @@ export async function logWinLoss(
     // Blank when the deal never named who won (most losses): it is still logged, as a dated, themed
     // outcome with no competitor.
     competitorName: string;
-    outcome: "won" | "lost";
+    // "churned" is a customer who left (consumer products mostly cannot say who won).
+    outcome: "won" | "lost" | "churned";
     reason: string | null;
     // The deal's own close date (YYYY-MM-DD). Omit and it counts as closing today.
     closedOn?: string | null;
     amount?: number | null;
     dealName?: string | null;
+    // Which side of the business this is, for a company that sells to both. Left out when unknown.
+    segment?: "business" | "consumer" | null;
     source?: string;
   }
 ): Promise<LogWinLossResult> {
@@ -58,7 +61,8 @@ export async function logWinLoss(
   let suggestedCompetitors: string[] = [];
   if (name && !tracked) {
     // Not tracked yet: becomes a suggestion on the Competitors page, same as an import.
-    const entry: ExtractedWinLossEntry = { matchType: "untracked", competitor: name, outcome: input.outcome, reason: input.reason };
+    // A churned customer who named a competitor counts as a loss to it when suggesting competitors to track.
+    const entry: ExtractedWinLossEntry = { matchType: "untracked", competitor: name, outcome: input.outcome === "churned" ? "lost" : input.outcome, reason: input.reason };
     const applied = await applyExtractedWinLossEntries(supabase, accountId, null, list, [entry]);
     suggestedCompetitors = applied.suggestedCompetitors;
   }
@@ -98,6 +102,7 @@ export async function logWinLoss(
         closed_on: closedOn,
         amount: input.amount ?? null,
         deal_name: input.dealName ?? null,
+        segment: input.segment ?? null,
         deal_ref: dealRef,
         source: input.source ?? "manual",
         reason_themes: themes,

@@ -72,7 +72,7 @@ export default async function SettingsPage({
     db
       .from("accounts")
       .select(
-        "id, tier, status, subscription_status, contact_email, demo_mode, referral_code, slack_digest_day, slack_digest_hour, stripe_customer_id, stripe_subscription_id, timezone, mcp_last_connected_at, positioning, icp"
+        "id, sells_to, tier, status, subscription_status, contact_email, demo_mode, referral_code, slack_digest_day, slack_digest_hour, stripe_customer_id, stripe_subscription_id, timezone, mcp_last_connected_at, positioning, icp"
       )
       .eq("id", accountId)
       .single(),

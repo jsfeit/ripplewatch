@@ -131,6 +131,9 @@ export interface Database {
           demo_mode: boolean;
           mcp_last_connected_at: string | null;
           connect_get_started_dismissed_at: string | null;
+          website: string | null;
+          sells_to: "business" | "consumer" | "both" | null;
+          company_overview: string | null;
           onboarding_email_day2_sent_at: string | null;
           onboarding_email_day7_sent_at: string | null;
           onboarding_emails_unsubscribed_at: string | null;
@@ -178,6 +181,9 @@ export interface Database {
           demo_mode?: boolean;
           mcp_last_connected_at?: string | null;
           connect_get_started_dismissed_at?: string | null;
+          website?: string | null;
+          sells_to?: "business" | "consumer" | "both" | null;
+          company_overview?: string | null;
           onboarding_email_day2_sent_at?: string | null;
           onboarding_email_day7_sent_at?: string | null;
           onboarding_emails_unsubscribed_at?: string | null;
@@ -300,6 +306,40 @@ export interface Database {
           competitor_raw?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["competitor_win_loss"]["Insert"]>;
+        Relationships: [];
+      };
+      customer_metrics: {
+        Row: {
+          id: string;
+          account_id: string;
+          segment: "business" | "consumer";
+          period_start: string;
+          customers_start: number | null;
+          new_customers: number | null;
+          cancelled_customers: number | null;
+          customers_end: number | null;
+          revenue: number | null;
+          churn_pct: number | null;
+          source: string;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_id: string;
+          segment?: "business" | "consumer";
+          period_start: string;
+          customers_start?: number | null;
+          new_customers?: number | null;
+          cancelled_customers?: number | null;
+          customers_end?: number | null;
+          revenue?: number | null;
+          churn_pct?: number | null;
+          source?: string;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["customer_metrics"]["Insert"]>;
         Relationships: [];
       };
       win_loss_imports: {

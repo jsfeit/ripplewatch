@@ -15,6 +15,14 @@ export const DEAL_THEMES = [
   "status_quo",
   "timing_budget",
   "champion_change",
+  // Customer reasons that only make sense for consumer products, where most people leave without
+  // saying where they went. "unknown" is a real answer, counted openly, so a lack of reasons never
+  // gets dressed up as one.
+  "switched_to_competitor",
+  "uses_both",
+  "no_longer_needed",
+  "paused_or_downgraded",
+  "unknown",
   "other",
 ] as const;
 
@@ -33,6 +41,11 @@ export const DEAL_THEME_LABELS: Record<DealTheme, string> = {
   status_quo: "Stayed with the current tool or built in-house",
   timing_budget: "Timing or budget",
   champion_change: "Champion left or changed",
+  switched_to_competitor: "Switched to a competitor",
+  uses_both: "Uses us and a competitor",
+  no_longer_needed: "No longer needed",
+  paused_or_downgraded: "Paused or downgraded",
+  unknown: "Reason unknown",
   other: "Other",
 };
 

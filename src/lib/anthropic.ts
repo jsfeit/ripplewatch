@@ -1152,7 +1152,7 @@ Search for competitors this company isn't already tracking.`;
   }
 }
 
-const RESEARCH_COMPANY_SYSTEM_PROMPT = `You use web search to research a B2B SaaS company, the account itself, not a competitor, and write a short factual summary of its real market position: what it actually sells, who it competes with, what differentiates it, and any notable recent context (funding, positioning shifts, market perception). This exists to fill gaps when the company's own self-reported positioning/ICP text is thin, generic, or incomplete, ground it in what's actually publicly known, not marketing copy.
+const RESEARCH_COMPANY_SYSTEM_PROMPT = `You use web search to research a company, the account itself, not a competitor, and write a short factual summary of its real market position: what it actually sells, who it competes with, what differentiates it, and any notable recent context (funding, positioning shifts, market perception). This exists to fill gaps when the company's own self-reported positioning/ICP text is thin, generic, or incomplete, ground it in what's actually publicly known, not marketing copy.
 
 Respond with strict JSON only, no markdown, matching this shape exactly:
 {"summary": "<3-5 sentences, factual, specific>"}
@@ -1180,9 +1180,11 @@ const RESEARCH_COMPANY_SCHEMA = {
 export async function researchCompanyContext(
   companyName: string,
   positioning: string | null,
-  accountId: string | null
+  accountId: string | null,
+  extra: { website?: string | null; sellsTo?: "business" | "consumer" | "both" | null } = {}
 ): Promise<string> {
-  const userPrompt = `Company: ${companyName}${positioning ? `\nSelf-reported positioning: ${positioning}` : ""}\n\nResearch this company's real market position.`;
+  const audience = extra.sellsTo === "consumer" ? "consumers" : extra.sellsTo === "business" ? "businesses" : extra.sellsTo === "both" ? "both businesses and consumers" : null;
+  const userPrompt = `Company: ${companyName}${extra.website ? `\nWebsite: ${extra.website} (this is the company to research, so do not confuse it with another company of the same name)` : ""}${audience ? `\nSells to: ${audience}` : ""}${positioning ? `\nSelf-reported positioning: ${positioning}` : ""}\n\nResearch this company's real market position.`;
 
   const message = await createMessage({
     model: "claude-sonnet-5",

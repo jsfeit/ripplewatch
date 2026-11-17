@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { GetStartedFlow } from "./get-started-flow";
 import { loadConnectedAssistants } from "@/lib/connected-assistants";
+import { parseAudience } from "@/lib/sales-motion";
 
 export const metadata = { title: "Get started" };
 
@@ -29,7 +30,7 @@ export default async function GetStartedPage({ searchParams }: { searchParams: P
   const [{ data: account }, { data: firstCompetitor, count: competitorCount }] = await Promise.all([
     supabase
       .from("accounts")
-      .select("id, name, tier, status, subscription_status, connect_get_started_dismissed_at, mcp_last_connected_at")
+      .select("id, name, tier, status, subscription_status, connect_get_started_dismissed_at, mcp_last_connected_at, website, sells_to, company_overview")
       .eq("id", profile.account_id)
       .single(),
     // Context and competitors are saved before the assistant is connected, so
@@ -59,6 +60,9 @@ export default async function GetStartedPage({ searchParams }: { searchParams: P
         connectedAssistants={connectedAssistants}
         contextSaved={(competitorCount ?? 0) > 0}
         savedCompetitorName={firstCompetitor?.[0]?.name ?? null}
+        initialWebsite={account.website}
+        initialSellsTo={parseAudience(account.sells_to)}
+        initialOverview={account.company_overview}
       />
     </div>
   );

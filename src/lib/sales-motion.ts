@@ -1,52 +1,21 @@
-// Who a customer sells to. A B2B team has deals in a CRM and calls on a
-// recorder; a consumer company has cancellations, reviews and support tickets
-// and no "deal" at all; plenty have both. The setup step and the Data tab word
-// themselves to match. Kept in this browser only, like the tools picked beside
-// it: it tailors wording and prompts, it isn't account data.
+// Who a customer sells to. A B2B team has deals in a CRM and calls on a recorder; a consumer
+// company has cancellations, churn and reviews and no "deal" at all; plenty have both. The setup
+// step and the Data tab word themselves to match. The answer is saved on the account
+// (accounts.sells_to), so the assistant and the relevance scoring see it too.
 export type Audience = "business" | "consumer" | "both";
 
 export const AUDIENCES: { id: Audience; label: string; hint: string }[] = [
-  { id: "business", label: "Businesses (B2B)", hint: "Sales deals, a CRM, call recordings" },
-  { id: "consumer", label: "Consumers (B2C)", hint: "Sign-ups, cancellations, reviews, support" },
+  { id: "business", label: "B2B", hint: "You sell to companies: deals, a CRM, calls" },
+  { id: "consumer", label: "B2C", hint: "You sell to people: sign-ups, cancellations, reviews" },
   { id: "both", label: "Both", hint: "A sales team and a consumer product" },
 ];
 
-const STORAGE_KEY = "ripplewatch-audience";
-const CHANGE_EVENT = "ripplewatch-audience-changed";
-
-export function parseAudience(raw: string | null): Audience | null {
+export function parseAudience(raw: unknown): Audience | null {
   return raw === "business" || raw === "consumer" || raw === "both" ? raw : null;
 }
 
-export function saveAudience(value: Audience): void {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, value);
-    window.dispatchEvent(new Event(CHANGE_EVENT));
-  } catch {
-    // Storage blocked: the step just keeps its default wording.
-  }
-}
-
-// For useSyncExternalStore, so the server render is always the unset one.
-export function subscribeAudience(callback: () => void): () => void {
-  window.addEventListener("storage", callback);
-  window.addEventListener(CHANGE_EVENT, callback);
-  return () => {
-    window.removeEventListener("storage", callback);
-    window.removeEventListener(CHANGE_EVENT, callback);
-  };
-}
-export function audienceSnapshot(): string {
-  try {
-    return window.localStorage.getItem(STORAGE_KEY) ?? "";
-  } catch {
-    return "";
-  }
-}
-export const audienceServerSnapshot = () => "";
-
-// The words each audience sees on the "bring your data" step. Unset reads as
-// business, which is what the step said before there was a choice.
+// The words each audience sees on the "bring your data" step. Unset reads as business, which is
+// what the step said before there was a choice.
 export type DataCopy = {
   title: string;
   intro: string;
@@ -60,41 +29,45 @@ export type DataCopy = {
   toolsHelp: string;
 };
 
+// One side's wording, for the tabs a company that sells to both sees.
+export function sideCopy(side: "business" | "consumer"): DataCopy {
+  return dataCopy(side);
+}
+
 export function dataCopy(audience: Audience | null): DataCopy {
   if (audience === "consumer") {
     return {
-      title: "Add why customers choose or leave",
+      title: "Add your churn and growth",
       intro:
-        "What your customers say about why they signed up, stayed or left is what makes answers specific to you. Upload a cancellation or churn export, tell me what you're hearing, or have your assistant pull it from a tool it can reach.",
+        "Most consumer companies can't say why each customer left, but they know their churn. Give me your churn over time and I'll show you whether it's rising and which competitor moves line up with it.",
       unlocks:
-        "Upload a cancellation or churn export, in any layout, and I'll read it. More history is better: I can see trends over time and which competitor moves lined up with the customers you lost. Or tell me where that feedback lives and I'll give you the words to have your assistant pull it in.",
+        "Paste or upload churn over time, in any layout, or have your assistant pull it from your billing tool. I'll tell you whether churn is rising, how fast you're growing, and which competitor moves landed around the change. It shows when, not why, and I'll say how many months it rests on.",
       noteLabel: "Tell me what customers are saying, in your own words",
       notePlaceholder: (c) => `Three people cancelled this week and said ${c} has no monthly fee.`,
       noteHelp:
-        "Customers who left or joined, one or several, however you'd say it out loud. It makes your first answers about your customers, not just the market. Skip it and add real data later.",
-      uploadLabel: "Upload your cancellations or churn",
+        "Customers who left or joined, one or several, however you'd say it out loud. Even a few of these help me read the numbers. Skip it and add more later.",
+      uploadLabel: "Have a list of cancelled customers?",
       uploadButton: "Upload customers (any CSV)",
       uploadHelp:
-        "Any CSV of cancellations, refunds or churn survey answers, in any layout: I'll work out the columns and show you how I read them before anything is saved. Go back as far as you have. More history lets me spot trends over time and see which competitor moves lined up with your losses.",
+        "Any CSV of cancellations, refunds or churn survey answers, in any layout: I'll work out the columns and show you how I read them before anything is saved.",
       toolsHelp:
         "Once you're set up, your assistant can pull from these on a schedule, so new cancellations and feedback arrive without you. Don't see yours, or don't use any? That's fine: you can always just tell your assistant what a customer said.",
     };
   }
   if (audience === "both") {
     return {
-      title: "Add your deals and customers",
+      title: "Add your deals and your churn",
       intro:
-        "Sales deals and consumer cancellations both make answers specific to you. Upload an export, tell me about one, or have your assistant pull them from a tool it can reach.",
+        "Sales deals and consumer churn each make answers specific to you. Use the tabs to add either side, and skip the one that doesn't apply.",
       unlocks:
-        "Upload a won and lost export from your CRM, or a cancellation export from your consumer product, in any layout, and I'll read it. More history is better: I can see trends over time and which competitor moves lined up with your losses on each side. Or tell me where they live and I'll give you the words to have your assistant pull them in.",
+        "For your business side, upload won and lost deals from your CRM. For your consumer side, give me churn over time. I'll read each in its own terms: deals against the moves that cost you them, churn against when it started rising.",
       noteLabel: "Tell me about a deal or a customer, in your own words",
       notePlaceholder: (c) => `We lost a deal to ${c} on price. Separately, a few subscribers left for ${c} this month.`,
-      noteHelp:
-        "A won or lost deal, or customers who left or joined, however you'd say it out loud. Say which side it is, business or consumer, so it's clear when it's read back. Skip it and add real data later.",
-      uploadLabel: "Upload your won and lost deals, or cancellations",
+      noteHelp: "A won or lost deal, or customers who left, however you'd say it out loud. Skip it and add real data later.",
+      uploadLabel: "Upload your deals or cancellations",
       uploadButton: "Upload deals or customers (any CSV)",
       uploadHelp:
-        "Any CSV from your CRM or your consumer product, in any layout: I'll work out the columns and show you how I read them before anything is saved. Upload one file per side. More history lets me spot trends over time and see which competitor moves lined up with your losses.",
+        "Any CSV from your CRM or your consumer product, in any layout: I'll work out the columns and show you how I read them before anything is saved.",
       toolsHelp:
         "Once you're set up, your assistant can pull from these on a schedule, so new deals and cancellations arrive without you. Don't see yours, or don't use any? That's fine: you can always just tell your assistant how a deal or a customer went.",
     };

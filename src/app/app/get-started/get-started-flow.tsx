@@ -12,19 +12,18 @@ import { CompetitorRow, type CompetitorInput } from "@/components/app/competitor
 import { Confetti } from "@/components/app/confetti";
 import { DealsImportCard, FirstQuestions } from "@/components/app/first-questions";
 import { QuickGuide } from "@/components/app/quick-guide";
-import { DealFileUpload } from "@/components/app/deal-file-upload";
 import { McpConnectStep } from "@/components/app/mcp-connect-step";
 import { MomentumTease, ReadinessMeter, type Skill } from "@/components/app/momentum-tease";
 import { SuggestedCompetitors, type SuggestedCompetitor } from "@/components/app/suggested-competitors";
 import { PersonalReadCard } from "@/components/app/personal-read-card";
 import { SlackStep } from "@/components/app/slack-step";
 import { clearIntro, loadIntro } from "@/lib/connect-intro";
-import { loadDealTools, saveDealTools, toolsForAudience } from "@/lib/deal-tools";
-import { cn } from "@/lib/utils";
+import { loadDealTools, saveDealTools } from "@/lib/deal-tools";
 import { trackEvent } from "@/lib/analytics";
 import { ONBOARDING_VALUE, type OnboardingStepKey } from "@/lib/onboarding-value";
-import { dataCopy } from "@/lib/sales-motion";
-import { AudiencePicker, useAudience } from "@/components/app/audience-picker";
+import { dataCopy, type Audience } from "@/lib/sales-motion";
+import { AudiencePicker, saveSellsTo } from "@/components/app/audience-picker";
+import { SetupDataStep } from "@/components/app/setup-data-step";
 
 const TOTAL_STEPS = 5;
 
@@ -54,6 +53,9 @@ export function GetStartedFlow({
   connectedAssistants,
   contextSaved,
   savedCompetitorName,
+  initialWebsite,
+  initialSellsTo,
+  initialOverview,
 }: {
   companyName: string;
   mcpLastConnectedAt: string | null;
@@ -62,6 +64,10 @@ export function GetStartedFlow({
   // Business context and competitors are already saved (a reload partway through).
   contextSaved: boolean;
   savedCompetitorName: string | null;
+  // Saved earlier on the account, so a reload keeps them.
+  initialWebsite: string | null;
+  initialSellsTo: Audience | null;
+  initialOverview: string | null;
 }) {
   const router = useRouter();
   // Order: business, competitors (saved here), connect, deals, Slack. Someone who
@@ -91,12 +97,75 @@ export function GetStartedFlow({
   const [celebrating, setCelebrating] = useState(false);
   // A deal told in plain words on the deals step, saved with everything else at the end.
   const [dealNote, setDealNote] = useState("");
-  // Who they sell to decides the wording and tools on the deals step. With both,
-  // a note is labelled by side so it reads back clearly.
-  const audience = useAudience();
-  const copy = dataCopy(audience);
-  const [noteSide, setNoteSide] = useState<"business" | "consumer">("business");
-  const noteToSave = audience === "both" && dealNote.trim() ? `${noteSide === "consumer" ? "Consumer customers" : "Business deal"}: ${dealNote.trim()}` : dealNote;
+  // Churn told in plain words on the consumer side, saved with the deal note at the end.
+  const [consumerNote, setConsumerNote] = useState("");
+  const [metricsSaved, setMetricsSaved] = useState(false);
+  // Who they sell to decides the wording and tools on the deals step. Saved on the account.
+  const [sellsTo, setSellsTo] = useState<Audience | null>(initialSellsTo);
+  const copy = dataCopy(sellsTo);
+  function chooseSellsTo(next: Audience) {
+    setSellsTo(next);
+    saveSellsTo(next);
+  }
+  // What was read from their website: a short overview, a default for sells-to, and suggested
+  // positioning and customer lines that only ever fill empty fields.
+  const [website, setWebsite] = useState(initialWebsite ?? "");
+  const [overview, setOverview] = useState<string | null>(initialOverview);
+  const [overviewState, setOverviewState] = useState<"idle" | "reading" | "done" | "failed">(initialOverview ? "done" : "idle");
+  const [overviewError, setOverviewError] = useState("");
+  const [sellsToNote, setSellsToNote] = useState<string | null>(null);
+  const [suggested, setSuggested] = useState<{ positioning: string; icp: string } | null>(null);
+  const lastLookup = useRef<string>(initialWebsite ?? "");
+  // With both, the two notes are labelled by side so they read back clearly.
+  const noteToSave =
+    sellsTo === "both"
+      ? [dealNote.trim() && `Business deal: ${dealNote.trim()}`, consumerNote.trim() && `Churned customers: ${consumerNote.trim()}`].filter(Boolean).join("\n")
+      : sellsTo === "consumer"
+        ? consumerNote
+        : dealNote;
+
+  async function lookupCompany() {
+    const site = website.trim();
+    if (!site || site === lastLookup.current) return;
+    lastLookup.current = site;
+    setOverviewState("reading");
+    setOverviewError("");
+    try {
+      const res = await fetch("/api/connect/company-overview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ website: site }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.overview) {
+        setOverviewState("failed");
+        setOverviewError(data.error ?? "I couldn't read that site. You can describe the business below instead.");
+        return;
+      }
+      const o = data.overview as { overview: string; sellsTo: Audience; sellsToUnsure: boolean; sellsToReason: string; positioning: string; icp: string };
+      setOverview(o.overview);
+      setOverviewState("done");
+      // Only ever fill what is empty. Anything already typed stays, with the suggestion offered beside it.
+      const keep: { positioning: string; icp: string } = { positioning: "", icp: "" };
+      if (!positioning.trim()) setPositioning(o.positioning);
+      else if (o.positioning && o.positioning !== positioning) keep.positioning = o.positioning;
+      if (!icp.trim()) setIcp(o.icp);
+      else if (o.icp && o.icp !== icp) keep.icp = o.icp;
+      setSuggested(keep.positioning || keep.icp ? keep : null);
+      // The default only applies when they haven't chosen yet.
+      if (!sellsTo) {
+        chooseSellsTo(o.sellsTo);
+        setSellsToNote(
+          o.sellsToUnsure
+            ? "I couldn't tell from your site, so I picked Both. Change it if that's wrong."
+            : `${o.sellsToReason ? `${o.sellsToReason.replace(/\.$/, "")}. ` : ""}Change it if that's wrong.`
+        );
+      }
+    } catch {
+      setOverviewState("failed");
+      setOverviewError("I couldn't reach Ripplewatch. You can describe the business below instead.");
+    }
+  }
   // A deal export uploaded on the deals step: committed as soon as it is confirmed, not at the end.
   const [uploadedDeals, setUploadedDeals] = useState(false);
   const [dealResult, setDealResult] = useState<{ imported: number; skipped: number } | null>(null);
@@ -186,7 +255,9 @@ export function GetStartedFlow({
     { label: "Briefings", on: Boolean(mcpLastConnectedAt) && hasCompetitor, hint: "Needs your assistant connected and a competitor" },
     { label: "Momentum", on: hasCompetitor, hint: "Needs at least one competitor" },
     { label: "Relevance scoring", on: Boolean(positioning.trim() || icp.trim()), hint: "Needs what you sell or who buys it" },
-    { label: "Deal-aware answers", on: Boolean(dealNote.trim()) || uploadedDeals, hint: "Needs a deal you won or lost" },
+    sellsTo === "consumer"
+      ? { label: "Churn-aware answers", on: metricsSaved || Boolean(consumerNote.trim()) || uploadedDeals, hint: "Needs your churn over time" }
+      : { label: "Deal-aware answers", on: Boolean(dealNote.trim()) || Boolean(consumerNote.trim()) || metricsSaved || uploadedDeals, hint: "Needs a deal you won or lost, or your churn" },
   ];
 
   function updateCompetitor(index: number, field: keyof CompetitorInput, value: string) {
@@ -246,7 +317,7 @@ export function GetStartedFlow({
     // Stay on the finish screen: it holds the first read and the first questions, which take
     // longer than a few seconds to take in. The next step is a button, not a timer.
     trackEvent("setup_completed");
-    if (dealNote.trim()) setDealResult(data.deal ?? { imported: 0, skipped: 0 });
+    if (noteToSave.trim()) setDealResult(data.deal ?? { imported: 0, skipped: 0 });
     // Keep the read for the screen below; the saved copy has done its job.
     clearIntro();
     setCelebrating(true);
@@ -351,7 +422,7 @@ export function GetStartedFlow({
     } else if (wizardStep === 2) {
       // Remembered in this browser so the Data tab can name these tools in its prompts.
       saveDealTools(dealTools);
-      setJustUnlocked(dealTools.length > 0 || uploadedDeals ? ONBOARDING_VALUE.tools.unlocked() : null);
+      setJustUnlocked(dealTools.length > 0 || uploadedDeals || metricsSaved ? ONBOARDING_VALUE.tools.unlocked() : null);
     }
     setStep((s) => s + 1);
   }
@@ -399,6 +470,48 @@ export function GetStartedFlow({
         {wizardStep === 0 && (
           <div className="space-y-5">
             <div className="space-y-2">
+              <Label htmlFor="website">Company website</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="website"
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                  onBlur={() => void lookupCompany()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void lookupCompany();
+                    }
+                  }}
+                  placeholder="acme.com"
+                  autoComplete="url"
+                />
+                <Button type="button" variant="outline" onClick={() => void lookupCompany()} disabled={overviewState === "reading" || !website.trim()}>
+                  {overviewState === "reading" ? <Loader2 className="size-4 animate-spin" /> : null}
+                  Read my site
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                I&apos;ll read your homepage and pricing page to get your positioning and who you sell to right, then you can
+                edit anything. Optional.
+              </p>
+              {overviewState === "failed" ? <p className="text-xs text-destructive">{overviewError}</p> : null}
+            </div>
+            {overview ? (
+              <div className="rounded-md border border-primary/30 bg-primary/[0.04] p-4">
+                <p className="text-sm font-semibold">Here&apos;s what I found</p>
+                <p className="mt-1 text-sm">{overview}</p>
+              </div>
+            ) : null}
+            <AudiencePicker
+              value={sellsTo}
+              onChange={(next) => {
+                chooseSellsTo(next);
+                setSellsToNote(null);
+              }}
+              note={sellsToNote}
+            />
+            <div className="space-y-2">
               <Label htmlFor="positioning">One-line positioning</Label>
               <Input
                 id="positioning"
@@ -406,8 +519,12 @@ export function GetStartedFlow({
                 onChange={(e) => setPositioning(e.target.value)}
                 placeholder="Relevance-scored competitive intel for startup marketing teams"
               />
+              {suggested?.positioning ? (
+                <button type="button" className="text-left text-xs text-primary hover:underline" onClick={() => { setPositioning(suggested.positioning); setSuggested((cur) => (cur ? { ...cur, positioning: "" } : cur)); }}>
+                  Use this from your site instead: {suggested.positioning}
+                </button>
+              ) : null}
             </div>
-            <AudiencePicker />
             <div className="space-y-2">
               <Label htmlFor="icp">Ideal customer profile</Label>
               <Textarea
@@ -417,6 +534,11 @@ export function GetStartedFlow({
                 placeholder="Marketing and product leads at 5-100 person SaaS startups without a dedicated CI function"
                 rows={3}
               />
+              {suggested?.icp ? (
+                <button type="button" className="text-left text-xs text-primary hover:underline" onClick={() => { setIcp(suggested.icp); setSuggested((cur) => (cur ? { ...cur, icp: "" } : cur)); }}>
+                  Use this from your site instead: {suggested.icp}
+                </button>
+              ) : null}
             </div>
           </div>
         )}
@@ -450,71 +572,19 @@ export function GetStartedFlow({
         )}
 
         {wizardStep === 2 ? (
-          <div className="space-y-5">
-            <AudiencePicker />
-            <div className="space-y-2">
-              <Label htmlFor="dealNote">{copy.noteLabel}</Label>
-              {audience === "both" ? (
-                <div className="flex gap-2" role="radiogroup" aria-label="Which side is this about?">
-                  {([
-                    ["business", "A business deal"],
-                    ["consumer", "Consumer customers"],
-                  ] as const).map(([side, label]) => (
-                    <button
-                      key={side}
-                      type="button"
-                      role="radio"
-                      aria-checked={noteSide === side}
-                      onClick={() => setNoteSide(side)}
-                      className={cn(
-                        "rounded-md border px-3 py-1.5 text-sm font-medium",
-                        noteSide === side ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"
-                      )}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-              <Textarea
-                id="dealNote"
-                value={dealNote}
-                onChange={(e) => setDealNote(e.target.value)}
-                rows={3}
-                maxLength={2000}
-                placeholder={copy.notePlaceholder(filledCompetitors[0]?.name || "a competitor")}
-              />
-              <p className="text-xs text-muted-foreground">{copy.noteHelp}</p>
-            </div>
-            <div className="space-y-2">
-              <Label>{copy.uploadLabel}</Label>
-              <DealFileUpload label={copy.uploadButton} onDone={() => setUploadedDeals(true)} />
-              <p className="text-xs text-muted-foreground">{copy.uploadHelp}</p>
-            </div>
-            <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Pick any that apply. You can change this later in Settings, under Data.</p>
-            <div className="flex flex-wrap gap-2">
-              {toolsForAudience(audience).map((t) => {
-                const on = dealTools.includes(t.id);
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => setDealTools((cur) => (on ? cur.filter((id) => id !== t.id) : [...cur, t.id]))}
-                    className={cn(
-                      "rounded-md border px-3 py-1.5 text-sm font-medium",
-                      on ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"
-                    )}
-                  >
-                    {t.label}
-                  </button>
-                );
-              })}
-            </div>
-            <p className="text-xs text-muted-foreground">{copy.toolsHelp}</p>
-            </div>
-          </div>
+          <SetupDataStep
+            audience={sellsTo}
+            onAudience={chooseSellsTo}
+            competitorNames={filledCompetitors.map((c) => c.name.trim())}
+            dealNote={dealNote}
+            onDealNote={setDealNote}
+            consumerNote={consumerNote}
+            onConsumerNote={setConsumerNote}
+            dealTools={dealTools}
+            onDealTools={setDealTools}
+            onDealsUploaded={() => setUploadedDeals(true)}
+            onMetricsSaved={() => setMetricsSaved(true)}
+          />
         ) : null}
 
         {wizardStep === 3 ? <SlackStep onConnect={() => void finish("slack")} busy={submitting} /> : null}

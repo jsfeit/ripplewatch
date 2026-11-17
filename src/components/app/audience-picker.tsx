@@ -1,25 +1,21 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
-import {
-  AUDIENCES,
-  audienceServerSnapshot,
-  audienceSnapshot,
-  parseAudience,
-  saveAudience,
-  subscribeAudience,
-  type Audience,
-} from "@/lib/sales-motion";
+import { AUDIENCES, type Audience } from "@/lib/sales-motion";
 
-// This browser's saved answer to "who do you sell to", read without a
-// server/client mismatch. null until they pick.
-export function useAudience(): Audience | null {
-  return parseAudience(useSyncExternalStore(subscribeAudience, audienceSnapshot, audienceServerSnapshot));
-}
-
-export function AudiencePicker({ className }: { className?: string }) {
-  const audience = useAudience();
+// "Who do you sell to?" B2B, B2C or both. Controlled: the parent saves the choice on the account.
+export function AudiencePicker({
+  value,
+  onChange,
+  note,
+  className,
+}: {
+  value: Audience | null;
+  onChange: (next: Audience) => void;
+  // Shown under the choice, for example why a default was picked.
+  note?: string | null;
+  className?: string;
+}) {
   return (
     <div className={className}>
       <p className="text-sm font-medium" id="audience-label">
@@ -27,14 +23,14 @@ export function AudiencePicker({ className }: { className?: string }) {
       </p>
       <div role="radiogroup" aria-labelledby="audience-label" className="mt-2 grid gap-2 sm:grid-cols-3">
         {AUDIENCES.map((a) => {
-          const on = audience === a.id;
+          const on = value === a.id;
           return (
             <button
               key={a.id}
               type="button"
               role="radio"
               aria-checked={on}
-              onClick={() => saveAudience(a.id)}
+              onClick={() => onChange(a.id)}
               className={cn(
                 "rounded-md border px-3 py-2 text-left",
                 on ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
@@ -46,6 +42,17 @@ export function AudiencePicker({ className }: { className?: string }) {
           );
         })}
       </div>
+      {note ? <p className="mt-2 text-xs text-muted-foreground">{note}</p> : null}
     </div>
   );
+}
+
+// Saves the choice on the account. Fire and forget: the screen has already updated, and a failed
+// save just means the next screen asks again.
+export function saveSellsTo(value: Audience): void {
+  void fetch("/api/connect/sells-to", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sellsTo: value }),
+  }).catch(() => {});
 }

@@ -18,6 +18,8 @@ import { loadAllDeals, withDealDate } from "@/lib/deal-store";
 import { addContextNote } from "@/lib/context-notes";
 import { getDealImpactBrief } from "@/lib/deal-impact";
 import { logCallMentions } from "@/lib/call-mentions";
+import { analyzeMetrics, type MetricPeriod } from "@/lib/customer-metrics";
+import { cleanPeriods } from "@/lib/customer-metrics-llm";
 import { hasMinimumBalance } from "@/lib/connect-wallet";
 import { assistantLabel, recordAudit, type AuditAction } from "@/lib/audit";
 import { GUIDE_TOPICS, getGuideTopic, guideTopicText, type GuideTopicId } from "@/lib/connect-guide";
@@ -547,12 +549,13 @@ export function registerRipplewatchTools(server: McpServer) {
   server.registerTool(
     "log_win_loss",
     {
-      title: "Log a won or lost deal",
+      title: "Log a won or lost deal, or a customer who left",
       description:
-        "Record the outcome of one deal (for many at once use import_win_loss), with the reason if known and the date it closed. This is the most valuable input: it lets Ripplewatch tie a competitor's moves, and its own gaps, to real deals. The competitor is optional because most lost deals never learn who won: log the reason anyway and Ripplewatch will still count it. A competitor that isn't tracked yet is suggested for tracking instead of rejected. Pass the real close date (closed_on), because trends over time depend on it.",
+        "Record the outcome of one deal or one customer (for many at once use import_win_loss), with the reason if known and the date it closed. Use outcome churned for a customer who cancelled or left, which is how consumer products usually lose people, and set segment to business or consumer when the company sells to both. This is the most valuable input: it lets Ripplewatch tie a competitor's moves, and its own gaps, to real deals. The competitor is optional because most lost deals never learn who won: log the reason anyway and Ripplewatch will still count it. A competitor that isn't tracked yet is suggested for tracking instead of rejected. Pass the real close date (closed_on), because trends over time depend on it.",
       inputSchema: z.object({
         competitor_name: z.string().max(200).optional().describe("The competitor that won (or was beaten), if the deal named one. Leave out when unknown."),
-        outcome: z.enum(["won", "lost"]).describe("Whether the account won or lost the deal."),
+        outcome: z.enum(["won", "lost", "churned"]).describe("won or lost for a deal; churned for a customer who cancelled or left."),
+        segment: z.enum(["business", "consumer"]).optional().describe("Which side of the business this is, for a company that sells to both businesses and consumers. Leave out when unsure."),
         reason: z.string().max(1000).optional().describe("Why, in the customer's own words if possible."),
         closed_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("The date the deal closed, YYYY-MM-DD. Defaults to today."),
         amount: z.number().nonnegative().optional().describe("Deal value, if known."),
@@ -560,12 +563,13 @@ export function registerRipplewatchTools(server: McpServer) {
       }),
       annotations: WRITE,
     },
-    async ({ competitor_name, outcome, reason, closed_on, amount, deal_name }, ctx) => {
+    async ({ competitor_name, outcome, segment, reason, closed_on, amount, deal_name }, ctx) => {
       const accountId = accountIdFrom(ctx as Ctx);
       const supabase = createAdminClient();
       const logged = await logWinLoss(supabase, accountId, {
         competitorName: competitor_name?.trim() ?? "",
         outcome,
+        segment: segment ?? null,
         reason: reason?.trim() || null,
         closedOn: closed_on ?? null,
         amount: amount ?? null,
@@ -587,6 +591,142 @@ export function registerRipplewatchTools(server: McpServer) {
         },
         next
       );
+    }
+  );
+
+  server.registerTool(
+    "log_customer_metrics",
+    {
+      title: "Log churn and growth by month",
+      description:
+        "Record how many customers a company had, gained and lost each month, or its churn rate, so Ripplewatch can show whether churn is rising and line it up against competitor moves. Built for consumer and subscription companies, which usually cannot say why each customer left but do know their numbers. Use it when the user has a billing tool (Stripe, a store, a subscription platform) you can read: pull the last 6 to 12 months and pass one row per month, exactly as read. Every number is optional, send what you have: churn_pct (0 to 100) if the source states a rate, otherwise customers_start and cancelled_customers so it can be worked out, plus new_customers, customers_end and revenue for growth. Never estimate or fill in a number you did not read. Ask the user before pulling their data. Re-sending a month updates it.",
+      inputSchema: z.object({
+        months: z
+          .array(
+            z.object({
+              month: z.string().regex(/^\d{4}-\d{2}$/).describe("The month, YYYY-MM."),
+              customers_start: z.number().nonnegative().optional().describe("Customers or subscribers at the start of the month."),
+              new_customers: z.number().nonnegative().optional().describe("New customers during the month."),
+              cancelled_customers: z.number().nonnegative().optional().describe("Customers who cancelled or left during the month."),
+              customers_end: z.number().nonnegative().optional().describe("Customers at the end of the month."),
+              revenue: z.number().nonnegative().optional().describe("Revenue for the month."),
+              churn_pct: z.number().min(0).max(100).optional().describe("The churn rate for the month as a percentage, 0 to 100, only if the source states one."),
+            })
+          )
+          .min(1)
+          .max(60),
+        segment: z.enum(["business", "consumer"]).optional().describe("Which side of the business these numbers are for. Defaults to consumer."),
+      }),
+      annotations: WRITE,
+    },
+    async ({ months, segment }, ctx) => {
+      const accountId = accountIdFrom(ctx as Ctx);
+      const periods = cleanPeriods(
+        months.map((m) => ({
+          month: m.month,
+          customersStart: m.customers_start ?? null,
+          newCustomers: m.new_customers ?? null,
+          cancelledCustomers: m.cancelled_customers ?? null,
+          customersEnd: m.customers_end ?? null,
+          revenue: m.revenue ?? null,
+          churnPct: m.churn_pct ?? null,
+        }))
+      );
+      if (periods.length === 0) return failure("None of those months had a number Ripplewatch could use. Send a churn_pct, or customers_start with cancelled_customers.");
+      const supabase = createAdminClient();
+      const { error } = await supabase.from("customer_metrics").upsert(
+        periods.map((p) => ({
+          account_id: accountId,
+          segment: segment ?? "consumer",
+          period_start: p.periodStart,
+          customers_start: p.customersStart,
+          new_customers: p.newCustomers,
+          cancelled_customers: p.cancelledCustomers,
+          customers_end: p.customersEnd,
+          revenue: p.revenue,
+          churn_pct: p.churnPct,
+          source: "assistant",
+        })),
+        { onConflict: "account_id,segment,period_start" }
+      );
+      if (error) return failure("Could not save those months. Try again in a moment.");
+      const { data: all } = await supabase
+        .from("customer_metrics")
+        .select("period_start, customers_start, new_customers, cancelled_customers, customers_end, revenue, churn_pct")
+        .eq("account_id", accountId)
+        .eq("segment", segment ?? "consumer")
+        .order("period_start", { ascending: true });
+      const saved: MetricPeriod[] = (all ?? []).map((r) => ({
+        periodStart: r.period_start,
+        customersStart: r.customers_start,
+        newCustomers: r.new_customers,
+        cancelledCustomers: r.cancelled_customers,
+        customersEnd: r.customers_end,
+        revenue: r.revenue,
+        churnPct: r.churn_pct,
+      }));
+      const next = await computeNextBestActions(supabase, accountId);
+      return result(
+        { saved_months: periods.length, read: analyzeMetrics(saved), note: "This shows when churn moved, not why. Say how many months it rests on when you report it." },
+        next
+      );
+    }
+  );
+
+  server.registerTool(
+    "draft_cancellation_survey",
+    {
+      title: "Draft a cancellation survey",
+      description:
+        "Use when a consumer or subscription company sees churn but does not know why customers leave, or whether they also use a competitor. Returns this company's tracked competitors, who it sells to, its latest churn read, and the three-question structure for a short cancellation survey. Write the survey from it in the user's own tone: plain language, under 30 seconds, no discount pitch. Offer the tracked competitors as answers, always include I use both and I'm not switching, and say where to place it (the cancel screen or a follow-up email). Ripplewatch does not host or send the survey. When answers come back, count them by answer and log them with log_customer_feedback or, for individual customers, log_win_loss with outcome churned.",
+      inputSchema: z.object({}),
+      annotations: READ_ONLY,
+    },
+    async (_args, ctx) => {
+      const accountId = accountIdFrom(ctx as Ctx);
+      const supabase = createAdminClient();
+      const [{ data: account }, { data: competitors }, { data: rows }] = await Promise.all([
+        supabase.from("accounts").select("name, sells_to, company_overview").eq("id", accountId).single(),
+        supabase.from("competitors").select("name").eq("account_id", accountId).order("created_at", { ascending: true }),
+        supabase
+          .from("customer_metrics")
+          .select("period_start, customers_start, new_customers, cancelled_customers, customers_end, revenue, churn_pct")
+          .eq("account_id", accountId)
+          .eq("segment", "consumer")
+          .order("period_start", { ascending: true }),
+      ]);
+      const periods: MetricPeriod[] = (rows ?? []).map((r) => ({
+        periodStart: r.period_start,
+        customersStart: r.customers_start,
+        newCustomers: r.new_customers,
+        cancelledCustomers: r.cancelled_customers,
+        customersEnd: r.customers_end,
+        revenue: r.revenue,
+        churnPct: r.churn_pct,
+      }));
+      const names = (competitors ?? []).map((c) => c.name);
+      return result({
+        company: account?.name ?? null,
+        sells_to: account?.sells_to ?? null,
+        overview: account?.company_overview ?? null,
+        tracked_competitors: names,
+        churn_read: periods.length > 0 ? analyzeMetrics(periods) : null,
+        questions: [
+          {
+            ask: "What's the main reason you're cancelling?",
+            answers: ["It costs too much", "I'm not using it enough", "It's missing something I need", "I had a problem with it", "I just need a break", "Something else"],
+            kind: "pick one",
+          },
+          {
+            ask: "Do you use any of these?",
+            answers: [...names, "I'm using both this and another service", "None of them", "Another service"],
+            kind: "pick all that apply",
+            note: "This is the only question that shows whether someone uses a competitor as well as this product, so keep it.",
+          },
+          { ask: "What would have kept you?", answers: [], kind: "one line, optional" },
+        ],
+        note: "Draft the survey for the user to place themselves. Ripplewatch does not host it.",
+      });
     }
   );
 
