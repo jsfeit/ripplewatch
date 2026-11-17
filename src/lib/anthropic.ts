@@ -1,3 +1,4 @@
+import { cleanCompetitorName } from "@/lib/competitor-name";
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import type { BillingModel, MarketDynamic, MarketGrowthDirection, MarketMaturity, PricingTier } from "@/lib/supabase/types";
@@ -855,22 +856,25 @@ Suggest likely competitors.`;
     const parsed = JSON.parse(text);
     const competitors = Array.isArray(parsed.competitors) ? parsed.competitors : [];
     return competitors
-      .map((c: { name?: unknown; domain?: unknown; category?: unknown }) => ({
-        name: String(c.name ?? "").trim(),
-        domain: String(c.domain ?? "")
+      .map((c: { name?: unknown; domain?: unknown; category?: unknown }) => {
+        const domain = String(c.domain ?? "")
           .trim()
           .toLowerCase()
           .replace(/^https?:\/\//, "")
-          .replace(/\/$/, ""),
-        category: String(c.category ?? "").trim(),
-      }))
+          .replace(/\/$/, "");
+        return {
+          name: cleanCompetitorName(String(c.name ?? ""), domain),
+          domain,
+          category: String(c.category ?? "").trim(),
+        };
+      })
       .filter((c: SuggestedCompetitor) => c.name);
   } catch (err) {
     throw new Error(`Could not parse competitor suggestion response: ${text}`, { cause: err });
   }
 }
 
-const CATEGORIZE_COMPETITORS_SYSTEM_PROMPT = `You write a short business category/description for each named company, for a list of competitors a B2B SaaS company is tracking. The description must be specific enough to tell the company apart from an unrelated company or entity that happens to share its name (e.g. "Sage" the accounting/ERP vendor vs. "Sage" a senior-care company, or "Wave" the small-business finance app vs. "Wave" a wireless carrier).
+const CATEGORIZE_COMPETITORS_SYSTEM_PROMPT = `You write a short business category/description for each named company, for a list of competitors one company is tracking. The company doing the tracking is described in the request when it is known; use it to pick the right company when a name is shared (a consumer finance app tracking "Albert" means the banking and budgeting app, not marketing software). The description must be specific enough to tell the company apart from an unrelated company or entity that happens to share its name (e.g. "Sage" the accounting/ERP vendor vs. "Sage" a senior-care company, or "Wave" the small-business finance app vs. "Wave" a wireless carrier).
 
 Respond with strict JSON only, no markdown, matching this shape exactly:
 {"categories": ["<short category/description, under 8 words>", ...]}
@@ -892,11 +896,15 @@ const CATEGORIZE_COMPETITORS_SCHEMA = {
 // (e.g. re-categorizing an existing account) still costs one request.
 export async function suggestCompetitorCategories(
   companies: { name: string; domain: string | null }[],
-  accountId: string | null
+  accountId: string | null,
+  trackedBy?: { name: string | null; positioning: string | null } | null
 ): Promise<string[]> {
   if (companies.length === 0) return [];
 
-  const userPrompt = `Companies:\n${companies.map((c, i) => `${i}. ${c.name}${c.domain ? ` (${c.domain})` : ""}`).join("\n")}\n\nWrite a short category/description for each.`;
+  const who = trackedBy?.name
+    ? `Tracked by: ${trackedBy.name}${trackedBy.positioning ? `, ${trackedBy.positioning.slice(0, 300)}` : ""}\n\n`
+    : "";
+  const userPrompt = `${who}Companies:\n${companies.map((c, i) => `${i}. ${c.name}${c.domain ? ` (${c.domain})` : ""}`).join("\n")}\n\nWrite a short category/description for each.`;
 
   const message = await createMessage({
     model: "claude-sonnet-5",
