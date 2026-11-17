@@ -311,6 +311,13 @@ export function registerRipplewatchTools(server: McpServer) {
           note: UNTRUSTED_NOTE,
           verdict: fresh ? account!.weekly_verdict : null,
           verdict_generated_at: fresh ? account!.weekly_verdict_generated_at : null,
+          // Said out loud so the assistant has something true to tell the person, instead of an empty verdict.
+          ...(fresh
+            ? {}
+            : {
+                verdict_note:
+                  "There is no weekly verdict yet. It is written once there is about a week of history, and signals and Momentum fill in as competitors are checked. For now, answer from the signals and competitors below, and say that the first full briefing is still building.",
+              }),
           competitors: momentum
             .map(({ competitor, momentum: m }) => ({ name: competitor.name, momentum: m.label, score: m.score, confidence: m.confidence }))
             .sort((a, b) => (b.score ?? -101) - (a.score ?? -101)),

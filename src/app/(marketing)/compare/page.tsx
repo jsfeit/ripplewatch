@@ -3,7 +3,7 @@ import { fitTitle } from "@/lib/seo";
 import { COMPARISONS } from "@/lib/comparisons";
 
 const description =
-  "Crayon, Klue, Kompyte, AlphaSense and Ripplewatch compared: monitoring, scoring and cost. Ripplewatch watches every day and scores every competitor move against your deals, inside Claude and ChatGPT.";
+  "Crayon, Klue, Kompyte, AlphaSense and Ripplewatch compared on monitoring, scoring and cost. Ripplewatch lives inside Claude and ChatGPT.";
 
 export const metadata = {
   title: fitTitle("Crayon vs Klue vs Kompyte vs Ripplewatch: compared"),

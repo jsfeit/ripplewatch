@@ -7,7 +7,7 @@ import { CHATGPT_PLUGIN_URL, CONNECT_EXAMPLES, CONNECT_MCP_URL, CONNECT_NAME } f
 import { CONNECT_BASE_FEE_USD, CONNECT_MIN_FUNDING_USD } from "@/lib/connect-pricing";
 
 const description =
-  "How to connect Ripplewatch to Claude, ChatGPT, Claude Code or Cursor over MCP: the server URL, the exact steps for each assistant, what to ask first, and what to do if sign-in doesn't open.";
+  "Connect Ripplewatch to Claude, ChatGPT, Claude Code or Cursor over MCP: the server URL, the steps for each, and what to ask first.";
 
 export const metadata = {
   title: "Connect Ripplewatch to Claude or ChatGPT (MCP setup)",
