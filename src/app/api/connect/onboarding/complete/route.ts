@@ -68,15 +68,24 @@ export async function POST(request: Request) {
   const runCore = stage !== "extras";
   const runExtras = stage !== "core";
 
-  const { count: existingCompetitors } = await supabase
-    .from("competitors")
-    .select("id", { count: "exact", head: true })
-    .eq("account_id", accountId);
-  const alreadySavedCore = (existingCompetitors ?? 0) > 0;
+  const { data: existingRows } = await supabase.from("competitors").select("name").eq("account_id", accountId);
+  const alreadySavedCore = (existingRows ?? []).length > 0;
+  // The first save also kicks off the company research. A later save (someone went Back to change
+  // something) only adds what is new.
   const saveCore = runCore && !alreadySavedCore;
+  const existingNames = new Set((existingRows ?? []).map((c) => c.name.trim().toLowerCase()));
 
   const namedCompetitors = (competitors ?? []).filter((c) => c.name?.trim());
-  if (saveCore && namedCompetitors.length === 0) {
+  // Competitors not saved yet. A competitor already saved is left alone, however it is edited here:
+  // it carries history, so renaming or removing one is done in Settings. A repeated name is added once.
+  const seenNames = new Set<string>();
+  const newCompetitors = namedCompetitors.filter((c) => {
+    const key = c.name.trim().toLowerCase();
+    if (!key || existingNames.has(key) || seenNames.has(key)) return false;
+    seenNames.add(key);
+    return true;
+  });
+  if (saveCore && newCompetitors.length === 0) {
     return NextResponse.json({ error: "Add at least one competitor." }, { status: 400 });
   }
 
@@ -92,7 +101,7 @@ export async function POST(request: Request) {
   }
 
   let savedRows: { id: string }[] = [];
-  if (saveCore) {
+  if (runCore) {
     // The page lookups and the category guess are slow (a site fetch each, plus a model call), and
     // nothing the person sees next needs them, so the competitors are saved bare and filled in
     // behind the response below. The account update and the insert don't depend on each other.
@@ -100,23 +109,26 @@ export async function POST(request: Request) {
       supabase
         .from("accounts")
         .update({
-          positioning: positioning?.trim() || null,
-          icp: icp?.trim() || null,
+          // Saved every time, so going Back to change them sticks. Left alone when not sent.
+          ...(positioning === undefined && saveCore === false ? {} : { positioning: positioning?.trim() || null }),
+          ...(icp === undefined && saveCore === false ? {} : { icp: icp?.trim() || null }),
           // No longer asked in the wizard; only written if a caller still sends them.
           ...(hasSalesCrm === undefined ? {} : { has_sales_crm: Boolean(hasSalesCrm) }),
           ...(hasPlg === undefined ? {} : { has_plg: Boolean(hasPlg) }),
         })
         .eq("id", accountId),
-      supabase
-        .from("competitors")
-        .insert(
-          namedCompetitors.map((c) => ({
-            account_id: accountId,
-            name: c.name.trim(),
-            domain: c.domain?.trim() || null,
-          }))
-        )
-        .select("id"),
+      newCompetitors.length > 0
+        ? supabase
+            .from("competitors")
+            .insert(
+              newCompetitors.map((c) => ({
+                account_id: accountId,
+                name: c.name.trim(),
+                domain: c.domain?.trim() || null,
+              }))
+            )
+            .select("id")
+        : Promise.resolve({ data: [] as { id: string }[], error: null as { message: string } | null }),
     ]);
     if (accountError) {
       console.error("connect onboarding account update failed:", accountError);
@@ -130,7 +142,7 @@ export async function POST(request: Request) {
 
     // Ties the free read they ran before signing up to this account, for the admin live-reads
     // page. Only fills an unclaimed row, so a copied id can't move someone else's read.
-    if (typeof liveReadId === "string" && /^[0-9a-f-]{36}$/i.test(liveReadId)) {
+    if (saveCore && typeof liveReadId === "string" && /^[0-9a-f-]{36}$/i.test(liveReadId)) {
       const { error: linkError } = await createAdminClient()
         .from("live_reads")
         .update({ account_id: accountId })
@@ -155,34 +167,37 @@ export async function POST(request: Request) {
     }
   }
 
-  if (saveCore) {
+  if (runCore && (saveCore || newCompetitors.length > 0)) {
     // Best-effort, fire-and-forget — same pattern as the dashboard flow: a
     // brand-new account with zero signals is the worst possible first
     // impression, so this queues the backfill crawl right away instead of
     // waiting for the next scheduled cron run.
-    const researchPromise = researchCompanyContext(account.name, positioning?.trim() || null, accountId, { website: account.website, sellsTo: account.sells_to })
-      .then((summary) =>
-        supabase
-          .from("accounts")
-          .update({ company_research: summary, company_research_updated_at: new Date().toISOString() })
-          .eq("id", accountId)
-      )
-      .catch((err) => console.error("connect onboarding company research failed:", err));
+    // Company research only runs on the first save; adding a competitor later doesn't redo it.
+    const researchPromise: Promise<unknown> = saveCore
+      ? researchCompanyContext(account.name, positioning?.trim() || null, accountId, { website: account.website, sellsTo: account.sells_to })
+          .then((summary) =>
+            supabase
+              .from("accounts")
+              .update({ company_research: summary, company_research_updated_at: new Date().toISOString() })
+              .eq("id", accountId)
+          )
+          .catch((err) => console.error("connect onboarding company research failed:", err))
+      : Promise.resolve();
 
     after(async () => {
       try {
         // Same discovery/categorization as the dashboard flow, run here so setup doesn't wait on it.
         const [competitorUrls, categories] = await Promise.all([
           Promise.all(
-            namedCompetitors.map((c) => {
+            newCompetitors.map((c) => {
               const domain = c.domain?.trim() || null;
               return domain ? discoverCompetitorUrls(domain) : Promise.resolve({ pricingUrl: null, careersUrl: null });
             })
           ),
           suggestCompetitorCategories(
-            namedCompetitors.map((c) => ({ name: c.name.trim(), domain: c.domain?.trim() || null })),
+            newCompetitors.map((c) => ({ name: c.name.trim(), domain: c.domain?.trim() || null })),
             accountId
-          ).catch(() => namedCompetitors.map(() => "")),
+          ).catch(() => newCompetitors.map(() => "")),
         ]);
         const admin = createAdminClient();
         await Promise.all(

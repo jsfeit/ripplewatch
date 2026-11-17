@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Circle, Copy, Check, Loader2, ArrowRight, ExternalLink } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Circle, Copy, Check, Loader2, ArrowRight, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -25,6 +25,7 @@ export function McpConnectStep({
   onContinue,
   onSkip,
   skipping,
+  onBack,
 }: {
   mcpLastConnectedAt: string | null;
   // The assistants this account has connected, so the first question only offers those.
@@ -38,6 +39,8 @@ export function McpConnectStep({
   // Finish setup now, leaving deals and Slack for later.
   onSkip: () => void;
   skipping: boolean;
+  // Back to the competitors step, where more can be added and the business context edited.
+  onBack?: () => void;
 }) {
   const router = useRouter();
   const connected = Boolean(mcpLastConnectedAt);
@@ -334,8 +337,14 @@ export function McpConnectStep({
         </Tabs>
         )}
 
-        <div className="mt-8 flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">
+        <div className="mt-8 flex items-center justify-between gap-3">
+          {onBack ? (
+            <Button type="button" variant="ghost" onClick={onBack}>
+              <ArrowLeft className="size-4" />
+              Back
+            </Button>
+          ) : null}
+          <p className="flex-1 text-xs text-muted-foreground">
             {connected
               ? "You're set."
               : "Waiting for the connection. This updates on its own, no need to refresh."}
