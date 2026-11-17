@@ -121,29 +121,6 @@ export function SiteFooter() {
             </p>
           </div>
           <div className="flex items-center gap-4">
-            {/* SiftFox's free listing asks for this badge on the homepage. Plain img: it is a small remote SVG. */}
-            <a
-              href="https://siftfox.com/tool/ripplewatch"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="https://siftfox.com/badges/live-light.svg"
-                alt="Live on SiftFox"
-                width={168}
-                height={56}
-                className="h-10 w-auto dark:hidden"
-              />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="https://siftfox.com/badges/live-dark.svg"
-                alt="Live on SiftFox"
-                width={168}
-                height={56}
-                className="hidden h-10 w-auto dark:block"
-              />
-            </a>
             <a
               href="https://www.linkedin.com/company/ripplewatch/"
               target="_blank"
