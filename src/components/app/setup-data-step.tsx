@@ -82,7 +82,7 @@ export function SetupDataStep({
             kind="churn"
             title="Bring your churn in with Claude or ChatGPT"
             blurb="Attach your export (CSV or Excel), or let it pull from Stripe, Shopify or your billing tool. It counts the rows and shows you the table before it saves anything."
-            why="Your assistant reads it once. Ripplewatch keeps it, watches your competitors every day, and checks each move against your churn. That's Momentum."
+            why="Your assistant reads it once. Ripplewatch keeps it, watches your competitors every day, and tells you when churn rises near a competitor's move."
             prompt={ATTACH_PROMPT}
             assistants={assistants}
             onArrived={onMetricsArrived}
