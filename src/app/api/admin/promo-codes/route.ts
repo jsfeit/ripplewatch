@@ -27,6 +27,7 @@ export async function GET() {
       percentOff: coupon.percent_off,
       durationInMonths: coupon.duration_in_months ?? null,
       duration: coupon.duration,
+      freeSignup: coupon.metadata?.free_signup === "true",
       timesRedeemed: pc.times_redeemed,
       maxRedemptions: pc.max_redemptions,
       created: pc.created,
@@ -44,12 +45,25 @@ export async function POST(request: Request) {
   const months = Number(body?.months);
   const requestedCode: unknown = body?.code;
   const maxRedemptions: unknown = body?.maxRedemptions;
+  const freeSignup = body?.freeSignup === true;
 
-  if (!Number.isFinite(percentOff) || percentOff <= 0 || percentOff > 100) {
-    return NextResponse.json({ error: "Discount must be between 1 and 100 percent." }, { status: 400 });
-  }
-  if (!Number.isInteger(months) || months <= 0) {
-    return NextResponse.json({ error: "Number of months must be a positive whole number." }, { status: 400 });
+  // A free-signup code waives the whole first charge (fee and opening balance)
+  // and skips the card, but the account still gets the opening balance, so every
+  // redemption costs real usage. A redemption cap is required, not optional.
+  if (freeSignup) {
+    if (!Number.isInteger(maxRedemptions) || Number(maxRedemptions) < 1 || Number(maxRedemptions) > 25) {
+      return NextResponse.json(
+        { error: "A free signup code needs a redemption limit between 1 and 25." },
+        { status: 400 }
+      );
+    }
+  } else {
+    if (!Number.isFinite(percentOff) || percentOff <= 0 || percentOff > 100) {
+      return NextResponse.json({ error: "Discount must be between 1 and 100 percent." }, { status: 400 });
+    }
+    if (!Number.isInteger(months) || months <= 0) {
+      return NextResponse.json({ error: "Number of months must be a positive whole number." }, { status: 400 });
+    }
   }
 
   const code =
@@ -60,12 +74,21 @@ export async function POST(request: Request) {
   const stripe = getStripe();
 
   try {
-    const coupon = await stripe.coupons.create({
-      percent_off: percentOff,
-      duration: "repeating",
-      duration_in_months: months,
-      name: `${percentOff}% off for ${months} month${months === 1 ? "" : "s"}`,
-    });
+    // The shape a free-signup coupon must have for resolveConnectPromoCode to
+    // accept it: 100% off, forever, flagged in metadata, no product restriction.
+    const coupon = freeSignup
+      ? await stripe.coupons.create({
+          percent_off: 100,
+          duration: "forever",
+          name: "Free signup, no card",
+          metadata: { free_signup: "true" },
+        })
+      : await stripe.coupons.create({
+          percent_off: percentOff,
+          duration: "repeating",
+          duration_in_months: months,
+          name: `${percentOff}% off for ${months} month${months === 1 ? "" : "s"}`,
+        });
 
     const promotionCode = await stripe.promotionCodes.create({
       promotion: { type: "coupon", coupon: coupon.id },
@@ -81,9 +104,10 @@ export async function POST(request: Request) {
         id: promotionCode.id,
         code: promotionCode.code,
         active: promotionCode.active,
-        percentOff,
-        durationInMonths: months,
-        duration: "repeating",
+        percentOff: freeSignup ? 100 : percentOff,
+        durationInMonths: freeSignup ? null : months,
+        duration: freeSignup ? "forever" : "repeating",
+        freeSignup,
         timesRedeemed: 0,
         maxRedemptions: promotionCode.max_redemptions,
         created: promotionCode.created,

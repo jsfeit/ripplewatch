@@ -52,15 +52,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "You're already subscribed. Add funds from Settings instead." }, { status: 400 });
     }
     const promoCode = typeof body?.promoCode === "string" ? body.promoCode.trim() : "";
-    let promotionCodeId: string | null = null;
+    let promotion: { id: string; free: boolean } | null = null;
     if (promoCode) {
-      promotionCodeId = await resolveConnectPromoCode(promoCode);
-      if (!promotionCodeId) {
+      promotion = await resolveConnectPromoCode(promoCode);
+      if (!promotion) {
         return NextResponse.json({ error: "That promo code isn't valid for Ripplewatch." }, { status: 400 });
       }
     }
     return NextResponse.json(
-      await createConnectSignupSession(account, { fundingUsd, userEmail: user.email!, origin, promotionCodeId })
+      await createConnectSignupSession(account, {
+        fundingUsd,
+        userEmail: user.email!,
+        origin,
+        promotionCodeId: promotion?.id ?? null,
+        freeSignup: promotion?.free ?? false,
+      })
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Could not start checkout.";

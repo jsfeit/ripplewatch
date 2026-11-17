@@ -16,6 +16,7 @@ export type PromoCode = {
   percentOff: number | null;
   durationInMonths: number | null;
   duration: string;
+  freeSignup?: boolean;
   timesRedeemed: number;
   maxRedemptions: number | null;
   created: number;
@@ -27,6 +28,7 @@ export function PromoCodesView({ initialCodes }: { initialCodes: PromoCode[] }) 
   const [percentOff, setPercentOff] = useState("20");
   const [months, setMonths] = useState("3");
   const [maxRedemptions, setMaxRedemptions] = useState("");
+  const [freeSignup, setFreeSignup] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -42,6 +44,7 @@ export function PromoCodesView({ initialCodes }: { initialCodes: PromoCode[] }) 
         percentOff: Number(percentOff),
         months: Number(months),
         maxRedemptions: maxRedemptions.trim() ? Number(maxRedemptions) : undefined,
+        freeSignup,
       }),
     });
     const data = await res.json();
@@ -125,6 +128,17 @@ export function PromoCodesView({ initialCodes }: { initialCodes: PromoCode[] }) 
               />
             </div>
           </div>
+          <label className="flex items-start gap-3 rounded-md border border-border p-3 text-sm">
+            <Switch checked={freeSignup} onCheckedChange={setFreeSignup} />
+            <span>
+              <span className="font-medium">Free signup, no card</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                Waives the $29 and the $50 opening balance and skips the card. The account still gets the $50 of usage,
+                so each redemption costs real usage. Needs a redemption limit (1 to 25). Ignores the discount and months
+                fields.
+              </span>
+            </span>
+          </label>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <Button type="button" onClick={handleCreate} disabled={creating}>
             {creating ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
@@ -158,7 +172,9 @@ export function PromoCodesView({ initialCodes }: { initialCodes: PromoCode[] }) 
                   </button>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {c.percentOff}% off for {c.durationInMonths} month{c.durationInMonths === 1 ? "" : "s"}
+                  {c.freeSignup
+                    ? "Free signup, no card"
+                    : `${c.percentOff}% off for ${c.durationInMonths} month${c.durationInMonths === 1 ? "" : "s"}`}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {c.timesRedeemed}
