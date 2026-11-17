@@ -120,6 +120,9 @@ export function AppSidebar({
               <Link
                 key={item.label}
                 href={item.href}
+                // Closes on the tap itself: a link to the page you are already on (Settings, with a
+                // different tab) doesn't change the path, so the path-change reset above never fires.
+                onClick={() => setMobileOpen(false)}
                 className={cn(
                   "relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                   active
@@ -140,6 +143,7 @@ export function AppSidebar({
             // guided steps if those aren't finished, otherwise to the checklist.
             <Link
               href={setup.wizardOpen ? "/app/get-started" : "/app/settings?tab=connect#setup"}
+              onClick={() => setMobileOpen(false)}
               className={cn(
                 "relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 pathname.startsWith("/app/get-started")
