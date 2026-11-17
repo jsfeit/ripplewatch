@@ -34,13 +34,13 @@ function displayQuestion(q: string): string {
 // Which "Open in ..." links to offer. Only the assistants the person has actually connected: Claude,
 // ChatGPT, or both. If a different assistant is connected (Cursor and the like) neither is offered and
 // Copy is the way in; if nothing is recorded we can't tell, so both are shown.
-function openInChoices(assistants: string[] | undefined): { claude: boolean; chatgpt: boolean } {
+export function openInChoices(assistants: string[] | undefined): { claude: boolean; chatgpt: boolean } {
   const known = (assistants ?? []).filter((a) => a !== "unknown");
   if (known.length === 0) return { claude: true, chatgpt: true };
   return { claude: known.includes("claude"), chatgpt: known.includes("chatgpt") };
 }
 
-const LINK_CLASS =
+export const LINK_CLASS =
   "inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs font-medium text-muted-foreground hover:border-primary/50 hover:text-foreground";
 
 // The one question to ask first, shown the moment the assistant connects:

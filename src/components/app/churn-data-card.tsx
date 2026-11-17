@@ -1,15 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy, Loader2, Upload } from "lucide-react";
+import { Check, Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { analyzeMetrics, periodChurn, type MetricPeriod, type MetricsRead } from "@/lib/customer-metrics";
+import { CopyPromptButton } from "@/components/app/copy-prompt-button";
+import { ATTACH_PROMPT, isTooDetailed, periodChurn, TOO_DETAILED_MESSAGE, type MetricPeriod, type MetricsRead } from "@/lib/customer-metrics";
 import { cn } from "@/lib/utils";
 
-const MAX_FILE_BYTES = 200_000;
+const MAX_FILE_BYTES = 100_000;
 
 // What the server adds once numbers are saved: whether churn started rising near a competitor's move,
 // and how it sits against a published range. Both arrive behind the scenes; nothing here asks for more.
@@ -31,61 +30,36 @@ function monthLabel(periodStart: string): string {
   return new Date(`${periodStart}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
 }
 
-function firstOfMonth(monthsAgo: number): string {
-  const now = new Date();
-  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - monthsAgo, 1));
-  return d.toISOString().slice(0, 10);
-}
+const SURVEY_PROMPT = (names: string[]) =>
+  `Draft a cancellation survey for my company using Ripplewatch. Three questions, under 30 seconds, plain language. Offer my tracked competitors${names.length > 0 ? ` (${names.join(", ")})` : ""} as answers, and include "I use both" and "I'm not switching". Tell me where to put it, and I'll place it myself. When answers come in, count them by answer and log the totals to Ripplewatch.`;
 
-const num = (v: number | null, suffix = "") => (v === null ? "-" : `${v.toLocaleString("en-US", { maximumFractionDigits: 1 })}${suffix}`);
-
-function CopyPrompt({ label, text }: { label: string; text: string }) {
-  const [copied, setCopied] = useState(false);
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      // Clipboard blocked: the prompt is still readable on screen.
-    }
-  }
-  return (
-    <div>
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <button
-        type="button"
-        onClick={() => void copy()}
-        className="mt-1 flex w-full items-center justify-between gap-3 rounded-md border border-border bg-secondary/30 px-3 py-2 text-left text-sm hover:border-primary/50"
-      >
-        <span>{text}</span>
-        {copied ? <Check className="size-3.5 shrink-0 text-primary" /> : <Copy className="size-3.5 shrink-0 text-muted-foreground" />}
-      </button>
-    </div>
-  );
-}
-
-// Churn and growth over time for a consumer company. Most can't say why each customer left, but they
-// know their numbers, so this takes the numbers: pasted, uploaded, two quick figures, or pulled by the
-// customer's own assistant from their billing tool. It reads them and says plainly how sure it is.
+// Churn for a consumer company, in one box. Paste a table, type it in plain words, or upload a file:
+// Ripplewatch reads the months it can find and saves them, and anything that isn't numbers is kept as
+// a note about customers. Most consumer companies can't say why each customer left, but they know
+// their churn, so that is what this takes.
 export function ChurnDataCard({
-  competitorNames,
   segment = "consumer",
   onSaved,
+  onNote,
+  fallback = false,
 }: {
-  competitorNames: string[];
+  // The lean version shown under "Can't use your assistant right now": just the box, no upload and no
+  // pointers to the assistant, since the screen above already says that.
+  fallback?: boolean;
   segment?: "business" | "consumer";
   onSaved?: () => void;
+  // Called when what was written has no months in it, so it is kept as a note about customers instead.
+  onNote?: (text: string) => void;
 }) {
   const [text, setText] = useState("");
-  const [busy, setBusy] = useState<"read" | "save" | null>(null);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [periods, setPeriods] = useState<MetricPeriod[] | null>(null);
   const [read, setRead] = useState<MetricsRead | null>(null);
-  const [saved, setSaved] = useState(false);
   const [insight, setInsight] = useState<Insight | null>(null);
-  const [lastMonth, setLastMonth] = useState("");
-  const [monthBefore, setMonthBefore] = useState("");
+  const [keptAsNote, setKeptAsNote] = useState(false);
+  // Too long, or a row per customer: sent to the customer's own assistant, which can count properly.
+  const [tooMuch, setTooMuch] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Show what is already saved, so coming back here shows the read instead of an empty box.
@@ -98,7 +72,6 @@ export function ChurnDataCard({
         setPeriods(data.periods as MetricPeriod[]);
         setRead(data.read as MetricsRead);
         setInsight(pickInsight(data));
-        setSaved(true);
       })
       .catch(() => {});
     return () => {
@@ -106,248 +79,235 @@ export function ChurnDataCard({
     };
   }, [segment]);
 
-  async function readIt(source: string) {
-    setBusy("read");
+  // Reads the months out of whatever was given, and saves them. The same months sent again replace
+  // the earlier ones, so reading it again after a fix is safe.
+  async function submit(source: string) {
+    if (source.trim().length < 8) return;
     setError("");
-    setSaved(false);
-    setInsight(null);
+    setKeptAsNote(false);
+    setTooMuch(false);
+    if (isTooDetailed(source)) {
+      setTooMuch(true);
+      return;
+    }
+    setBusy(true);
     try {
-      const res = await fetch("/api/connect/metrics/preview", {
+      const preview = await fetch("/api/connect/metrics/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: source }),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data.error ?? "I couldn't read that. Try again.");
+      const found = await preview.json().catch(() => ({}));
+      if (preview.status === 422 && found.code === "use_assistant") {
+        setTooMuch(true);
         return;
       }
-      setPeriods(data.periods);
-      setRead(data.read);
+      if (preview.status === 422) {
+        // No months in it: keep it as a note about customers instead of rejecting it, where there is
+        // somewhere to keep it. Otherwise say so rather than pretend it was saved.
+        if (onNote) {
+          onNote(source.trim());
+          setKeptAsNote(true);
+        } else {
+          setError("I couldn't find months in that. Add a month with either the churn rate or the customers who cancelled.");
+        }
+        return;
+      }
+      if (!preview.ok) {
+        setError(found.error ?? "I couldn't read that. Try again.");
+        return;
+      }
+      const save = await fetch("/api/connect/metrics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ periods: found.periods, segment }),
+      });
+      const saved = await save.json().catch(() => ({}));
+      if (!save.ok) {
+        setError(saved.error ?? "Could not save that.");
+        return;
+      }
+      setPeriods(saved.periods ?? found.periods);
+      setRead(saved.read ?? found.read);
+      setInsight(pickInsight(saved));
+      onSaved?.();
     } catch {
       setError("I couldn't reach Ripplewatch. Try again.");
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
-  }
-
-  function useTwoNumbers() {
-    const a = Number(lastMonth);
-    const b = Number(monthBefore);
-    if (!Number.isFinite(a) || !Number.isFinite(b) || lastMonth.trim() === "" || monthBefore.trim() === "" || a < 0 || b < 0 || a > 100 || b > 100) {
-      setError("Enter both as percentages between 0 and 100, like 6.2 and 4.8.");
-      return;
-    }
-    const blank = { customersStart: null, newCustomers: null, cancelledCustomers: null, customersEnd: null, revenue: null };
-    const next: MetricPeriod[] = [
-      { periodStart: firstOfMonth(2), churnPct: b, ...blank },
-      { periodStart: firstOfMonth(1), churnPct: a, ...blank },
-    ];
-    setError("");
-    setSaved(false);
-    setInsight(null);
-    setPeriods(next);
-    setRead(analyzeMetrics(next));
   }
 
   async function onFile(file: File | undefined) {
     if (!file) return;
     if (file.size > MAX_FILE_BYTES) {
-      setError("That file is too big. Paste just the monthly rows, or the last 12 to 24 months.");
+      setError("");
+      setKeptAsNote(false);
+      setTooMuch(true);
       return;
     }
     const content = await file.text();
     setText(content);
-    await readIt(content);
+    await submit(content);
   }
-
-  async function save() {
-    if (!periods) return;
-    setBusy("save");
-    setError("");
-    try {
-      const res = await fetch("/api/connect/metrics", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ periods, segment }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data.error ?? "Could not save that.");
-        return;
-      }
-      setSaved(true);
-      if (data.periods) setPeriods(data.periods as MetricPeriod[]);
-      if (data.read) setRead(data.read as MetricsRead);
-      setInsight(pickInsight(data));
-      onSaved?.();
-    } catch {
-      setError("I couldn't reach Ripplewatch. Try again.");
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  const rising = read?.trend === "rising";
-  const names = competitorNames.filter(Boolean);
-  const pullPrompt =
-    "From my billing tool, pull the last 12 months: customers at the start of each month, new customers, customers who cancelled, and revenue. Tell me what you read, then add it to Ripplewatch.";
-  const surveyPrompt = `Draft a cancellation survey for my company using Ripplewatch. Three questions, under 30 seconds, plain language. Offer my tracked competitors${names.length > 0 ? ` (${names.join(", ")})` : ""} as answers, and include "I use both" and "I'm not switching". Tell me where to put it, and I'll place it myself. When answers come in, count them by answer and log the totals to Ripplewatch.`;
 
   return (
-    <div className="space-y-5">
-      <div className="space-y-2">
-        <Label htmlFor="churnText">Churn and growth over time</Label>
-        <Textarea
-          id="churnText"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={5}
-          maxLength={20000}
-          placeholder={"Paste it in any layout, for example:\nMonth, Customers at start, New, Cancelled, Revenue\nSep 2026, 10400, 600, 430, 52000\nOct 2026, 10570, 590, 600, 52500"}
+    <div className="space-y-3">
+      <Textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={4}
+        className="max-h-44 overflow-y-auto"
+        maxLength={20000}
+        aria-label="Your churn, in your own words or as a table"
+        placeholder={"Churn was 4.8% in September and 6.2% in October.\nOr paste a table from your billing tool, any layout."}
+      />
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="button" size="sm" onClick={() => void submit(text)} disabled={busy || text.trim().length < 8}>
+          {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
+          Read it
+        </Button>
+        {fallback ? null : (
+          <>
+        <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={busy}>
+          <Upload className="size-3.5" />
+          Upload a CSV
+        </Button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".csv,.tsv,.txt,text/csv,text/plain"
+          className="hidden"
+          onChange={(e) => {
+            void onFile(e.target.files?.[0]);
+            e.target.value = "";
+          }}
         />
-        <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" size="sm" onClick={() => void readIt(text)} disabled={busy !== null || text.trim().length < 8}>
-            {busy === "read" ? <Loader2 className="size-3.5 animate-spin" /> : null}
-            Read it
-          </Button>
-          <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={busy !== null}>
-            <Upload className="size-3.5" />
-            Upload a CSV
-          </Button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".csv,.tsv,.txt,text/csv,text/plain"
-            className="hidden"
-            onChange={(e) => {
-              void onFile(e.target.files?.[0]);
-              e.target.value = "";
-            }}
-          />
-        </div>
-        <p className="text-xs text-muted-foreground">
-          A month and either the churn rate or the customers who cancelled is enough. More months make the read more
-          reliable, and revenue adds a growth figure. Any layout works.
-        </p>
-      </div>
-
-      <div className="space-y-2 rounded-md border border-border p-3">
-        <p className="text-sm font-medium">Only have two numbers?</p>
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="space-y-1">
-            <Label htmlFor="churnLast" className="text-xs text-muted-foreground">
-              Churn last month (%)
-            </Label>
-            <Input id="churnLast" inputMode="decimal" className="w-28" value={lastMonth} onChange={(e) => setLastMonth(e.target.value)} placeholder="6.2" />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="churnBefore" className="text-xs text-muted-foreground">
-              The month before (%)
-            </Label>
-            <Input id="churnBefore" inputMode="decimal" className="w-28" value={monthBefore} onChange={(e) => setMonthBefore(e.target.value)} placeholder="4.8" />
-          </div>
-          <Button type="button" size="sm" variant="outline" onClick={useTwoNumbers}>
-            Use these
-          </Button>
-        </div>
+          </>
+        )}
+        <span className="text-xs text-muted-foreground">Include the months. A few is enough.</span>
       </div>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {tooMuch ? (
+        <div role="alert" className="space-y-2 rounded-md border border-border bg-secondary/30 p-3">
+          <p className="text-sm">{TOO_DETAILED_MESSAGE}</p>
+          <CopyPromptButton text={ATTACH_PROMPT} label="Copy the prompt" />
+        </div>
+      ) : null}
+      {keptAsNote ? (
+        <p className="flex items-center gap-1.5 text-sm text-primary">
+          <Check className="size-4" />
+          Got it. I&apos;ll add that to what I know about your customers. Add months too if you have them.
+        </p>
+      ) : null}
 
       {read && periods ? (
-        <div className="space-y-3 rounded-md border border-primary/30 bg-primary/[0.04] p-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-semibold">What I read</p>
+        <div className="space-y-2 rounded-md border border-primary/30 bg-primary/[0.04] p-4">
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-primary">
+            <Check className="size-4" />
+            Read and saved
             <span
               className={cn(
-                "rounded-full border px-2 py-0.5 text-xs font-medium",
+                "ml-1 rounded-full border px-2 py-0.5 text-xs font-medium",
                 read.confidence === "low" ? "border-border text-muted-foreground" : "border-primary/40 text-primary"
               )}
             >
               {read.confidence === "low" ? "Early lead" : "Fair confidence"}
             </span>
-          </div>
+          </p>
           <p className="text-sm">{read.headline}</p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs tabular-nums">
-              <thead className="text-muted-foreground">
-                <tr>
-                  <th className="py-1 pr-3 font-medium">Month</th>
-                  <th className="py-1 pr-3 font-medium">Churn</th>
-                  <th className="py-1 pr-3 font-medium">Customers</th>
-                  <th className="py-1 pr-3 font-medium">New</th>
-                  <th className="py-1 pr-3 font-medium">Cancelled</th>
-                  <th className="py-1 font-medium">Revenue</th>
-                </tr>
-              </thead>
-              <tbody>
-                {periods.map((p) => (
-                  <tr key={p.periodStart} className="border-t border-border/60">
-                    <td className="py-1 pr-3">{monthLabel(p.periodStart)}</td>
-                    <td className="py-1 pr-3">{num(periodChurn(p) === null ? null : Math.round((periodChurn(p) as number) * 10) / 10, "%")}</td>
-                    <td className="py-1 pr-3">{num(p.customersStart)}</td>
-                    <td className="py-1 pr-3">{num(p.newCustomers)}</td>
-                    <td className="py-1 pr-3">{num(p.cancelledCustomers)}</td>
-                    <td className="py-1">{num(p.revenue)}</td>
+          {insight?.timing ? <p className="text-sm">{insight.timing.sentence}</p> : null}
+          {insight?.comparison ? (
+            <p className="text-sm">
+              {insight.comparison.sentence}{" "}
+              {insight.benchmark ? (
+                <a href={insight.benchmark.sourceUrl} target="_blank" rel="noreferrer noopener" className="text-primary hover:underline">
+                  Source
+                </a>
+              ) : null}
+            </p>
+          ) : null}
+          {insight?.marketGrowth ? (
+            <p className="text-sm text-muted-foreground">
+              Your market is {MARKET_WORDS[insight.marketGrowth.direction] ?? "moving"} overall
+              {insight.marketGrowth.reason ? `: ${insight.marketGrowth.reason.replace(/\.$/, "")}.` : "."}
+            </p>
+          ) : null}
+          <details className="text-xs text-muted-foreground">
+            <summary className="cursor-pointer select-none">
+              See the {periods.length} month{periods.length === 1 ? "" : "s"} I read
+            </summary>
+            <div className="mt-2 overflow-x-auto">
+              <table className="w-full text-left tabular-nums">
+                <thead>
+                  <tr>
+                    <th className="py-1 pr-3 font-medium">Month</th>
+                    <th className="py-1 pr-3 font-medium">Churn</th>
+                    <th className="py-1 pr-3 font-medium">Customers</th>
+                    <th className="py-1 font-medium">Revenue</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {saved ? (
-            <div className="space-y-2">
-              <p className="flex items-center gap-1.5 text-sm text-primary">
-                <Check className="size-4" />
-                Saved. Your assistant can use this now.
-              </p>
-              {insight?.timing ? <p className="text-sm">{insight.timing.sentence}</p> : null}
-              {insight?.comparison ? (
-                <p className="text-sm">
-                  {insight.comparison.sentence}{" "}
-                  {insight.benchmark ? (
-                    <a href={insight.benchmark.sourceUrl} target="_blank" rel="noreferrer noopener" className="text-primary hover:underline">
-                      Source
-                    </a>
-                  ) : null}
-                </p>
-              ) : null}
-              {insight?.marketGrowth ? (
-                <p className="text-sm text-muted-foreground">
-                  Your market is {MARKET_WORDS[insight.marketGrowth.direction] ?? "moving"} overall{insight.marketGrowth.reason ? `: ${insight.marketGrowth.reason.replace(/\.$/, "")}.` : "."}
-                </p>
-              ) : null}
-              <p className="text-xs text-muted-foreground">
-                I&apos;ll keep lining this up against competitor moves and a typical range for your kind of product as they
-                come in. Nothing else to do here.
-              </p>
+                </thead>
+                <tbody>
+                  {periods.map((p) => {
+                    const churn = periodChurn(p);
+                    return (
+                      <tr key={p.periodStart} className="border-t border-border/60">
+                        <td className="py-1 pr-3">{monthLabel(p.periodStart)}</td>
+                        <td className="py-1 pr-3">{churn === null ? "-" : `${Math.round(churn * 10) / 10}%`}</td>
+                        <td className="py-1 pr-3">{p.customersStart === null ? "-" : p.customersStart.toLocaleString("en-US")}</td>
+                        <td className="py-1">{p.revenue === null ? "-" : p.revenue.toLocaleString("en-US")}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <p className="mt-2">Not right? Fix the text and read it again. Months with the same date are replaced.</p>
             </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <Button type="button" size="sm" onClick={() => void save()} disabled={busy !== null}>
-                {busy === "save" ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                Save these months
-              </Button>
-              <p className="text-xs text-muted-foreground">Check the table first. Re-sending a month updates it.</p>
-            </div>
-          )}
+          </details>
+          <p className="text-xs text-muted-foreground">
+            I&apos;ll keep lining this up against competitor moves and a typical range for your kind of product. Nothing else to do here.
+          </p>
         </div>
       ) : null}
 
-      <div className="space-y-3 rounded-md border border-border p-4">
-        <p className="text-sm font-medium">Or have your assistant pull it</p>
-        <CopyPrompt label="From your billing tool (Stripe, Shopify, a subscription platform)" text={pullPrompt} />
-      </div>
+      {fallback ? null : (
+        <>
+      {tooMuch ? null : (
+        <>
+          <p className="text-xs text-muted-foreground">
+            Have a big export or a list of customers? Attach it in Claude or ChatGPT instead: it can count the rows properly, then add the
+            months here. It can pull from Stripe, Shopify or Intercom too, so there&apos;s nothing to connect.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <CopyPromptButton text={ATTACH_PROMPT} label="Copy a prompt for it" />
+          </div>
+        </>
+      )}
 
-      <div className={cn("space-y-3 rounded-md border p-4", rising ? "border-primary/40 bg-primary/[0.04]" : "border-border")}>
-        <p className="text-sm font-medium">{rising ? "Churn is rising. Ask people why." : "Want to know why people leave?"}</p>
-        <p className="text-xs text-muted-foreground">
-          Your numbers show when churn moved. Only your customers can say why, and whether they also use a competitor.
-          Copy this into Claude or ChatGPT and it will draft a short cancellation survey for you to place. Ripplewatch
-          doesn&apos;t host or send it.
-        </p>
-        <CopyPrompt label="Draft a cancellation survey" text={surveyPrompt} />
-      </div>
+        </>
+      )}
     </div>
+  );
+}
+
+// "Not sure why people leave?" The survey prompt, as a collapsed row that opens by itself when churn is
+// rising. Your numbers show when churn moved; only customers can say why, and whether they also use a
+// competitor. Ripplewatch doesn't host or send the survey.
+export function SurveyPromptRow({ competitorNames, rising }: { competitorNames: string[]; rising: boolean }) {
+  const names = competitorNames.filter(Boolean);
+  return (
+    <details open={rising} className="rounded-md border border-border p-3">
+      <summary className="cursor-pointer select-none text-sm font-medium">
+        {rising ? "Churn is rising. Ask people why." : "Not sure why people leave?"}
+      </summary>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Your numbers show when churn moved. Only your customers can say why, and whether they also use a competitor. This prompt has your
+        assistant draft a short cancellation survey for you to place. Ripplewatch doesn&apos;t host it.
+      </p>
+      <div className="mt-2">
+        <CopyPromptButton text={SURVEY_PROMPT(names)} label="Copy the survey prompt" />
+      </div>
+    </details>
   );
 }

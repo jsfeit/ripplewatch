@@ -1,124 +1,73 @@
 "use client";
 
-import { useState } from "react";
-import { Label } from "@/components/ui/label";
+import { useCallback, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
+import { AssistantHandoff } from "@/components/app/assistant-handoff";
 import { AudiencePicker } from "@/components/app/audience-picker";
-import { ChurnDataCard } from "@/components/app/churn-data-card";
-import { DealFileUpload } from "@/components/app/deal-file-upload";
-import { toolsForAudience } from "@/lib/deal-tools";
+import { ChurnDataCard, SurveyPromptRow } from "@/components/app/churn-data-card";
+import { ATTACH_PROMPT } from "@/lib/customer-metrics";
 import { dataCopy, type Audience } from "@/lib/sales-motion";
 import { cn } from "@/lib/utils";
 
 type Side = "business" | "consumer";
 
-// The body of the "bring your data" setup step. B2B sees deals, B2C sees churn and growth, and a
-// company that sells to both gets a tab for each, either of which can be skipped.
+const DEALS_PROMPT =
+  "Using Ripplewatch: take my closed-won and closed-lost deals from the file I've attached (or my CRM, last 24 months), with the reason for each. Show me what you read first, then add them to Ripplewatch with import_win_loss.";
+// The typing box stops here; past it, the assistant does better.
+const TYPED_LIMIT = 2000;
+
+// The body of the "bring your data" setup step. It hands the work to the customer's own assistant,
+// which can count rows, open Excel and pull from their billing tool or CRM, then watches for the data
+// to arrive. A collapsed box covers anyone whose plan can't save to Ripplewatch. A company that sells
+// to both gets a tab for each side.
 export function SetupDataStep({
   audience,
   onAudience,
   competitorNames,
+  assistants,
   dealNote,
   onDealNote,
-  consumerNote,
   onConsumerNote,
-  dealTools,
-  onDealTools,
-  onDealsUploaded,
-  onMetricsSaved,
+  onDealsArrived,
+  onMetricsArrived,
 }: {
   audience: Audience | null;
   onAudience: (next: Audience) => void;
   competitorNames: string[];
+  assistants?: string[];
   dealNote: string;
   onDealNote: (v: string) => void;
-  consumerNote: string;
+  // Words about customers that had no numbers in them, kept as a note.
   onConsumerNote: (v: string) => void;
-  dealTools: string[];
-  onDealTools: (next: string[]) => void;
-  onDealsUploaded: () => void;
-  onMetricsSaved: () => void;
+  onDealsArrived: () => void;
+  onMetricsArrived: () => void;
 }) {
   const [tab, setTab] = useState<Side>("business");
-  const sides: Side[] = audience === "both" ? [tab] : [audience === "consumer" ? "consumer" : "business"];
+  const [rising, setRising] = useState(false);
+  const onStatus = useCallback((s: { churn: { trend: string | null } }) => setRising(s.churn.trend === "rising"), []);
+  const side: Side = audience === "both" ? tab : audience === "consumer" ? "consumer" : "business";
+  const copy = dataCopy(side);
   const first = competitorNames[0] || "a competitor";
 
-  function renderSide(side: Side) {
-    const copy = dataCopy(side);
-    const note = side === "consumer" ? consumerNote : dealNote;
-    const setNote = side === "consumer" ? onConsumerNote : onDealNote;
-    return (
-      <div key={side} className="space-y-5">
-        {side === "consumer" ? (
-          <>
-            <ChurnDataCard competitorNames={competitorNames} onSaved={onMetricsSaved} />
-            <p className="border-t border-border pt-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Anything you know about individual customers (optional)
-            </p>
-          </>
-        ) : null}
-        <div className="space-y-2">
-          <Label htmlFor={`note-${side}`}>{copy.noteLabel}</Label>
-          <Textarea
-            id={`note-${side}`}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            rows={3}
-            maxLength={2000}
-            placeholder={copy.notePlaceholder(first)}
-          />
-          <p className="text-xs text-muted-foreground">{copy.noteHelp}</p>
-        </div>
-        <div className="space-y-2">
-          <Label>{copy.uploadLabel}</Label>
-          <DealFileUpload label={copy.uploadButton} onDone={onDealsUploaded} />
-          <p className="text-xs text-muted-foreground">{copy.uploadHelp}</p>
-        </div>
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">Pick any that apply. You can change this later in Settings, under Data.</p>
-          <div className="flex flex-wrap gap-2">
-            {toolsForAudience(side).map((t) => {
-              const on = dealTools.includes(t.id);
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => onDealTools(on ? dealTools.filter((id) => id !== t.id) : [...dealTools, t.id])}
-                  className={cn(
-                    "rounded-md border px-3 py-1.5 text-sm font-medium",
-                    on ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"
-                  )}
-                >
-                  {t.label}
-                </button>
-              );
-            })}
-          </div>
-          <p className="text-xs text-muted-foreground">{copy.toolsHelp}</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <AudiencePicker value={audience} onChange={onAudience} />
+
       {audience === "both" ? (
         <div role="tablist" aria-label="Which side to add" className="flex gap-2 border-b border-border">
           {([
             ["business", "Business deals"],
             ["consumer", "Consumer churn"],
-          ] as const).map(([side, label]) => (
+          ] as const).map(([s, label]) => (
             <button
-              key={side}
+              key={s}
               type="button"
               role="tab"
-              aria-selected={tab === side}
-              onClick={() => setTab(side)}
+              aria-selected={tab === s}
+              onClick={() => setTab(s)}
               className={cn(
                 "-mb-px border-b-2 px-3 py-2 text-sm font-medium",
-                tab === side ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+                tab === s ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
               )}
             >
               {label}
@@ -126,7 +75,47 @@ export function SetupDataStep({
           ))}
         </div>
       ) : null}
-      {sides.map(renderSide)}
+
+      {side === "consumer" ? (
+        <>
+          <AssistantHandoff
+            kind="churn"
+            title="Bring your churn in with Claude or ChatGPT"
+            blurb="Attach your export (CSV or Excel), or let it pull from Stripe, Shopify or your billing tool. It counts the rows and shows you the table before it saves anything."
+            why="Your assistant reads it once. Ripplewatch keeps it, watches your competitors every day, and tells you when churn rises near a competitor's move."
+            prompt={ATTACH_PROMPT}
+            assistants={assistants}
+            onArrived={onMetricsArrived}
+            onStatus={onStatus}
+            fallback={<ChurnDataCard onNote={onConsumerNote} onSaved={onMetricsArrived} fallback />}
+          />
+          <SurveyPromptRow competitorNames={competitorNames} rising={rising} />
+        </>
+      ) : (
+        <AssistantHandoff
+          kind="deals"
+          title="Bring your deals in with Claude or ChatGPT"
+          blurb="Attach your export (CSV or Excel), or let it pull from HubSpot, Salesforce or Gong. It shows you what it read before it saves anything."
+          why="Your assistant reads it once. Ripplewatch keeps it, watches your competitors every day, and checks each move against your deals. That's Momentum."
+          prompt={DEALS_PROMPT}
+          assistants={assistants}
+          onArrived={onDealsArrived}
+          fallback={
+            <div className="space-y-2">
+              <Textarea
+                value={dealNote}
+                onChange={(e) => onDealNote(e.target.value)}
+                rows={3}
+                className="max-h-44 overflow-y-auto"
+                maxLength={TYPED_LIMIT}
+                aria-label={copy.noteLabel}
+                placeholder={copy.notePlaceholder(first)}
+              />
+              <p className="text-xs text-muted-foreground">{copy.noteHelp}</p>
+            </div>
+          }
+        />
+      )}
     </div>
   );
 }

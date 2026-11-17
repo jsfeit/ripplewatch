@@ -168,6 +168,30 @@ function describeMetrics(r: {
   return parts.join(" ");
 }
 
+// How much the churn box on the setup screen will read itself. A sentence or a short monthly table is
+// fine. A long file, or a list with one row per customer, needs real counting, which the customer's
+// own assistant does better and can show its work on, so those are sent there instead of guessed at.
+export const MAX_BOX_CHARS = 12_000;
+export const MAX_BOX_ROWS = 160;
+
+const CUSTOMER_ID_HEADER = /\b(customer[_ ]?id|user[_ ]?id|subscriber[_ ]?id|subscription[_ ]?id|account[_ ]?id|email)\b/i;
+const ROWS_BEFORE_ITS_A_LIST = 25;
+
+export function isTooDetailed(text: string): boolean {
+  if (text.length > MAX_BOX_CHARS) return true;
+  const lines = text.split(/\r?\n/).filter((l) => l.trim());
+  if (lines.length > MAX_BOX_ROWS) return true;
+  // One row per customer: an id or email column and a good number of rows.
+  return lines.length > ROWS_BEFORE_ITS_A_LIST && CUSTOMER_ID_HEADER.test(lines[0] ?? "");
+}
+
+// What to say, and the prompt to hand the customer's assistant, when it is too much for the box.
+export const TOO_DETAILED_MESSAGE =
+  "That's more than I can read reliably here. A long file or a list with a row per customer needs real counting, and your assistant does that better. Attach it in Claude or ChatGPT and paste this prompt. It will work out the months and add them to Ripplewatch.";
+
+export const ATTACH_PROMPT =
+  "Using Ripplewatch: work out my churn month by month from the file I've attached (or my billing tool): customers at the start of each month, new customers, customers who cancelled, and revenue. Count the rows yourself, don't estimate, and show me the table first. If the file only lists customers who cancelled, say so, because I'll need my total customer count to get a rate. Then add the months to Ripplewatch with log_customer_metrics.";
+
 // Normalises any date-ish value to the first of its month, or null.
 export function monthStart(value: string): string | null {
   const m = /^(\d{4})-(\d{1,2})(?:-\d{1,2})?/.exec(value.trim());

@@ -18,7 +18,7 @@ type Pending = { text: string; filename: string; totalRows: number; preview: Dea
 
 // Upload a deal export in any layout: say how it was read, let the user fix a column, then import it
 // in batches. Shared by the Connect Data tab and the Plus dashboard so both behave the same.
-export function DealFileUpload({ onDone, label = "Upload deals (any CSV)" }: { onDone?: () => void; label?: string }) {
+export function DealFileUpload({ onDone, label = "Upload deals (any CSV)", compact = false }: { onDone?: () => void; label?: string; compact?: boolean }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [reading, setReading] = useState(false);
   const [committing, setCommitting] = useState(false);
@@ -145,7 +145,7 @@ export function DealFileUpload({ onDone, label = "Upload deals (any CSV)" }: { o
         {label}
       </Button>
 
-      <DealDataGuide />
+      {compact ? null : <DealDataGuide />}
 
       {reading ? <p className="mt-2 text-xs text-muted-foreground">Reading your file...</p> : null}
       {progress ? <p className="mt-2 text-xs text-muted-foreground">{progress}</p> : null}
