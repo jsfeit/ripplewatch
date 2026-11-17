@@ -16,6 +16,7 @@ import { timeAgo } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { setupProgress } from "@/lib/connect-setup";
 import { ONBOARDING_VALUE } from "@/lib/onboarding-value";
+import { SlackTroubleHelp } from "@/components/app/slack-trouble-help";
 import { CopyPromptButton } from "@/components/app/copy-prompt-button";
 import { DEALS_PROMPT } from "@/lib/first-prompts";
 
@@ -461,6 +462,7 @@ export function ConnectPanel({
           <p>{slackNotice.text}</p>
         </div>
       ) : null}
+      {slackNotice && !slackNotice.ok ? <SlackTroubleHelp /> : null}
 
       {justPaid ? (
         <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/10 p-4 text-sm">
