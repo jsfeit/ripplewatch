@@ -31,8 +31,6 @@ const COMMON_ZONES: { value: string; label: string }[] = [
   { value: "America/Denver", label: "Mountain (Denver)" },
   { value: "America/Phoenix", label: "Arizona (Phoenix, no daylight saving)" },
   { value: "America/Los_Angeles", label: "Pacific (Los Angeles)" },
-  { value: "America/Anchorage", label: "Alaska (Anchorage)" },
-  { value: "Pacific/Honolulu", label: "Hawaii (Honolulu)" },
   { value: "UTC", label: "UTC" },
 ];
 
