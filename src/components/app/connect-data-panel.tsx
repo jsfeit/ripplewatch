@@ -170,7 +170,18 @@ export function ConnectDataPanel({
             time and I&apos;ll show whether it&apos;s rising and which competitor moves line up with it.
           </p>
           <div className="mt-4">
-            <ChurnDataCard competitorNames={competitors.map((c) => c.name)} onSaved={() => router.refresh()} />
+            <ChurnDataCard
+              competitorNames={competitors.map((c) => c.name)}
+              onSaved={() => router.refresh()}
+              onNote={(text) => {
+                // Words with no numbers in them are kept as a churned-customer entry.
+                void fetch("/api/accounts/win-loss", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ competitorId: null, outcome: "churned", reason: text.slice(0, 2000) }),
+                }).then(() => router.refresh());
+              }}
+            />
           </div>
         </div>
       ) : null}

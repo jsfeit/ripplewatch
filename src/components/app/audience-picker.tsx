@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import { AUDIENCES, type Audience } from "@/lib/sales-motion";
 
-// "Who do you sell to?" B2B, B2C or both. Controlled: the parent saves the choice on the account.
+// "Who do you sell to?" B2B, B2C or both, on one line. Controlled: the parent saves the choice on the account.
 export function AudiencePicker({
   value,
   onChange,
@@ -18,29 +18,31 @@ export function AudiencePicker({
 }) {
   return (
     <div className={className}>
-      <p className="text-sm font-medium" id="audience-label">
-        Who do you sell to?
-      </p>
-      <div role="radiogroup" aria-labelledby="audience-label" className="mt-2 grid gap-2 sm:grid-cols-3">
-        {AUDIENCES.map((a) => {
-          const on = value === a.id;
-          return (
-            <button
-              key={a.id}
-              type="button"
-              role="radio"
-              aria-checked={on}
-              onClick={() => onChange(a.id)}
-              className={cn(
-                "rounded-md border px-3 py-2 text-left",
-                on ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
-              )}
-            >
-              <span className={cn("block text-sm font-medium", on ? "text-primary" : "")}>{a.label}</span>
-              <span className="mt-0.5 block text-xs text-muted-foreground">{a.hint}</span>
-            </button>
-          );
-        })}
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-sm font-medium" id="audience-label">
+          Who do you sell to?
+        </p>
+        <div role="radiogroup" aria-labelledby="audience-label" className="flex gap-2">
+          {AUDIENCES.map((a) => {
+            const on = value === a.id;
+            return (
+              <button
+                key={a.id}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                title={a.hint}
+                onClick={() => onChange(a.id)}
+                className={cn(
+                  "rounded-md border px-3 py-1.5 text-sm font-medium",
+                  on ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/50"
+                )}
+              >
+                {a.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
       {note ? <p className="mt-2 text-xs text-muted-foreground">{note}</p> : null}
     </div>

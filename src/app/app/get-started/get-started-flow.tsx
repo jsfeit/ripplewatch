@@ -18,7 +18,6 @@ import { SuggestedCompetitors, type SuggestedCompetitor } from "@/components/app
 import { PersonalReadCard } from "@/components/app/personal-read-card";
 import { SlackStep } from "@/components/app/slack-step";
 import { clearIntro, loadIntro } from "@/lib/connect-intro";
-import { loadDealTools, saveDealTools } from "@/lib/deal-tools";
 import { trackEvent } from "@/lib/analytics";
 import { ONBOARDING_VALUE, type OnboardingStepKey } from "@/lib/onboarding-value";
 import { dataCopy, type Audience } from "@/lib/sales-motion";
@@ -183,9 +182,6 @@ export function GetStartedFlow({
   // A deal export uploaded on the deals step: committed as soon as it is confirmed, not at the end.
   const [uploadedDeals, setUploadedDeals] = useState(false);
   const [dealResult, setDealResult] = useState<{ imported: number; skipped: number } | null>(null);
-  // This browser's saved choice. Read lazily and only on the client; the chips
-  // that show it appear on a later step, so the server render never differs.
-  const [dealTools, setDealTools] = useState<string[]>(() => (typeof window === "undefined" ? [] : loadDealTools()));
 
   const filledCompetitors = competitors.filter((c) => c.name.trim());
   const hasCompetitor = filledCompetitors.length >= 1 || savedList.length >= 1;
@@ -197,7 +193,7 @@ export function GetStartedFlow({
     (mcpLastConnectedAt ? 30 : 0) +
     (positioning.trim() || icp.trim() ? 20 : 0) +
     (hasCompetitor ? 35 : 0) +
-    (dealTools.length > 0 ? 15 : 0);
+    (dealNote.trim() || consumerNote.trim() || uploadedDeals || metricsSaved ? 15 : 0);
 
   // Likely competitors (they need what was said about the business). The call takes a few
   // seconds, so it starts on the business step: once they've written a real sentence and
@@ -447,9 +443,7 @@ export function GetStartedFlow({
     if (wizardStep === 0) {
       setJustUnlocked(positioning.trim() || icp.trim() ? ONBOARDING_VALUE.business.unlocked() : null);
     } else if (wizardStep === 2) {
-      // Remembered in this browser so the Data tab can name these tools in its prompts.
-      saveDealTools(dealTools);
-      setJustUnlocked(dealTools.length > 0 || uploadedDeals || metricsSaved ? ONBOARDING_VALUE.tools.unlocked() : null);
+      setJustUnlocked(dealNote.trim() || consumerNote.trim() || uploadedDeals || metricsSaved ? ONBOARDING_VALUE.tools.unlocked() : null);
     }
     setStep((s) => s + 1);
   }
@@ -486,10 +480,10 @@ export function GetStartedFlow({
                 ? copy.intro
                 : "Slack is the shared feed: alerts and recaps land in a channel your whole team sees. Skip it if you're the only one using Ripplewatch."}
         </p>
-        {wizardStep === 3 ? null : (
+        {wizardStep === 2 || wizardStep === 3 ? null : (
           <p className="mt-1 rounded-md bg-primary/[0.06] px-3 py-2 text-sm">
             <span className="font-semibold text-primary">Why this matters: </span>
-            {wizardStep === 2 ? copy.unlocks : ONBOARDING_VALUE[key].unlocks}
+            {ONBOARDING_VALUE[key].unlocks}
           </p>
         )}
       </CardHeader>
@@ -621,10 +615,7 @@ export function GetStartedFlow({
             competitorNames={allCompetitorNames}
             dealNote={dealNote}
             onDealNote={setDealNote}
-            consumerNote={consumerNote}
             onConsumerNote={setConsumerNote}
-            dealTools={dealTools}
-            onDealTools={setDealTools}
             onDealsUploaded={() => setUploadedDeals(true)}
             onMetricsSaved={() => setMetricsSaved(true)}
           />
