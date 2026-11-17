@@ -1,3 +1,4 @@
+import { cleanCompetitorName } from "@/lib/competitor-name";
 import { NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -75,7 +76,9 @@ export async function POST(request: Request) {
   const saveCore = runCore && !alreadySavedCore;
   const existingNames = new Set((existingRows ?? []).map((c) => c.name.trim().toLowerCase()));
 
-  const namedCompetitors = (competitors ?? []).filter((c) => c.name?.trim());
+  const namedCompetitors = (competitors ?? [])
+    .filter((c) => c.name?.trim())
+    .map((c) => ({ ...c, name: cleanCompetitorName(c.name, c.domain) }));
   // Competitors not saved yet. A competitor already saved is left alone, however it is edited here:
   // it carries history, so renaming or removing one is done in Settings. A repeated name is added once.
   const seenNames = new Set<string>();
@@ -196,7 +199,8 @@ export async function POST(request: Request) {
           ),
           suggestCompetitorCategories(
             newCompetitors.map((c) => ({ name: c.name.trim(), domain: c.domain?.trim() || null })),
-            accountId
+            accountId,
+            { name: account.name, positioning: positioning?.trim() || null }
           ).catch(() => newCompetitors.map(() => "")),
         ]);
         const admin = createAdminClient();

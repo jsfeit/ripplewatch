@@ -1,3 +1,4 @@
+import { cleanCompetitorName } from "@/lib/competitor-name";
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
@@ -47,7 +48,11 @@ export async function addCompetitor(
   accountId: string,
   input: { name: string; domain: string; force?: boolean }
 ): Promise<AddCompetitorResult> {
-  const { data: account } = await db.from("accounts").select("tier, demo_mode").eq("id", accountId).single();
+  const { data: account } = await db
+    .from("accounts")
+    .select("tier, demo_mode, name, positioning")
+    .eq("id", accountId)
+    .single();
 
   const { count } = await db.from("competitors").select("id", { count: "exact", head: true }).eq("account_id", accountId);
 
@@ -61,8 +66,8 @@ export async function addCompetitor(
     };
   }
 
-  const name = input.name.trim();
   const domain = input.domain.trim();
+  const name = cleanCompetitorName(input.name, domain);
   if (!name) return { ok: false, status: 400, error: "Name is required." };
 
   // Sanity-check the domain before saving, the same way the public snapshot
@@ -97,7 +102,10 @@ export async function addCompetitor(
 
   const [urls, categories] = await Promise.all([
     domain ? discoverCompetitorUrls(domain) : Promise.resolve({ pricingUrl: null, careersUrl: null }),
-    suggestCompetitorCategories([{ name, domain: domain || null }], accountId).catch(() => [""]),
+    suggestCompetitorCategories([{ name, domain: domain || null }], accountId, {
+      name: account?.name ?? null,
+      positioning: account?.positioning ?? null,
+    }).catch(() => [""]),
   ]);
 
   const { data, error } = await db
