@@ -24,6 +24,21 @@ export function CookieConsent() {
   const [consent, setConsent] = useState<"granted" | "denied" | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const pathname = usePathname();
+  // Whether LinkedIn's servers are reachable from this browser. An ad blocker that lets the Insight script
+  // load but blocks its beacons makes the tag retry and log a failed request for every page view, which
+  // floods the console and reports nothing. A blocked browser was never going to be counted, so the tag
+  // is only loaded once a quick probe shows it can reach LinkedIn. Null until the probe answers.
+  const [linkedinReachable, setLinkedinReachable] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (consent !== "granted" || !LINKEDIN_PARTNER_ID) return;
+    let cancelled = false;
+    fetch("https://px.ads.linkedin.com/", { mode: "no-cors", cache: "no-store" })
+      .then(() => !cancelled && setLinkedinReachable(true))
+      .catch(() => !cancelled && setLinkedinReachable(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [consent]);
 
   useEffect(() => {
     // Syncing one-time from localStorage on mount, not deriving state from
@@ -54,7 +69,7 @@ export function CookieConsent() {
         </>
       )}
 
-      {consent === "granted" && LINKEDIN_PARTNER_ID && (
+      {consent === "granted" && LINKEDIN_PARTNER_ID && linkedinReachable === true && (
         <>
           <Script id="linkedin-insight-init" strategy="afterInteractive">
             {`_linkedin_partner_id = "${LINKEDIN_PARTNER_ID}";
