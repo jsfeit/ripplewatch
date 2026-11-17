@@ -1,7 +1,11 @@
 // Single source of truth for FAQ content — rendered on the page and used to
 // build the FAQPage structured data, so the two can never drift apart.
 
-export type FaqItem = { question: string; answer: string };
+// `id` is an optional anchor: /faq#<id> opens that question. Without one the slug of the question is used.
+export type FaqItem = { id?: string; question: string; answer: string };
+
+export const faqSlug = (item: FaqItem): string =>
+  item.id ?? item.question.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 export type FaqCategory = { title: string; items: FaqItem[] };
 
 export const FAQ_CATEGORIES: FaqCategory[] = [
@@ -152,9 +156,10 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
     title: "Getting started",
     items: [
       {
+        id: "slack-connect",
         question: "Slack won't connect. What should I try?",
         answer:
-          "Nothing is lost while Slack is unconnected: alerts keep arriving by email and your assistant works as normal. The usual causes: (1) Your Slack workspace only lets admins add apps. Ask an admin to approve Ripplewatch; the app only posts to the one channel you choose and can't read messages. (2) Slack opened a different workspace than you meant. Use the workspace menu at the top right of Slack's page to switch, then continue. (3) You were signed out of Slack or closed the page partway. Start again from Settings. (4) You see an error ending in invalid_team_for_non_distributed_app. That one is on our side, not yours: email hello@ripplewatch.ai and we'll fix it and tell you when to retry. Still stuck? Email hello@ripplewatch.ai with the time you tried and we'll connect it with you.",
+          "Nothing is lost while Slack is unconnected: alerts keep arriving by email and your assistant works as normal. The usual causes: (1) Your Slack workspace only lets admins add apps. Ask an admin to approve Ripplewatch; the app only posts to the one channel you choose and can't read messages. (2) Slack opened a different workspace than you meant. Use the workspace menu at the top right of Slack's page to switch, then continue. (3) You were signed out of Slack or closed the page partway. Start again from Settings. (4) Slack's page says invalid_team_for_non_distributed_app. That means Slack hasn't opened our app to your workspace yet. Nothing you did caused it and nothing in your settings or Slack changes it. Email hello@ripplewatch.ai and we'll tell you as soon as it's open; until then your alerts arrive by email. Still stuck? Email hello@ripplewatch.ai with the time you tried and we'll connect it with you.",
       },
       {
         question: "How do I get started?",

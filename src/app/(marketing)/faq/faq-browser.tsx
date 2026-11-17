@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, X } from "lucide-react";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionPanel } from "@/components/ui/accordion";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import type { FaqCategory } from "@/lib/faq";
+import { faqSlug, type FaqCategory } from "@/lib/faq";
 
 // Flat, stable ids for the accordion (category + question, not array index —
 // index-based ids would silently reassign to the wrong open item once
@@ -15,6 +15,30 @@ const itemId = (category: string, question: string) => `${category}::${question}
 export function FaqBrowser({ categories }: { categories: FaqCategory[] }) {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+
+  const [open, setOpen] = useState<string[]>([]);
+
+  // /faq#some-question opens that question and scrolls to it, so a link from the app lands on the
+  // answer instead of the general list. Runs on load and when the hash changes.
+  useEffect(() => {
+    function openFromHash() {
+      const slug = decodeURIComponent(window.location.hash.slice(1));
+      if (!slug) return;
+      for (const category of categories) {
+        const item = category.items.find((i) => faqSlug(i) === slug);
+        if (!item) continue;
+        const id = itemId(category.title, item.question);
+        setQuery("");
+        setActiveCategory(null);
+        setOpen((prev) => (prev.includes(id) ? prev : [...prev, id]));
+        window.setTimeout(() => document.getElementById(slug)?.scrollIntoView({ block: "center" }), 80);
+        return;
+      }
+    }
+    openFromHash();
+    window.addEventListener("hashchange", openFromHash);
+    return () => window.removeEventListener("hashchange", openFromHash);
+  }, [categories]);
 
   const normalizedQuery = query.trim().toLowerCase();
 
@@ -115,9 +139,17 @@ export function FaqBrowser({ categories }: { categories: FaqCategory[] }) {
               <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 {category.title}
               </h2>
-              <Accordion multiple className="mt-3">
+              <Accordion
+                multiple
+                className="mt-3"
+                value={open}
+                onValueChange={(next: unknown[]) => {
+                  const mine = new Set(category.items.map((i) => itemId(category.title, i.question)));
+                  setOpen((prev) => [...prev.filter((id) => !mine.has(id)), ...(next as string[])]);
+                }}
+              >
                 {category.items.map((item) => (
-                  <AccordionItem key={item.question} value={itemId(category.title, item.question)}>
+                  <AccordionItem key={item.question} id={faqSlug(item)} className="scroll-mt-24" value={itemId(category.title, item.question)}>
                     <AccordionTrigger className="text-base">{item.question}</AccordionTrigger>
                     <AccordionPanel>
                       <p
