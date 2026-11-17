@@ -3,27 +3,15 @@
 import { useState } from "react";
 import { Check, Copy, ExternalLink } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
+import { ATTACH_PROMPT } from "@/lib/customer-metrics";
+import { DEALS_PROMPT, firstPrompts, firstQuestions, nameList, type PromptContext } from "@/lib/first-prompts";
+import type { Audience } from "@/lib/sales-motion";
 
-// Questions worth asking first, written with the person's own competitor in
-// them. Each opens Claude or ChatGPT with the question already typed in, with
-// a copy button for any assistant (or for when the link doesn't prefill).
-// "Using Ripplewatch" is in every one so the assistant reaches for the tool
-// instead of answering from memory.
-export function firstQuestions(competitor: string | null): string[] {
-  const c = competitor?.trim();
-  return c
-    ? [
-        `Using Ripplewatch: is ${c} heating up or cooling off, and what changed?`,
-        `Using Ripplewatch: what's changed with ${c} this week, and should I worry?`,
-        `Using Ripplewatch: should we respond to ${c}'s pricing?`,
-        "Using Ripplewatch: start here. What do you know about us so far, and what would make your answers sharper?",
-      ]
-    : [
-        "Using Ripplewatch: what changed with my competitors this week?",
-        "Using Ripplewatch: which competitor is heating up fastest?",
-        "Using Ripplewatch: start here. What do you know about us so far, and what would make your answers sharper?",
-      ];
-}
+// Questions worth asking first are written in lib/first-prompts.ts, for this company: its name, the
+// competitors it named and whether it sells to businesses, consumers or both. Each opens Claude or ChatGPT
+// with the question already typed in, with a copy button for any assistant (or for when the link doesn't
+// prefill). "Using Ripplewatch" is in every one so the assistant reaches for the tool instead of answering
+// from memory.
 
 // What the person reads: the question without the "Using Ripplewatch:" the assistant gets.
 function displayQuestion(q: string): string {
@@ -47,10 +35,10 @@ export const LINK_CLASS =
 // whether a competitor is heating up or cooling off, and what changed. It is
 // the question that shows the Momentum score, which is what Ripplewatch does
 // that a chat on its own can't.
-export function FirstQuestionCard({ competitor, assistants }: { competitor: string | null; assistants?: string[] }) {
+export function FirstQuestionCard({ context, assistants }: { context: PromptContext; assistants?: string[] }) {
   const [copied, setCopied] = useState(false);
   const open = openInChoices(assistants);
-  const q = firstQuestions(competitor)[0];
+  const q = firstQuestions(context)[0];
 
   async function copy() {
     try {
@@ -68,8 +56,8 @@ export function FirstQuestionCard({ competitor, assistants }: { competitor: stri
         <p className="text-sm font-semibold text-primary">Ask your first question</p>
         <p className="mt-1 text-sm text-muted-foreground">
           You&apos;ll get a Momentum score, Heating up, Steady or Cooling, and the signals pulling it that way. Your first
-          check on {competitor?.trim() || "your competitors"} is running now, so the read gets richer over the next few
-          minutes.
+          check on {nameList(context.competitors, 2) || "your competitors"} is running now, so the read gets richer over the next
+          few minutes.
         </p>
       </div>
       <p className="rounded-lg border border-border bg-background px-4 py-3 text-sm font-medium">{displayQuestion(q)}</p>
@@ -105,10 +93,10 @@ export function FirstQuestionCard({ competitor, assistants }: { competitor: stri
   );
 }
 
-export function FirstQuestions({ competitor, assistants }: { competitor: string | null; assistants?: string[] }) {
+export function FirstQuestions({ context, assistants }: { context: PromptContext; assistants?: string[] }) {
   const [copied, setCopied] = useState<number | null>(null);
   const open = openInChoices(assistants);
-  const questions = firstQuestions(competitor);
+  const questions = firstQuestions(context);
 
   async function copy(q: string, i: number) {
     try {
@@ -171,21 +159,31 @@ export function FirstQuestions({ competitor, assistants }: { competitor: string 
   );
 }
 
-// Asked of the person's own assistant: read the deals (an attached export, or their CRM) and hand them to
-// import_win_loss. Batches stay under what one call accepts (about 600 rows), rows go through verbatim so
-// Ripplewatch can map any column layout itself, and the assistant reports what actually came in.
-export const DEALS_PROMPT =
-  "Using Ripplewatch: import my deal history. If I've attached a CSV or spreadsheet, read that. Otherwise pull my closed-won and closed-lost deals from my CRM, and ask me before you read anything. Send the rows to Ripplewatch with import_win_loss exactly as they appear, header row first, close dates included, in batches of about 500 rows, going back as far as the data goes. Then tell me how many deals came in.";
-
-// The finish-screen step after the first question: put deal history in through the assistant they just
-// connected. Same "Open in ..." rule as the first question; the settings upload stays as the fallback.
-export function DealsImportCard({ assistants, settingsHref }: { assistants?: string[]; settingsHref: string }) {
+// The finish-screen step after the first question: put the company's data in through the assistant they just
+// connected, written for how they sell. A B2B team is asked for deals, a consumer company for churn, and a
+// company that sells to both gets one card for each. Same "Open in ..." rule as the first question; the
+// settings upload stays as the fallback.
+function ImportCard({
+  title,
+  body,
+  prompt,
+  event,
+  assistants,
+  settingsHref,
+}: {
+  title: string;
+  body: string;
+  prompt: string;
+  event: string;
+  assistants?: string[];
+  settingsHref: string;
+}) {
   const [copied, setCopied] = useState(false);
   const open = openInChoices(assistants);
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(DEALS_PROMPT);
+      await navigator.clipboard.writeText(prompt);
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
@@ -196,20 +194,16 @@ export function DealsImportCard({ assistants, settingsHref }: { assistants?: str
   return (
     <div className="space-y-4 rounded-xl border border-border p-5">
       <div>
-        <p className="text-sm font-semibold">Bring in your deals</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Won and lost deals let every answer be checked against what actually happened. Open your assistant, attach a
-          CSV or spreadsheet export (or let it read your CRM), and it sends them straight to Ripplewatch. Any column
-          layout works, and the more history the better.
-        </p>
+        <p className="text-sm font-semibold">{title}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{body}</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {open.claude ? (
           <a
-            href={`https://claude.ai/new?q=${encodeURIComponent(DEALS_PROMPT)}`}
+            href={`https://claude.ai/new?q=${encodeURIComponent(prompt)}`}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => trackEvent("deals_import_opened", { assistant: "claude" })}
+            onClick={() => trackEvent(event, { assistant: "claude" })}
             className={LINK_CLASS}
           >
             Open in Claude <ExternalLink className="size-3" />
@@ -217,10 +211,10 @@ export function DealsImportCard({ assistants, settingsHref }: { assistants?: str
         ) : null}
         {open.chatgpt ? (
           <a
-            href={`https://chatgpt.com/?q=${encodeURIComponent(DEALS_PROMPT)}`}
+            href={`https://chatgpt.com/?q=${encodeURIComponent(prompt)}`}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => trackEvent("deals_import_opened", { assistant: "chatgpt" })}
+            onClick={() => trackEvent(event, { assistant: "chatgpt" })}
             className={LINK_CLASS}
           >
             Open in ChatGPT <ExternalLink className="size-3" />
@@ -238,48 +232,41 @@ export function DealsImportCard({ assistants, settingsHref }: { assistants?: str
   );
 }
 
-// What to try first, one tab per thing Ripplewatch does. Shown the moment the assistant connects so the
-// next move is obvious: pick what you want, open it in your assistant with the prompt already typed, or copy it.
-// "Using Ripplewatch" leads each prompt so the assistant reaches for the tool instead of answering from memory.
-export function firstPrompts(competitor: string | null): { id: string; label: string; blurb: string; prompt: string }[] {
-  const c = competitor?.trim();
-  return [
-    {
-      id: "heating",
-      label: "Who's heating up",
-      blurb: "A Momentum score, Heating up, Steady or Cooling, with the signals pulling it that way.",
-      prompt: firstQuestions(competitor)[0],
-    },
-    {
-      id: "briefing",
-      label: "Weekly briefing",
-      blurb: c ? `What changed across your competitors, starting with ${c}, and what to do about it.` : "What changed across your competitors and what to do about it.",
-      prompt: "Using Ripplewatch: give me my competitive briefing for this week.",
-    },
-    {
-      id: "deals",
-      label: "What's costing us deals",
-      blurb: "Ranked reasons you lose, checked against the deals you have told it about.",
-      prompt: "Using Ripplewatch: what is costing us deals, and what should we do about it?",
-    },
-    {
-      id: "log",
-      label: "Log a deal",
-      blurb: "Tell it how a deal went in plain words. It records it against the right competitor.",
-      prompt:
-        "Using Ripplewatch: log a deal for me. I'll tell you how it went: who it was against, whether we won or lost, and why. Ask me for anything that's missing.",
-    },
-    {
-      id: "import",
-      label: "Import deals",
-      blurb: "Attach a CSV or let it read your CRM. Any column layout works.",
-      prompt: DEALS_PROMPT,
-    },
-  ];
+export function DataImportCards({ assistants, settingsHref, sellsTo }: { assistants?: string[]; settingsHref: string; sellsTo: Audience | null }) {
+  const deals = sellsTo !== "consumer";
+  const churn = sellsTo === "consumer" || sellsTo === "both";
+  return (
+    <div className="space-y-4">
+      {deals ? (
+        <ImportCard
+          title="Bring in your deals"
+          body="Won and lost deals let every answer be checked against what actually happened. Open your assistant, attach a CSV or spreadsheet export (or let it read your CRM), and it sends them straight to Ripplewatch. Any column layout works, and the more history the better."
+          prompt={DEALS_PROMPT}
+          event="deals_import_opened"
+          assistants={assistants}
+          settingsHref={settingsHref}
+        />
+      ) : null}
+      {churn ? (
+        <ImportCard
+          title="Bring in your churn"
+          body="Your churn is how Ripplewatch can tell when customers start leaving, and whether a competitor moved around then. Open your assistant, attach an export (or let it read your billing tool), and it counts the rows and sends the months straight to Ripplewatch."
+          prompt={ATTACH_PROMPT}
+          event="churn_import_opened"
+          assistants={assistants}
+          settingsHref={settingsHref}
+        />
+      ) : null}
+    </div>
+  );
 }
 
-export function FirstPromptPicker({ competitor, assistants }: { competitor: string | null; assistants?: string[] }) {
-  const prompts = firstPrompts(competitor);
+// What to try first, one tab per thing Ripplewatch does, written for this company (see lib/first-prompts.ts).
+// Shown the moment the assistant connects so the next move is obvious: pick what you want, open it in your
+// assistant with the prompt already typed, or copy it. "Using Ripplewatch" leads each prompt so the assistant
+// reaches for the tool instead of answering from memory.
+export function FirstPromptPicker({ context, assistants }: { context: PromptContext; assistants?: string[] }) {
+  const prompts = firstPrompts(context);
   const [activeId, setActiveId] = useState(prompts[0].id);
   const [copied, setCopied] = useState(false);
   const open = openInChoices(assistants);
@@ -300,8 +287,8 @@ export function FirstPromptPicker({ competitor, assistants }: { competitor: stri
       <div>
         <p className="text-sm font-semibold text-primary">You&apos;re connected. Try one of these first</p>
         <p className="mt-1 text-sm text-muted-foreground">
-          Your first check on {competitor?.trim() || "your competitors"} is running now, so the read gets richer over the
-          next few minutes. Pick what you want to do and it opens in your assistant ready to send.
+          Your first check on {nameList(context.competitors, 2) || "your competitors"} is running now, so the read gets richer
+          over the next few minutes. Pick what you want to do and it opens in your assistant ready to send.
         </p>
       </div>
       <div role="tablist" aria-label="First things to try" className="flex flex-wrap gap-2">

@@ -10,11 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CompetitorRow, type CompetitorInput } from "@/components/app/competitor-row";
 import { Confetti } from "@/components/app/confetti";
-import { DealsImportCard, FirstQuestions } from "@/components/app/first-questions";
+import { DataImportCards, FirstQuestions } from "@/components/app/first-questions";
 import { QuickGuide } from "@/components/app/quick-guide";
 import { McpConnectStep } from "@/components/app/mcp-connect-step";
 import { MomentumTease, ReadinessMeter, type Skill } from "@/components/app/momentum-tease";
 import { MomentumBoardLive } from "@/components/app/momentum-board-live";
+import type { PromptContext } from "@/lib/first-prompts";
 import { SuggestedCompetitors, type SuggestedCompetitor } from "@/components/app/suggested-competitors";
 import { PersonalReadCard } from "@/components/app/personal-read-card";
 import { SlackStep } from "@/components/app/slack-step";
@@ -191,7 +192,8 @@ export function GetStartedFlow({
   const hasCompetitor = filledCompetitors.length >= 1 || savedList.length >= 1;
   // Everyone being watched, saved or about to be, for the prompts and the first question.
   const allCompetitorNames = [...savedList, ...filledCompetitors].map((c) => c.name.trim()).filter(Boolean);
-  const leadCompetitor = allCompetitorNames[0] ?? savedCompetitorName;
+  // What the first things to try are written from: their company, the competitors they named, how they sell.
+  const promptContext: PromptContext = { company: companyName, sellsTo, competitors: allCompetitorNames.length > 0 ? allCompetitorNames : savedCompetitorName ? [savedCompetitorName] : [] };
   // A progress cue built only from what's been told so far.
   const readiness =
     (mcpLastConnectedAt ? 30 : 0) +
@@ -373,7 +375,7 @@ export function GetStartedFlow({
           connectedAssistants={connectedAssistants}
           stepNumber={step + 1}
           totalSteps={TOTAL_STEPS}
-          firstQuestionCompetitor={leadCompetitor}
+          promptContext={promptContext}
           onContinue={() => {
             setJustUnlocked(ONBOARDING_VALUE.connect.unlocked());
             setStep(CONNECT_STEP + 1);
@@ -392,7 +394,6 @@ export function GetStartedFlow({
   }
 
   if (celebrating) {
-    const lead = leadCompetitor;
     return (
       <>
         <Confetti />
@@ -419,9 +420,9 @@ export function GetStartedFlow({
             ) : (
               <MomentumBoardLive names={allCompetitorNames} />
             )}
-            <FirstQuestions competitor={lead} assistants={connectedAssistants} />
+            <FirstQuestions context={promptContext} assistants={connectedAssistants} />
             <QuickGuide />
-<DealsImportCard assistants={connectedAssistants} settingsHref="/app/settings?tab=data" />
+            <DataImportCards assistants={connectedAssistants} settingsHref="/app/settings?tab=data" sellsTo={sellsTo} />
           </CardContent>
         </Card>
       </>
