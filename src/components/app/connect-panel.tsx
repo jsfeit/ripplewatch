@@ -16,6 +16,8 @@ import { timeAgo } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { setupProgress } from "@/lib/connect-setup";
 import { ONBOARDING_VALUE } from "@/lib/onboarding-value";
+import { CopyPromptButton } from "@/components/app/copy-prompt-button";
+import { DEALS_PROMPT } from "@/lib/first-prompts";
 
 export type ConnectLedgerRow = {
   id: string;
@@ -366,9 +368,13 @@ export function ConnectPanel({
       value: ONBOARDING_VALUE.dealHistory,
       done: hasDealHistory,
       hint: (
-        <Link href="/app/settings?tab=data" className="underline underline-offset-2 hover:text-foreground">
-          Add a deal, email a list, or upload a file
-        </Link>
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <span>Ask it: &quot;Log a deal we won or lost&quot;, or attach a CSV and have it import them.</span>
+          <CopyPromptButton text={DEALS_PROMPT} label="Copy a prompt for it" />
+          <Link href="/app/settings?tab=data" className="underline underline-offset-2 hover:text-foreground">
+            Or use the web form
+          </Link>
+        </span>
       ),
     },
     {
