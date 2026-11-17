@@ -56,6 +56,9 @@ export function GetStartedFlow({
   initialWebsite,
   initialSellsTo,
   initialOverview,
+  savedCompetitors,
+  savedPositioning,
+  savedIcp,
 }: {
   companyName: string;
   mcpLastConnectedAt: string | null;
@@ -68,6 +71,10 @@ export function GetStartedFlow({
   initialWebsite: string | null;
   initialSellsTo: Audience | null;
   initialOverview: string | null;
+  // What was saved when the competitors step was passed, so going Back (or reloading) shows it.
+  savedCompetitors: CompetitorInput[];
+  savedPositioning: string | null;
+  savedIcp: string | null;
 }) {
   const router = useRouter();
   // Order: business, competitors (saved here), connect, deals, Slack. Someone who
@@ -84,14 +91,21 @@ export function GetStartedFlow({
   // browser. Used to start the steps below filled in and to show the read again
   // at the end. Read once on the client, so the server render is the empty one.
   const [intro] = useState(() => (typeof window === "undefined" ? null : loadIntro()));
-  const [positioning, setPositioning] = useState(intro?.positioning ?? "");
-  const [icp, setIcp] = useState(intro?.icp ?? "");
+  const [positioning, setPositioning] = useState(savedPositioning ?? intro?.positioning ?? "");
+  const [icp, setIcp] = useState(savedIcp ?? intro?.icp ?? "");
   // Three rows to start, so it's clear more than one is expected; more can be added.
-  const [competitors, setCompetitors] = useState<CompetitorInput[]>([
-    intro?.competitor ? { name: intro.competitor.name, domain: intro.competitor.domain } : { name: "", domain: "" },
-    { name: "", domain: "" },
-    { name: "", domain: "" },
-  ]);
+  // Competitors already saved are listed, not edited here (they carry history, so renaming or removing
+  // one is done in Settings). The rows below only ever hold ones that are still to be added.
+  const [savedList, setSavedList] = useState<CompetitorInput[]>(savedCompetitors);
+  const [competitors, setCompetitors] = useState<CompetitorInput[]>(
+    savedCompetitors.length > 0
+      ? [{ name: "", domain: "" }]
+      : [
+          intro?.competitor ? { name: intro.competitor.name, domain: intro.competitor.domain } : { name: "", domain: "" },
+          { name: "", domain: "" },
+          { name: "", domain: "" },
+        ]
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [celebrating, setCelebrating] = useState(false);
@@ -174,7 +188,10 @@ export function GetStartedFlow({
   const [dealTools, setDealTools] = useState<string[]>(() => (typeof window === "undefined" ? [] : loadDealTools()));
 
   const filledCompetitors = competitors.filter((c) => c.name.trim());
-  const hasCompetitor = filledCompetitors.length >= 1;
+  const hasCompetitor = filledCompetitors.length >= 1 || savedList.length >= 1;
+  // Everyone being watched, saved or about to be, for the prompts and the first question.
+  const allCompetitorNames = [...savedList, ...filledCompetitors].map((c) => c.name.trim()).filter(Boolean);
+  const leadCompetitor = allCompetitorNames[0] ?? savedCompetitorName;
   // A progress cue built only from what's been told so far.
   const readiness =
     (mcpLastConnectedAt ? 30 : 0) +
@@ -242,8 +259,8 @@ export function GetStartedFlow({
     });
   }
   const selectedNames = useMemo(
-    () => new Set(competitors.map((c) => c.name.trim().toLowerCase()).filter(Boolean)),
-    [competitors]
+    () => new Set([...savedList, ...competitors].map((c) => c.name.trim().toLowerCase()).filter(Boolean)),
+    [competitors, savedList]
   );
   const domainByName = useMemo(
     () => Object.fromEntries(competitors.filter((c) => c.name.trim() && c.domain.trim()).map((c) => [c.name.trim(), c.domain.trim()])),
@@ -289,6 +306,11 @@ export function GetStartedFlow({
     if (!res.ok) {
       setError(data.error ?? "Something went wrong. Try again.");
       return false;
+    }
+    // Saved now: list them and leave a single empty row for anything added after going Back.
+    if (filledCompetitors.length > 0) {
+      setSavedList((prev) => [...prev, ...filledCompetitors]);
+      setCompetitors([{ name: "", domain: "" }]);
     }
     return true;
   }
@@ -351,13 +373,18 @@ export function GetStartedFlow({
           connectedAssistants={connectedAssistants}
           stepNumber={step + 1}
           totalSteps={TOTAL_STEPS}
-          firstQuestionCompetitor={filledCompetitors[0]?.name ?? savedCompetitorName}
+          firstQuestionCompetitor={leadCompetitor}
           onContinue={() => {
             setJustUnlocked(ONBOARDING_VALUE.connect.unlocked());
             setStep(CONNECT_STEP + 1);
           }}
           onSkip={() => void skipRest()}
           skipping={submitting}
+          onBack={() => {
+            setJustUnlocked(null);
+            setError("");
+            setStep(1);
+          }}
         />
         {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
       </>
@@ -365,7 +392,7 @@ export function GetStartedFlow({
   }
 
   if (celebrating) {
-    const lead = filledCompetitors[0]?.name ?? savedCompetitorName;
+    const lead = leadCompetitor;
     return (
       <>
         <Confetti />
@@ -373,8 +400,8 @@ export function GetStartedFlow({
           <CardHeader>
             <h1 className="text-xl font-semibold tracking-tight">You&apos;re all set, {companyName}.</h1>
             <p className="text-sm text-muted-foreground">
-              {filledCompetitors.length > 0
-                ? `I'm checking ${filledCompetitors.length} competitor${filledCompetitors.length === 1 ? "" : "s"} now.`
+              {allCompetitorNames.length > 0
+                ? `I'm checking ${allCompetitorNames.length} competitor${allCompetitorNames.length === 1 ? "" : "s"} now.`
                 : "I'm checking your competitors now."}
             </p>
           </CardHeader>
@@ -390,7 +417,7 @@ export function GetStartedFlow({
             {intro?.read && intro.competitor ? (
               <PersonalReadCard competitorName={intro.competitor.name} read={intro.read} evidence={intro.evidence} />
             ) : (
-              <MomentumTease names={filledCompetitors.map((c) => c.name)} />
+              <MomentumTease names={allCompetitorNames} />
             )}
             <FirstQuestions competitor={lead} assistants={connectedAssistants} />
             <QuickGuide />
@@ -412,7 +439,7 @@ export function GetStartedFlow({
       const saved = await saveCore();
       setSubmitting(false);
       if (!saved) return;
-      setJustUnlocked(ONBOARDING_VALUE.competitors.unlocked(filledCompetitors.length));
+      setJustUnlocked(ONBOARDING_VALUE.competitors.unlocked(allCompetitorNames.length || filledCompetitors.length));
       setStep(CONNECT_STEP);
       return;
     }
@@ -545,6 +572,22 @@ export function GetStartedFlow({
 
         {wizardStep === 1 && (
           <div className="space-y-4">
+            {savedList.length > 0 ? (
+              <div className="rounded-md border border-border p-3">
+                <p className="text-sm font-medium">Already saved and being watched</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {savedList.map((c) => (
+                    <span key={c.name} className="rounded-full border border-border px-3 py-1 text-sm">
+                      {c.name}
+                      {c.domain ? <span className="text-muted-foreground"> · {c.domain}</span> : null}
+                    </span>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Add more below if you like. To rename or remove one, use Settings, under Competitors.
+                </p>
+              </div>
+            ) : null}
             <div className="space-y-2">
               {competitors.map((c, i) => (
                 <CompetitorRow
@@ -552,7 +595,7 @@ export function GetStartedFlow({
                   value={c}
                   onChange={(field, val) => updateCompetitor(i, field, val)}
                   onRemove={() => removeCompetitor(i)}
-                  removeDisabled={competitors.length <= 3}
+                  removeDisabled={competitors.length <= (savedList.length > 0 ? 1 : 3)}
                   domainOnly
                 />
               ))}
@@ -567,7 +610,7 @@ export function GetStartedFlow({
               selectedNames={selectedNames}
               onToggle={toggleSuggestion}
             />
-            <MomentumTease names={filledCompetitors.map((c) => c.name)} domainByName={domainByName} />
+            <MomentumTease names={allCompetitorNames} domainByName={domainByName} />
           </div>
         )}
 
@@ -575,7 +618,7 @@ export function GetStartedFlow({
           <SetupDataStep
             audience={sellsTo}
             onAudience={chooseSellsTo}
-            competitorNames={filledCompetitors.map((c) => c.name.trim())}
+            competitorNames={allCompetitorNames}
             dealNote={dealNote}
             onDealNote={setDealNote}
             consumerNote={consumerNote}
@@ -606,7 +649,7 @@ export function GetStartedFlow({
               disabled={(wizardStep === 1 && !hasCompetitor) || submitting}
             >
               {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
-              {wizardStep === 1 ? "Save and connect" : "Continue"}
+              {wizardStep === 1 ? (savedList.length > 0 && filledCompetitors.length === 0 ? "Continue" : "Save and connect") : "Continue"}
               <ArrowRight className="size-4" />
             </Button>
           ) : (

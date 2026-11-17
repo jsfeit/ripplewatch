@@ -27,20 +27,19 @@ export default async function GetStartedPage({ searchParams }: { searchParams: P
   const { data: profile } = await supabase.from("profiles").select("account_id").eq("id", user.id).single();
   if (!profile?.account_id) redirect("/onboarding");
 
-  const [{ data: account }, { data: firstCompetitor, count: competitorCount }] = await Promise.all([
+  const [{ data: account }, { data: savedCompetitors }] = await Promise.all([
     supabase
       .from("accounts")
-      .select("id, name, tier, status, subscription_status, connect_get_started_dismissed_at, mcp_last_connected_at, website, sells_to, company_overview")
+      .select("id, name, tier, status, subscription_status, connect_get_started_dismissed_at, mcp_last_connected_at, website, sells_to, company_overview, positioning, icp")
       .eq("id", profile.account_id)
       .single(),
     // Context and competitors are saved before the assistant is connected, so
     // someone who reloads partway through resumes after those steps.
     supabase
       .from("competitors")
-      .select("name", { count: "exact" })
+      .select("name, domain")
       .eq("account_id", profile.account_id)
-      .order("created_at", { ascending: true })
-      .limit(1),
+      .order("created_at", { ascending: true }),
   ]);
   if (!account || account.tier !== "connect") redirect("/app/settings");
 
@@ -58,8 +57,11 @@ export default async function GetStartedPage({ searchParams }: { searchParams: P
         companyName={account.name}
         mcpLastConnectedAt={account.mcp_last_connected_at}
         connectedAssistants={connectedAssistants}
-        contextSaved={(competitorCount ?? 0) > 0}
-        savedCompetitorName={firstCompetitor?.[0]?.name ?? null}
+        contextSaved={(savedCompetitors ?? []).length > 0}
+        savedCompetitorName={savedCompetitors?.[0]?.name ?? null}
+        savedCompetitors={(savedCompetitors ?? []).map((c) => ({ name: c.name, domain: c.domain ?? "" }))}
+        savedPositioning={account.positioning}
+        savedIcp={account.icp}
         initialWebsite={account.website}
         initialSellsTo={parseAudience(account.sells_to)}
         initialOverview={account.company_overview}
