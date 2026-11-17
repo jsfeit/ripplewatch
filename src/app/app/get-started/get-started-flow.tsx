@@ -327,6 +327,9 @@ export function GetStartedFlow({
   // after="slack" it then leaves for Slack's sign-in instead of celebrating, since
   // that's a full page change and the setup would be lost if it hadn't been saved first.
   async function finish(after?: "slack") {
+    // Slack opens in its own tab so setup stays here. The tab has to be opened before the save
+    // (browsers only allow it straight from the click), then pointed at Slack once the save is done.
+    const slackTab = after === "slack" ? window.open("", "_blank") : null;
     setSubmitting(true);
     setError("");
     const res = await fetch("/api/connect/onboarding/complete", {
@@ -336,13 +339,19 @@ export function GetStartedFlow({
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
+      slackTab?.close();
       setSubmitting(false);
       setError(data.error ?? "Something went wrong. Try again.");
       return;
     }
     if (after === "slack") {
-      window.location.assign(`/api/integrations/slack/connect?next=${encodeURIComponent("/app/settings?tab=data")}`);
-      return;
+      const slackUrl = `/api/integrations/slack/connect?next=${encodeURIComponent("/app/settings?tab=connect")}`;
+      // Popup blocked: fall back to leaving this page, as before.
+      if (!slackTab) {
+        window.location.assign(slackUrl);
+        return;
+      }
+      slackTab.location.href = slackUrl;
     }
     // Stay on the finish screen: it holds the first read and the first questions, which take
     // longer than a few seconds to take in. The next step is a button, not a timer.
