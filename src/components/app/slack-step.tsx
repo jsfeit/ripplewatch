@@ -68,6 +68,14 @@ export function SlackStep({ onConnect, busy }: { onConnect: () => void; busy: bo
         </Button>
       </div>
 
+      <p className="text-xs text-muted-foreground">
+        Slack asking for an admin, or showing an error?{" "}
+        <a href="/faq" target="_blank" rel="noopener" className="underline underline-offset-2 hover:text-foreground">
+          See connection tips
+        </a>
+        . You can skip Slack and keep getting alerts by email.
+      </p>
+
       <details className="group text-sm">
         <summary className="cursor-pointer list-none text-muted-foreground hover:text-foreground">
           How this fits together

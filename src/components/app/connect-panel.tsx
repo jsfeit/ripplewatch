@@ -248,6 +248,15 @@ export function ConnectPanel({
           disconnectAction={disconnectIntegrationAction}
         />
       </div>
+      {slackConnected ? null : (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Slack asking for an admin, or showing an error?{" "}
+          <a href="/faq" target="_blank" rel="noopener" className="underline underline-offset-2 hover:text-foreground">
+            See connection tips
+          </a>
+          .
+        </p>
+      )}
       {slackConnected ? (
         <div className="mt-4">
           <SlackDigestSchedule initialTimezone={timezone} initialDay={slackDigestDay} initialHour={slackDigestHour} />
