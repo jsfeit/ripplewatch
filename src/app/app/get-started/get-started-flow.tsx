@@ -14,6 +14,7 @@ import { DealsImportCard, FirstQuestions } from "@/components/app/first-question
 import { QuickGuide } from "@/components/app/quick-guide";
 import { McpConnectStep } from "@/components/app/mcp-connect-step";
 import { MomentumTease, ReadinessMeter, type Skill } from "@/components/app/momentum-tease";
+import { MomentumBoardLive } from "@/components/app/momentum-board-live";
 import { SuggestedCompetitors, type SuggestedCompetitor } from "@/components/app/suggested-competitors";
 import { PersonalReadCard } from "@/components/app/personal-read-card";
 import { SlackStep } from "@/components/app/slack-step";
@@ -416,7 +417,7 @@ export function GetStartedFlow({
             {intro?.read && intro.competitor ? (
               <PersonalReadCard competitorName={intro.competitor.name} read={intro.read} evidence={intro.evidence} />
             ) : (
-              <MomentumTease names={allCompetitorNames} />
+              <MomentumBoardLive names={allCompetitorNames} />
             )}
             <FirstQuestions competitor={lead} assistants={connectedAssistants} />
             <QuickGuide />
