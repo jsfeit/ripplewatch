@@ -1,46 +1,50 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
+import { AssistantHandoff } from "@/components/app/assistant-handoff";
 import { AudiencePicker } from "@/components/app/audience-picker";
-import { ChurnDataCard } from "@/components/app/churn-data-card";
-import { CopyPromptButton } from "@/components/app/copy-prompt-button";
-import { DealFileUpload } from "@/components/app/deal-file-upload";
+import { ChurnDataCard, SurveyPromptRow } from "@/components/app/churn-data-card";
+import { ATTACH_PROMPT } from "@/lib/customer-metrics";
 import { dataCopy, type Audience } from "@/lib/sales-motion";
 import { cn } from "@/lib/utils";
 
 type Side = "business" | "consumer";
 
-const PULL_DEALS_PROMPT =
+const DEALS_PROMPT =
   "Using Ripplewatch: take my closed-won and closed-lost deals from the file I've attached (or my CRM, last 24 months), with the reason for each. Show me what you read first, then add them to Ripplewatch with import_win_loss.";
-// The typing box stops here; past it, a file upload or the assistant does better.
+// The typing box stops here; past it, the assistant does better.
 const TYPED_LIMIT = 2000;
 
-// The body of the "bring your data" setup step, kept short because the whole step is optional. B2B
-// gets one box for deals plus a file upload, B2C gets one box for churn, and a company that sells to
-// both gets a tab for each. There is no list of tools to connect: those tools already work inside
-// Claude and ChatGPT, so the step just says so and offers a prompt.
+// The body of the "bring your data" setup step. It hands the work to the customer's own assistant,
+// which can count rows, open Excel and pull from their billing tool or CRM, then watches for the data
+// to arrive. A collapsed box covers anyone whose plan can't save to Ripplewatch. A company that sells
+// to both gets a tab for each side.
 export function SetupDataStep({
   audience,
   onAudience,
   competitorNames,
+  assistants,
   dealNote,
   onDealNote,
   onConsumerNote,
-  onDealsUploaded,
-  onMetricsSaved,
+  onDealsArrived,
+  onMetricsArrived,
 }: {
   audience: Audience | null;
   onAudience: (next: Audience) => void;
   competitorNames: string[];
+  assistants?: string[];
   dealNote: string;
   onDealNote: (v: string) => void;
   // Words about customers that had no numbers in them, kept as a note.
   onConsumerNote: (v: string) => void;
-  onDealsUploaded: () => void;
-  onMetricsSaved: () => void;
+  onDealsArrived: () => void;
+  onMetricsArrived: () => void;
 }) {
   const [tab, setTab] = useState<Side>("business");
+  const [rising, setRising] = useState(false);
+  const onStatus = useCallback((s: { churn: { trend: string | null } }) => setRising(s.churn.trend === "rising"), []);
   const side: Side = audience === "both" ? tab : audience === "consumer" ? "consumer" : "business";
   const copy = dataCopy(side);
   const first = competitorNames[0] || "a competitor";
@@ -73,33 +77,44 @@ export function SetupDataStep({
       ) : null}
 
       {side === "consumer" ? (
-        <ChurnDataCard competitorNames={competitorNames} onSaved={onMetricsSaved} onNote={onConsumerNote} />
-      ) : (
-        <div className="space-y-3">
-          <Textarea
-            value={dealNote}
-            onChange={(e) => onDealNote(e.target.value)}
-            rows={3}
-            className="max-h-44 overflow-y-auto"
-            maxLength={TYPED_LIMIT}
-            aria-label={copy.noteLabel}
-            placeholder={copy.notePlaceholder(first)}
+        <>
+          <AssistantHandoff
+            kind="churn"
+            title="Bring your churn in with Claude or ChatGPT"
+            blurb="Attach your export (CSV or Excel), or let it pull from Stripe, Shopify or your billing tool. It counts the rows and shows you the table before it saves anything."
+            why="Your assistant reads it once. Ripplewatch keeps it, watches your competitors every day, and checks each move against your churn. That's Momentum."
+            prompt={ATTACH_PROMPT}
+            assistants={assistants}
+            onArrived={onMetricsArrived}
+            onStatus={onStatus}
+            fallback={<ChurnDataCard onNote={onConsumerNote} onSaved={onMetricsArrived} fallback />}
           />
-          {dealNote.length >= TYPED_LIMIT - 200 ? (
-            <p role="alert" className="text-xs text-destructive">
-              That&apos;s about as much as fits here. For a longer list, upload a CSV below, or attach it in Claude or ChatGPT.
-            </p>
-          ) : null}
-          <div className="flex flex-wrap items-center gap-2">
-            <DealFileUpload label="Upload a CSV" onDone={onDealsUploaded} compact />
-            <span className="text-xs text-muted-foreground">{copy.noteHelp}</span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Have a big list? Upload it above, or attach it in Claude or ChatGPT. It can pull from HubSpot, Salesforce or Gong too, so there&apos;s
-            nothing to connect.
-          </p>
-          <CopyPromptButton text={PULL_DEALS_PROMPT} label="Copy a prompt for it" />
-        </div>
+          <SurveyPromptRow competitorNames={competitorNames} rising={rising} />
+        </>
+      ) : (
+        <AssistantHandoff
+          kind="deals"
+          title="Bring your deals in with Claude or ChatGPT"
+          blurb="Attach your export (CSV or Excel), or let it pull from HubSpot, Salesforce or Gong. It shows you what it read before it saves anything."
+          why="Your assistant reads it once. Ripplewatch keeps it, watches your competitors every day, and checks each move against your deals. That's Momentum."
+          prompt={DEALS_PROMPT}
+          assistants={assistants}
+          onArrived={onDealsArrived}
+          fallback={
+            <div className="space-y-2">
+              <Textarea
+                value={dealNote}
+                onChange={(e) => onDealNote(e.target.value)}
+                rows={3}
+                className="max-h-44 overflow-y-auto"
+                maxLength={TYPED_LIMIT}
+                aria-label={copy.noteLabel}
+                placeholder={copy.notePlaceholder(first)}
+              />
+              <p className="text-xs text-muted-foreground">{copy.noteHelp}</p>
+            </div>
+          }
+        />
       )}
     </div>
   );

@@ -38,12 +38,14 @@ const SURVEY_PROMPT = (names: string[]) =>
 // a note about customers. Most consumer companies can't say why each customer left, but they know
 // their churn, so that is what this takes.
 export function ChurnDataCard({
-  competitorNames,
   segment = "consumer",
   onSaved,
   onNote,
+  fallback = false,
 }: {
-  competitorNames: string[];
+  // The lean version shown under "Can't use your assistant right now": just the box, no upload and no
+  // pointers to the assistant, since the screen above already says that.
+  fallback?: boolean;
   segment?: "business" | "consumer";
   onSaved?: () => void;
   // Called when what was written has no months in it, so it is kept as a note about customers instead.
@@ -149,9 +151,6 @@ export function ChurnDataCard({
     await submit(content);
   }
 
-  const rising = read?.trend === "rising";
-  const names = competitorNames.filter(Boolean);
-
   return (
     <div className="space-y-3">
       <Textarea
@@ -168,6 +167,8 @@ export function ChurnDataCard({
           {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
           Read it
         </Button>
+        {fallback ? null : (
+          <>
         <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={busy}>
           <Upload className="size-3.5" />
           Upload a CSV
@@ -182,6 +183,8 @@ export function ChurnDataCard({
             e.target.value = "";
           }}
         />
+          </>
+        )}
         <span className="text-xs text-muted-foreground">Include the months. A few is enough.</span>
       </div>
 
@@ -268,6 +271,8 @@ export function ChurnDataCard({
         </div>
       ) : null}
 
+      {fallback ? null : (
+        <>
       {tooMuch ? null : (
         <>
           <p className="text-xs text-muted-foreground">
@@ -280,18 +285,29 @@ export function ChurnDataCard({
         </>
       )}
 
-      <details open={rising} className="rounded-md border border-border p-3">
-        <summary className="cursor-pointer select-none text-sm font-medium">
-          {rising ? "Churn is rising. Ask people why." : "Not sure why people leave?"}
-        </summary>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Your numbers show when churn moved. Only your customers can say why, and whether they also use a competitor. This prompt has your
-          assistant draft a short cancellation survey for you to place. Ripplewatch doesn&apos;t host it.
-        </p>
-        <div className="mt-2">
-          <CopyPromptButton text={SURVEY_PROMPT(names)} label="Copy the survey prompt" />
-        </div>
-      </details>
+        </>
+      )}
     </div>
+  );
+}
+
+// "Not sure why people leave?" The survey prompt, as a collapsed row that opens by itself when churn is
+// rising. Your numbers show when churn moved; only customers can say why, and whether they also use a
+// competitor. Ripplewatch doesn't host or send the survey.
+export function SurveyPromptRow({ competitorNames, rising }: { competitorNames: string[]; rising: boolean }) {
+  const names = competitorNames.filter(Boolean);
+  return (
+    <details open={rising} className="rounded-md border border-border p-3">
+      <summary className="cursor-pointer select-none text-sm font-medium">
+        {rising ? "Churn is rising. Ask people why." : "Not sure why people leave?"}
+      </summary>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Your numbers show when churn moved. Only your customers can say why, and whether they also use a competitor. This prompt has your
+        assistant draft a short cancellation survey for you to place. Ripplewatch doesn&apos;t host it.
+      </p>
+      <div className="mt-2">
+        <CopyPromptButton text={SURVEY_PROMPT(names)} label="Copy the survey prompt" />
+      </div>
+    </details>
   );
 }

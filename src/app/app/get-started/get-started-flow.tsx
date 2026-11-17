@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -113,6 +113,8 @@ export function GetStartedFlow({
   // Churn told in plain words on the consumer side, saved with the deal note at the end.
   const [consumerNote, setConsumerNote] = useState("");
   const [metricsSaved, setMetricsSaved] = useState(false);
+  // Stable, because the data step calls these from an effect when the assistant has saved something.
+  const markMetrics = useCallback(() => setMetricsSaved(true), []);
   // Who they sell to decides the wording and tools on the deals step. Saved on the account.
   const [sellsTo, setSellsTo] = useState<Audience | null>(initialSellsTo);
   const copy = dataCopy(sellsTo);
@@ -181,6 +183,7 @@ export function GetStartedFlow({
   }
   // A deal export uploaded on the deals step: committed as soon as it is confirmed, not at the end.
   const [uploadedDeals, setUploadedDeals] = useState(false);
+  const markDeals = useCallback(() => setUploadedDeals(true), []);
   const [dealResult, setDealResult] = useState<{ imported: number; skipped: number } | null>(null);
 
   const filledCompetitors = competitors.filter((c) => c.name.trim());
@@ -615,9 +618,10 @@ export function GetStartedFlow({
             competitorNames={allCompetitorNames}
             dealNote={dealNote}
             onDealNote={setDealNote}
+            assistants={connectedAssistants}
             onConsumerNote={setConsumerNote}
-            onDealsUploaded={() => setUploadedDeals(true)}
-            onMetricsSaved={() => setMetricsSaved(true)}
+            onDealsArrived={markDeals}
+            onMetricsArrived={markMetrics}
           />
         ) : null}
 

@@ -28,7 +28,7 @@ export function dataCopy(audience: Audience | null): DataCopy {
   if (audience === "consumer") {
     return {
       title: "Add your churn",
-      intro: "Tell me about your churn, or paste your numbers. I'll show whether it's rising and which competitor moves line up with it.",
+      intro: "Bring your churn in with your assistant. I'll show whether it's rising and which competitor moves line up with it.",
       noteLabel: "Your churn, in your own words or as a table",
       notePlaceholder: () => "Churn was 4.8% in September and 6.2% in October.\nOr paste a table from your billing tool, any layout.",
       noteHelp: "Include the months. A few is enough, and more makes the read more reliable.",
@@ -45,7 +45,7 @@ export function dataCopy(audience: Audience | null): DataCopy {
   }
   return {
     title: "Add your deals",
-    intro: "Tell me about a deal you won or lost, or upload a list. It makes your first answers about your deals, not just the market.",
+    intro: "Bring in the deals you won and lost, so every answer is checked against what actually happened, not just the market.",
     noteLabel: "A deal, or a list of them, in your own words",
     notePlaceholder: (c) => `We lost a deal to ${c}. They were cheaper and said setup was faster.`,
     noteHelp: "Won or lost, one or several, however you'd say it. More history makes answers sharper.",

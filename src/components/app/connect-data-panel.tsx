@@ -10,7 +10,7 @@ import { DealFileUpload } from "@/components/app/deal-file-upload";
 import { DealIntelligencePanel, type DealIntelligenceProps } from "@/components/app/deal-intelligence";
 import { cn } from "@/lib/utils";
 import { AudiencePicker, saveSellsTo } from "@/components/app/audience-picker";
-import { ChurnDataCard } from "@/components/app/churn-data-card";
+import { ChurnDataCard, SurveyPromptRow } from "@/components/app/churn-data-card";
 import type { Audience } from "@/lib/sales-motion";
 import {
   toolsForAudience,
@@ -171,7 +171,6 @@ export function ConnectDataPanel({
           </p>
           <div className="mt-4">
             <ChurnDataCard
-              competitorNames={competitors.map((c) => c.name)}
               onSaved={() => router.refresh()}
               onNote={(text) => {
                 // Words with no numbers in them are kept as a churned-customer entry.
@@ -182,6 +181,9 @@ export function ConnectDataPanel({
                 }).then(() => router.refresh());
               }}
             />
+            <div className="mt-4">
+              <SurveyPromptRow competitorNames={competitors.map((c) => c.name)} rising={false} />
+            </div>
           </div>
         </div>
       ) : null}
