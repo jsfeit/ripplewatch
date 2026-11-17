@@ -16,6 +16,7 @@ import { timeAgo } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { setupProgress } from "@/lib/connect-setup";
 import { ONBOARDING_VALUE } from "@/lib/onboarding-value";
+import { forAssistant } from "@/lib/first-prompts";
 import { SlackTroubleHelp } from "@/components/app/slack-trouble-help";
 import { CopyPromptButton } from "@/components/app/copy-prompt-button";
 import { DEALS_PROMPT } from "@/lib/first-prompts";
@@ -297,7 +298,7 @@ export function ConnectPanel({
   const [copiedPrompt, setCopiedPrompt] = useState<string | null>(null);
   async function copyPrompt(text: string) {
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(forAssistant(text));
       setCopiedPrompt(text);
       setTimeout(() => setCopiedPrompt(null), 1800);
     } catch {
