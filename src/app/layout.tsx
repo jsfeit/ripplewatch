@@ -22,13 +22,13 @@ const geistMono = Geist_Mono({
 });
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-const TITLE = "Ripplewatch | Competitor Momentum, scored against your deals";
+const TITLE = "Ripplewatch | Competitor Momentum, watched every day";
 // Search results show about 155 characters, so the page description is a short one; the long
 // DESCRIPTION below stays for the structured data, where length is not cut off.
 const META_DESCRIPTION =
-  "Every competitor gets a Momentum score checked against the deals you won and lost. Pricing, hiring and press, answered inside Claude or ChatGPT.";
+  "Your assistant answers once. Ripplewatch watches every competitor every day and scores their Momentum against your deals, inside Claude or ChatGPT.";
 const DESCRIPTION =
-  "Ripplewatch gives every competitor a Momentum score (Heating up, Steady or Cooling) and checks each one against your own won and lost deals. It tracks pricing, hiring, press and product changes, works inside Claude, ChatGPT and other AI assistants over MCP, and tells product marketing and revenue teams which competitors are actually costing them deals.";
+  "Ripplewatch is the memory and the watcher your AI assistant doesn't have. It keeps your won and lost deals and your churn, checks competitors' pricing pages and job boards every day along with press, reviews and product changes, and gives each competitor a Momentum score (Heating up, Steady or Cooling) scored against your own data. It works inside Claude, ChatGPT and other AI assistants over MCP.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),

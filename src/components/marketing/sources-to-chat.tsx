@@ -50,7 +50,7 @@ export function SourcesToChat() {
       <div className="flex flex-col items-stretch gap-5 md:flex-row md:gap-5">
         <div className="flex-[1.15]">
           <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Ten inputs, each scored from -100 to +100
+            Ten things it watches for every competitor, each scored from -100 to +100
           </p>
           <ul
             className="grid grid-cols-1 gap-2.5 sm:grid-cols-2"

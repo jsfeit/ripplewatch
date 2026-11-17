@@ -4,7 +4,7 @@
 // rename is a one-line change.
 
 export const CONNECT_NAME = "Ripplewatch";
-export const CONNECT_TAGLINE = "Competitor Momentum scores, checked against your won and lost deals, inside Claude or ChatGPT.";
+export const CONNECT_TAGLINE = "Your assistant answers once. Ripplewatch watches your competitors every day and scores their Momentum against your own deals, inside Claude or ChatGPT.";
 export const CONNECT_MCP_URL = "https://www.ripplewatch.ai/api/mcp";
 // Ripplewatch's page in ChatGPT's plugin directory (approved by OpenAI).
 export const CHATGPT_PLUGIN_URL = "https://chatgpt.com/plugins/plugin_asdk_app_6ac7c45cb79081918cdf5646ef1c3031";
@@ -28,11 +28,11 @@ export const CONNECT_FEATURES = [
 // height without empty space or a stretched one.
 export const CONNECT_PRICING_FEATURES = [
   "A Momentum score for every competitor you track",
-  "Every move checked against your won and lost deals",
+  "Every move checked against your deals and churn",
   "Ask about competitors in plain language",
   "A weekly briefing on what changed and why",
   "Log deals and feedback by just telling it",
-  "Gets sharper the more you use it",
+  "Watched every day, even when you aren't asking",
   "Unlimited teammates, one account",
   "Pay only for what you use, never on credit",
 ] as const;
@@ -54,12 +54,17 @@ export const CONNECT_QUICK_ANSWERS = [
   {
     question: "What is Ripplewatch?",
     answer:
-      "An AI competitive intelligence analyst that gives every competitor a Momentum score and checks each move against your own win/loss history. It watches pricing, hiring, press and product changes, and works inside Claude, ChatGPT, Cursor and other AI assistants that support MCP.",
+      "The memory and the watcher your AI assistant doesn't have. It keeps your won and lost deals and your churn, checks competitors' pricing pages and job boards every day along with press, reviews and product changes, and gives each competitor a Momentum score checked against your own data. It works inside Claude, ChatGPT, Cursor and other AI assistants that support MCP.",
+  },
+  {
+    question: "Why not just ask Claude or ChatGPT?",
+    answer:
+      "For a one-off read, do. A chat reads something once and forgets it, and it only looks when you ask. Ripplewatch keeps what it saw, checks pricing pages and job boards every day, and scores each move against your own deals and churn, so it can tell you what changed and whether it matters to you.",
   },
   {
     question: "Who is it for?",
     answer:
-      "Product marketing, sales and revenue teams at B2B software companies that track a handful of competitors and want a straight answer when someone asks whether a competitor's move matters.",
+      "Product marketing, sales and growth teams that track a handful of competitors and want a straight answer when someone asks whether a competitor's move matters. It works for B2B companies (through won and lost deals), consumer companies (through churn), or both.",
   },
   {
     question: "How does it connect?",

@@ -8,7 +8,7 @@ import { cn, avatarColor } from "@/lib/utils";
 import Link from "next/link";
 
 const description =
-  "See how a raw competitor signal becomes a Momentum score, weighed against your positioning, buyers and lost deals, inside Claude or ChatGPT.";
+  "How Ripplewatch keeps watching after the chat ends: a raw competitor signal becomes a Momentum score, weighed against your deals and churn, in Claude or ChatGPT.";
 
 export const metadata = {
   title: "How it works",
@@ -49,7 +49,7 @@ const STAGES = [
     accentText: "text-chart-2",
     accentBg: "bg-chart-2/10",
     title: "2. Every signal gets scored against that context",
-    body: "A pricing change, a job posting, a bad review: none of it means anything in isolation. We check it against your context profile and produce a relevance verdict, High, Medium, or Low, with the reasoning spelled out, so you're not the one deciding if it's worth a Slack message.",
+    body: "A pricing change, a job posting, a bad review: none of it means anything in isolation. We look every day, keep what we saw so we know what changed, and check it against your context profile. You get a relevance verdict, High, Medium, or Low, with the reasoning spelled out, so you're not the one deciding if it's worth a Slack message.",
   },
   {
     icon: TrendingUp,

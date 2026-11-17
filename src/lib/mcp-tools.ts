@@ -19,6 +19,7 @@ import { addContextNote } from "@/lib/context-notes";
 import { getDealImpactBrief } from "@/lib/deal-impact";
 import { logCallMentions } from "@/lib/call-mentions";
 import { loadChurnInsight } from "@/lib/churn-insight";
+import { loadMomentumBoard } from "@/lib/momentum-board";
 import { cleanPeriods } from "@/lib/customer-metrics-llm";
 import { hasMinimumBalance } from "@/lib/connect-wallet";
 import { assistantLabel, recordAudit, type AuditAction } from "@/lib/audit";
@@ -650,15 +651,19 @@ export function registerRipplewatchTools(server: McpServer) {
         { onConflict: "account_id,segment,period_start" }
       );
       if (error) return failure("Could not save those months. Try again in a moment.");
-      const insight = await loadChurnInsight(supabase, accountId, segment ?? "consumer", { refreshBenchmark: true });
+      const [insight, board] = await Promise.all([
+        loadChurnInsight(supabase, accountId, segment ?? "consumer", { refreshBenchmark: true }),
+        loadMomentumBoard(supabase, accountId),
+      ]);
       const next = await computeNextBestActions(supabase, accountId);
       return result(
         {
           saved_months: periods.length,
+          momentum_now: board,
           read: insight.read,
           timing: insight.timing?.sentence ?? null,
           benchmark: insight.comparison?.sentence ?? null,
-          note: "This shows when churn moved, not why. Say how many months it rests on and that the timing is a lead, not proof, when you report it.",
+          note: "Open with momentum_now: where each competitor stands today. Then give the churn read. This shows when churn moved, not why. Say how many months it rests on and that the timing is a lead, not proof.",
         },
         next
       );
@@ -678,12 +683,14 @@ export function registerRipplewatchTools(server: McpServer) {
     },
     async ({ segment }, ctx) => {
       const accountId = accountIdFrom(ctx as Ctx);
-      const insight = await loadChurnInsight(createAdminClient(), accountId, segment ?? "consumer");
+      const admin = createAdminClient();
+      const [insight, board] = await Promise.all([loadChurnInsight(admin, accountId, segment ?? "consumer"), loadMomentumBoard(admin, accountId)]);
       if (!insight.read) {
         return result({ has_data: false, note: "No churn or growth numbers yet. Offer to read them from the user's billing tool and save them with log_customer_metrics." });
       }
       return result({
         has_data: true,
+        momentum_now: board,
         read: insight.read,
         timing: insight.timing?.sentence ?? null,
         competitor_moves_nearby: insight.timing?.events ?? [],
@@ -691,7 +698,7 @@ export function registerRipplewatchTools(server: McpServer) {
           ? { category: insight.benchmark.category, range_pct: [insight.benchmark.lowPct, insight.benchmark.highPct], source: insight.benchmark.sourceName, link: insight.benchmark.sourceUrl, comparison: insight.comparison?.sentence ?? null }
           : null,
         market_growth: insight.marketGrowth,
-        note: "Timing only, not proof of cause. Say how many months this rests on.",
+        note: "Open with momentum_now (who is heating up or cooling), then the churn read. Timing only, not proof of cause. Say how many months this rests on.",
       });
     }
   );
