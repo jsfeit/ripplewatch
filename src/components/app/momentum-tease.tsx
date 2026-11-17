@@ -1,6 +1,7 @@
 import { Check, Lock, Radar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CompanyLogo } from "@/components/app/company-logo";
+import { MOMENTUM_STYLES } from "@/lib/momentum";
 
 // A sneak peek at Momentum during setup. Nothing here is a made-up score. Every
 // competitor is brand new at this point, so rather than flag "not enough history"
@@ -15,14 +16,21 @@ const LABELS: { name: string; dot: string; meaning: string }[] = [
   { name: "Gone quiet", dot: "bg-muted-foreground", meaning: "Nothing new lately" },
 ];
 
+// A real read for one competitor, once Ripplewatch has one.
+export type LiveMomentum = { label: string; score: number | null; confidence: string };
+
 export function MomentumTease({
   names,
   domainByName,
+  live,
   className,
 }: {
   names: string[];
   // Optional, so a row can show the company's logo when its domain is known.
   domainByName?: Record<string, string>;
+  // Real reads keyed by lowercase competitor name. A competitor with none yet still says it is being
+  // calculated, so nothing on this card is ever a made-up score.
+  live?: Record<string, LiveMomentum>;
   className?: string;
 }) {
   const shown = names.filter((n) => n.trim()).slice(0, 5);
@@ -38,21 +46,35 @@ export function MomentumTease({
         pricing, product changes and press, plus how relevant their moves are to you and your win rate against them.
       </p>
       <ul className="mt-3 space-y-1.5">
-        {shown.map((name) => (
-          <li key={name} className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm">
-            <span className="flex min-w-0 items-center gap-2">
-              <CompanyLogo name={name} domain={domainByName?.[name.trim()]} />
-              <span className="truncate font-medium">{name.trim()}</span>
-            </span>
-            <span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
-              <span className="relative flex size-2">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary/50 motion-reduce:hidden" />
-                <span className="relative inline-flex size-2 rounded-full bg-primary" />
+        {shown.map((name) => {
+          const read = live?.[name.trim().toLowerCase()];
+          const hasRead = Boolean(read && read.score !== null && read.label in MOMENTUM_STYLES && read.label !== "Not enough history yet");
+          return (
+            <li key={name} className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm">
+              <span className="flex min-w-0 items-center gap-2">
+                <CompanyLogo name={name} domain={domainByName?.[name.trim()]} />
+                <span className="truncate font-medium">{name.trim()}</span>
               </span>
-              Calculating, builds over the first few days
-            </span>
-          </li>
-        ))}
+              {hasRead && read ? (
+                <span className="flex shrink-0 items-center gap-2 text-xs">
+                  <span className={cn("rounded-full px-2 py-0.5 font-semibold", MOMENTUM_STYLES[read.label as keyof typeof MOMENTUM_STYLES])}>
+                    {read.label}
+                    {read.score !== null ? ` ${read.score > 0 ? "+" : ""}${read.score}` : ""}
+                  </span>
+                  {read.confidence === "low" ? <span className="text-muted-foreground">early read</span> : null}
+                </span>
+              ) : (
+                <span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="relative flex size-2">
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary/50 motion-reduce:hidden" />
+                    <span className="relative inline-flex size-2 rounded-full bg-primary" />
+                  </span>
+                  Calculating, builds over the first few days
+                </span>
+              )}
+            </li>
+          );
+        })}
       </ul>
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
         {LABELS.map((l) => (
