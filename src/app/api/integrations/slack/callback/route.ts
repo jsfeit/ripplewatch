@@ -9,6 +9,14 @@ export async function GET(request: Request) {
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
 
+  // Slack sends the person back with ?error= when they cancel, or when the workspace blocks the app,
+  // with no code. That is not an expired session, so say what actually happened.
+  const slackError = url.searchParams.get("error");
+  if (slackError) {
+    const code = slackError === "access_denied" ? "slack_cancelled" : "slack_blocked";
+    return NextResponse.redirect(new URL(`/app/settings?error=${code}`, request.url));
+  }
+
   const cookieStore = await cookies();
   const expectedState = cookieStore.get("slack_oauth_state")?.value;
 

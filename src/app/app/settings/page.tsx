@@ -26,8 +26,10 @@ function slackNoticeFrom(params: { connected?: string; error?: string }): { ok: 
   }
   const errors: Record<string, string> = {
     slack_not_configured: "Slack isn't set up on this site yet. Email hello@ripplewatch.ai and we'll sort it.",
+    slack_cancelled: "Slack wasn't connected, because the request was cancelled. Nothing changed, and you can try again any time. Your alerts keep arriving by email in the meantime.",
+    slack_blocked: "Slack wouldn't let this app in. That usually means your workspace needs an admin to approve it. Ask a Slack admin to approve Ripplewatch, or email hello@ripplewatch.ai and we'll sort it with you. Your alerts keep arriving by email in the meantime.",
     slack_state_mismatch: "That Slack connection expired, or started in a different tab. Try Connect Slack again.",
-    slack_exchange_failed: "Slack didn't accept the connection. Try again, and email hello@ripplewatch.ai if it keeps failing.",
+    slack_exchange_failed: "Slack didn't accept the connection. Try again, and email hello@ripplewatch.ai if it keeps failing. Your alerts keep arriving by email in the meantime.",
   };
   const text = params.error ? errors[params.error] : undefined;
   return text ? { ok: false, text } : null;
