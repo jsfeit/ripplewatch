@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Sparkles, Loader2, CheckCircle2, Gift } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -138,11 +139,14 @@ export function SettingsView({
   // tab instead of always opening on Integrations. Read in an effect (not a
   // lazy useState initializer) so the server-rendered and first-client-render
   // markup always agree on "integrations", avoiding a hydration mismatch;
-  // the effect then flips tabs post-mount. This only fires once on mount —
-  // every in-app tab switch after that goes through selectTab() below
-  // instead, which also keeps the address bar's hash in sync.
+  // the effect then flips tabs post-mount. A second effect below follows ?tab=
+  // after that, because a link to another tab of this same page (the sidebar's
+  // Finish setup, or Add a deal on the Connect tab) keeps this component mounted:
+  // without it the URL changes and nothing on screen does.
   const isConnectAccount = account.tier === "connect";
   const [activeTab, setActiveTab] = useState(isConnectAccount ? "connect" : "integrations");
+  const urlTab = useSearchParams().get("tab");
+  const sawFirstUrl = useRef(false);
 
   useEffect(() => {
     // Hash takes priority — it's the form worth sharing (short, no "?tab="
@@ -159,14 +163,31 @@ export function SettingsView({
     }
   }, []);
 
-  // Keeps the address bar's hash in sync with whichever tab is showing, so
-  // switching to Referrals (say, via the "View referrals" button on Plan)
-  // leaves a #referrals URL in the bar that's immediately copy-pasteable —
-  // replaceState rather than pushState, so tab-switching doesn't pollute
-  // browser back/forward history.
+  // Follows ?tab= when an in-app link changes it after the page is already showing. Skipped on the first
+  // run, so a bookmarked #hash (which wins on load, above) isn't overridden by the query. A link that also
+  // carries an anchor (?tab=connect#setup) scrolls to it once that tab's content is on screen.
+  useEffect(() => {
+    if (!sawFirstUrl.current) {
+      sawFirstUrl.current = true;
+      return;
+    }
+    if (!urlTab || !(KNOWN_TABS as readonly string[]).includes(urlTab)) return;
+    // Syncing from an external system (the URL), which is what this effect is for.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setActiveTab(urlTab);
+    const anchor = window.location.hash.slice(1);
+    if (anchor && !(KNOWN_TABS as readonly string[]).includes(anchor)) {
+      window.setTimeout(() => document.getElementById(anchor)?.scrollIntoView({ block: "start" }), 60);
+    }
+  }, [urlTab]);
+
+  // Keeps the address bar in sync with whichever tab is showing, so it is copy-pasteable and so a later
+  // link to another tab is seen as a change. It writes ?tab= (not only a #hash): Next keeps useSearchParams in
+  // step with the history API, which a hash-only change would not. Old #hash and ?tab= links still work on
+  // load. replaceState rather than pushState, so switching tabs doesn't pollute back/forward history.
   function selectTab(tab: string) {
     setActiveTab(tab);
-    window.history.replaceState(null, "", `#${tab}`);
+    window.history.replaceState(null, "", `${window.location.pathname}?tab=${tab}`);
   }
 
   async function handleManageBilling() {
