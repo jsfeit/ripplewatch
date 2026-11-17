@@ -192,8 +192,14 @@ export function GetStartedFlow({
   const hasCompetitor = filledCompetitors.length >= 1 || savedList.length >= 1;
   // Everyone being watched, saved or about to be, for the prompts and the first question.
   const allCompetitorNames = [...savedList, ...filledCompetitors].map((c) => c.name.trim()).filter(Boolean);
-  // What the first things to try are written from: their company, the competitors they named, how they sell.
-  const promptContext: PromptContext = { company: companyName, sellsTo, competitors: allCompetitorNames.length > 0 ? allCompetitorNames : savedCompetitorName ? [savedCompetitorName] : [] };
+  // What the first things to try are written from: their company, the competitors they named, how they sell,
+  // and what data has arrived (so "is churn a problem" only appears once there are numbers to read).
+  const promptContext: PromptContext = {
+    company: companyName,
+    sellsTo,
+    competitors: allCompetitorNames.length > 0 ? allCompetitorNames : savedCompetitorName ? [savedCompetitorName] : [],
+    has: { deals: uploadedDeals, churn: metricsSaved },
+  };
   // A progress cue built only from what's been told so far.
   const readiness =
     (mcpLastConnectedAt ? 30 : 0) +
