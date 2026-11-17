@@ -918,6 +918,35 @@ const CONNECT_EMAIL_BUTTON =
 // After a Connect purchase clears. Connect has no dashboard to send anyone to,
 // so this is the whole onboarding: how to connect an assistant and what to say
 // first. Company name is customer-supplied, so it's escaped.
+// What a recurring email needs beyond its HTML to be treated as a normal newsletter rather than bulk mail:
+// a List-Unsubscribe header (mail clients show their own "Unsubscribe" next to the sender, which is the
+// alternative to a "Report spam" click) and a plain-text copy of the same message. The unsubscribe link
+// opens a page that asks for one click, so the header offers the link and not the one-click POST form.
+function plainTextFromHtml(html: string): string {
+  return html
+    .replace(/<a [^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi, (_m, href: string, label: string) => `${label.replace(/<[^>]+>/g, "").trim()} (${href})`)
+    .replace(/<\/t[dh]>/gi, " - ")
+    .replace(/<\/(p|div|h[1-6]|li|tr)>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&middot;/g, "-")
+    .replace(/&amp;/g, "&")
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/[ \t]+/g, " ")
+    .replace(/ - \n/g, "\n")
+    .replace(/\n\s*\n\s*\n+/g, "\n\n")
+    .trim();
+}
+
+function withMailHints<T extends { html: string }>(payload: T, unsubscribeUrl?: string): T & { text: string; headers?: Record<string, string> } {
+  return {
+    ...payload,
+    text: plainTextFromHtml(payload.html),
+    ...(unsubscribeUrl ? { headers: { "List-Unsubscribe": `<${unsubscribeUrl}>` } } : {}),
+  };
+}
+
 export async function sendConnectWelcomeEmail(to: string, companyName: string, appUrl: string) {
   if (!isResendConfigured()) return;
 
@@ -981,7 +1010,7 @@ export async function sendConnectOnboardingEmail(
     .join("");
   const tryAsking = (email.tryAsking ?? []).map((p) => `<li style="margin-bottom:4px;">${escapeHtml(p)}</li>`).join("");
 
-  const result = await getResend().emails.send({
+  const result = await getResend().emails.send(withMailHints({
     from: getFromEmail(),
     to,
     subject: email.subject,
@@ -1003,7 +1032,7 @@ export async function sendConnectOnboardingEmail(
       <p style="color:#888;font-size:12px;margin-top:24px;">Just reply if you want a hand; a person reads every one.
         <br /><a href="${unsubscribeUrl}" style="color:#888;">Stop these setup emails</a></p>
     </div>`,
-  });
+  }, unsubscribeUrl));
   if (result.error) throw new Error(result.error.message);
 }
 
@@ -1034,7 +1063,7 @@ export async function sendConnectDailyAlertEmail(
     )
     .join("");
 
-  const result = await getResend().emails.send({
+  const result = await getResend().emails.send(withMailHints({
     from: getAlertsFromEmail(),
     to,
     subject: email.subject,
@@ -1048,7 +1077,7 @@ export async function sendConnectDailyAlertEmail(
         &middot; <a href="${unsubscribeUrl}" style="color:#888;">Stop daily alerts</a>
       </p>
     </div>`,
-  });
+  }, unsubscribeUrl));
   if (result.error) throw new Error(result.error.message);
 }
 
@@ -1088,7 +1117,7 @@ export async function sendConnectMonthlyRecapEmail(
     .join("");
   const ask = email.tryAsking.map((p) => `<li style="margin-bottom:4px;">${escapeHtml(p)}</li>`).join("");
 
-  const result = await getResend().emails.send({
+  const result = await getResend().emails.send(withMailHints({
     from: getAlertsFromEmail(),
     to,
     subject: email.subject,
@@ -1105,7 +1134,7 @@ export async function sendConnectMonthlyRecapEmail(
         &middot; <a href="${unsubscribeUrl}" style="color:#888;">Stop the monthly recap</a>
       </p>
     </div>`,
-  });
+  }, unsubscribeUrl));
   if (result.error) throw new Error(result.error.message);
 }
 

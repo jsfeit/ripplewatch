@@ -32,7 +32,7 @@ export async function generateMetadata({
 
   // The /alternatives page owns "X alternative"; this one is for the head-to-head searches.
   const title = `Ripplewatch vs. ${entry.name}: how they compare`;
-  const description = `Ripplewatch vs. ${entry.name} side by side: how each monitors competitors, how findings are prioritized, who each is best for, and cost ($${CONNECT_BASE_FEE_USD}/month plus usage for Ripplewatch).`;
+  const description = `Ripplewatch vs. ${entry.name}: how each watches competitors, what each prioritizes, who each suits, and cost ($${CONNECT_BASE_FEE_USD}/month plus usage).`;
 
   return {
     title: fitTitle(title),

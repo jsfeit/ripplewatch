@@ -25,7 +25,7 @@ export async function generateMetadata({
   if (!entry) return {};
 
   const title = `${entry.name} alternative: self-serve, from $${CONNECT_BASE_FEE_USD}/mo`;
-  const description = `Looking for a ${entry.name} alternative? Ripplewatch works inside Claude and ChatGPT, scores every change against your positioning, and publishes its price: $${CONNECT_BASE_FEE_USD}/month plus usage. When to switch, and when not to.`;
+  const description = `A ${entry.name} alternative that lives in Claude and ChatGPT, scores each change against your deals, and publishes its price: $${CONNECT_BASE_FEE_USD}/month plus usage.`;
 
   return {
     title: fitTitle(title),
