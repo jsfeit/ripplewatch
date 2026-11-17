@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   }
 
   if (!isSlackConfigured()) {
-    return NextResponse.redirect(new URL("/app/settings?error=slack_not_configured", request.url));
+    return NextResponse.redirect(new URL("/app/settings?tab=manage&error=slack_not_configured", request.url));
   }
 
   // Where to land after Slack. Only a Settings path is honored, so this can't

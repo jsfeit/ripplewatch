@@ -345,7 +345,7 @@ export function GetStartedFlow({
       return;
     }
     if (after === "slack") {
-      const slackUrl = `/api/integrations/slack/connect?next=${encodeURIComponent("/app/settings?tab=connect")}`;
+      const slackUrl = `/api/integrations/slack/connect?next=${encodeURIComponent("/app/settings?tab=manage")}`;
       // Popup blocked: fall back to leaving this page, as before.
       if (!slackTab) {
         window.location.assign(slackUrl);

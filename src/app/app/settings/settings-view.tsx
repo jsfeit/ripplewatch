@@ -67,7 +67,7 @@ type ApiKey = Pick<
 >;
 type Referral = Pick<Database["public"]["Tables"]["referrals"]["Row"], "id" | "referred_at" | "qualified_at">;
 
-const KNOWN_TABS = ["connect", "data", "competitors", "integrations", "team", "plan", "referrals", "digest", "developer", "appearance"] as const;
+const KNOWN_TABS = ["connect", "manage", "data", "competitors", "integrations", "team", "plan", "referrals", "digest", "developer", "appearance"] as const;
 
 export function SettingsView({
   account,
@@ -115,6 +115,7 @@ export function SettingsView({
     competitorCount: number;
     hasDealHistory: boolean;
     firstLook: ConnectFirstLook;
+    mcpAssistant: string | null;
   } | null;
 }) {
   const [error, setError] = useState("");
@@ -259,6 +260,7 @@ export function SettingsView({
           // referrals: just its own billing tab plus the shared ones.
           <TabsList>
             <TabsTrigger value="connect">Connect</TabsTrigger>
+            <TabsTrigger value="manage">Delivery &amp; billing</TabsTrigger>
             <TabsTrigger value="data">Data</TabsTrigger>
             <TabsTrigger value="competitors">Competitors</TabsTrigger>
             <TabsTrigger value="team">Team</TabsTrigger>
@@ -282,6 +284,7 @@ export function SettingsView({
       {connect ? (
         <TabsContent value="connect" className="mt-6">
           <ConnectPanel
+            view="overview"
             balanceUsd={connect.balanceUsd}
             hasSubscription={connect.hasSubscription}
             isActive={connect.isActive}
@@ -301,6 +304,35 @@ export function SettingsView({
             hasDealHistory={connect.hasDealHistory}
             firstLook={connect.firstLook}
             disconnectIntegrationAction={disconnectIntegrationAction}
+            mcpAssistant={connect.mcpAssistant}
+          />
+        </TabsContent>
+      ) : null}
+
+      {connect ? (
+        <TabsContent value="manage" className="mt-6">
+          <ConnectPanel
+            view="manage"
+            balanceUsd={connect.balanceUsd}
+            hasSubscription={connect.hasSubscription}
+            isActive={connect.isActive}
+            slackNotice={connect.slackNotice}
+            ledger={connect.ledger}
+            autoReload={connect.autoReload}
+            mcpLastConnectedAt={connect.mcpLastConnectedAt}
+            slackConnected={connect.slackConnected}
+            timezone={connect.timezone}
+            slackDigestDay={connect.slackDigestDay}
+            slackDigestHour={connect.slackDigestHour}
+            dailyAlertEnabled={connect.dailyAlertEnabled}
+            monthlyRecapEnabled={connect.monthlyRecapEnabled}
+            emailWithSlack={connect.emailWithSlack}
+            hasPositioning={connect.hasPositioning}
+            competitorCount={connect.competitorCount}
+            hasDealHistory={connect.hasDealHistory}
+            firstLook={connect.firstLook}
+            disconnectIntegrationAction={disconnectIntegrationAction}
+            mcpAssistant={connect.mcpAssistant}
           />
         </TabsContent>
       ) : null}
