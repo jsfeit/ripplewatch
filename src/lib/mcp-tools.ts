@@ -142,6 +142,23 @@ function withToolTimeout(server: McpServer) {
     });
 }
 
+// What would make the answer specific to this company, in the order to raise it. Momentum on its own says what a competitor
+// is doing; deals say whether it matters to you. The assistant closes its answer with these as offers, one at a time.
+function sharpenAsks(dealsLogged: number): string[] {
+  const asks: string[] = [];
+  asks.push(
+    dealsLogged === 0
+      ? "Ask which competitor they lost or won against most recently, and why. One deal is enough to start; log it with log_win_loss. Without any deals Ripplewatch can say what competitors are doing but not which ones cost this company money."
+      : `Only ${dealsLogged} deal${dealsLogged === 1 ? " is" : "s are"} logged. Ask for more, as far back as they have, with close dates and the reason each was won or lost.`
+  );
+  asks.push(
+    "If you can reach their CRM, a call recorder like Gong or their support inbox, offer to pull closed-won and closed-lost deals and competitor mentions into import_win_loss and log_call_mentions. Say what you would read and get their okay first."
+  );
+  asks.push("Ask what they are building or changing in the next few months, and save it with add_context_note, so competitor moves can be judged against their plans.");
+  asks.push("Ask whether any of the competitors listed look wrong (a company that isn't a real competitor), so they can be fixed in Settings.");
+  return asks;
+}
+
 export function registerRipplewatchTools(server: McpServer) {
   withToolTimeout(server);
   // Ripplewatch's own section in the assistant's prompt menu. See lib/mcp-prompts.ts for the list.
@@ -269,7 +286,7 @@ export function registerRipplewatchTools(server: McpServer) {
       return result(
         {
           note: UNTRUSTED_NOTE,
-          ...(momentum.some((c) => c.momentum.score === null) ? { momentum_note: `${MOMENTUM_TIMING} ${DAY_ONE_BRIEF}` } : {}),
+          ...(momentum.some((c) => c.momentum.score === null) ? { momentum_note: `${MOMENTUM_TIMING} ${DAY_ONE_BRIEF}`, sharpen_asks: sharpenAsks((winLoss ?? []).length) } : {}),
           verdict: fresh ? account!.weekly_verdict : null,
           verdict_generated_at: fresh ? account!.weekly_verdict_generated_at : null,
           // Said out loud so the assistant has something true to tell the person, instead of an empty verdict.
@@ -416,14 +433,18 @@ export function registerRipplewatchTools(server: McpServer) {
     async (_args, ctx) => {
       const accountId = accountIdFrom(ctx as Ctx);
       const supabase = createAdminClient();
-      const [momentum, { data: feedback }, { data: winLoss }] = await Promise.all([
+      const [momentum, { data: feedback }, { data: winLoss }, next] = await Promise.all([
         loadCompetitorMomentum(supabase, accountId),
         supabase.from("account_customer_feedback").select("score, feedback_date").eq("account_id", accountId).not("score", "is", null),
         loadAllDeals(supabase, accountId).then((rows) => ({ data: withDealDate(rows) })),
+        computeNextBestActions(supabase, accountId),
       ]);
       const yours = computeYourMomentum(feedback ?? [], winLoss ?? []);
+      const unscored = momentum.some((c) => c.momentum.score === null);
+      const dealsLogged = (winLoss ?? []).length;
       return result({
-        ...(momentum.some((c) => c.momentum.score === null) ? { momentum_note: `${MOMENTUM_TIMING} ${DAY_ONE_BRIEF}` } : {}),
+        ...(unscored ? { momentum_note: `${MOMENTUM_TIMING} ${DAY_ONE_BRIEF}` } : {}),
+        ...(unscored || dealsLogged < 5 ? { sharpen_asks: sharpenAsks(dealsLogged) } : {}),
         competitors: momentum.map(({ competitor, momentum: m, activity }) => ({
           name: competitor.name,
           label: m.label,
@@ -432,7 +453,7 @@ export function registerRipplewatchTools(server: McpServer) {
           ...(m.score === null ? { activity } : {}),
         })).sort((x, y) => (y.score ?? -101) - (x.score ?? -101) || (y.activity?.recentSignals ?? 0) - (x.activity?.recentSignals ?? 0)),
         your_momentum: { label: yours.label, score: yours.score, confidence: yours.confidence },
-      });
+      }, next);
     }
   );
 
