@@ -246,7 +246,8 @@ export async function creditWalletFromReloadInvoice(
 // a reload is actually due. Credits are added only after the payment succeeds.
 // A declined card switches auto-reload off (the customer sees why in Settings)
 // rather than retrying, so a bad card can't loop.
-export async function maybeAutoReload(supabase: Admin, accountId: string): Promise<void> {
+// `stripeClient` is only ever passed by tests, which hand in a fake so no card or network is involved.
+export async function maybeAutoReload(supabase: Admin, accountId: string, stripeClient?: Stripe): Promise<void> {
   const { data: claimed, error: claimError } = await supabase.rpc("connect_wallet_claim_reload", { p_account_id: accountId });
   if (claimError) {
     console.error("connect reload claim failed:", claimError.message);
@@ -264,9 +265,10 @@ export async function maybeAutoReload(supabase: Admin, accountId: string): Promi
     ]);
     if (!wallet || !account?.stripe_customer_id || account.tier !== "connect" || account.status !== "active") return;
 
-    const stripe = getStripe();
+    const stripe = stripeClient ?? getStripe();
     const cents = wallet.reload_amount_cents;
     let invoice: Stripe.Invoice | null = null;
+    let paid: Stripe.Invoice;
     try {
       await stripe.invoiceItems.create({
         customer: account.stripe_customer_id,
@@ -285,8 +287,8 @@ export async function maybeAutoReload(supabase: Admin, accountId: string): Promi
         metadata: { account_id: accountId, purpose: "connect_reload", funding_cents: String(cents) },
       });
       const finalized = await stripe.invoices.finalizeInvoice(invoice.id);
-      const paid = await stripe.invoices.pay(finalized.id);
-      await creditWalletFromReloadInvoice(supabase, paid);
+      paid = await stripe.invoices.pay(finalized.id);
+      if (paid.status !== "paid") throw new Error(`invoice ${paid.id} is ${paid.status}, not paid`);
     } catch (err) {
       console.error(`connect auto-reload failed for ${accountId}:`, err instanceof Error ? err.message : err);
       // Don't leave an open invoice that Stripe might keep retrying.
@@ -296,6 +298,20 @@ export async function maybeAutoReload(supabase: Admin, accountId: string): Promi
         .update({ auto_reload_enabled: false, reload_failed_at: new Date().toISOString() })
         .eq("account_id", accountId);
       await notifyReloadFailed(supabase, accountId);
+      return;
+    }
+
+    // The card has been charged. Crediting the wallet is a separate step, and a failure there is not a
+    // declined card: do not switch reload off, void the paid invoice or email "your card was declined".
+    // The credit is idempotent on the invoice id and Stripe's invoice.paid webhook makes the same call and
+    // is retried until it succeeds, so the balance catches up by itself. Log it loudly so it is seen.
+    try {
+      await creditWalletFromReloadInvoice(supabase, paid);
+    } catch (err) {
+      console.error(
+        `connect auto-reload PAID but wallet credit failed for ${accountId} (invoice ${paid.id}); the invoice.paid webhook will retry:`,
+        err instanceof Error ? err.message : err
+      );
     }
   } finally {
     await releaseClaim();
