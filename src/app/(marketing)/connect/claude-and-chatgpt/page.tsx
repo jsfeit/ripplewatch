@@ -106,7 +106,7 @@ export default function ConnectGuidePage() {
         </li>
       </ul>
 
-      <h2 className="mt-12 text-xl font-semibold tracking-tight">Claude</h2>
+      <h2 id="claude" className="mt-12 text-xl font-semibold tracking-tight">Claude</h2>
       <ol className="mt-4 list-decimal space-y-2 pl-5 leading-relaxed text-muted-foreground">
         <li>In Claude, go to Settings, then Connectors, then Add custom connector.</li>
         <li>Name it Ripplewatch and paste the server URL above.</li>
@@ -119,7 +119,7 @@ export default function ConnectGuidePage() {
         the key private: it can read your competitive intelligence and log deals on your account.
       </p>
 
-      <h2 className="mt-12 text-xl font-semibold tracking-tight">ChatGPT</h2>
+      <h2 id="chatgpt" className="mt-12 text-xl font-semibold tracking-tight">ChatGPT</h2>
       <ol className="mt-4 list-decimal space-y-2 pl-5 leading-relaxed text-muted-foreground">
         <li>
           Open{" "}
@@ -151,7 +151,7 @@ export default function ConnectGuidePage() {
         Ripplewatch instead of using an API key.
       </p>
 
-      <h2 className="mt-12 text-xl font-semibold tracking-tight">Cursor</h2>
+      <h2 id="cursor" className="mt-12 text-xl font-semibold tracking-tight">Cursor</h2>
       <ol className="mt-4 list-decimal space-y-2 pl-5 leading-relaxed text-muted-foreground">
         <li>
           Click <strong className="font-medium text-foreground">Add to Cursor</strong> below. Cursor opens and asks you
