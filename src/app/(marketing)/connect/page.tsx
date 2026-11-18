@@ -21,7 +21,7 @@ const STEPS = [
   {
     icon: PlugZap,
     title: "Add Ripplewatch to your assistant",
-    body: "Paste one URL as a custom connector in Claude or ChatGPT, then sign in and approve. No API key, no setup call.",
+    body: "Paste one URL as a custom connector in Claude, ChatGPT or Cursor, then sign in and approve. No API key, no setup call.",
   },
   {
     icon: MessageSquare,

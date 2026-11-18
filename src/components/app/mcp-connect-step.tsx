@@ -6,7 +6,7 @@ import { ArrowLeft, CheckCircle2, Circle, Copy, Check, Loader2, ArrowRight, Exte
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { CHATGPT_PLUGIN_URL, CONNECT_MCP_URL } from "@/lib/connect";
+import { CHATGPT_PLUGIN_URL, CONNECT_MCP_URL, CURSOR_INSTALL_URL } from "@/lib/connect";
 import { timeAgo } from "@/lib/date";
 import { ONBOARDING_VALUE } from "@/lib/onboarding-value";
 import { FirstPromptPicker } from "@/components/app/first-questions";
@@ -134,7 +134,7 @@ export function McpConnectStep({
 
   // One-click installs. Cursor takes the server config as base64, VS Code as URL-encoded JSON.
   const cursorConfig = JSON.stringify({ mcpServers: { ripplewatch: { url: CONNECT_MCP_URL } } }, null, 2);
-  const cursorLink = `cursor://anysphere.cursor-deeplink/mcp/install?name=ripplewatch&config=${btoa(JSON.stringify({ url: CONNECT_MCP_URL }))}`;
+  const cursorLink = CURSOR_INSTALL_URL;
   const vscodeConfig = JSON.stringify({ servers: { ripplewatch: { type: "http", url: CONNECT_MCP_URL } } }, null, 2);
   const vscodeLink = `vscode:mcp/install?${encodeURIComponent(JSON.stringify({ name: "ripplewatch", type: "http", url: CONNECT_MCP_URL }))}`;
 
@@ -171,8 +171,8 @@ export function McpConnectStep({
           <TabsList>
             <TabsTrigger value="claude">Claude</TabsTrigger>
             <TabsTrigger value="chatgpt">ChatGPT</TabsTrigger>
-            <TabsTrigger value="claude-code">Claude Code</TabsTrigger>
             <TabsTrigger value="cursor">Cursor</TabsTrigger>
+            <TabsTrigger value="claude-code">Claude Code</TabsTrigger>
             <TabsTrigger value="vscode">VS Code</TabsTrigger>
             <TabsTrigger value="other">Other / API key</TabsTrigger>
           </TabsList>
@@ -301,10 +301,61 @@ export function McpConnectStep({
             />
           </TabsContent>
 
-          <TabsContent value="cursor" className="mt-4 space-y-4">
-            <p className="text-sm">One click adds Ripplewatch to Cursor. Sign in to Ripplewatch when Cursor asks.</p>
+          <TabsContent value="cursor" className="mt-4">
             <OpenLink href={cursorLink} label="Add to Cursor" />
-            <ConfigBlock value={cursorConfig} copied={copiedConfig === "cursor"} onCopy={() => copyConfig("cursor", cursorConfig)} note="Or paste this into your Cursor MCP settings (mcp.json)." />
+            <ol className="space-y-3 text-sm">
+              {[
+                "Click Add to Cursor. The Cursor app opens with an install box.",
+                "Click Install in that box. Ripplewatch then shows up under MCPs in Cursor.",
+                "Sign in to Ripplewatch and approve when Cursor opens your browser. Come back here and this page updates itself.",
+              ].map((text, i) => (
+                <li key={text} className="flex gap-3">
+                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                    {i + 1}
+                  </span>
+                  <p>{text}</p>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Nothing opened? Cursor has to be installed on this computer, and your browser may ask permission to open it.
+              Add it by hand below instead.
+            </p>
+            <details className="mt-4 rounded-md border border-border p-3 text-sm">
+              <summary className="cursor-pointer font-medium">Add it by hand instead</summary>
+              <div className="mt-3">
+                <ConfigBlock
+                  value={cursorConfig}
+                  copied={copiedConfig === "cursor"}
+                  onCopy={() => copyConfig("cursor", cursorConfig)}
+                  note="In Cursor, open Settings, then MCP, then New MCP Server, and paste this into mcp.json."
+                />
+              </div>
+            </details>
+            <details className="mt-4 rounded-md border border-border p-3 text-sm">
+              <summary className="cursor-pointer font-medium">Sign-in not working? Connect with a key instead</summary>
+              <div className="mt-3 space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  In Cursor&apos;s install box, add a header under HTTP headers using the fields below. Nothing to approve
+                  afterwards.
+                </p>
+                {apiKey ? (
+                  <>
+                    <CopyField label="Header name (Key)" value="Authorization" copiedField={copiedField} onCopy={copyField} />
+                    <CopyField label="Header value" value={`Bearer ${apiKey}`} copiedField={copiedField} onCopy={copyField} />
+                    <p className="text-xs text-muted-foreground">Copy the header value now, it won&apos;t be shown again.</p>
+                  </>
+                ) : (
+                  <div>
+                    <Button type="button" variant="outline" size="sm" onClick={ensureApiKey} disabled={keyLoading}>
+                      {keyLoading ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                      Generate my key and fields
+                    </Button>
+                    {keyError ? <p className="mt-2 text-sm text-destructive">{keyError}</p> : null}
+                  </div>
+                )}
+              </div>
+            </details>
           </TabsContent>
 
           <TabsContent value="vscode" className="mt-4 space-y-4">

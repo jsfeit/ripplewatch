@@ -6,6 +6,10 @@
 export const CONNECT_NAME = "Ripplewatch";
 export const CONNECT_TAGLINE = "Your assistant answers once. Ripplewatch watches your competitors every day and scores their Momentum against your own deals, inside Claude or ChatGPT.";
 export const CONNECT_MCP_URL = "https://www.ripplewatch.ai/api/mcp";
+
+// One-click install for Cursor. The link carries the server config as base64; Cursor opens a confirmation box,
+// and the first request starts the normal sign-in. No API key is needed.
+export const CURSOR_INSTALL_URL = `cursor://anysphere.cursor-deeplink/mcp/install?name=ripplewatch&config=${btoa(JSON.stringify({ url: CONNECT_MCP_URL }))}`;
 // Ripplewatch's page in ChatGPT's plugin directory (approved by OpenAI).
 export const CHATGPT_PLUGIN_URL = "https://chatgpt.com/plugins/plugin_asdk_app_6ac7c45cb79081918cdf5646ef1c3031";
 

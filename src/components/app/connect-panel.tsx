@@ -11,7 +11,7 @@ import { IntegrationConnector } from "@/components/app/integration-connector";
 import { SlackDigestSchedule } from "@/components/app/slack-digest-schedule";
 import { ConnectNotifications } from "@/components/app/connect-notifications";
 import { CONNECT_BASE_FEE_USD, CONNECT_DEFAULT_RELOAD_USD } from "@/lib/connect-pricing";
-import { CONNECT_MCP_URL, CONNECT_NAME } from "@/lib/connect";
+import { CONNECT_MCP_URL, CONNECT_NAME, CURSOR_INSTALL_URL } from "@/lib/connect";
 import { timeAgo } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { setupProgress } from "@/lib/connect-setup";
@@ -227,7 +227,11 @@ export function ConnectPanel({
             </span>
             <p>
               In Claude, go to Settings → Connectors → Add custom connector. In ChatGPT, open Plugins and use the + button
-              to add a custom MCP server (it depends on your ChatGPT plan).
+              to add a custom MCP server (it depends on your ChatGPT plan). In Cursor, click{" "}
+              <a href={CURSOR_INSTALL_URL} className="font-medium text-primary underline underline-offset-2">
+                Add to Cursor
+              </a>{" "}
+              and then Install, with nothing to paste.
             </p>
           </li>
           <li className="flex gap-3">

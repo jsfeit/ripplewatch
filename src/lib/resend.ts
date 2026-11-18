@@ -960,7 +960,7 @@ export async function sendConnectWelcomeEmail(to: string, companyName: string, a
         Ripplewatch lives inside the assistant you already use. Two minutes to connect it:
       </p>
       <ol style="color:#3a3a3a;font-size:14px;line-height:1.7;padding-left:20px;">
-        <li>In Claude or ChatGPT, add a custom connector with this URL: <strong>${appUrl}/api/mcp</strong></li>
+        <li>In Claude or ChatGPT, add a custom connector with this URL: <strong>${appUrl}/api/mcp</strong>. Using Cursor? <a href="${appUrl}/connect/claude-and-chatgpt#cursor" style="color:#0f5f56;">There is a one-click install</a>.</li>
         <li>Sign in to Ripplewatch when prompted and approve.</li>
         <li>Say <em>"Add my top competitor to Ripplewatch"</em> and give it a name and website. From there it will
           ask you for the few things that make its answers specific to your business.</li>

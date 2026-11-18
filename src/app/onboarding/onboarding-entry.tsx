@@ -55,7 +55,7 @@ export function OnboardingEntry({
         <p className="mt-2 text-sm text-muted-foreground">
           {fromAssistant
             ? "Create your account and pay, then go back to your assistant and press Connect again. It takes about two minutes."
-            : "Use Ripplewatch inside Claude or ChatGPT. A flat monthly platform fee, and usage you prepay for, so you only pay for what you use."}
+            : "Use Ripplewatch inside Claude, ChatGPT or Cursor. A flat monthly platform fee, and usage you prepay for, so you only pay for what you use."}
         </p>
       </div>
       <ConnectPurchase

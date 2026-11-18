@@ -10,13 +10,13 @@ const description =
   "Connect Ripplewatch to Claude, ChatGPT, Claude Code or Cursor over MCP: the server URL, the steps for each, and what to ask first.";
 
 export const metadata = {
-  title: "Connect Ripplewatch to Claude or ChatGPT (MCP setup)",
+  title: "Connect Ripplewatch to Claude, ChatGPT or Cursor (MCP setup)",
   description,
   alternates: { canonical: "/connect/claude-and-chatgpt" },
-  openGraph: { title: "Connect Ripplewatch to Claude or ChatGPT | Ripplewatch", description, images: ["/opengraph-image"] },
+  openGraph: { title: "Connect Ripplewatch to Claude, ChatGPT or Cursor | Ripplewatch", description, images: ["/opengraph-image"] },
   twitter: {
     card: "summary_large_image",
-    title: "Connect Ripplewatch to Claude or ChatGPT | Ripplewatch",
+    title: "Connect Ripplewatch to Claude, ChatGPT or Cursor | Ripplewatch",
     description,
     images: ["/opengraph-image"],
   },
@@ -36,7 +36,7 @@ const CURSOR_CONFIG = JSON.stringify({ mcpServers: { ripplewatch: { url: CONNECT
 const HOW_TO = {
   "@context": "https://schema.org",
   "@type": "HowTo",
-  name: "Connect Ripplewatch to Claude or ChatGPT over MCP",
+  name: "Connect Ripplewatch to Claude, ChatGPT or Cursor over MCP",
   description,
   totalTime: "PT2M",
   tool: [{ "@type": "HowToTool", name: `MCP server URL: ${CONNECT_MCP_URL}` }],
@@ -71,10 +71,10 @@ export default function ConnectGuidePage() {
       <JsonLd
         data={breadcrumbs(SITE, [
           { name: "Product", path: "/connect" },
-          { name: "Connect to Claude or ChatGPT", path: "/connect/claude-and-chatgpt" },
+          { name: "Connect to Claude, ChatGPT or Cursor", path: "/connect/claude-and-chatgpt" },
         ])}
       />
-      <h1 className="text-3xl font-semibold tracking-tight text-balance">Connect Ripplewatch to Claude or ChatGPT</h1>
+      <h1 className="text-3xl font-semibold tracking-tight text-balance">Connect Ripplewatch to Claude, ChatGPT or Cursor</h1>
       <p className="mt-4 leading-relaxed text-muted-foreground">
         {CONNECT_NAME} is an MCP server. MCP, the Model Context Protocol, is the open standard that lets an AI assistant
         call outside tools, so once Ripplewatch is added you ask about your competitors in the chat you already have
@@ -106,7 +106,7 @@ export default function ConnectGuidePage() {
         </li>
       </ul>
 
-      <h2 className="mt-12 text-xl font-semibold tracking-tight">Claude</h2>
+      <h2 id="claude" className="mt-12 text-xl font-semibold tracking-tight">Claude</h2>
       <ol className="mt-4 list-decimal space-y-2 pl-5 leading-relaxed text-muted-foreground">
         <li>In Claude, go to Settings, then Connectors, then Add custom connector.</li>
         <li>Name it Ripplewatch and paste the server URL above.</li>
@@ -119,7 +119,7 @@ export default function ConnectGuidePage() {
         the key private: it can read your competitive intelligence and log deals on your account.
       </p>
 
-      <h2 className="mt-12 text-xl font-semibold tracking-tight">ChatGPT</h2>
+      <h2 id="chatgpt" className="mt-12 text-xl font-semibold tracking-tight">ChatGPT</h2>
       <ol className="mt-4 list-decimal space-y-2 pl-5 leading-relaxed text-muted-foreground">
         <li>
           Open{" "}
@@ -151,7 +151,7 @@ export default function ConnectGuidePage() {
         Ripplewatch instead of using an API key.
       </p>
 
-      <h2 className="mt-12 text-xl font-semibold tracking-tight">Cursor</h2>
+      <h2 id="cursor" className="mt-12 text-xl font-semibold tracking-tight">Cursor</h2>
       <ol className="mt-4 list-decimal space-y-2 pl-5 leading-relaxed text-muted-foreground">
         <li>
           Click <strong className="font-medium text-foreground">Add to Cursor</strong> below. Cursor opens and asks you

@@ -19,14 +19,8 @@ function displayQuestion(q: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-// Which "Open in ..." links to offer. Only the assistants the person has actually connected: Claude,
-// ChatGPT, or both. If a different assistant is connected (Cursor and the like) neither is offered and
-// Copy is the way in; if nothing is recorded we can't tell, so both are shown.
-export function openInChoices(assistants: string[] | undefined): { claude: boolean; chatgpt: boolean } {
-  const known = (assistants ?? []).filter((a) => a !== "unknown");
-  if (known.length === 0) return { claude: true, chatgpt: true };
-  return { claude: known.includes("claude"), chatgpt: known.includes("chatgpt") };
-}
+export { openInChoices, cursorPromptUrl } from "@/lib/first-prompts";
+import { openInChoices, cursorPromptUrl } from "@/lib/first-prompts";
 
 export const LINK_CLASS =
   "inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs font-medium text-muted-foreground hover:border-primary/50 hover:text-foreground";
@@ -82,6 +76,15 @@ export function FirstQuestionCard({ context, assistants }: { context: PromptCont
             className={LINK_CLASS}
           >
             Open in ChatGPT <ExternalLink className="size-3" />
+          </a>
+        ) : null}
+        {open.cursor ? (
+          <a
+            href={cursorPromptUrl(q)}
+            onClick={() => trackEvent("first_question_opened", { assistant: "cursor", index: 0, where: "connect" })}
+            className={LINK_CLASS}
+          >
+            Open in Cursor <ExternalLink className="size-3" />
           </a>
         ) : null}
         <button type="button" onClick={() => void copy()} className={LINK_CLASS}>
@@ -145,6 +148,15 @@ export function FirstQuestions({ context, assistants }: { context: PromptContext
                   className={linkClass}
                 >
                   Open in ChatGPT <ExternalLink className="size-3" />
+                </a>
+              ) : null}
+              {open.cursor ? (
+                <a
+                  href={cursorPromptUrl(q)}
+                  onClick={() => trackEvent("first_question_opened", { assistant: "cursor", index: i })}
+                  className={linkClass}
+                >
+                  Open in Cursor <ExternalLink className="size-3" />
                 </a>
               ) : null}
               <button type="button" onClick={() => void copy(q, i)} className={linkClass}>
@@ -218,6 +230,15 @@ function ImportCard({
             className={LINK_CLASS}
           >
             Open in ChatGPT <ExternalLink className="size-3" />
+          </a>
+        ) : null}
+        {open.cursor ? (
+          <a
+            href={cursorPromptUrl(prompt)}
+            onClick={() => trackEvent(event, { assistant: "cursor" })}
+            className={LINK_CLASS}
+          >
+            Open in Cursor <ExternalLink className="size-3" />
           </a>
         ) : null}
         <button type="button" onClick={() => void copy()} className={LINK_CLASS}>
@@ -339,6 +360,15 @@ export function FirstPromptPicker({ context, assistants }: { context: PromptCont
             className={LINK_CLASS}
           >
             Open in ChatGPT <ExternalLink className="size-3" />
+          </a>
+        ) : null}
+        {open.cursor ? (
+          <a
+            href={cursorPromptUrl(active.prompt)}
+            onClick={() => trackEvent("first_question_opened", { assistant: "cursor", prompt: active.id, where: "connect" })}
+            className={LINK_CLASS}
+          >
+            Open in Cursor <ExternalLink className="size-3" />
           </a>
         ) : null}
         <button type="button" onClick={() => void copy()} className={LINK_CLASS}>

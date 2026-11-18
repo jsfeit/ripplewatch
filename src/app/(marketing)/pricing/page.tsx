@@ -46,7 +46,7 @@ export default function PricingPage() {
       <div className="mx-auto max-w-2xl text-center">
         <h1 className="text-4xl font-semibold tracking-tight">Simple pricing</h1>
         <p className="mt-4 text-muted-foreground">
-          No dedicated CI analyst to hire, Ripplewatch is the AI one. Connect it to Claude or ChatGPT and pay only
+          No dedicated CI analyst to hire, Ripplewatch is the AI one. Connect it to Claude, ChatGPT or Cursor and pay only
           for what you use. Try it risk free: if it&apos;s not for you, you get your ${CONNECT_BASE_FEE_USD} back
           within 30 days.
         </p>
