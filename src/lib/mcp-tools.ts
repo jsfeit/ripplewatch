@@ -17,6 +17,7 @@ import { importWinLossText } from "@/lib/win-loss-import-text";
 import { loadAllDeals, withDealDate } from "@/lib/deal-store";
 import { addContextNote } from "@/lib/context-notes";
 import { MCP_PROMPTS } from "@/lib/mcp-prompts";
+import { MOMENTUM_TIMING } from "@/lib/activity-read";
 import { getDealImpactBrief } from "@/lib/deal-impact";
 import { logCallMentions } from "@/lib/call-mentions";
 import { loadChurnInsight } from "@/lib/churn-insight";
@@ -268,6 +269,7 @@ export function registerRipplewatchTools(server: McpServer) {
       return result(
         {
           note: UNTRUSTED_NOTE,
+          ...(momentum.some((c) => c.momentum.score === null) ? { momentum_note: `${MOMENTUM_TIMING} For those competitors, report the activity read below instead of ranking them yourself.` } : {}),
           verdict: fresh ? account!.weekly_verdict : null,
           verdict_generated_at: fresh ? account!.weekly_verdict_generated_at : null,
           // Said out loud so the assistant has something true to tell the person, instead of an empty verdict.
@@ -278,7 +280,13 @@ export function registerRipplewatchTools(server: McpServer) {
                   "There is no weekly verdict yet. It is written once there is about a week of history, and signals and Momentum fill in as competitors are checked. For now, answer from the signals and competitors below, and say that the first full briefing is still building.",
               }),
           competitors: momentum
-            .map(({ competitor, momentum: m }) => ({ name: competitor.name, momentum: m.label, score: m.score, confidence: m.confidence }))
+            .map(({ competitor, momentum: m, activity }) => ({
+              name: competitor.name,
+              momentum: m.label,
+              score: m.score,
+              confidence: m.confidence,
+              ...(m.score === null ? { activity } : {}),
+            }))
             .sort((a, b) => (b.score ?? -101) - (a.score ?? -101)),
           top_recent_signals: (signals ?? []).map((s) => ({
             competitor: nameById.get(s.competitor_id) ?? null,
@@ -415,11 +423,13 @@ export function registerRipplewatchTools(server: McpServer) {
       ]);
       const yours = computeYourMomentum(feedback ?? [], winLoss ?? []);
       return result({
-        competitors: momentum.map(({ competitor, momentum: m }) => ({
+        ...(momentum.some((c) => c.momentum.score === null) ? { momentum_note: `${MOMENTUM_TIMING} For those competitors, report the activity read instead of ranking them yourself.` } : {}),
+        competitors: momentum.map(({ competitor, momentum: m, activity }) => ({
           name: competitor.name,
           label: m.label,
           score: m.score,
           confidence: m.confidence,
+          ...(m.score === null ? { activity } : {}),
         })),
         your_momentum: { label: yours.label, score: yours.score, confidence: yours.confidence },
       });

@@ -5,8 +5,8 @@ import { MOMENTUM_STYLES } from "@/lib/momentum";
 
 // A sneak peek at Momentum during setup. Nothing here is a made-up score. Every
 // competitor is brand new at this point, so rather than flag "not enough history"
-// (which would be true of everyone), each row says the read is being calculated
-// and builds over time. The four real labels are shown as the legend so people
+// (which would be true of everyone), each row shows what the first check found and says
+// when the trend arrives. The four real labels are shown as the legend so people
 // know what they're about to get. The six drivers are the ones
 // computeMomentum actually uses (see src/lib/momentum.ts).
 const LABELS: { name: string; dot: string; meaning: string }[] = [
@@ -17,7 +17,7 @@ const LABELS: { name: string; dot: string; meaning: string }[] = [
 ];
 
 // A real read for one competitor, once Ripplewatch has one.
-export type LiveMomentum = { label: string; score: number | null; confidence: string };
+export type LiveMomentum = { label: string; score: number | null; confidence: string; activity?: { label: string; detail: string } };
 
 export function MomentumTease({
   names,
@@ -64,12 +64,22 @@ export function MomentumTease({
                   {read.confidence === "low" ? <span className="text-muted-foreground">early read</span> : null}
                 </span>
               ) : (
-                <span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
-                  <span className="relative flex size-2">
-                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary/50 motion-reduce:hidden" />
-                    <span className="relative inline-flex size-2 rounded-full bg-primary" />
-                  </span>
-                  Calculating, builds over the first few days
+                <span className="flex shrink-0 flex-col items-end text-right text-xs text-muted-foreground">
+                  {read?.activity ? (
+                    <>
+                      <span className="font-medium text-foreground">{read.activity.label}</span>
+                      {read.activity.detail !== read.activity.label ? <span>{read.activity.detail}</span> : null}
+                    </>
+                  ) : (
+                    <span className="flex items-center gap-1.5">
+                      <span className="relative flex size-2">
+                        <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary/50 motion-reduce:hidden" />
+                        <span className="relative inline-flex size-2 rounded-full bg-primary" />
+                      </span>
+                      First check running
+                    </span>
+                  )}
+                  <span>Momentum trend: about a month</span>
                 </span>
               )}
             </li>
@@ -86,8 +96,8 @@ export function MomentumTease({
         ))}
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Momentum is calculated over time. First findings usually land within minutes, and each score firms up over the
-        first few days as Ripplewatch sees more of what they do. It gets sharper every time you log a deal.
+        Momentum is a trend: it compares the last 30 days with the 30 before, so the first score takes about a month.
+        Until then you see what the first check found. It gets sharper every time you log a deal.
       </p>
     </div>
   );

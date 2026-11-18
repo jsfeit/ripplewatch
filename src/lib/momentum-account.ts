@@ -2,11 +2,12 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { computeMomentum, type MomentumResult } from "@/lib/momentum";
+import { activityRead, type ActivityRead } from "@/lib/activity-read";
 import { loadAllDeals, withDealDate } from "@/lib/deal-store";
 
 type Admin = SupabaseClient<Database>;
 
-export type CompetitorMomentum = { competitor: { id: string; name: string }; momentum: MomentumResult };
+export type CompetitorMomentum = { competitor: { id: string; name: string }; momentum: MomentumResult; activity: ActivityRead };
 
 // One place that knows how to load the inputs computeMomentum needs and run
 // it per competitor, shared by the REST momentum route, the win/loss route's
@@ -46,12 +47,14 @@ export async function loadCompetitorMomentum(
       .gte("recorded_at", lookbackStart.toISOString()),
   ]);
 
-  return list.map((c) => ({
-    competitor: c,
-    momentum: computeMomentum(
-      (signals ?? []).filter((s) => s.competitor_id === c.id),
-      (winLoss ?? []).filter((e) => e.competitor_id === c.id),
-      (stateHistory ?? []).filter((e) => e.competitor_id === c.id)
-    ),
-  }));
+  return list.map((c) => {
+    const mine = (signals ?? []).filter((s) => s.competitor_id === c.id);
+    const history = (stateHistory ?? []).filter((e) => e.competitor_id === c.id);
+    return {
+      competitor: c,
+      momentum: computeMomentum(mine, (winLoss ?? []).filter((e) => e.competitor_id === c.id), history),
+      // What is knowable before there is a trend: shown only while Momentum says "Not enough history yet".
+      activity: activityRead(mine, history),
+    };
+  });
 }
