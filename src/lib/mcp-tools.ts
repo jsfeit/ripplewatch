@@ -17,7 +17,7 @@ import { importWinLossText } from "@/lib/win-loss-import-text";
 import { loadAllDeals, withDealDate } from "@/lib/deal-store";
 import { addContextNote } from "@/lib/context-notes";
 import { MCP_PROMPTS } from "@/lib/mcp-prompts";
-import { MOMENTUM_TIMING } from "@/lib/activity-read";
+import { MOMENTUM_TIMING, DAY_ONE_BRIEF } from "@/lib/activity-read";
 import { getDealImpactBrief } from "@/lib/deal-impact";
 import { logCallMentions } from "@/lib/call-mentions";
 import { loadChurnInsight } from "@/lib/churn-insight";
@@ -269,7 +269,7 @@ export function registerRipplewatchTools(server: McpServer) {
       return result(
         {
           note: UNTRUSTED_NOTE,
-          ...(momentum.some((c) => c.momentum.score === null) ? { momentum_note: `${MOMENTUM_TIMING} For those competitors, report the activity read below instead of ranking them yourself.` } : {}),
+          ...(momentum.some((c) => c.momentum.score === null) ? { momentum_note: `${MOMENTUM_TIMING} ${DAY_ONE_BRIEF}` } : {}),
           verdict: fresh ? account!.weekly_verdict : null,
           verdict_generated_at: fresh ? account!.weekly_verdict_generated_at : null,
           // Said out loud so the assistant has something true to tell the person, instead of an empty verdict.
@@ -287,7 +287,7 @@ export function registerRipplewatchTools(server: McpServer) {
               confidence: m.confidence,
               ...(m.score === null ? { activity } : {}),
             }))
-            .sort((a, b) => (b.score ?? -101) - (a.score ?? -101)),
+            .sort((a, b) => (b.score ?? -101) - (a.score ?? -101) || (b.activity?.recentSignals ?? 0) - (a.activity?.recentSignals ?? 0)),
           top_recent_signals: (signals ?? []).map((s) => ({
             competitor: nameById.get(s.competitor_id) ?? null,
             type: s.type,
@@ -423,14 +423,14 @@ export function registerRipplewatchTools(server: McpServer) {
       ]);
       const yours = computeYourMomentum(feedback ?? [], winLoss ?? []);
       return result({
-        ...(momentum.some((c) => c.momentum.score === null) ? { momentum_note: `${MOMENTUM_TIMING} For those competitors, report the activity read instead of ranking them yourself.` } : {}),
+        ...(momentum.some((c) => c.momentum.score === null) ? { momentum_note: `${MOMENTUM_TIMING} ${DAY_ONE_BRIEF}` } : {}),
         competitors: momentum.map(({ competitor, momentum: m, activity }) => ({
           name: competitor.name,
           label: m.label,
           score: m.score,
           confidence: m.confidence,
           ...(m.score === null ? { activity } : {}),
-        })),
+        })).sort((x, y) => (y.score ?? -101) - (x.score ?? -101) || (y.activity?.recentSignals ?? 0) - (x.activity?.recentSignals ?? 0)),
         your_momentum: { label: yours.label, score: yours.score, confidence: yours.confidence },
       });
     }
