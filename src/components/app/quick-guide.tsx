@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Copy } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
+import { BEST_RESULTS } from "@/lib/best-results";
 
-// Two screens, no more: where to use Ripplewatch, then what makes it sharper. Shown once on the finish
+// Three short screens: where to use Ripplewatch, what makes it sharper, and the habits for the best results. Shown once on the finish
 // screen after the first questions, so the person has just seen it work and now learns how to get more.
 const SCREENS = [
   {
@@ -26,6 +27,12 @@ const SCREENS = [
       "What you're building and when it ships, plus any pricing change.",
     ],
     copy: "Using Ripplewatch: log a lost deal. We lost Northwind, about $48k, closed yesterday. They chose Acme because it connects to their data warehouse and we only offer a CSV export.",
+  },
+  {
+    title: "For the best results",
+    lead: "Six habits that make the answers better. They are also in Settings, any time.",
+    points: BEST_RESULTS.map((r) => `${r.title}. ${r.body}`),
+    copy: null as string | null,
   },
 ];
 

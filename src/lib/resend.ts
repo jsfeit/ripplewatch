@@ -966,6 +966,11 @@ export async function sendConnectWelcomeEmail(to: string, companyName: string, a
           ask you for the few things that make its answers specific to your business.</li>
       </ol>
       <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
+        Two habits make it better: start a question with <strong>Using Ripplewatch:</strong> so your assistant reads
+        your live competitor data, and tell it how your deals go. The rest are in
+        <a href="${appUrl}/connect/guide#best_results" style="color:#0f5f56;">for the best results</a>.
+      </p>
+      <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
         Your usage balance, auto-reload and connector details are under Settings.
       </p>
       <a href="${appUrl}/app/settings?tab=manage" style="${CONNECT_EMAIL_BUTTON}">Open Settings</a>
