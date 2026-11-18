@@ -267,7 +267,7 @@ export function ConnectDataPanel({
       <div className="rounded-xl border border-border bg-card p-6">
         <h3 className="text-base font-semibold">Or let your assistant pull it</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          If you&apos;ve connected your CRM, call recorder or support tool to Claude or ChatGPT, it can read them and
+          If you&apos;ve connected your CRM, call recorder or support tool to Claude, ChatGPT or Cursor, it can read them and
           hand the results to me. Nothing to connect here. Say one of these, and it will tell you what it&apos;s about to
           read before it does.
         </p>

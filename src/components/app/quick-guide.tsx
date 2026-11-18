@@ -9,7 +9,7 @@ import { trackEvent } from "@/lib/analytics";
 const SCREENS = [
   {
     title: "Ask in your assistant, not in a dashboard",
-    lead: "Ripplewatch works inside Claude or ChatGPT. Start a question with “Using Ripplewatch:” and it reads your live competitor data instead of answering from memory.",
+    lead: "Ripplewatch works inside Claude, ChatGPT or Cursor. Start a question with “Using Ripplewatch:” and it reads your live competitor data instead of answering from memory.",
     points: [
       "Before a call: “Using Ripplewatch: what should I know about Acme before my demo tomorrow?”",
       "When something moves: “Using Ripplewatch: should we respond to their pricing change?”",

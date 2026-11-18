@@ -31,7 +31,7 @@ export function buildOnboardingEmail({ stage, companyName, connected, look }: In
       headline: "One step and I'm working for you",
       paragraphs: [
         ONBOARDING_VALUE.connect.unlocks,
-        "It takes about two minutes: add the Ripplewatch connector in Claude or ChatGPT, sign in, and approve.",
+        "It takes about two minutes: add the Ripplewatch connector in Claude, ChatGPT or Cursor, sign in, and approve.",
       ],
       ctaLabel: "Connect your assistant",
       ctaPath: "/app/get-started",

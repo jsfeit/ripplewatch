@@ -56,7 +56,7 @@ const STEPS = [
   {
     icon: Radar,
     title: "Tell your assistant about your business",
-    body: "In Claude or ChatGPT, give it your positioning, who buys, and why deals are lost and customers leave. Say it in a sentence or attach a file.",
+    body: "In Claude, ChatGPT or Cursor, give it your positioning, who buys, and why deals are lost and customers leave. Say it in a sentence or attach a file.",
   },
   {
     icon: Sparkles,
@@ -66,7 +66,7 @@ const STEPS = [
   {
     icon: Send,
     title: "Ask for the read",
-    body: "Every competitor gets a Momentum score (Heating up, Steady or Cooling). Ask in Claude or ChatGPT, or get a Slack alert when something big moves.",
+    body: "Every competitor gets a Momentum score (Heating up, Steady or Cooling). Ask in Claude, ChatGPT or Cursor, or get a Slack alert when something big moves.",
   },
 ];
 
@@ -311,7 +311,7 @@ export default function HomePage() {
       <section className="mx-auto max-w-3xl px-6 py-20 text-center">
         <h2 className="text-3xl font-semibold tracking-tight">Ready to stop guessing what matters?</h2>
         <p className="mt-3 text-muted-foreground">
-          Connect Ripplewatch to Claude or ChatGPT and ask your first question. If it&apos;s not useful in the first
+          Connect Ripplewatch to Claude, ChatGPT or Cursor and ask your first question. If it&apos;s not useful in the first
           30 days, you get your ${CONNECT_BASE_FEE_USD} back, plus any balance you haven&apos;t used.
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">

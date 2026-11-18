@@ -55,7 +55,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "What is Ripplewatch?",
         answer:
-          'Ripplewatch gives every competitor a Momentum score and checks each move against the deals you won and lost. It lives in Claude or ChatGPT instead of a dashboard you have to remember to open. You add Ripplewatch as a connector, then ask what changed with your competitors, what it means for your deals, and tell it how deals went, all in the chat. It costs $29 a month plus usage you prepay for. <a href="/connect">See how it works</a>, or <a href="/connect/guide">how to get the most out of it</a>.',
+          'Ripplewatch gives every competitor a Momentum score and checks each move against the deals you won and lost. It lives in Claude, ChatGPT or Cursor instead of a dashboard you have to remember to open. You add Ripplewatch as a connector, then ask what changed with your competitors, what it means for your deals, and tell it how deals went, all in the chat. It costs $29 a month plus usage you prepay for. <a href="/connect">See how it works</a>, or <a href="/connect/guide">how to get the most out of it</a>.',
       },
       {
         question: "Can I use Ripplewatch from Claude, ChatGPT, or another AI assistant?",
@@ -90,7 +90,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: "Is there a dashboard I have to log into?",
         answer:
-          "No. Ripplewatch lives in Claude or ChatGPT, so you ask about your competitors where you already work. The web app is just Settings: billing and balance, connecting your assistant and Slack, your competitors and your data.",
+          "No. Ripplewatch lives in Claude, ChatGPT or Cursor, so you ask about your competitors where you already work. The web app is just Settings: billing and balance, connecting your assistant and Slack, your competitors and your data.",
       },
       {
         question: "Can I cancel anytime?",

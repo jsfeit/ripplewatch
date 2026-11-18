@@ -742,7 +742,7 @@ export function SettingsView({
             <CardHeader>
               <h2 className="font-medium">Connected AI assistants</h2>
               <p className="text-sm text-muted-foreground">
-                Let Claude or ChatGPT read your competitive intel and log deals and feedback for you.
+                Let Claude, ChatGPT or Cursor read your competitive intel and log deals and feedback for you.
               </p>
             </CardHeader>
             <CardContent>

@@ -84,7 +84,7 @@ export function ConnectedApps() {
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
         Add <code className="rounded bg-secondary px-1 py-0.5 text-xs">{MCP_URL}</code> as a custom connector in
-        Claude or ChatGPT and sign in when prompted. Apps you approve show up here.
+        Claude, ChatGPT or Cursor and sign in when prompted. Apps you approve show up here.
       </p>
 
       {unavailable ? (

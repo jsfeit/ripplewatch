@@ -143,7 +143,7 @@ export default async function AlternativePage({ params }: { params: Promise<{ sl
             </tr>
             <tr>
               <th className="px-4 py-3 font-medium">Where you use it</th>
-              <td className="px-4 py-3 text-muted-foreground">Inside Claude, ChatGPT and other assistants over MCP, plus Slack</td>
+              <td className="px-4 py-3 text-muted-foreground">Inside Claude, ChatGPT, Cursor and other assistants over MCP, plus Slack</td>
               <td className="px-4 py-3 text-muted-foreground">Its own product</td>
             </tr>
             <tr>

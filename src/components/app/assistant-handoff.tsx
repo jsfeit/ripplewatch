@@ -1,6 +1,6 @@
 "use client";
 
-import { forAssistant } from "@/lib/first-prompts";
+import { cursorPromptUrl, forAssistant } from "@/lib/first-prompts";
 import { useEffect, useState, type ReactNode } from "react";
 import { Check, Copy, ExternalLink, Loader2 } from "lucide-react";
 import { LINK_CLASS, openInChoices } from "@/components/app/first-questions";
@@ -134,6 +134,15 @@ export function AssistantHandoff({
               className={LINK_CLASS}
             >
               Open in ChatGPT <ExternalLink className="size-3" />
+            </a>
+          ) : null}
+          {open.cursor ? (
+            <a
+              href={cursorPromptUrl(forAssistant(prompt))}
+              onClick={() => trackEvent("setup_data_handoff_opened", { assistant: "cursor", kind })}
+              className={LINK_CLASS}
+            >
+              Open in Cursor <ExternalLink className="size-3" />
             </a>
           ) : null}
           <button type="button" onClick={() => void copy()} className={LINK_CLASS}>

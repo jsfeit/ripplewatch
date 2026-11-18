@@ -246,3 +246,20 @@ export function starterPrompts(ctx: PromptContext, data: { deals: boolean; churn
     ...(data.deals ? [] : [`I want to log a recent deal I won or lost against ${c}.`]),
   ];
 }
+
+// Which "Open in ..." links to offer. Only the assistants the person has actually connected: Claude,
+// ChatGPT, or both. If a different assistant is connected (Cursor and the like) neither is offered and
+// Copy is the way in; if nothing is recorded we can't tell, so both are shown.
+export function openInChoices(assistants: string[] | undefined): { claude: boolean; chatgpt: boolean; cursor: boolean } {
+  const known = (assistants ?? []).filter((a) => a !== "unknown");
+  // Cursor is offered only to people who have connected it: its link opens the desktop app, which is a dead
+  // click for anyone who doesn't have it. With nothing recorded we can't tell, so only the two web ones show.
+  if (known.length === 0) return { claude: true, chatgpt: true, cursor: false };
+  return { claude: known.includes("claude"), chatgpt: known.includes("chatgpt"), cursor: known.includes("cursor") };
+}
+
+// Cursor's prompt link: opens a "Create chat with prompt" confirmation with the text filled in. Nothing is sent
+// until the person confirms there.
+export function cursorPromptUrl(prompt: string): string {
+  return `cursor://anysphere.cursor-deeplink/prompt?text=${encodeURIComponent(prompt)}`;
+}

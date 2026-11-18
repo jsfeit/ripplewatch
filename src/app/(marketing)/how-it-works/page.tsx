@@ -63,7 +63,7 @@ const STAGES = [
     accentText: "text-chart-4",
     accentBg: "bg-chart-4/10",
     title: "4. You find out where it actually matters",
-    body: "Ask Claude or ChatGPT what changed, or get scored updates in Slack the moment there's something worth acting on, no new tab, no dashboard to remember to open. Whoever used to half-own this as a side of their job gets to go back to their actual job.",
+    body: "Ask Claude, ChatGPT or Cursor what changed, or get scored updates in Slack the moment there's something worth acting on, no new tab, no dashboard to remember to open. Whoever used to half-own this as a side of their job gets to go back to their actual job.",
   },
 ];
 
@@ -71,7 +71,7 @@ const BUILT_FOR = [
   {
     icon: Clock,
     title: "No new tool to check",
-    body: "Nothing new to log into. Ask from Claude or ChatGPT, or get it in Slack, exactly where you already spend your day.",
+    body: "Nothing new to log into. Ask from Claude, ChatGPT or Cursor, or get it in Slack, exactly where you already spend your day.",
   },
   {
     icon: Users,
@@ -129,7 +129,7 @@ export default function HowItWorksPage() {
           Not another tool to check. The answer, where you already are.
         </h1>
         <p className="mt-4 text-muted-foreground">
-          No new tab, no dashboard to remember to open. Ask Claude or ChatGPT what your competitors are doing, or get
+          No new tab, no dashboard to remember to open. Ask Claude, ChatGPT or Cursor what your competitors are doing, or get
           it in Slack, and here&apos;s exactly how a raw signal turns into that answer.
         </p>
       </div>
@@ -244,7 +244,7 @@ export default function HowItWorksPage() {
       <div className="mt-20 text-center">
         <h2 className="text-2xl font-semibold tracking-tight">Ready to stop checking another tab?</h2>
         <p className="mt-3 text-muted-foreground">
-          Connect Ripplewatch to Claude or ChatGPT and ask your first question in minutes.
+          Connect Ripplewatch to Claude, ChatGPT or Cursor and ask your first question in minutes.
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link href="/onboarding?path=connect" className={buttonVariants({ size: "lg" })}>

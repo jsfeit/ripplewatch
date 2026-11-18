@@ -23,7 +23,7 @@ export default function ApiDocsPage() {
   return (
     <LegalDoc title="Connector docs" updated="October 23, 2026">
       <p className="text-muted-foreground">
-        Ripplewatch runs as an MCP server, so an assistant like Claude or ChatGPT can answer questions
+        Ripplewatch runs as an MCP server, so an assistant like Claude, ChatGPT or Cursor can answer questions
         about your competitors and record what you tell it, right in the chat.
       </p>
 
@@ -31,10 +31,10 @@ export default function ApiDocsPage() {
       <p>The connector URL:</p>
       <Code>{`https://www.ripplewatch.ai/api/mcp`}</Code>
       <p>
-        In Claude or ChatGPT you don&apos;t need a key: add <code>https://www.ripplewatch.ai/api/mcp</code> as a
+        In Claude, ChatGPT or Cursor you don&apos;t need a key: add <code>https://www.ripplewatch.ai/api/mcp</code> as a
         custom connector, sign in to Ripplewatch when prompted, and approve the connection. Manage connected apps
         under Settings → Developer. This needs a Ripplewatch account. For step-by-step setup, see{" "}
-        <a href="/connect/claude-and-chatgpt">Connect to Claude or ChatGPT</a>.
+        <a href="/connect/claude-and-chatgpt">Connect to Claude, ChatGPT or Cursor</a>.
       </p>
       <p>
         For developer tools that take a key instead, generate one under{" "}
