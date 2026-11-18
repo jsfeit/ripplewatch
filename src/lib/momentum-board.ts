@@ -5,7 +5,14 @@ import { loadCompetitorMomentum } from "@/lib/momentum-account";
 
 type Admin = SupabaseClient<Database>;
 
-export type MomentumBoardRow = { name: string; label: string; score: number | null; confidence: string };
+export type MomentumBoardRow = {
+  name: string;
+  label: string;
+  score: number | null;
+  confidence: string;
+  // Only set while Momentum has no read yet.
+  activity?: { label: string; detail: string };
+};
 
 // Every tracked competitor's Momentum, the biggest movers first. Returned alongside anything that
 // changes what Ripplewatch knows (new deals, new churn numbers), so the assistant can open with where
@@ -13,7 +20,13 @@ export type MomentumBoardRow = { name: string; label: string; score: number | nu
 export async function loadMomentumBoard(supabase: Admin, accountId: string, limit = 8): Promise<MomentumBoardRow[]> {
   const all = await loadCompetitorMomentum(supabase, accountId);
   return all
-    .map(({ competitor, momentum: m }) => ({ name: competitor.name, label: m.label, score: m.score, confidence: m.confidence }))
+    .map(({ competitor, momentum: m, activity }) => ({
+      name: competitor.name,
+      label: m.label,
+      score: m.score,
+      confidence: m.confidence,
+      ...(m.score === null ? { activity: { label: activity.label, detail: activity.detail } } : {}),
+    }))
     .sort((a, b) => Math.abs(b.score ?? 0) - Math.abs(a.score ?? 0))
     .slice(0, limit);
 }

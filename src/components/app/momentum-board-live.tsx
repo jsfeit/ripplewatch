@@ -7,7 +7,7 @@ import { MomentumTease, type LiveMomentum } from "@/components/app/momentum-teas
 type BoardStatus = {
   churn: { months: number };
   deals: { total: number };
-  momentum?: { name: string; label: string; score: number | null; confidence: string }[];
+  momentum?: { name: string; label: string; score: number | null; confidence: string; activity?: { label: string; detail: string } }[];
   timing?: string | null;
 };
 
@@ -59,7 +59,7 @@ export function MomentumBoardLive({ names, domainByName }: { names: string[]; do
   }, []);
 
   const live: Record<string, LiveMomentum> = {};
-  for (const m of status?.momentum ?? []) live[m.name.trim().toLowerCase()] = { label: m.label, score: m.score, confidence: m.confidence };
+  for (const m of status?.momentum ?? []) live[m.name.trim().toLowerCase()] = { label: m.label, score: m.score, confidence: m.confidence, activity: m.activity };
 
   // What each kind of data does, said accurately: deals feed each competitor's win rate against you,
   // which is part of its Momentum read. Churn isn't a Momentum input: it is lined up against competitor
