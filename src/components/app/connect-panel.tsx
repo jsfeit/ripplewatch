@@ -11,7 +11,7 @@ import { IntegrationConnector } from "@/components/app/integration-connector";
 import { SlackDigestSchedule } from "@/components/app/slack-digest-schedule";
 import { ConnectNotifications } from "@/components/app/connect-notifications";
 import { CONNECT_BASE_FEE_USD, CONNECT_DEFAULT_RELOAD_USD } from "@/lib/connect-pricing";
-import { CONNECT_MCP_URL, CONNECT_NAME, CURSOR_INSTALL_URL } from "@/lib/connect";
+import { CONNECT_MCP_URL, CONNECT_NAME, CURSOR_INSTALL_URL, CHATGPT_PLUGIN_URL } from "@/lib/connect";
 import { timeAgo } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { setupProgress } from "@/lib/connect-setup";
@@ -188,11 +188,12 @@ export function ConnectPanel({
       </div>
       <p className="mt-1 text-sm text-muted-foreground">
         {connected
-          ? `${mcpAssistant ?? "Your assistant"} is talking to Ripplewatch. Add it to another one (or disconnect an old one) from the Developer tab.`
+          ? `${mcpAssistant ?? "Your assistant"} is talking to Ripplewatch. You can connect more than one, and they all use the same account and balance.`
           : "This is the one thing left to do. Three steps, about a minute."}
       </p>
 
       {connected ? (
+        <>
         <div className="mt-3 flex items-center gap-2">
           <code className="min-w-0 flex-1 truncate rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs">
             {CONNECT_MCP_URL}
@@ -202,6 +203,62 @@ export function ConnectPanel({
             {copied ? "Copied" : "Copy"}
           </Button>
         </div>
+
+          <div className="mt-5 border-t border-border pt-4">
+            <p className="text-sm font-medium">Add another assistant</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Each one signs in to Ripplewatch the first time. There is no extra charge for connecting more than one.
+            </p>
+            <ul className="mt-3 space-y-3 text-sm">
+              {[
+                {
+                  name: "Claude",
+                  how: "Settings, then Connectors, then Add custom connector. Paste the URL above.",
+                  href: "https://claude.ai/settings/connectors",
+                  label: "Open Claude connectors",
+                },
+                {
+                  name: "ChatGPT",
+                  how: "Open Plugins, use the + button to add a custom MCP server, and paste the URL above. It depends on your plan.",
+                  href: CHATGPT_PLUGIN_URL,
+                  label: "Open Ripplewatch in ChatGPT",
+                },
+                {
+                  name: "Cursor",
+                  how: "Click Add to Cursor, then Install in the box that opens. Nothing to paste.",
+                  href: CURSOR_INSTALL_URL,
+                  label: "Add to Cursor",
+                },
+              ].map((a) => (
+                <li key={a.name} className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium">{a.name}</p>
+                    <p className="text-xs text-muted-foreground">{a.how}</p>
+                  </div>
+                  <a
+                    href={a.href}
+                    target={a.href.startsWith("http") ? "_blank" : undefined}
+                    rel={a.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                    className="inline-flex shrink-0 items-center rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:border-primary/50"
+                  >
+                    {a.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 text-xs text-muted-foreground">
+              To stop one, go to{" "}
+              <Link href="/app/settings?tab=developer" className="underline underline-offset-2 hover:text-foreground">
+                Developer, then Connected AI assistants
+              </Link>{" "}
+              and revoke it. Full steps are in the{" "}
+              <a href="/connect/claude-and-chatgpt" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">
+                connect guide
+              </a>
+              .
+            </p>
+          </div>
+        </>
       ) : (
         <ol className="mt-4 space-y-3 text-sm">
           <li className="flex gap-3">
