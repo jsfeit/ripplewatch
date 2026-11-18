@@ -17,6 +17,7 @@ import { importWinLossText } from "@/lib/win-loss-import-text";
 import { loadAllDeals, withDealDate } from "@/lib/deal-store";
 import { addContextNote } from "@/lib/context-notes";
 import { MCP_PROMPTS } from "@/lib/mcp-prompts";
+import { MOMENTUM_CARD_HTML, MOMENTUM_CARD_URI, MCP_APP_MIME } from "@/lib/mcp-momentum-card";
 import { MOMENTUM_TIMING, DAY_ONE_BRIEF } from "@/lib/activity-read";
 import { getDealImpactBrief } from "@/lib/deal-impact";
 import { logCallMentions } from "@/lib/call-mentions";
@@ -420,10 +421,26 @@ export function registerRipplewatchTools(server: McpServer) {
     }
   );
 
+  // The Momentum card: clients that render MCP Apps draw this in the chat instead of a table; the rest ignore it.
+  server.registerResource(
+    "momentum-card",
+    MOMENTUM_CARD_URI,
+    {
+      title: "Ripplewatch Momentum card",
+      description: "A card showing each competitor's Momentum or first-check findings, with follow-up buttons.",
+      mimeType: MCP_APP_MIME,
+      _meta: { ui: { csp: { connectDomains: [], resourceDomains: [] } } },
+    } as never,
+    async (uri: URL) => ({
+      contents: [{ uri: uri.href, mimeType: MCP_APP_MIME, text: MOMENTUM_CARD_HTML }],
+    })
+  );
+
   server.registerTool(
     "get_momentum",
     {
       title: "Momentum across competitors",
+      _meta: { ui: { resourceUri: MOMENTUM_CARD_URI }, "ui/resourceUri": MOMENTUM_CARD_URI },
       description:
         
         "Momentum for every tracked competitor at once, ranked: label (Heating up, Steady, Cooling or Gone quiet), score and confidence, plus this account's own momentum built from its NPS trend and win-rate trend. Use it to compare competitors or answer 'who is heating up fastest?'. For the drivers and recent signals behind one competitor use get_competitor; for what changed this week use get_briefing. Read-only, no parameters. A competitor with too little data is labeled as such, not guessed.",
