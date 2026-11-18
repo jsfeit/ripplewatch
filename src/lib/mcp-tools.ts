@@ -16,6 +16,7 @@ import { loadFirstLook } from "@/lib/first-look";
 import { importWinLossText } from "@/lib/win-loss-import-text";
 import { loadAllDeals, withDealDate } from "@/lib/deal-store";
 import { addContextNote } from "@/lib/context-notes";
+import { MCP_PROMPTS } from "@/lib/mcp-prompts";
 import { getDealImpactBrief } from "@/lib/deal-impact";
 import { logCallMentions } from "@/lib/call-mentions";
 import { loadChurnInsight } from "@/lib/churn-insight";
@@ -142,62 +143,20 @@ function withToolTimeout(server: McpServer) {
 
 export function registerRipplewatchTools(server: McpServer) {
   withToolTimeout(server);
-  server.registerPrompt(
-    "import-my-deals",
-    {
-      title: "Bring in my deal history",
-      description: "Pull closed-won and closed-lost deals from a connected CRM or file into Ripplewatch.",
-    },
-    () => ({
-      messages: [
-        {
-          role: "user" as const,
-          content: {
-            type: "text" as const,
-            text: "Pull my closed-won and closed-lost deals from the last 90 days from my CRM, with the reason for each, and add them to Ripplewatch using import_win_loss. Pass the rows exactly as you read them. Ask me first if you need access to something.",
-          },
-        },
-      ],
-    })
-  );
-
-  server.registerPrompt(
-    "get-started",
-    {
-      title: "Get started with Ripplewatch",
-      description: "A guided first run: what's been found on your competitors and what to try first.",
-    },
-    () => ({
-      messages: [
-        {
-          role: "user" as const,
-          content: {
-            type: "text" as const,
-            text: "I'm new to Ripplewatch. Use start_here and walk me through getting set up, one step at a time.",
-          },
-        },
-      ],
-    })
-  );
-
-  server.registerPrompt(
-    "how-to-use",
-    {
-      title: "How do I get the most out of Ripplewatch?",
-      description: "Explains win/loss data, momentum, the emails you'll get, and what to ask.",
-    },
-    () => ({
-      messages: [
-        {
-          role: "user" as const,
-          content: {
-            type: "text" as const,
-            text: "Use how_to_use to explain how I get the most out of Ripplewatch: how to get my win/loss data in, what momentum means, what I'll receive daily, weekly and monthly, how to see recent changes, and what to ask. Start with the overview and ask what I want to go deeper on.",
-          },
-        },
-      ],
-    })
-  );
+  // Ripplewatch's own section in the assistant's prompt menu. See lib/mcp-prompts.ts for the list.
+  const registerPrompt = server.registerPrompt.bind(server) as unknown as (name: string, config: unknown, cb: unknown) => unknown;
+  for (const def of MCP_PROMPTS) {
+    const argsSchema = def.args
+      ? z.object(Object.fromEntries(def.args.map((arg) => [arg.name, z.string().optional().describe(arg.description)])))
+      : undefined;
+    registerPrompt(
+      def.name,
+      { title: def.title, description: def.description, ...(argsSchema ? { argsSchema } : {}) },
+      (args?: Record<string, string | undefined>) => ({
+        messages: [{ role: "user" as const, content: { type: "text" as const, text: def.text(args ?? {}) } }],
+      })
+    );
+  }
 
   server.registerTool(
     "how_to_use",

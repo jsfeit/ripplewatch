@@ -198,7 +198,10 @@ export default function ConnectGuidePage() {
 
       <h2 className="mt-12 text-xl font-semibold tracking-tight">What to ask first</h2>
       <p className="mt-4 leading-relaxed text-muted-foreground">
-        For the full picture, including how to get your win/loss data in and what momentum means, see{" "}
+        Ripplewatch also adds ready-made prompts to your assistant&apos;s own prompt menu, all starting with
+        &quot;Ripplewatch:&quot; (weekly briefing, who&apos;s heating up, what&apos;s costing you deals, log a deal and more).
+        Where your assistant shows them depends on the app; in Claude, look under the + button. For the full picture,
+        including how to get your win/loss data in and what momentum means, see{" "}
         <Link href="/connect/guide" className="text-primary hover:underline">
           how to get the most out of Ripplewatch
         </Link>
