@@ -5,8 +5,9 @@
 // MIN_REASONS_FOR_TRENDS in next-best-action.ts, the notification list is
 // CONNECT_NOTIFICATIONS in connect.ts, and the competitor check runs daily.
 import { CONNECT_NOTIFICATIONS } from "@/lib/connect";
+import { BEST_RESULTS } from "@/lib/best-results";
 
-export type GuideTopicId = "overview" | "slack" | "win_loss" | "autopilot" | "momentum" | "recent_events" | "notifications" | "prompts" | "team";
+export type GuideTopicId = "overview" | "best_results" | "slack" | "win_loss" | "autopilot" | "momentum" | "recent_events" | "notifications" | "prompts" | "team";
 
 export type GuideTopic = {
   id: GuideTopicId;
@@ -28,6 +29,13 @@ export const GUIDE_TOPICS: GuideTopic[] = [
       "You ask in your assistant, or you read the weekly email. There's nothing to log into. The more it knows about your deals, the more specific its answers get, so the single best thing you can do after adding competitors is tell it how a few deals went.",
     ],
     prompts: ["What can Ripplewatch do for me, and what should I do first?"],
+  },
+  {
+    id: "best_results",
+    title: "For the best results",
+    summary: "The few habits that make the answers better.",
+    paragraphs: BEST_RESULTS.map((r, i) => `${i + 1}. ${r.title}. ${r.body}`),
+    prompts: ["What are the best habits to get the most out of Ripplewatch?"],
   },
   {
     id: "slack",

@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { setupProgress } from "@/lib/connect-setup";
 import { ONBOARDING_VALUE } from "@/lib/onboarding-value";
 import { forAssistant } from "@/lib/first-prompts";
+import { BEST_RESULTS } from "@/lib/best-results";
 import { SlackTroubleHelp } from "@/components/app/slack-trouble-help";
 import { CopyPromptButton } from "@/components/app/copy-prompt-button";
 import { DEALS_PROMPT } from "@/lib/first-prompts";
@@ -467,6 +468,26 @@ export function ConnectPanel({
   ];
   const { done: doneCount } = setupProgress({ connected, hasPositioning, competitorCount, slackConnected, hasDealHistory });
 
+  const bestResultsCard = (
+    <div className="rounded-xl border border-border bg-card p-6">
+      <h2 className="text-base font-semibold">For the best results</h2>
+      <p className="mt-1 text-sm text-muted-foreground">A few habits that make the answers better.</p>
+      <ol className="mt-4 space-y-3 text-sm">
+        {BEST_RESULTS.map((r, i) => (
+          <li key={r.id} className="flex gap-3">
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+              {i + 1}
+            </span>
+            <div className="min-w-0">
+              <p className="font-medium">{r.title}</p>
+              <p className="text-muted-foreground">{r.body}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+
   const checklistCard =
     hasAccess && doneCount < checklistItems.length ? (
       <div id="setup" className="scroll-mt-6 rounded-xl border border-border bg-card p-6">
@@ -555,6 +576,7 @@ export function ConnectPanel({
 
       {overview && hasAccess && competitorCount > 0 ? firstLookCard : null}
       {overview ? checklistCard : null}
+      {overview && hasAccess ? bestResultsCard : null}
       {manage && hasAccess ? connectAssistantCard : null}
       {manage && hasAccess ? slackCard : null}
       {manage && hasAccess ? (
