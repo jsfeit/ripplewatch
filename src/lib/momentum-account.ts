@@ -23,7 +23,7 @@ export async function loadCompetitorMomentum(
   accountId: string,
   opts: { competitorId?: string } = {}
 ): Promise<CompetitorMomentum[]> {
-  let competitorQuery = supabase.from("competitors").select("id, name").eq("account_id", accountId);
+  let competitorQuery = supabase.from("competitors").select("id, name, created_at").eq("account_id", accountId);
   if (opts.competitorId) competitorQuery = competitorQuery.eq("id", opts.competitorId);
   const { data: competitors } = await competitorQuery;
   const list = competitors ?? [];
@@ -36,7 +36,7 @@ export async function loadCompetitorMomentum(
   const [{ data: signals }, { data: winLoss }, { data: stateHistory }] = await Promise.all([
     supabase
       .from("signals")
-      .select("competitor_id, type, sentiment, occurred_on, scored, relevance_score")
+      .select("competitor_id, type, title, sentiment, occurred_on, scored, relevance_score")
       .in("competitor_id", competitorIds)
       .gte("occurred_on", lookbackStart.toISOString().slice(0, 10)),
     loadAllDeals(supabase, accountId).then((rows) => ({ data: withDealDate(rows).filter((r) => r.competitor_id && competitorIds.includes(r.competitor_id)) })),
@@ -54,7 +54,7 @@ export async function loadCompetitorMomentum(
       competitor: c,
       momentum: computeMomentum(mine, (winLoss ?? []).filter((e) => e.competitor_id === c.id), history),
       // What is knowable before there is a trend: shown only while Momentum says "Not enough history yet".
-      activity: activityRead(mine, history),
+      activity: activityRead(mine, history, new Date(), c.created_at),
     };
   });
 }

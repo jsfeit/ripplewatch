@@ -24,9 +24,14 @@ export type ActivityRead = {
   recentSignals: number;
   // One concrete thing worth doing about what was found, written for the person, not for the system.
   nextMove: string;
+  // Recent signals by type, e.g. { job_posting: 6, pricing: 2 }, and the newest few by title.
+  byType: Record<string, number>;
+  recent: { title: string; type: string; date: string }[];
+  // Days until there is a month of readings for Momentum to compare, or null if unknown / already there.
+  momentumInDays: number | null;
 };
 
-type SignalLike = { occurred_on: string; type?: string };
+type SignalLike = { occurred_on: string; type?: string; title?: string | null };
 type ReadingLike = { metric: string; value: number; recorded_at: string };
 
 const WINDOW_DAYS = 30;
@@ -62,7 +67,19 @@ function dominantType(signals: SignalLike[], cutoff: number): string | null {
 
 const NOTHING_TO_ACT_ON = "Nothing to act on yet. Tell me about a deal you won or lost against them and I can tell whether they matter to you.";
 
-export function activityRead(signals: SignalLike[], readings: ReadingLike[], now: Date = new Date()): ActivityRead {
+const LABEL_MAX = 110;
+
+export function activityRead(signals: SignalLike[], readings: ReadingLike[], now: Date = new Date(), startedAt?: string | null): ActivityRead {
+  const byType: Record<string, number> = {};
+  const recentList: { title: string; type: string; date: string }[] = [];
+  for (const s of [...signals].sort((a, b) => new Date(b.occurred_on).getTime() - new Date(a.occurred_on).getTime())) {
+    if (new Date(s.occurred_on).getTime() < now.getTime() - WINDOW_DAYS * 86_400_000) continue;
+    if (s.type) byType[s.type] = (byType[s.type] ?? 0) + 1;
+    if (s.title && recentList.length < 3) recentList.push({ title: s.title.length > LABEL_MAX ? `${s.title.slice(0, LABEL_MAX - 1)}…` : s.title, type: s.type ?? "", date: s.occurred_on });
+  }
+  // The first reading we have of them starts the clock: Momentum compares 30 days with the 30 before.
+  const firstReading = [...readings.map((r) => r.recorded_at), ...(startedAt ? [startedAt] : [])].map((d) => new Date(d).getTime()).filter((t) => !Number.isNaN(t)).sort((a, b) => a - b)[0];
+  const momentumInDays = firstReading === undefined ? null : Math.max(0, Math.ceil(WINDOW_DAYS - (now.getTime() - firstReading) / 86_400_000));
   const cutoff = now.getTime() - WINDOW_DAYS * 86_400_000;
   const recent = signals.filter((s) => new Date(s.occurred_on).getTime() >= cutoff).length;
   const older = signals.length - recent;
@@ -77,10 +94,10 @@ export function activityRead(signals: SignalLike[], readings: ReadingLike[], now
   const top = dominantType(signals, cutoff);
   const nextMove = (top && MOVE_BY_TYPE[top]) || (recent > 0 ? "Ask what changed with them this month." : NOTHING_TO_ACT_ON);
   const plural = (n: number) => `${n} signal${n === 1 ? "" : "s"}`;
-  if (recent >= ACTIVE_AT) return { label: "Active", detail: `${plural(recent)} found in the last 30 days`, baseline, recentSignals: recent, nextMove };
-  if (recent > 0) return { label: "Some activity", detail: `${plural(recent)} found in the last 30 days`, baseline, recentSignals: recent, nextMove };
-  if (older > 0) return { label: "Quiet lately", detail: `Nothing in the last 30 days, ${older} older ${older === 1 ? "signal" : "signals"} on file`, baseline, recentSignals: 0, nextMove };
-  return { label: "Nothing found yet", detail: "Nothing found yet", baseline, recentSignals: 0, nextMove };
+  if (recent >= ACTIVE_AT) return { label: "Active", detail: `${plural(recent)} found in the last 30 days`, baseline, recentSignals: recent, nextMove, byType, recent: recentList, momentumInDays };
+  if (recent > 0) return { label: "Some activity", detail: `${plural(recent)} found in the last 30 days`, baseline, recentSignals: recent, nextMove, byType, recent: recentList, momentumInDays };
+  if (older > 0) return { label: "Quiet lately", detail: `Nothing in the last 30 days, ${older} older ${older === 1 ? "signal" : "signals"} on file`, baseline, recentSignals: 0, nextMove, byType, recent: recentList, momentumInDays };
+  return { label: "Nothing found yet", detail: "Nothing found yet", baseline, recentSignals: 0, nextMove, byType, recent: recentList, momentumInDays };
 }
 
 // Said the same way everywhere (the assistant, the finish screen, the guide), so the promise can't drift apart again.

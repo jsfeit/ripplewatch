@@ -58,6 +58,13 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
   button { font: inherit; font-size: 12px; font-weight: 600; color: var(--teal); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; cursor: pointer; }
   button:hover { border-color: var(--teal); }
   button:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+  .score { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .recent { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; }
+  .recent li { font-size: 12.5px; display: flex; gap: 8px; }
+  .recent .when { color: var(--muted); flex: none; width: 44px; font-variant-numeric: tabular-nums; }
+  .recent .what { overflow-wrap: anywhere; }
+  .copybox { border: 1px dashed var(--teal); background: var(--teal-soft); border-radius: 10px; padding: 9px 11px; font-size: 12.5px; margin-top: 10px; }
+  .copybox code { display: block; margin: 6px 0; padding: 6px 8px; background: var(--bg); border-radius: 6px; user-select: all; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
   .foot { margin-top: 10px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
   .status { color: var(--muted); font-size: 12px; min-height: 16px; }
   .empty { color: var(--muted); padding: 18px 4px; }
@@ -93,16 +100,34 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
     return n;
   }
 
+  var canMessage = true;
+  var copybox = null;
+
   function say(text) { if (status) status.textContent = text; }
 
+  function showCopy(text) {
+    if (!copybox) return;
+    copybox.textContent = "";
+    copybox.hidden = false;
+    copybox.appendChild(el("div", null, "This chat doesn't let the card send messages yet. Paste this into the chat:"));
+    copybox.appendChild(el("code", null, text));
+    var b = el("button", null, "Copy");
+    b.type = "button";
+    b.addEventListener("click", function () {
+      var done = function () { b.textContent = "Copied"; };
+      var fail = function () { b.textContent = "Select the text above and copy it"; };
+      try { navigator.clipboard.writeText(text).then(done, fail); } catch (e) { fail(); }
+    });
+    copybox.appendChild(b);
+    resize();
+  }
+
   function ask(text) {
+    if (!canMessage) { showCopy(text); return; }
     say("Sending to the chat…");
     request("ui/message", { role: "user", content: { type: "text", text: text } }).then(
       function () { say("Sent. Your answer is in the chat."); },
-      function () {
-        try { navigator.clipboard.writeText(text); say("Couldn't post it here. Copied, so paste it into the chat."); }
-        catch (e) { say("Couldn't post it here. Type: " + text); }
-      }
+      function () { canMessage = false; say(""); showCopy(text); }
     );
   }
 
@@ -133,6 +158,21 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
     return wrap;
   }
 
+  var TYPE_LABEL = { job_posting: "hiring", pricing: "pricing", product_change: "product", news: "news", funding: "funding", review: "reviews", seo: "search" };
+
+  function typeChips(byType) {
+    var wrap = el("div", "chips");
+    Object.keys(byType || {}).sort(function (a, b) { return byType[b] - byType[a]; }).forEach(function (t) {
+      wrap.appendChild(el("span", "chip", byType[t] + " " + (TYPE_LABEL[t] || t)));
+    });
+    return wrap;
+  }
+
+  function shortDate(d) {
+    var dt = new Date(d + "T00:00:00");
+    return isNaN(dt) ? "" : dt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+
   function competitorRow(c) {
     var row = el("div", "row");
     var top = el("div", "top");
@@ -150,8 +190,22 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
       row.appendChild(el("div", "detail", "Momentum " + c.score + (c.confidence === "low" ? " · early read" : "")));
     } else if (c.activity) {
       row.appendChild(el("div", "detail", c.activity.detail));
+      var tc = typeChips(c.activity.byType);
+      if (tc.childNodes.length) row.appendChild(tc);
       var ch = chips(c.activity.baseline);
       if (ch.childNodes.length) row.appendChild(ch);
+      if (c.activity.recent && c.activity.recent.length) {
+        var ul = el("ul", "recent");
+        c.activity.recent.forEach(function (r) {
+          var li = el("li");
+          li.appendChild(el("span", "when", shortDate(r.date)));
+          li.appendChild(el("span", "what", r.title));
+          ul.appendChild(li);
+        });
+        row.appendChild(ul);
+      }
+      var due = c.activity.momentumInDays;
+      row.appendChild(el("div", "score", "Momentum score: not yet" + (due != null ? (due > 0 ? ", about " + due + " days to go" : ", due any day now") : "")));
       if (c.activity.nextMove) {
         var mv = el("div", "move");
         mv.appendChild(el("b", null, "Next move: "));
@@ -199,6 +253,9 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
     competitors.forEach(function (c) { list.appendChild(competitorRow(c)); });
     app.appendChild(list);
 
+    copybox = el("div", "copybox");
+    copybox.hidden = true;
+    app.appendChild(copybox);
     var foot = el("div", "foot");
     status = el("span", "status", "");
     foot.appendChild(status);
@@ -249,6 +306,8 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
     appCapabilities: {}
   }).then(function (res) {
     applyTheme(res && res.hostContext);
+    var hc = res && res.hostCapabilities;
+    if (hc && typeof hc === "object" && Object.keys(hc).length > 0 && !hc.message) canMessage = false;
     notify("ui/notifications/initialized", {});
   }, function () {
     app.textContent = "";
