@@ -1,0 +1,44 @@
+Crayon and Klue are the first two names that come up when a team starts shopping for competitive intelligence. Neither lists a price, and both are products your team logs into and adopts. There's a third shape now: the analyst lives inside the AI assistant you already use. Here's how Crayon and Klue differ, who each one suits, and where Ripplewatch fits. A note up front: we make Ripplewatch, so weigh what we say about it accordingly. Crayon and Klue are described from what their own sites say, checked on October 14, 2026.
+
+## What Crayon does
+
+[Crayon](https://crayon.co) pairs automated competitor monitoring with battlecards deployed straight into Salesforce and Slack, where reps already work. Sparks, its AI feature, runs scheduled passes over competitor news, social activity and PR. The practical strength is distribution: the battlecard shows up where the deal is, not in a tool someone has to remember. See [how Ripplewatch compares to Crayon](/compare/crayon).
+
+## What Klue does
+
+[Klue](https://klue.com) is built around a Compete Agent that continuously gathers intel and pushes deal-specific insight to reps, a Win-Loss Suite that runs verified buyer interviews (including an AI interviewer for voice conversations), and Ask Klue, a chat interface for querying competitive data on demand. The buyer interviews are the deepest piece. Real, structured feedback from actual buyers is something most tools in this category don't attempt. See [how Ripplewatch compares to Klue](/compare/klue).
+
+## Both are moving into AI assistants too
+
+Crayon announced an [MCP server](https://www.crayon.co/blog/crayon-launches-first-competitive-intelligence-mcp-server) in September 2025, so its content can be used from tools like ChatGPT, Glean and Copilot. Klue's homepage shows questions you can ask, and battlecards you can update, from an assistant such as Claude, plus a Glean integration. In both cases what the assistant draws on is the compete content and the program you run inside their platform. That is a different job from starting with the assistant and adding competitor tracking to it.
+
+## Crayon vs. Klue: which one fits
+
+- Pick Crayon if your reps live in Salesforce and Slack and the main job is keeping battlecards current and in front of them.
+- Pick Klue if verified buyer interviews are the thing you're missing and someone can run that program.
+- Expect a sales cycle with either. Neither publishes pricing, so the first real number comes after a call.
+- Both are set up for a team with dedicated implementation support or a CI or enablement owner.
+
+## The third option: an analyst inside your AI assistant
+
+Ripplewatch Connect starts from the opposite end. There's no separate product for your team to adopt. You add Ripplewatch to Claude, or another assistant that supports remote MCP servers, as a connector. Then you ask: what changed with Acme this week, does their new pricing matter for our deals, which competitor is heating up fastest. It answers from your competitors and your positioning.
+
+MCP, the Model Context Protocol, is the open standard that lets an assistant call outside tools. For competitive intelligence that means the read shows up in the chat where the question actually comes up: while you're prepping a call, replying to a prospect, or writing the board update. Not in a tab you have to remember to open.
+
+What makes the answers yours is your own deal history. Tell the assistant how a deal went in plain English, forward an email, upload a CSV, or have it pull lost deals from a CRM or call recorder it can already reach. Ripplewatch scores every finding against that, so the same pricing change can be urgent for one company and noise for another.
+
+It's [priced in the open](/pricing): $29 a month plus usage from a balance you prepay, starting at $50. Each answer and each competitor you watch draws from that balance, and the platform fee and any unused balance are refundable within 30 days.
+
+## What Ripplewatch doesn't do
+
+There's no verified buyer-interview program like Klue's, and no battlecard authoring or Salesforce-deployed battlecards like Crayon's. If those are the job, they're the better tool and the sales call is worth taking.
+
+## How to decide
+
+Start from the job, not the feature list. If you need a managed program with battlecards pushed into your CRM or buyer interviews run for you, look at Crayon or Klue, or browse [Crayon alternatives](/alternatives/crayon) and [Klue alternatives](/alternatives/klue). If what you need is a straight answer when someone asks whether a competitor's move matters, from the assistant you already have open, try Ripplewatch with your three real competitors for a month. That costs less than the first demo call takes to schedule. [See how Ripplewatch Connect works](/connect).
+
+- Does someone's job include competitive intelligence? If not, start light.
+- Shortlisting from review sites? Read [what G2 and Gartner reviews can't tell you](/blog/g2-vs-gartner-vs-building-your-own-win-loss-process) first.
+- Not ready to commit to a demo? Run the [free competitor snapshot](/competitor-snapshot) on one rival and see whether that kind of answer is useful.
+
+Checked October 14, 2026: Crayon's [homepage](https://www.crayon.co) and [MCP server announcement](https://www.crayon.co/blog/crayon-launches-first-competitive-intelligence-mcp-server), and Klue's [homepage](https://klue.com).

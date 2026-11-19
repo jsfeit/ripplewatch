@@ -4,14 +4,16 @@
 // enough history yet". Priority answers a different question that needs no history: right now, how much does this
 // competitor deserve your attention? It is a rank, not a direction, and it is labeled that way everywhere it shows.
 //
-// Four parts, each with a cap so no single one decides the rank. The caps add to 100.
-//   Relevance of what was found (45): recent signals weighted by how relevant the scoring step judged each one to
+// Five parts, each with a cap so no single one decides the rank. The caps add to 100.
+//   Relevance of what was found (40): recent signals weighted by how relevant the scoring step judged each one to
 //     this company. Ten irrelevant signals are worth less than three that matter.
 //   Deals lost to them (30): the strongest evidence a competitor matters. Each lost or churned deal counts, wins
 //     against them count a little the other way. Zero until the company logs deals.
-//   Size and presence (15): hiring, reviews and buzz compared with the other competitors tracked, so "75 open roles"
+//   Market exposure (10): named in an industry development researched for this account (a regulator's rule, a shift in
+//     buyer behavior). It is something happening around them, not something they did, so it is worth a little, not a lot.
+//   Size and presence (12): hiring, reviews and buzz compared with the other competitors tracked, so "75 open roles"
 //     means something next to 15 and 17.
-//   Breadth (10): findings across several kinds of source (hiring and pricing and news) say more than one noisy kind.
+//   Breadth (8): findings across several kinds of source (hiring and pricing and news) say more than one noisy kind.
 //
 // Pure and deterministic so every number can be explained and tested. No model call, no cost.
 export type PriorityBand = "Watch closely" | "Keep an eye on" | "Background";
@@ -19,6 +21,8 @@ export type PriorityBand = "Watch closely" | "Keep an eye on" | "Background";
 export type PriorityInput = {
   id: string;
   signals: { occurred_on: string; type?: string; relevance_score?: number | null }[];
+  // Titles of industry developments that name this competitor.
+  marketTrends?: string[];
   deals: { outcome: string }[];
   baseline: { openRoles: number | null; reviewRating: number | null; buzzMentions: number | null };
 };
@@ -28,11 +32,12 @@ export type WatchPriority = {
   band: PriorityBand;
   // Plain-language reasons, strongest first, written so an assistant can read them straight to the person.
   reasons: string[];
-  parts: { relevance: number; deals: number; presence: number; breadth: number };
+  parts: { relevance: number; deals: number; presence: number; breadth: number; market: number };
 };
 
 const WINDOW_DAYS = 30;
-const CAP = { relevance: 45, deals: 30, presence: 15, breadth: 10 } as const;
+const CAP = { relevance: 40, deals: 30, presence: 12, breadth: 8, market: 10 } as const;
+const MARKET_POINTS_PER_TREND = 5;
 // A signal with no relevance score yet (scoring runs after collection) counts as moderately relevant rather than zero.
 const UNSCORED_RELEVANCE = 40;
 // Relevance is ranked against the other competitors tracked, so a quiet set still produces an order. The floor stops a
@@ -89,7 +94,10 @@ export function computePriorities(inputs: PriorityInput[], now: Date = new Date(
     const kinds = new Set(recent.map((s) => s.type).filter(Boolean)).size;
     const breadth = Math.min(1, Math.max(0, kinds - 1) / 3) * CAP.breadth;
 
-    const score = Math.round(Math.min(100, relevance + deals + presence + breadth));
+    const trends = input.marketTrends ?? [];
+    const market = Math.min(CAP.market, trends.length * MARKET_POINTS_PER_TREND);
+
+    const score = Math.round(Math.min(100, relevance + deals + presence + breadth + market));
 
     const reasons: { weight: number; text: string }[] = [];
     if (lost > 0) reasons.push({ weight: deals, text: `${lost} lost ${lost === 1 ? "deal" : "deals"} logged against them` });
@@ -107,6 +115,7 @@ export function computePriorities(inputs: PriorityInput[], now: Date = new Date(
     if (input.baseline.openRoles !== null && peerShare(input.baseline.openRoles, rolesAll) >= 0.75) {
       reasons.push({ weight: CAP.presence * 0.5, text: `${input.baseline.openRoles} open roles, the most you track` });
     }
+    if (trends.length > 0) reasons.push({ weight: market, text: `named in a market development: ${trends[0]}` });
     if (kinds >= 3) reasons.push({ weight: breadth, text: `activity across ${kinds} kinds of source` });
     if (reasons.length === 0) reasons.push({ weight: 0, text: "little found so far" });
 
@@ -114,7 +123,7 @@ export function computePriorities(inputs: PriorityInput[], now: Date = new Date(
       score,
       band: band(score),
       reasons: reasons.sort((a, b) => b.weight - a.weight).map((r) => r.text),
-      parts: { relevance: Math.round(relevance), deals: Math.round(deals), presence: Math.round(presence), breadth: Math.round(breadth) },
+      parts: { relevance: Math.round(relevance), deals: Math.round(deals), presence: Math.round(presence), breadth: Math.round(breadth), market: Math.round(market) },
     });
   }
   return out;

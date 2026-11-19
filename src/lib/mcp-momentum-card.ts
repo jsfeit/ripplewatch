@@ -66,6 +66,12 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
   .bar > i { display: block; height: 100%; background: var(--teal); border-radius: 999px; }
   .prio-band { color: var(--muted); white-space: nowrap; }
   .prio-why { color: var(--muted); font-size: 12px; }
+  .market { margin-top: 12px; display: grid; gap: 8px; }
+  .market h2 { font-size: 13px; margin: 0; letter-spacing: -0.01em; }
+  .trend { border-left: 3px solid var(--teal); padding: 2px 0 2px 10px; display: grid; gap: 3px; }
+  .trend .t { font-weight: 600; font-size: 13px; }
+  .trend .d { color: var(--muted); font-size: 12.5px; }
+  .trend .src { color: var(--muted); font-size: 11.5px; }
   .recent { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; }
   .recent li { font-size: 12.5px; display: flex; gap: 8px; }
   .recent .when { color: var(--muted); flex: none; width: 44px; font-variant-numeric: tabular-nums; }
@@ -268,7 +274,8 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
       yrow.appendChild(ytop);
       yrow.appendChild(el("div", "detail", you.score != null ? "Momentum " + you.score : "Your momentum builds from your deals and customer scores."));
       var ya = el("div", "actions");
-      ya.appendChild(button("Log a deal", "Using Ripplewatch: log a deal. "));
+      var la = (data && data.log_action) || { label: "Log a deal", prompt: "Using Ripplewatch: log a deal. " };
+      ya.appendChild(button(la.label, la.prompt));
       yrow.appendChild(ya);
       list.appendChild(yrow);
     }
@@ -277,6 +284,22 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
     }
     competitors.forEach(function (c) { list.appendChild(competitorRow(c)); });
     app.appendChild(list);
+
+    var mc = data && data.market_context;
+    if (mc && mc.trends && mc.trends.length) {
+      var mk = el("div", "market");
+      var mh = el("h2", null, "Market context");
+      if (mc.market && mc.market.direction) mh.textContent = "Market context · " + String(mc.market.direction).replace("_", " ");
+      mk.appendChild(mh);
+      mc.trends.slice(0, 3).forEach(function (t) {
+        var tr = el("div", "trend");
+        tr.appendChild(el("div", "t", t.title));
+        if (t.competitors && t.competitors.length) tr.appendChild(el("div", "d", "Touches " + t.competitors.join(", ")));
+        if (t.source) tr.appendChild(el("div", "src", "Source: " + t.source));
+        mk.appendChild(tr);
+      });
+      app.appendChild(mk);
+    }
 
     copybox = el("div", "copybox");
     copybox.hidden = true;

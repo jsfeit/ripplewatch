@@ -20,7 +20,7 @@ import {
 import { normalizeDomain, guessPricingUrl, guessCareersUrl, isBlockedUrl, isBlockedHost } from "@/lib/domain";
 import { fetchProductHuntLaunches } from "@/lib/producthunt-data";
 import { fetchGithubCommitVelocity } from "@/lib/github-data";
-import { fetchBuzzMentions } from "@/lib/reddit-hn-data";
+import { fetchBuzzMentions, countHNMentions } from "@/lib/reddit-hn-data";
 import { fetchActiveAdCount } from "@/lib/meta-ads-data";
 import { captureScreenshot } from "@/lib/screenshot";
 import { MANUAL_NOTE_PREFIX } from "@/lib/manual-data";
@@ -239,7 +239,7 @@ function extractJobListingTitles(html: string): string[] {
 // fetch. Order matters only in that the first match wins; a page could in
 // theory match more than one pattern (e.g. quoting a competitor's board
 // URL in body copy), but that's rare enough not to guard against.
-export type AtsJob = { title: string; department: string | null };
+export type AtsJob = { title: string; department: string | null; postedAt?: string | null };
 type TokenAtsProvider = "greenhouse" | "lever" | "ashby" | "workable" | "smartrecruiters" | "icims";
 type AtsProvider = TokenAtsProvider | "workday";
 type AtsDetection =
@@ -379,6 +379,50 @@ async function fetchIcimsJobs(subdomain: string): Promise<AtsJob[]> {
   return [];
 }
 
+// A posting date from an ATS as an ISO string, or null when it is missing or unparseable. Lever gives epoch
+// milliseconds; the others give ISO strings.
+function isoOrNull(value: string | number | null | undefined): string | null {
+  if (value === null || value === undefined || value === "") return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+// An earlier open-role reading rebuilt from posting dates, so a competitor's hiring has a "before" on day one instead of
+// after a month of our own crawling: how many of today's open roles had already been posted a month ago. It is stamped
+// 31 days back, a day inside the 30-60 day window Momentum compares against, because the window slides with "now" and a
+// reading stamped exactly 30 days back would fall out of it.
+//
+// This is an estimate and it leans toward growth: roles that were posted and have since closed no longer appear, so
+// earlier marks are undercounted. It is only written on a competitor's first check, only when most roles carry a
+// date, and callers should treat the result as an early read until real readings accumulate.
+const HIRING_BACKFILL_MIN_DATED = 10;
+export const PRIOR_READING_DAYS_AGO = 31;
+
+// True once a competitor has any reading of this kind older than 20 days. That is the single test for "does Momentum
+// already have a before for this metric": a competitor added long ago has real readings, one added today has none, and
+// one we rebuilt a prior reading for has that reading (stamped 31 days back). Because the rebuilt reading itself
+// satisfies the test, each backfill runs once per competitor, for new and existing competitors on every account.
+async function hasPriorReading(supabase: AdminClient, competitorId: string, metric: "open_role_count" | "buzz_mentions"): Promise<boolean> {
+  const cutoff = new Date(Date.now() - 20 * 86_400_000).toISOString();
+  const { data } = await supabase
+    .from("competitor_state_history")
+    .select("id")
+    .eq("competitor_id", competitorId)
+    .eq("metric", metric)
+    .lt("recorded_at", cutoff)
+    .limit(1);
+  return (data ?? []).length > 0;
+}
+export function hiringHistoryFromPostings(jobs: AtsJob[], now: Date = new Date()): { recordedAt: string; value: number }[] {
+  const dated = jobs.map((j) => (j.postedAt ? new Date(j.postedAt).getTime() : NaN)).filter((t) => !Number.isNaN(t));
+  if (dated.length < HIRING_BACKFILL_MIN_DATED || dated.length < jobs.length * 0.8) return [];
+  const out: { recordedAt: string; value: number }[] = [];
+  const at = now.getTime() - PRIOR_READING_DAYS_AGO * 86_400_000;
+  const value = dated.filter((t) => t <= at).length;
+  if (value > 0) out.push({ recordedAt: new Date(at).toISOString(), value });
+  return out;
+}
+
 // One fetcher per provider, each mapped to the same {title, department}
 // shape — the API responses genuinely differ (Lever nests categories,
 // Greenhouse gives an array of department objects, etc.), so this is where
@@ -401,7 +445,7 @@ async function fetchAtsJobs(detection: AtsDetection): Promise<AtsJob[]> {
       // that instead of trusting a field that isn't actually there.
       const [jobsData, departmentsData] = await Promise.all([
         fetchJson(`https://boards-api.greenhouse.io/v1/boards/${boardToken}/jobs`) as Promise<{
-          jobs?: { id: number; title: string }[];
+          jobs?: { id: number; title: string; first_published?: string | null; updated_at?: string | null }[];
         }>,
         fetchJson(`https://boards-api.greenhouse.io/v1/boards/${boardToken}/departments`).catch(() => null) as Promise<{
           departments?: { name: string; jobs?: { id: number }[] }[];
@@ -415,29 +459,35 @@ async function fetchAtsJobs(detection: AtsDetection): Promise<AtsJob[]> {
         }
       }
 
-      return (jobsData.jobs ?? []).map((j) => ({ title: j.title, department: departmentByJobId.get(j.id) ?? null }));
+      return (jobsData.jobs ?? []).map((j) => ({
+        title: j.title,
+        department: departmentByJobId.get(j.id) ?? null,
+        postedAt: isoOrNull(j.first_published ?? j.updated_at),
+      }));
     }
     case "lever": {
       const data = (await fetchJson(`https://api.lever.co/v0/postings/${boardToken}?mode=json`)) as {
         text: string;
+        createdAt?: number;
         categories?: { team?: string; department?: string };
       }[];
       return (Array.isArray(data) ? data : []).map((j) => ({
         title: j.text,
         department: j.categories?.team ?? j.categories?.department ?? null,
+        postedAt: isoOrNull(j.createdAt),
       }));
     }
     case "ashby": {
       const data = (await fetchJson(`https://api.ashbyhq.com/posting-api/job-board/${boardToken}`)) as {
-        jobs?: { title: string; department?: string; team?: string }[];
+        jobs?: { title: string; department?: string; team?: string; publishedAt?: string }[];
       };
-      return (data.jobs ?? []).map((j) => ({ title: j.title, department: j.department ?? j.team ?? null }));
+      return (data.jobs ?? []).map((j) => ({ title: j.title, department: j.department ?? j.team ?? null, postedAt: isoOrNull(j.publishedAt) }));
     }
     case "workable": {
       const data = (await fetchJson(
         `https://apply.workable.com/api/v1/widget/accounts/${boardToken}?details=true`
-      )) as { jobs?: { title: string; department?: string }[] };
-      return (data.jobs ?? []).map((j) => ({ title: j.title, department: j.department ?? null }));
+      )) as { jobs?: { title: string; department?: string; published_on?: string; created_at?: string }[] };
+      return (data.jobs ?? []).map((j) => ({ title: j.title, department: j.department ?? null, postedAt: isoOrNull(j.published_on ?? j.created_at) }));
     }
     case "smartrecruiters": {
       const data = (await fetchJson(
@@ -994,6 +1044,16 @@ export async function checkJobPostingsDiff(
     },
     { onConflict: "competitor_id" }
   );
+  // No earlier reading of this competitor's board yet (new, or added before this existed): rebuild the earlier readings from posting dates so Momentum has a "before".
+  if (usingAts && !(await hasPriorReading(supabase, competitor.id, "open_role_count"))) {
+    const earlier = hiringHistoryFromPostings(atsJobs);
+    if (earlier.length > 0) {
+      const { error } = await supabase
+        .from("competitor_state_history")
+        .insert(earlier.map((e) => ({ competitor_id: competitor.id, metric: "open_role_count" as const, value: e.value, recorded_at: e.recordedAt })));
+      if (error) console.error(`hiring backfill write failed for ${competitor.name}:`, error);
+    }
+  }
   await recordStateHistory(supabase, competitor.id, "open_role_count", titles.length);
 
   if (!existing) return null;
@@ -1267,13 +1327,19 @@ export async function checkProductHuntLaunches(supabase: AdminClient, competitor
 // own ranking happened to change which story was first.
 const HEADLINES_PER_QUERY = 8;
 
-async function fetchHeadlines(
+// A date window for a news query, in days ago: { from: 60, to: 30 } means published between 60 and 30 days ago.
+export type NewsWindow = { from: number; to: number };
+
+export async function fetchHeadlines(
   query: string,
-  limit: number = HEADLINES_PER_QUERY
+  limit: number = HEADLINES_PER_QUERY,
+  window?: NewsWindow
 ): Promise<
   { title: string; source: string | null; description: string | null; link: string | null; publishedAt: string | null }[]
 > {
-  const feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
+  const day = (daysAgo: number) => new Date(Date.now() - daysAgo * 86_400_000).toISOString().slice(0, 10);
+  const dated = window ? `${query} after:${day(window.from)} before:${day(window.to)}` : query;
+  const feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(dated)}&hl=en-US&gl=US&ceid=US:en`;
   const res = await fetch(feedUrl, { signal: AbortSignal.timeout(15_000) });
   if (!res.ok) return [];
 
@@ -1578,6 +1644,75 @@ export async function checkNews(supabase: AdminClient, competitor: Competitor, i
   }
 
   return inserted;
+}
+
+// The two 30-day windows before the last 30 days. A competitor's news check only asks for the best matches,
+// which are nearly all recent, so the "before" Momentum compares against is empty. Asking per window fills it with what
+// was really published then. Runs once per competitor (see backfillPriorHistory); every story goes through the same relevance filter and
+// same-story dedup as normal news, is dated by its real publish date, and is tagged "backfill" so it never raises an alert.
+const NEWS_BACKFILL_WINDOWS: NewsWindow[] = [
+  { from: 60, to: 30 },
+  { from: 90, to: 60 },
+];
+
+export async function backfillNewsHistory(supabase: AdminClient, competitor: Competitor): Promise<Signal[]> {
+  const query = `"${competitor.name}" ${BUSINESS_CONTEXT_TERMS}`;
+  const inserted: Signal[] = [];
+  const existingTitles = await fetchAllSignalTitles(supabase, competitor.id);
+
+  for (const window of NEWS_BACKFILL_WINDOWS) {
+    let headlines;
+    try {
+      headlines = await filterHeadlinesForCompetitor(supabase, competitor, await fetchHeadlines(query, HEADLINES_PER_QUERY, window));
+    } catch (err) {
+      console.error(`news backfill failed for ${competitor.name} (${window.from}-${window.to}d):`, err);
+      continue;
+    }
+    for (const headline of headlines) {
+      if (existingTitles.has(headline.title)) continue;
+      const { data } = await supabase
+        .from("signals")
+        .insert({
+          competitor_id: competitor.id,
+          type: headline.classifiedType,
+          sentiment: headline.classifiedSentiment,
+          title: headline.title,
+          summary: headline.description ?? headline.source,
+          url: headline.link,
+          occurred_on: headline.publishedAt ?? undefined,
+          scored: false,
+          source: "backfill",
+        })
+        .select("*")
+        .single();
+      if (data) {
+        inserted.push(data);
+        existingTitles.add(headline.title);
+      }
+    }
+  }
+  return inserted;
+}
+
+// Everything that gives a competitor a "before" in one call, run from the daily crawl for any competitor that lacks one,
+// whether it was just added or was added before this existed. Buzz is the gate (see hasPriorReading); hiring has its
+// own gate where the job board is read. Safe to call every day: once the prior buzz reading exists it does nothing.
+export async function backfillPriorHistory(supabase: AdminClient, competitor: Competitor): Promise<Signal[]> {
+  if (await hasPriorReading(supabase, competitor.id, "buzz_mentions")) return [];
+  const priorHn = await countHNMentions(competitor.name, 60, 30);
+  // A failed request is retried tomorrow; recording it as zero would close the gate on a false reading.
+  if (priorHn === null) return [];
+  const { error } = await supabase.from("competitor_state_history").insert({
+    competitor_id: competitor.id,
+    metric: "buzz_mentions",
+    value: priorHn,
+    recorded_at: new Date(Date.now() - PRIOR_READING_DAYS_AGO * 86_400_000).toISOString(),
+  });
+  if (error) {
+    console.error(`buzz backfill write failed for ${competitor.name}:`, error);
+    return [];
+  }
+  return backfillNewsHistory(supabase, competitor);
 }
 
 // Funding — same free Google News RSS approach, but with a query weighted
@@ -1910,7 +2045,12 @@ export async function checkBuzzMentions(supabase: AdminClient, competitor: Compe
     { onConflict: "competitor_id" }
   );
 
-  await recordStateHistory(supabase, competitor.id, "buzz_mentions", mentions.length);
+  // The reading is Hacker News mentions in the last 30 days, by total hits (not the 50 titles fetched above), so it
+  // compares fairly with the earlier reading rebuilt below. Reddit is left out because it can't be counted per window.
+  const recentHn = await countHNMentions(competitor.name, 30, 0);
+  if (recentHn !== null) {
+    await recordStateHistory(supabase, competitor.id, "buzz_mentions", recentHn);
+  }
 }
 
 // --- Ad activity (Meta Ad Library) -----------------------------------------

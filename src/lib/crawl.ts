@@ -13,6 +13,7 @@ import {
   checkVisualChange,
   checkNews,
   checkFunding,
+  backfillPriorHistory,
   checkSearchNews,
   isFirstNewsCheck,
   ensureMonitoringUrls,
@@ -302,6 +303,18 @@ export async function crawlOneCompetitor(
       found.push(...(await checkFunding(supabase, competitor, isFirstCheck)));
     } catch (err) {
       console.error(`checkFunding failed for ${competitor.name}:`, err);
+    }
+  }
+  // Fill the 60 days before the recent window for any competitor that has no "before" yet, so Momentum has something to
+  // compare with. It runs right after a competitor is added (signup enqueues an immediate crawl) and then on a weekly
+  // sweep (Mondays, UTC) that catches competitors added before this existed or whose first attempt failed. A no-op once done.
+  const addedRecently = Date.now() - new Date(competitor.created_at).getTime() < 3 * 86_400_000;
+  const weeklySweep = new Date().getUTCDay() === 1;
+  if (allowedSources.includes("news") && (addedRecently || weeklySweep)) {
+    try {
+      found.push(...(await backfillPriorHistory(supabase, competitor)));
+    } catch (err) {
+      console.error(`history backfill failed for ${competitor.name}:`, err);
     }
   }
 

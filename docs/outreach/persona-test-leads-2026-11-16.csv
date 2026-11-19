@@ -1,0 +1,110 @@
+persona,first_name,last_name,company_name,website,job_title,email
+sales,David,Zevenbergen,8th Light,8thlight.com,VP of Sales,dzevenbergen@8thlight.com
+sales,Paul,Salzinger,Mobi.AI,takemobi.com,SVP of Sales,paul@takemobi.com
+sales,Helena,Aryafar,Interos,interos.ai,SVP of Revenue Operations,haryafar@interos.ai
+sales,Carolina,Dulin,Buynomics,buynomics.com,"Director of Sales, Americas",carolina.dulin@buynomics.com
+sales,Kyle,Cundy,Civitech,civitech.io,VP of Sales,kyle@civitech.io
+sales,Lex,Abbott,ACETECH Global,acetech.com,VP of Sales & CX (US),lex.abbott@acetech.com
+sales,Joe,Witherspoon,OpusXenta,opusxenta.com,Director of Sales,joew@opusxenta.com
+sales,Michael,Watts,Benepass,getbenepass.com,Head of Sales,mwatts@getbenepass.com
+sales,Harold,Haynes,NECS,necs.com,VP of Sales,hhaynes@necs.com
+sales,Josh,Bilitz,Seekr,seekr.com,VP of Revenue Operations,jbilitz@seekr.com
+sales,Jacob,Cox,ALICE Technologies,alicetechnologies.com,"Director of Sales, North America",jacob@alicetechnologies.com
+sales,Adam,Lederfarb,Tutor Intelligence,tutorintelligence.com,Head of Sales,adam@tutorintelligence.com
+sales,Stacey,Lawrence,ConductorOne,conductorone.com,Director of Sales Strategy and Operations,stacey.lawrence@conductorone.com
+sales,Josh,Hutchison,MindMatrix,mindmatrix.net,Sr. Director of Sales,josh.hutchison@mindmatrix.net
+sales,John,Atkinson,Vision Government Solutions,vgsi.com,Director of Sales,jatkinson@vgsi.com
+sales,JR,Holmgren,Assembly Software,assemblysoftware.com,VP of Revenue Operations,jholmgren@assemblysoftware.com
+sales,Chris,Ingolia,DetailPage,detailpage.com,Senior Director of Sales,chrisingolia@detailpage.com
+sales,Greg,McCammon,Momentum AMP,momentumamp.com,Director of Sales and Business Development,greg@momentumamp.com
+sales,Sarah,Teskova,Sharry,sharry.tech,"Head of Sales & Client Operations, Americas",sarah.teskova@sharry.tech
+sales,Peter,Lawley,BrainSell,brainsell.net,VP of Sales,plawley@brainsell.net
+sales,Brina,Nelson,Rhythms,getrhythms.ai,Director of Sales,brina@getrhythms.ai
+sales,Josh,Keding,NationGraph,nationgraph.com,Head of Sales,josh@nationgraph.com
+sales,Dale,Durrett,Omeda,omeda.com,EVP of Sales,ddurrett@omeda.com
+sales,Colby,Hogan,Rocket Alumni Solutions,rocketalumnisolutions.com,Director of Sales,colby@rocketalumnisolutions.com
+sales,Skip,Kovar,Maxima,maxima.ai,Head of Sales,skip@maxima.ai
+sales,Andy,Johannsen,Turing AI,turingvideo.com,Senior Director of Sales,andy.johannsen@turingvideo.com
+sales,Josh,Miller,ProfitSolv,profitsolv.com,"Director of Sales, Payments",josh.miller@profitsolv.com
+sales,Michelle,King,Index Engines,indexengines.com,Sr. Director of Sales,michelle.king@indexengines.com
+sales,Matthew,Petcoff,Intenseye,intenseye.com,Director of Sales,petcoff@intenseye.com
+sales,Ryan,Vanelslander,Pursuit,pursuit.us,VP of Sales,ryan@pursuit.us
+sales,Zack,Thompson,Demandforce,demandforce.com,VP of Sales and Customer Success,zthompson@demandforce.com
+sales,Matthew,Lonsinger,Hearth,gethearth.com,Head of Revenue Operations,matthew.lonsinger@gethearth.com
+sales,Chris,Rayfield,D3 Technologies,teamd3.com,SVP of Sales,chris.rayfield@teamd3.com
+sales,Karen,Digrazia,ARCAD Software,arcadsoftware.com,"Director of Sales, North America",kdigrazia@arcadsoftware.com
+sales,Alex,Schrager,Ecosystems,ecosystems.io,VP of Sales,aschrager@ecosystems.io
+sales,Dan,Kutner,Masttro,masttro.com,"Head of Sales, North America",dkutner@masttro.com
+sales,Mike,Atwell,Integra Solutions,integradelivers.com,Director of Sales,mike.atwell@integradelivers.com
+sales,Jack,Albanese,Instant,instant.one,Head of Sales,jack@instant.one
+sales,Adi,Tiwari,Opus,opusehr.com,VP of Revenue Operations,adi@opusehr.com
+pmm,Erin,Kadzis,Valcre,valcre.com,Director of Product Marketing,erin@valcre.com
+pmm,Sarah,Wakeman,Beautiful.ai,beautiful.ai,Head of Product Marketing,sarah@beautiful.ai
+pmm,Katie,Brown,AdPipe,adpipe.com,Director of Product Marketing,katie@adpipe.com
+pmm,Ben,Austin,CloudZero,cloudzero.com,Director of Product Marketing,ben.austin@cloudzero.com
+pmm,Anand,Patel,Goldcast,goldcast.io,Sr. Director of Product Marketing,anand@goldcast.io
+pmm,Jeremy,Castile,GitKraken,gitkraken.com,VP of Product Marketing,jeremy.castile@gitkraken.com
+pmm,Anna,Casey,Appcues,appcues.com,Director of Product Marketing,anna.casey@appcues.com
+pmm,Steve,Goldberg,Hydden,hydden.com,Head of Product Marketing,steve.goldberg@hydden.com
+pmm,Raj,Udeshi,Transit Technologies,transit-technologies.com,Senior Director of Product Marketing,raj.udeshi@transit-technologies.com
+pmm,Katie,Golland,Swoogo,swoogo.com,Senior Director of Product Marketing & Enablement,katie@swoogo.com
+pmm,Skyler,Kragt Wuolle,Cortex,cortex.io,Head of Product Marketing,skyler.wuolle@cortex.io
+pmm,Chris,Walker,Tellius,tellius.com,Director of Product Marketing,chris.walker@tellius.com
+pmm,Erica,Miller,Cinch,cinch.io,Director of Product Marketing,erica.miller@cinch.io
+pmm,Brooke,Snelling Vixamar,Radiant Logic,radiantlogic.com,Senior Director of Product Marketing,bvixamar@radiantlogic.com
+pmm,Bryan,Turriff,Observo AI,observo.ai,Founding Director of Product Marketing and Growth,bryan@observo.ai
+pmm,Eduardo,Mazal,PlanHub,planhub.com,Director of Product Marketing,emazal@planhub.com
+pmm,Greg,Ives,Nutrient,nutrient.io,Director of Product Marketing,greg.ives@nutrient.io
+pmm,Frank,Brogie,Knowify,knowify.com,Director of Product Marketing and Community,frank@knowify.com
+pmm,Andrew,Abraham,Transfr,transfrvr.com,Director of Product Marketing,aabraham@transfrvr.com
+pmm,Laura,Tentas,True Fit,truefit.com,Director of Product Marketing,ltentas@truefit.com
+pmm,Brian,Chambliss,Funnel Leasing,funnelleasing.com,Sr. Director of Product Marketing & Sales Enablement,brian.chambliss@funnelleasing.com
+pmm,Joshua,Coke,Inforcer,inforcer.com,VP of Product Marketing,joshua.coke@inforcer.com
+pmm,Stefanie,Tracey-Calash,Spoiler Alert,spoileralert.com,Head of Product Marketing,stefanie@spoileralert.com
+pmm,Zak,Cherif,KeyShot,keyshot.com,Head of Product Marketing,zak.cherif@keyshot.com
+pmm,Christian,Capdeville,Savant Labs,savantlabs.io,Head of Product Marketing,ccapdeville@savantlabs.io
+pmm,Sebastian,Trujillo,TRC Consultants (PHDWin),phdwin.com,Director of Product Marketing,strujillo@phdwin.com
+pmm,Pia,Tserkonis,Friendbuy,friendbuy.com,Head of Product Marketing,pia@friendbuy.com
+pmm,Erik,Mansur,Ziflow,ziflow.com,Head of Product Marketing,erik.mansur@ziflow.com
+pmm,Michele,Nieberding,Optiversal,optiversal.com,Head of Product Marketing,michele.nieberding@optiversal.com
+pmm,Philip,Sjogren,IXOPAY,ixopay.com,Director of Product Marketing,p.sjogren@ixopay.com
+pmm,Anya,Razina,Restream,restream.io,Director of Product Marketing,anya.razina@restream.io
+pmm,Russ,Somers,Red Oak,redoakcompliance.com,Head of Product Marketing,rsomers@redoakcompliance.com
+pmm,Parker,Ennis,Allstacks,allstacks.com,Director of Product Marketing,parker@allstacks.com
+pmm,Brittany,Leon,GAN Integrity,ganintegrity.com,Director of Product Marketing,bleon@ganintegrity.com
+pmm,Sophie,Gabler,xCures,xcures.com,Director of Product Marketing,sgabler@xcures.com
+pmm,Kristen,Mulvaney,Facilisgroup,facilisgroup.com,Director of Product Marketing,kmulvaney@facilisgroup.com
+pmm,Todd,Woodlan,Radicle Health,radicle-health.com,Director of Product Marketing,twoodlan@radicle-health.com
+pmm,Rob,Meyer,Nexla,nexla.com,Head of Product Marketing,robert@nexla.com
+pmm,Katherine,McCleery,Oomnitza,oomnitza.com,Director of Product Marketing,katherine.mccleery@oomnitza.com
+pmm,Bryan,Lieber,Greenshades Software,greenshades.com,Director of Product Marketing,blieber@greenshades.com
+founder,Tim,Cantwell,Tailorbird,tailorbird.us,Co-founder & CEO,tim@tailorbird.us
+founder,Abhinav,Chowdary,RadiusAI,radius.ai,Founder & CEO,abhinav@radius.ai
+founder,Benjamin,Cohen,Proton.ai,proton.ai,Founder & CEO,benj@proton.ai
+founder,Naeem,Talukdar,Moonvalley,moonvalley.com,Co-founder & CEO,naeem@moonvalley.com
+founder,Christopher,Farm,Tenjin,tenjin.io,"Co-founder, CEO",cfarm@tenjin.io
+founder,Scott,Schneider,HTX Labs,htxlabs.com,"CEO, Co-founder",scott@htxlabs.com
+founder,Jim,Walckner,ScerIS,sceris.com,President & CEO,jwalckner@sceris.com
+founder,Saritha,Singh,Inspire Solutions USA,inspiresolutions.aero,"Founder, CEO",saritha@inspiresolutions.aero
+founder,Matt,Minoff,Bond Sports,bondsports.co,Co-Founder & CEO,matt@bondsports.co
+founder,Deepak,Dube,EazyML,eazyml.com,Founder & CEO,deepak.dube@eazyml.com
+founder,Matthew,Black,Mav,hiremav.com,Founder & CEO,matthew@hiremav.com
+founder,Alex,Bates,HelloSky,hellosky.ai,Founder & CEO,alex@hellosky.ai
+founder,Omer,Usanmaz,Qooper,qooper.io,CEO & Co-Founder,omer@qooper.io
+founder,Andrew,Farah,Density,density.io,CEO,andrew@density.io
+founder,Sasha,Novakovich,Alchemy Cloud,alchemy.cloud,Founder & CEO,sasha.novakovich@alchemy.cloud
+founder,Chris,Faught,Neon,neonpay.com,Founder & CEO,chris@neonpay.com
+founder,Vinayak,Nagpal,Zendar,zendar.io,Co-founder & CEO,vinayak@zendar.io
+founder,Calin,Pacurariu,Spatial,spatialinc.com,Founder & CEO,calin@spatialinc.com
+founder,Sharoon,Thomas,Fulfil,fulfil.io,CEO & Co-Founder,sharoon.thomas@fulfil.io
+founder,Aarti,Smith,Chainbridge Solutions,chainbridgesolutions.com,President & CEO,asmith@chainbridgesolutions.com
+founder,Daniel,Ash,Journeyfront,journeyfront.com,CEO / Co-Founder,daniel@journeyfront.com
+founder,Conner,Sherline,Disco,disconetwork.com,Founder / CEO,conner@disconetwork.com
+founder,Flo,Crivello,Lindy,lindy.ai,Founder & CEO,flo@lindy.ai
+founder,Scott,Caudle,SKsoft,sksoft.com,CEO,scaudle@sksoft.com
+founder,Mark,McQuade,Arcee AI,arcee.ai,Co-founder & CEO,mark@arcee.ai
+founder,Brian,Fox,AdAction,adaction.com,CEO,bfox@adaction.com
+founder,Eric,Harrington,TeamSupport,teamsupport.com,Co-Founder,eharrington@teamsupport.com
+founder,Dan,Bartfield,Yello,yello.co,Co-Founder and President,dan.bartfield@yello.co
+founder,Jp,Gooderham,Storyboard,storyboard.com,Founder,jp@storyboard.com
+founder,Lucky,Zhang,Sekai,sekaiapp.com,Founder,luckyz@sekaiapp.com

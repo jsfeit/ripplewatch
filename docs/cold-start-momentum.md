@@ -36,3 +36,16 @@ Caveat on hiring: posted dates only cover roles still open, so older windows are
 ## Proposed order
 
 Backfill (1) for hiring, news and buzz first, since all three were proven above, then GitHub, then pricing history (3).
+
+## Shipped (backfill PR)
+
+- **Hiring:** posted dates read from Greenhouse, Lever, Ashby and Workable; one earlier reading ("roles already posted 31 days ago") is written when a competitor has no reading older than 20 days. Needs at least 10 roles and 80% of them dated. Leans toward growth (closed roles are invisible), so the resulting score is marked low confidence.
+- **News:** two date-bounded passes (30-60 and 60-90 days ago) through the same relevance filter and dedup as normal news, tagged `backfill` so they never alert.
+- **Buzz:** Hacker News total hits per window (quoted name). The current reading now uses total hits too, so the two compare fairly.
+- **Universal:** runs from the daily crawl for any competitor with no earlier reading, so competitors added before this change on every account are filled on their next crawl. Each step is idempotent because the reading it writes is the thing it checks for.
+- **Market context:** the account's researched industry developments (already generated monthly) now reach the assistant and the card, and a competitor named in one earns up to 10 priority points.
+- **Audience-aware:** consumer accounts are asked about churn and cancellation reasons, business accounts about deals; the card's button follows.
+
+Measured across 12 competitors on other accounts (accounting, productivity, fintech; B2B and consumer): prior-window news found for 12, Hacker News buzz for 11, hiring backfill possible for 8 (only three board providers probed).
+
+Known limits: name collisions ("Sage", "Albert") can inflate Hacker News counts; hiring backfill is unavailable for competitors on boards without public dated APIs (Workday, iCIMS, custom pages); consumer brands with no Hacker News presence read 0 vs 0.

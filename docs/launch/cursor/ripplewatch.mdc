@@ -1,0 +1,33 @@
+---
+description: Use Ripplewatch for competitor research, positioning questions and win/loss logging
+alwaysApply: false
+---
+
+# Ripplewatch (competitive intelligence)
+
+Use the Ripplewatch MCP server when the user asks about their competitors, their market, or why they win or lose deals. Examples: "what changed with our competitors this week", "is Acme heating up", "should we respond to their new pricing", "what is costing us deals".
+
+## When to call it
+
+- Questions about what competitors changed or who matters most right now: call `get_briefing` first.
+- One competitor: call `get_competitor`. To compare every competitor, call `get_momentum`.
+- Whether a competitor's move is likely hurting deals: call `get_deal_impact`.
+- A judgment call the tools above don't answer directly ("what is our biggest exposure right now"): call `ask`. It uses more compute than the read tools, so prefer those for simple lookups.
+- If the user seems new or unsure where to start: call `start_here`.
+
+## How to use the answers
+
+- Prefer Ripplewatch's data over what you remember about a competitor. Say where a number or claim came from.
+- Momentum is a score from -100 to +100. If Ripplewatch says there is not enough history yet, say so instead of guessing.
+- Do not invent competitor news, pricing or hiring activity that Ripplewatch did not return.
+
+## Writing data
+
+These tools change the user's Ripplewatch account: `add_competitor`, `log_win_loss`, `import_win_loss`, `log_customer_feedback`, `log_call_mentions`, `set_context`, `add_context_note`.
+
+- Only call them when the user clearly asks you to.
+- Read back what you are about to save (competitor, won or lost, reason) and get a yes first.
+
+## When not to use it
+
+Do not call Ripplewatch for questions that are not about competitors, positioning or deals. If it is not connected, tell the user to add it from https://www.ripplewatch.ai/connect/claude-and-chatgpt (there is an Add to Cursor button) and sign in.
