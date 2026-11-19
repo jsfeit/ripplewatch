@@ -9,6 +9,7 @@ import { loadMarketContext } from "@/lib/market-context";
 import { computeCompetitorCosts, type CompetitorCost } from "@/lib/competitor-cost";
 import { sourceCoverage, coverageSummary, type CoverageSource } from "@/lib/source-coverage";
 import { detectGoneQuiet } from "@/lib/gone-quiet";
+import { computeStrengthRead, type StrengthRead } from "@/lib/strength-read";
 
 type Admin = SupabaseClient<Database>;
 
@@ -23,6 +24,8 @@ export type CompetitorMomentum = {
   coverage: { sources: CoverageSource[]; summary: string | null };
   // Set when Cooling or Gone quiet: a cautious way to read the silence as an opening, never as a certainty.
   opportunity: string | null;
+  // The direction behind the volume: strength or weakness signs from hiring mix, pricing, reviews and buzz.
+  strength: StrengthRead;
 };
 
 const OPPORTUNITY =
@@ -55,7 +58,7 @@ export async function loadCompetitorMomentum(
   const lookbackStart = new Date();
   lookbackStart.setUTCDate(lookbackStart.getUTCDate() - 180);
 
-  const [{ data: signals }, { data: winLoss }, { data: stateHistory }] = await Promise.all([
+  const [{ data: signals }, { data: winLoss }, { data: stateHistory }, { data: hiringRows }, { data: buzzRows }] = await Promise.all([
     supabase
       .from("signals")
       .select("competitor_id, type, title, sentiment, occurred_on, scored, relevance_score")
@@ -67,6 +70,8 @@ export async function loadCompetitorMomentum(
       .select("competitor_id, metric, value, recorded_at")
       .in("competitor_id", competitorIds)
       .gte("recorded_at", lookbackStart.toISOString()),
+    supabase.from("competitor_hiring").select("competitor_id, department_breakdown").in("competitor_id", competitorIds),
+    supabase.from("competitor_buzz").select("competitor_id, sentiment_summary").in("competitor_id", competitorIds),
   ]);
 
   // Industry developments: they count toward a competitor's priority (a regulator targeting its product category), and
@@ -89,6 +94,14 @@ export async function loadCompetitorMomentum(
     });
     const momentum: MomentumResult = quiet ? { ...computed, score: null, label: "Gone quiet" } : computed;
     const sources = sourceCoverage(c, history, mine);
+    const readings = (metric: string) => history.filter((e) => e.metric === metric).map((e) => ({ value: e.value, recorded_at: e.recorded_at }));
+    const strength = computeStrengthRead({
+      hiring: hiringRows?.find((h) => h.competitor_id === c.id)?.department_breakdown ?? null,
+      peerHiring: (hiringRows ?? []).filter((h) => h.competitor_id !== c.id).map((h) => h.department_breakdown ?? {}),
+      priceReadings: readings("lowest_price"),
+      ratingReadings: readings("review_rating"),
+      buzzSummary: buzzRows?.find((b) => b.competitor_id === c.id)?.sentiment_summary ?? null,
+    });
     return {
       competitor: { id: c.id, name: c.name },
       mine,
@@ -98,6 +111,7 @@ export async function loadCompetitorMomentum(
       activity: activityRead(mine, history, new Date(), c.created_at),
       coverage: { sources, summary: coverageSummary(sources) },
       opportunity: momentum.label === "Gone quiet" || momentum.label === "Cooling" ? OPPORTUNITY : null,
+      strength,
     };
   });
 
@@ -116,5 +130,6 @@ export async function loadCompetitorMomentum(
     cost: costs.get(r.competitor.id)!,
     coverage: r.coverage,
     opportunity: r.opportunity,
+    strength: r.strength,
   }));
 }

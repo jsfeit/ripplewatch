@@ -326,7 +326,7 @@ export function registerRipplewatchTools(server: McpServer) {
                   "There is no weekly verdict yet. It is written once there is about a week of history, and signals and Momentum fill in as competitors are checked. For now, answer from the signals and competitors below, and say that the first full briefing is still building.",
               }),
           competitors: momentum
-            .map(({ competitor, momentum: m, activity, priority, cost, coverage, opportunity }) => ({
+            .map(({ competitor, momentum: m, activity, priority, cost, coverage, opportunity, strength }) => ({
               name: competitor.name,
               momentum: m.label,
               score: m.score,
@@ -335,6 +335,8 @@ export function registerRipplewatchTools(server: McpServer) {
               ...(cost.headline ? { costing_you: cost } : {}),
               ...(coverage.summary ? { data_gaps: coverage.summary } : {}),
               ...(opportunity ? { opportunity } : {}),
+          ...(strength.items.length ? { strength_read: strength } : {}),
+              ...(strength.items.length ? { strength_read: strength } : {}),
               ...(m.score === null ? { activity } : {}),
             }))
             .sort((a, b) => (b.score ?? -101) - (a.score ?? -101) || b.priority.score - a.priority.score),
@@ -498,7 +500,7 @@ export function registerRipplewatchTools(server: McpServer) {
         ...(unscored || dealsLogged < 5 ? { sharpen_asks: sharpenAsks(dealsLogged, sellsTo) } : {}),
         log_action: logAction(sellsTo),
         ...(market && market.trends.length > 0 ? { market_context: { note: MARKET_NOTE, ...market } } : {}),
-        competitors: momentum.map(({ competitor, momentum: m, activity, priority, cost, coverage, opportunity }) => ({
+        competitors: momentum.map(({ competitor, momentum: m, activity, priority, cost, coverage, opportunity, strength }) => ({
           name: competitor.name,
           label: m.label,
           score: m.score,
