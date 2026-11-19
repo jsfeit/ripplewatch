@@ -352,6 +352,44 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["customer_metrics"]["Insert"]>;
         Relationships: [];
       };
+      account_data_points: {
+        Row: {
+          id: string;
+          account_id: string;
+          metric: string;
+          label: string | null;
+          unit: string | null;
+          value: number;
+          period_start: string;
+          period_days: number;
+          segment: string;
+          competitor_id: string | null;
+          higher_is: "better" | "worse" | "neutral";
+          source: string;
+          note: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_id: string;
+          metric: string;
+          label?: string | null;
+          unit?: string | null;
+          value: number;
+          period_start: string;
+          period_days?: number;
+          segment?: string;
+          competitor_id?: string | null;
+          higher_is?: "better" | "worse" | "neutral";
+          source?: string;
+          note?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["account_data_points"]["Insert"]>;
+        Relationships: [];
+      };
       win_loss_imports: {
         Row: {
           id: string;

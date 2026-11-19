@@ -10,6 +10,7 @@ import { computeCompetitorCosts, type CompetitorCost } from "@/lib/competitor-co
 import { sourceCoverage, coverageSummary, type CoverageSource } from "@/lib/source-coverage";
 import { detectGoneQuiet } from "@/lib/gone-quiet";
 import { computeStrengthRead, type StrengthRead } from "@/lib/strength-read";
+import { learnSignalWeights } from "@/lib/signal-weights";
 import { momentumSeries, detectMovement, type SeriesPoint, type Movement } from "@/lib/momentum-history";
 
 type Admin = SupabaseClient<Database>;
@@ -123,8 +124,16 @@ export async function loadCompetitorMomentum(
   // Priority and cost are relative to the other competitors tracked, so both are computed across the whole set.
   const trendsFor = (name: string) =>
     (market?.trends ?? []).filter((t) => t.competitors.some((c) => c.trim().toLowerCase() === name.trim().toLowerCase())).map((t) => t.title);
+  // What has tended to come before this customer's own lost deals reweights the kinds of activity (nothing changes until
+  // there are enough losses to learn from).
+  const learned = learnSignalWeights(
+    (winLoss ?? []).map((d) => ({ outcome: d.outcome, competitor_id: d.competitor_id, closed: d.created_at.slice(0, 10) })),
+    (signals ?? []).map((s) => ({ competitor_id: s.competitor_id, type: s.type, occurred_on: s.occurred_on }))
+  );
   const priorities = computePriorities(
-    reads.map((r) => ({ id: r.competitor.id, signals: r.mine, deals: r.deals, baseline: r.activity.baseline, marketTrends: trendsFor(r.competitor.name) }))
+    reads.map((r) => ({ id: r.competitor.id, signals: r.mine, deals: r.deals, baseline: r.activity.baseline, marketTrends: trendsFor(r.competitor.name) })),
+    new Date(),
+    learned.multipliers
   );
   const costs = computeCompetitorCosts(competitorIds, winLoss ?? []);
   return reads.map((r) => ({

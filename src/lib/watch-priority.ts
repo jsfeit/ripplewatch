@@ -63,7 +63,9 @@ function peerShare(value: number | null, all: (number | null)[]): number {
   return (value - min) / (max - min);
 }
 
-export function computePriorities(inputs: PriorityInput[], now: Date = new Date()): Map<string, WatchPriority> {
+// typeWeights comes from learnSignalWeights: how much more or less each kind of signal matters for this customer, from
+// what has come before its own lost deals. Omitted (or all 1) until there is enough history to learn from.
+export function computePriorities(inputs: PriorityInput[], now: Date = new Date(), typeWeights: Record<string, number> = {}): Map<string, WatchPriority> {
   const cutoff = now.getTime() - WINDOW_DAYS * 86_400_000;
   const out = new Map<string, WatchPriority>();
 
@@ -74,7 +76,7 @@ export function computePriorities(inputs: PriorityInput[], now: Date = new Date(
   const weightedOf = (input: PriorityInput) =>
     input.signals
       .filter((s) => new Date(s.occurred_on).getTime() >= cutoff)
-      .reduce((sum, s) => sum + (s.relevance_score ?? UNSCORED_RELEVANCE) / 100, 0);
+      .reduce((sum, s) => sum + ((s.relevance_score ?? UNSCORED_RELEVANCE) / 100) * (s.type ? (typeWeights[s.type] ?? 1) : 1), 0);
   const bestWeighted = Math.max(RELEVANCE_FLOOR, ...inputs.map(weightedOf));
 
   for (const input of inputs) {
