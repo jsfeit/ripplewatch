@@ -17,6 +17,7 @@ export const AUDIT_LABELS = {
   "deal.logged": "Won or lost deal logged",
   "feedback.logged": "Customer feedback logged",
   "context.updated": "Business context updated",
+  "data_points.logged": "Business numbers logged",
   "integration.connected": "Integration connected",
   "integration.disconnected": "Integration disconnected",
   "billing.subscription_started": "Subscription started",

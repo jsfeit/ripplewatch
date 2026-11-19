@@ -71,6 +71,18 @@ export const MCP_PROMPTS: McpPromptDef[] = [
       `${USING}give me a customer-truth readout. Use get_deal_impact, get_trends, get_churn_and_growth and get_momentum, and answer four questions with their numbers: (1) where are we winning on what customers say, (2) where are competitors attacking our gaps, matching their strengths to our biggest loss and churn reasons, (3) which segment is most contested, and (4) what one product or messaging bet does this justify next. If you can also reach our support inbox, call recorder, survey or review tools, search them for competitor names and phrases like "switched from" or "used to use", say what you would read, and ask me first.`,
   },
   {
+    name: "sharpen-this",
+    title: "Ripplewatch: What data would sharpen this",
+    description: "What Ripplewatch is missing for your company and what each piece would unlock, then fill it from your other tools.",
+    text: () => `${USING}use get_data_plan and tell me what would make your answers more specific to my company. If you can reach my other tools (CRM, billing, analytics, support), say what you would read for each gap and ask me before you read anything.`,
+  },
+  {
+    name: "what-moves-together",
+    title: "Ripplewatch: What moves with my competitors",
+    description: "Which of your own numbers tend to change after a competitor's pricing, product or funding move.",
+    text: () => `${USING}which of my own numbers have changed after a competitor's pricing, product or funding move? Use get_what_moves_together, and tell me how many times and how confident you are.`,
+  },
+  {
     name: "costing-us-deals",
     title: "Ripplewatch: What's costing us deals",
     description: "The competitors you lose to most, checked against the deals you've told Ripplewatch about.",

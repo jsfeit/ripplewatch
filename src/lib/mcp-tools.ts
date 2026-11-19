@@ -22,6 +22,9 @@ import { MOMENTUM_TIMING, DAY_ONE_BRIEF } from "@/lib/activity-read";
 import { loadMarketContext, MARKET_NOTE } from "@/lib/market-context";
 import { movementSentence } from "@/lib/momentum-history";
 import { listContextNotes } from "@/lib/context-notes";
+import { DATA_POINT_GUIDE, MAX_ROWS_PER_CALL } from "@/lib/data-points";
+import { saveDataPoints, loadMetricSummaries, loadWhatMovesTogether } from "@/lib/data-point-store";
+import { learnSignalWeights } from "@/lib/signal-weights";
 import { getDealImpactBrief } from "@/lib/deal-impact";
 import { logCallMentions } from "@/lib/call-mentions";
 import { loadChurnInsight } from "@/lib/churn-insight";
@@ -471,6 +474,175 @@ export function registerRipplewatchTools(server: McpServer) {
           lost_or_churned: (winLoss ?? []).filter((e) => e.outcome !== "won").length,
         },
         recent_signals: signals ?? [],
+      });
+    }
+  );
+
+  server.registerTool(
+    "log_data_points",
+    {
+      title: "Save any numbers about the business",
+      description:
+        "Save numbers the user has about their own business so Ripplewatch can line them up against competitor moves: approval rate by segment, bank-link completion, activation rate, average limit, time to first purchase, win rate by cohort, anything that is a rate, count or average over time. Use it when the user has a tool or data you can read (a database, analytics, billing, a spreadsheet they share): pull the last 8 to 26 weeks and pass one row per metric, segment and week, exactly as read. " +
+        DATA_POINT_GUIDE +
+        " Re-sending a period updates it. If the response says the feature is not set up yet, tell the user it is coming and do not retry.",
+      inputSchema: z.object({
+        rows: z
+          .array(
+            z.object({
+              metric: z.string().min(2).max(80).describe("A stable name, for example approval_rate."),
+              value: z.number().describe("The number, as read."),
+              date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("The first day the number covers, YYYY-MM-DD."),
+              period_days: z.number().int().min(1).max(366).optional().describe("How many days it covers: 1 daily, 7 weekly (default), 30 monthly."),
+              label: z.string().max(120).optional().describe("A human name, for example Approval rate."),
+              unit: z.string().max(20).optional().describe("pct, count, usd, days and so on."),
+              segment: z.string().max(60).optional().describe("The cohort this number is for, for example gig_workers. Leave out when it covers everyone."),
+              competitor: z.string().max(120).optional().describe("Only when the number is about one tracked competitor, for example customers who mention them."),
+              higher_is: z.enum(["better", "worse", "neutral"]).optional().describe("Which direction is good. Default better."),
+              note: z.string().max(300).optional().describe("Where it came from or a caveat."),
+            })
+          )
+          .min(1)
+          .max(MAX_ROWS_PER_CALL),
+      }),
+      annotations: WRITE,
+    },
+    async ({ rows }, ctx) => {
+      const accountId = accountIdFrom(ctx as Ctx);
+      const supabase = createAdminClient();
+      const saved = await saveDataPoints(supabase, accountId, rows);
+      if (!saved.ok) {
+        if (saved.reason === "not_set_up") return failure("Saving custom numbers is not switched on for this account yet. Tell the user it is coming, and do not retry.");
+        if (saved.reason === "none_usable") return failure(`None of those rows were usable: ${(saved.rejected ?? []).slice(0, 3).map((r) => `row ${r.index + 1} ${r.reason}`).join("; ")}.`);
+        return failure(saved.detail ?? "Could not save those numbers.");
+      }
+      await auditFromAssistant(ctx as Ctx, accountId, "data_points.logged", `${saved.saved} numbers`, { count: saved.saved });
+      const found = await loadWhatMovesTogether(supabase, accountId);
+      return result({
+        saved: saved.saved,
+        skipped: saved.rejected.map((r) => `row ${r.index + 1}: ${r.reason}`).slice(0, 10),
+        metrics_tracked: saved.metrics,
+        what_moves_together: found.findings.slice(0, 3).map((f) => ({ finding: f.sentence, confidence: f.confidence })),
+        note: "Tell the user how many numbers were saved and anything skipped. If what_moves_together has findings, share them with their confidence and say they show timing, not cause. If it is empty, say nothing stands out yet: it needs about six weeks of a metric and some competitor moves to compare against.",
+      });
+    }
+  );
+
+  server.registerTool(
+    "get_what_moves_together",
+    {
+      title: "What moves together",
+      description:
+        "Lines the user's own numbers (saved with log_data_points) up against competitor events such as pricing changes, product launches and funding, and reports where a metric repeatedly changed after the same competitor's moves, with how many times and how confident that is. Use it when the user asks why a number moved, whether a competitor is affecting them, or what is behind a change in approval, activation or churn. It shows timing, never cause: say so. If there are no numbers saved yet, say so and offer get_data_plan. Read-only, no parameters.",
+      inputSchema: z.object({}),
+      annotations: READ_ONLY,
+    },
+    async (_args, ctx) => {
+      const accountId = accountIdFrom(ctx as Ctx);
+      const found = await loadWhatMovesTogether(createAdminClient(), accountId);
+      if (!found.ready) return result({ available: false, note: "Custom numbers are not switched on for this account yet. Tell the user it is coming." });
+      if (found.metrics === 0) return result({ has_numbers: false, note: "No numbers saved yet. Offer get_data_plan to see which ones would be most useful, then log_data_points." });
+      return result({
+        has_numbers: true,
+        metrics_compared: found.metrics,
+        findings: found.findings.map((f) => ({ finding: f.sentence, competitor: f.competitor, event: f.eventType, times: f.events, confidence: f.confidence, direction: f.verdict })),
+        note: found.findings.length
+          ? "Lead with the strongest finding, say how many times and how confident it is, and that it shows timing, not cause. Suggest checking it against what the user knows."
+          : "Nothing stands out. That is a real answer: say so, and that a metric needs about six weeks of numbers and some competitor moves to compare against.",
+      });
+    }
+  );
+
+  server.registerTool(
+    "get_data_plan",
+    {
+      title: "What data would sharpen this",
+      description:
+        "A plan for what to bring in next, based on what Ripplewatch already holds for this account (deals or churn, customer feedback, notes about their product, custom numbers), how fresh and how complete each is, and what it would unlock. Includes what Ripplewatch has learned so far about which kinds of competitor activity come before this customer's losses. Use it at the start of a conversation with a new or thin account, when the user asks how to get more out of Ripplewatch, or before pulling data from their other tools, so you ask for the right things. Then use the user's other connected tools to fill the gaps, ask before reading anything, and save what you read with the tool named in each step. Read-only, no parameters.",
+      inputSchema: z.object({}),
+      annotations: READ_ONLY,
+    },
+    async (_args, ctx) => {
+      const accountId = accountIdFrom(ctx as Ctx);
+      const supabase = createAdminClient();
+      const sellsTo = await sellsToFor(supabase, accountId);
+      const since = new Date();
+      since.setUTCDate(since.getUTCDate() - 180);
+
+      const [{ data: account }, deals, notes, metricsState, months, feedbackCount, { data: competitors }] = await Promise.all([
+        supabase.from("accounts").select("name, positioning, icp").eq("id", accountId).maybeSingle(),
+        loadAllDeals(supabase, accountId).then((rows) => withDealDate(rows)),
+        listContextNotes(supabase, accountId, 50),
+        loadMetricSummaries(supabase, accountId),
+        supabase.from("customer_metrics").select("period_start", { count: "exact", head: true }).eq("account_id", accountId),
+        supabase.from("account_customer_feedback").select("id", { count: "exact", head: true }).eq("account_id", accountId),
+        supabase.from("competitors").select("id").eq("account_id", accountId),
+      ]);
+      const ids = (competitors ?? []).map((c) => c.id);
+      const { data: signals } = ids.length
+        ? await supabase.from("signals").select("competitor_id, type, occurred_on").in("competitor_id", ids).gte("occurred_on", since.toISOString().slice(0, 10))
+        : { data: [] as { competitor_id: string; type: string; occurred_on: string }[] };
+      const learned = learnSignalWeights(
+        deals.map((d) => ({ outcome: d.outcome, competitor_id: d.competitor_id, closed: d.created_at.slice(0, 10) })),
+        signals ?? []
+      );
+
+      const consumer = sellsTo === "consumer";
+      const lossCount = deals.filter((d) => d.outcome !== "won" && d.competitor_id).length;
+      const monthCount = months.count ?? 0;
+      const steps: { step: string; status: "missing" | "thin" | "ok"; have: string; ask: string; unlocks: string; save_with: string }[] = [];
+
+      if (!consumer) {
+        steps.push({
+          step: "Deals",
+          status: deals.length === 0 ? "missing" : lossCount < 8 ? "thin" : "ok",
+          have: `${deals.length} deals logged, ${lossCount} lost deals that name a competitor`,
+          ask: "Closed-won and closed-lost deals with close date, amount, segment and the reason, from their CRM or call recorder if you can reach one.",
+          unlocks: "What each competitor costs them. After 8 lost deals naming a competitor, Ripplewatch also learns which kinds of competitor activity tend to come before their losses.",
+          save_with: "import_win_loss or log_win_loss",
+        });
+      }
+      if (consumer || sellsTo === "both") {
+        steps.push({
+          step: "Churn and why people leave",
+          status: monthCount === 0 ? "missing" : monthCount < 6 ? "thin" : "ok",
+          have: `${monthCount} months of churn numbers, ${feedbackCount.count ?? 0} pieces of customer feedback`,
+          ask: "Monthly customers, new and cancelled (or churn rate) from their billing tool, and cancellation reasons or survey answers that mention a competitor.",
+          unlocks: "Whether churn is rising and whether it started near a competitor's move.",
+          save_with: "log_customer_metrics, log_customer_feedback, or draft_cancellation_survey if they do not know why people leave",
+        });
+      }
+      steps.push({
+        step: "Their own product",
+        status: notes.length === 0 ? "missing" : notes.length < 3 ? "thin" : "ok",
+        have: `${notes.length} notes`,
+        ask: "What they are building or changing, with dates, plus pricing changes and anything customers say.",
+        unlocks: "Competitor moves judged against their plans, and battlecards that name what they actually ship.",
+        save_with: "add_context_note",
+      });
+      const enough = metricsState.metrics.filter((m) => m.points >= 6).length;
+      steps.push({
+        step: "Their own numbers",
+        status: !metricsState.ready ? "missing" : metricsState.metrics.length === 0 ? "missing" : enough === 0 ? "thin" : "ok",
+        have: !metricsState.ready ? "not switched on for this account yet" : `${metricsState.metrics.length} metrics saved, ${enough} with six or more points`,
+        ask: consumer
+          ? "Weekly numbers they track: activation or onboarding completion, approval or conversion rate (by cohort if they split it), repeat usage, support contacts that mention a competitor. Use their positioning to suggest the three they most likely have."
+          : "Weekly numbers they track: win rate by segment, sales cycle length, trial to paid, pipeline created, renewal rate. Use their positioning to suggest the three they most likely have.",
+        unlocks: "Which of their numbers move after a competitor's pricing, product or funding change, with how many times and how confident.",
+        save_with: "log_data_points",
+      });
+
+      return result({
+        company: account?.name ?? null,
+        audience: sellsTo,
+        positioning: account?.positioning ?? null,
+        icp: account?.icp ?? null,
+        plan: steps,
+        learned_so_far: learned.enough
+          ? { losses_learned_from: learned.losses, patterns: learned.insights.map((i) => i.sentence) }
+          : { losses_learned_from: learned.losses, note: "Needs 8 lost deals that name a competitor before it can learn which kinds of competitor activity matter most to this company." },
+        how_to_use:
+          "Raise the first step that is missing or thin, one at a time, in your own words. If you can reach one of the user's other tools that holds it, say what you would read and ask first. Save what you read with the tool named, exactly as read, and never estimate. Mention what it unlocks, not the tool names.",
       });
     }
   );
