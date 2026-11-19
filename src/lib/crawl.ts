@@ -249,6 +249,13 @@ export type CompetitorCrawlOptions = {
 // id for checkSearchNews) rather than a whole Account, so a worker
 // processing jobs from many different accounts in one batch doesn't need
 // to refetch anything beyond that.
+// A stable day of the week (0-6) for an id, so a recurring job is spread evenly instead of all running on one day.
+export function sweepDayFor(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return h % 7;
+}
+
 export async function crawlOneCompetitor(
   supabase: AdminSupabase,
   rawCompetitor: Competitor,
@@ -307,9 +314,11 @@ export async function crawlOneCompetitor(
   }
   // Fill the 60 days before the recent window for any competitor that has no "before" yet, so Momentum has something to
   // compare with. It runs right after a competitor is added (signup enqueues an immediate crawl) and then on a weekly
-  // sweep (Mondays, UTC) that catches competitors added before this existed or whose first attempt failed. A no-op once done.
+  // sweep (one fixed day per competitor) that catches competitors added before this existed or whose first attempt failed. A no-op once done.
   const addedRecently = Date.now() - new Date(competitor.created_at).getTime() < 3 * 86_400_000;
-  const weeklySweep = new Date().getUTCDay() === 1;
+  // Each competitor has its own day of the week, so the sweep is spread across all seven days instead of every competitor
+  // on every account hitting the news and model APIs on the same Monday.
+  const weeklySweep = sweepDayFor(competitor.id) === new Date().getUTCDay();
   if (allowedSources.includes("news") && (addedRecently || weeklySweep)) {
     try {
       found.push(...(await backfillPriorHistory(supabase, competitor)));

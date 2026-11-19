@@ -42,7 +42,12 @@ const REAL = (label: string) => label === "Heating up" || label === "Steady" || 
 
 // A movement is worth saying out loud when the band changed between a week ago and now, with a real read on both
 // sides, or the score itself swung by 20 or more. A competitor going from "no read" to a read is not a movement.
-export function detectMovement(series: SeriesPoint[], current: MomentumResult): Movement | null {
+// A competitor tracked for under two weeks has no real "last week": that point is rebuilt from backdated data, and
+// calling the difference a movement would report something that did not happen. `trackedSince` is when we started watching.
+const MIN_TRACKED_DAYS = 14;
+
+export function detectMovement(series: SeriesPoint[], current: MomentumResult, trackedSince?: string | null, nowMs: number = Date.now()): Movement | null {
+  if (trackedSince && nowMs - new Date(trackedSince).getTime() < MIN_TRACKED_DAYS * DAY) return null;
   const now = series[series.length - 1];
   const weekAgo = series.find((p) => p.daysAgo === 7);
   if (!now || !weekAgo || !REAL(now.label) || !REAL(weekAgo.label)) return null;

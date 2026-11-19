@@ -395,8 +395,14 @@ function isoOrNull(value: string | number | null | undefined): string | null {
 // This is an estimate and it leans toward growth: roles that were posted and have since closed no longer appear, so
 // earlier marks are undercounted. It is only written on a competitor's first check, only when most roles carry a
 // date, and callers should treat the result as an early read until real readings accumulate.
-const HIRING_BACKFILL_MIN_DATED = 10;
+// Small boards are skipped: with 4 roles a month ago and 10 now, one hire is a 150% swing. Only boards big enough for a
+// ratio to mean something are rebuilt.
+const HIRING_BACKFILL_MIN_DATED = 25;
 export const PRIOR_READING_DAYS_AGO = 31;
+// Roles posted a month ago and filled since are no longer listed, so the rebuilt reading undercounts. Open roles are
+// typically filled within a month or two, so the earlier count is raised by 20% to offset it. A deliberately modest
+// correction: it removes most of the built-in lean toward "growing" without inventing a decline.
+export const HIRING_SURVIVORSHIP_ADJUST = 1.2;
 
 // True once a competitor has any reading of this kind older than 20 days. That is the single test for "does Momentum
 // already have a before for this metric": a competitor added long ago has real readings, one added today has none, and
@@ -418,7 +424,7 @@ export function hiringHistoryFromPostings(jobs: AtsJob[], now: Date = new Date()
   if (dated.length < HIRING_BACKFILL_MIN_DATED || dated.length < jobs.length * 0.8) return [];
   const out: { recordedAt: string; value: number }[] = [];
   const at = now.getTime() - PRIOR_READING_DAYS_AGO * 86_400_000;
-  const value = dated.filter((t) => t <= at).length;
+  const value = Math.round(dated.filter((t) => t <= at).length * HIRING_SURVIVORSHIP_ADJUST);
   if (value > 0) out.push({ recordedAt: new Date(at).toISOString(), value });
   return out;
 }
