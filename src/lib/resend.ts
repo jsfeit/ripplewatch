@@ -1208,17 +1208,29 @@ export async function sendConnectWeeklyEmail(
   companyName: string,
   verdict: string,
   balanceUsd: number,
-  appUrl: string
+  appUrl: string,
+  // Competitors that changed band or swung 20+ points since last week, as plain sentences. Empty when nothing moved.
+  moved: string[] = []
 ) {
   if (!isResendConfigured()) return;
+
+  const movedBlock =
+    moved.length > 0
+      ? `<p style="color:#888;font-size:12px;letter-spacing:0.05em;text-transform:uppercase;margin:0 0 8px;">Moved this week</p>
+      <ul style="margin:0 0 16px;padding-left:18px;color:#1a1a1a;font-size:14px;line-height:1.6;">${moved
+        .slice(0, 4)
+        .map((m) => `<li>${escapeHtml(m)}</li>`)
+        .join("")}</ul>`
+      : "";
 
   const result = await getResend().emails.send({
     from: getAlertsFromEmail(),
     to,
-    subject: `Your competitive read for the week, ${companyName}`,
+    subject: moved.length > 0 ? `${moved.length === 1 ? "A competitor moved" : `${moved.length} competitors moved`} this week, ${companyName}` : `Your competitive read for the week, ${companyName}`,
     html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
       <p style="color:#888;font-size:12px;letter-spacing:0.05em;text-transform:uppercase;margin:0 0 8px;">This week</p>
       <p style="color:#1a1a1a;font-size:15px;line-height:1.65;margin:0 0 16px;">${escapeHtml(verdict)}</p>
+      ${movedBlock}
       <p style="color:#3a3a3a;font-size:14px;line-height:1.6;">
         Want the detail? Ask your assistant: <em>"What changed with my competitors this week, and what should I worry about?"</em>
       </p>

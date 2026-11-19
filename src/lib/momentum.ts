@@ -386,9 +386,11 @@ function computeReliability(now: Date, hasData: (start: Date, end: Date) => bool
 export function computeMomentum(
   signals: Signal[],
   winLossEntries: WinLossEntry[] = [],
-  stateHistory: StateHistoryEntry[] = []
+  stateHistory: StateHistoryEntry[] = [],
+  // Defaults to the present. Passing an earlier moment recomputes what Momentum would have said then, from the data
+  // that existed then (callers filter their inputs to that moment); that is how history and week-over-week movement work.
+  now: Date = new Date()
 ): MomentumResult {
-  const now = new Date();
   const recentStart = new Date(now);
   recentStart.setUTCDate(recentStart.getUTCDate() - WINDOW_DAYS);
   const priorStart = new Date(now);
