@@ -3,11 +3,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { computeMomentum, type MomentumResult } from "@/lib/momentum";
 import { activityRead, type ActivityRead } from "@/lib/activity-read";
+import { computePriorities, type WatchPriority } from "@/lib/watch-priority";
 import { loadAllDeals, withDealDate } from "@/lib/deal-store";
 
 type Admin = SupabaseClient<Database>;
 
-export type CompetitorMomentum = { competitor: { id: string; name: string }; momentum: MomentumResult; activity: ActivityRead };
+export type CompetitorMomentum = { competitor: { id: string; name: string }; momentum: MomentumResult; activity: ActivityRead; priority: WatchPriority };
 
 // One place that knows how to load the inputs computeMomentum needs and run
 // it per competitor, shared by the REST momentum route, the win/loss route's
@@ -47,14 +48,22 @@ export async function loadCompetitorMomentum(
       .gte("recorded_at", lookbackStart.toISOString()),
   ]);
 
-  return list.map((c) => {
+  const reads = list.map((c) => {
     const mine = (signals ?? []).filter((s) => s.competitor_id === c.id);
     const history = (stateHistory ?? []).filter((e) => e.competitor_id === c.id);
+    const deals = (winLoss ?? []).filter((e) => e.competitor_id === c.id);
     return {
       competitor: c,
-      momentum: computeMomentum(mine, (winLoss ?? []).filter((e) => e.competitor_id === c.id), history),
+      mine,
+      deals,
+      momentum: computeMomentum(mine, deals, history),
       // What is knowable before there is a trend: shown only while Momentum says "Not enough history yet".
       activity: activityRead(mine, history, new Date(), c.created_at),
     };
   });
+  // Priority is relative to the other competitors tracked, so it is computed across the whole set.
+  const priorities = computePriorities(
+    reads.map((r) => ({ id: r.competitor.id, signals: r.mine, deals: r.deals, baseline: r.activity.baseline }))
+  );
+  return reads.map((r) => ({ competitor: r.competitor, momentum: r.momentum, activity: r.activity, priority: priorities.get(r.competitor.id)! }));
 }

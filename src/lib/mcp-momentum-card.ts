@@ -59,6 +59,13 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
   button:hover { border-color: var(--teal); }
   button:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
   .score { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .prio { display: grid; gap: 4px; }
+  .prio-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+  .prio-num { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 24px; }
+  .bar { flex: 1; height: 6px; border-radius: 999px; background: var(--flat-soft); overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--teal); border-radius: 999px; }
+  .prio-band { color: var(--muted); white-space: nowrap; }
+  .prio-why { color: var(--muted); font-size: 12px; }
   .recent { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; }
   .recent li { font-size: 12.5px; display: flex; gap: 8px; }
   .recent .when { color: var(--muted); flex: none; width: 44px; font-variant-numeric: tabular-nums; }
@@ -186,6 +193,20 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
       top.appendChild(badgeFor(c.label || c.momentum || "No read yet"));
     }
     row.appendChild(top);
+    if (c.priority && !scored) {
+      var pr = el("div", "prio");
+      var prow = el("div", "prio-row");
+      prow.appendChild(el("span", "prio-num", c.priority.score));
+      var bar = el("span", "bar");
+      var fill = document.createElement("i");
+      fill.style.width = Math.max(0, Math.min(100, c.priority.score)) + "%";
+      bar.appendChild(fill);
+      prow.appendChild(bar);
+      prow.appendChild(el("span", "prio-band", "Watch priority · " + c.priority.band));
+      pr.appendChild(prow);
+      if (c.priority.reasons && c.priority.reasons.length) pr.appendChild(el("div", "prio-why", c.priority.reasons.slice(0, 3).join(" · ")));
+      row.appendChild(pr);
+    }
     if (scored) {
       row.appendChild(el("div", "detail", "Momentum " + c.score + (c.confidence === "low" ? " · early read" : "")));
     } else if (c.activity) {
@@ -230,7 +251,7 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
 
     var unscored = competitors.some(function (c) { return c.score == null; });
     if (unscored) {
-      app.appendChild(el("div", "note", "Momentum is a 30-day trend, so scores arrive after about a month. Until then each competitor shows what the first check found."));
+      app.appendChild(el("div", "note", "Momentum is a 30-day trend, so it needs a month of history. Until then, Watch priority ranks who deserves your attention now, from what the first check found and your deals."));
     }
 
     var list = el("div", "list");
