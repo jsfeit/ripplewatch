@@ -6,6 +6,8 @@ import { sendConnectWeeklyEmail } from "@/lib/resend";
 import { mapWithConcurrency } from "@/lib/crawl";
 import { connectDelivery } from "@/lib/connect-delivery";
 import { loadSlackCredentials } from "@/lib/connect-slack";
+import { loadCompetitorMomentum } from "@/lib/momentum-account";
+import { movementSentence } from "@/lib/momentum-history";
 import type { Database } from "@/lib/supabase/types";
 
 type Account = Database["public"]["Tables"]["accounts"]["Row"];
@@ -57,7 +59,12 @@ export async function GET(request: Request) {
       const delivery = connectDelivery(account, Boolean(await loadSlackCredentials(supabase, account.id)));
       if (!delivery.email) return { account: account.name, sent: false, reason: "delivered in Slack" };
 
-      await sendConnectWeeklyEmail(account.contact_email, account.name, verdict, funds.balanceUsd, appUrl);
+      // Who changed band or swung 20+ points since last week. A database read and arithmetic, no model call, so no cost.
+      const moved = (await loadCompetitorMomentum(supabase, account.id).catch(() => []))
+        .filter((c) => c.history.movement)
+        .map((c) => movementSentence(c.competitor.name, c.history.movement!));
+
+      await sendConnectWeeklyEmail(account.contact_email, account.name, verdict, funds.balanceUsd, appUrl, moved);
       return { account: account.name, sent: true };
     } catch (err) {
       console.error(`connect weekly failed for ${account.name}:`, err);

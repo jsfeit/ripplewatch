@@ -10,6 +10,7 @@ import { computeCompetitorCosts, type CompetitorCost } from "@/lib/competitor-co
 import { sourceCoverage, coverageSummary, type CoverageSource } from "@/lib/source-coverage";
 import { detectGoneQuiet } from "@/lib/gone-quiet";
 import { computeStrengthRead, type StrengthRead } from "@/lib/strength-read";
+import { momentumSeries, detectMovement, type SeriesPoint, type Movement } from "@/lib/momentum-history";
 
 type Admin = SupabaseClient<Database>;
 
@@ -26,6 +27,8 @@ export type CompetitorMomentum = {
   opportunity: string | null;
   // The direction behind the volume: strength or weakness signs from hiring mix, pricing, reviews and buzz.
   strength: StrengthRead;
+  // Momentum as of now and each of the last four weeks, and the change since a week ago if there was a real one.
+  history: { series: SeriesPoint[]; movement: Movement | null };
 };
 
 const OPPORTUNITY =
@@ -95,6 +98,7 @@ export async function loadCompetitorMomentum(
     const momentum: MomentumResult = quiet ? { ...computed, score: null, label: "Gone quiet" } : computed;
     const sources = sourceCoverage(c, history, mine);
     const readings = (metric: string) => history.filter((e) => e.metric === metric).map((e) => ({ value: e.value, recorded_at: e.recorded_at }));
+    const series = momentumSeries(mine, deals, history);
     const strength = computeStrengthRead({
       hiring: hiringRows?.find((h) => h.competitor_id === c.id)?.department_breakdown ?? null,
       peerHiring: (hiringRows ?? []).filter((h) => h.competitor_id !== c.id).map((h) => h.department_breakdown ?? {}),
@@ -112,6 +116,7 @@ export async function loadCompetitorMomentum(
       coverage: { sources, summary: coverageSummary(sources) },
       opportunity: momentum.label === "Gone quiet" || momentum.label === "Cooling" ? OPPORTUNITY : null,
       strength,
+      history: { series, movement: detectMovement(series, computed) },
     };
   });
 
@@ -131,5 +136,6 @@ export async function loadCompetitorMomentum(
     coverage: r.coverage,
     opportunity: r.opportunity,
     strength: r.strength,
+    history: r.history,
   }));
 }

@@ -61,6 +61,9 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
   .score { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .cost { font-size: 12.5px; background: var(--bad-soft); color: var(--ink); border-radius: 8px; padding: 6px 9px; }
   .cost b { color: var(--bad); }
+  .moved { background: var(--warn-soft); border-radius: 10px; padding: 8px 11px; margin-bottom: 10px; font-size: 12.5px; display: grid; gap: 3px; }
+  .moved b { color: var(--warn); }
+  .spark { display: block; }
   .str { display: grid; gap: 3px; }
   .str-h { font-size: 12.5px; font-weight: 650; }
   .str-i { font-size: 12.5px; display: flex; gap: 6px; }
@@ -216,6 +219,24 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
       top.appendChild(badgeFor(c.label || c.momentum || "No read yet"));
     }
     row.appendChild(top);
+    if (c.score_by_week) {
+      var pts = c.score_by_week;
+      var real = pts.filter(function (v) { return v != null; });
+      if (real.length >= 2) {
+        var lo = Math.min.apply(null, real), hi = Math.max.apply(null, real), span = Math.max(hi - lo, 10);
+        var ns = "http://www.w3.org/2000/svg";
+        var svg = document.createElementNS(ns, "svg");
+        svg.setAttribute("class", "spark"); svg.setAttribute("width", "96"); svg.setAttribute("height", "22"); svg.setAttribute("viewBox", "0 0 96 22");
+        svg.setAttribute("role", "img"); svg.setAttribute("aria-label", "Momentum over the last four weeks");
+        var path = "";
+        pts.forEach(function (v, i) { if (v == null) return; var x = (i / (pts.length - 1)) * 92 + 2, y = 20 - ((v - lo) / span) * 18; path += (path ? " L" : "M") + x.toFixed(1) + " " + y.toFixed(1); });
+        var line = document.createElementNS(ns, "path");
+        line.setAttribute("d", path); line.setAttribute("fill", "none"); line.setAttribute("stroke", "currentColor"); line.setAttribute("stroke-width", "1.8"); line.setAttribute("stroke-linecap", "round"); line.setAttribute("stroke-linejoin", "round");
+        svg.style.color = "var(--teal)";
+        svg.appendChild(line);
+        top.appendChild(svg);
+      }
+    }
     if (c.costing_you && c.costing_you.headline) {
       var cs = el("div", "cost");
       cs.appendChild(el("b", null, "Costing you: "));
@@ -295,6 +316,14 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
     head.appendChild(el("h1", null, "Ripplewatch · Momentum"));
     head.appendChild(el("span", "sub", competitors.length + (competitors.length === 1 ? " competitor" : " competitors")));
     app.appendChild(head);
+
+    var moved = (data && data.what_moved_this_week) || [];
+    if (moved.length) {
+      var mv = el("div", "moved");
+      mv.appendChild(el("b", null, "Moved this week"));
+      moved.slice(0, 3).forEach(function (t) { mv.appendChild(el("div", null, t)); });
+      app.appendChild(mv);
+    }
 
     var unscored = competitors.some(function (c) { return c.score == null; });
     if (unscored) {

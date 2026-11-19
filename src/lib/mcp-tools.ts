@@ -20,6 +20,7 @@ import { MCP_PROMPTS } from "@/lib/mcp-prompts";
 import { MOMENTUM_CARD_HTML, MOMENTUM_CARD_URI, MCP_APP_MIME } from "@/lib/mcp-momentum-card";
 import { MOMENTUM_TIMING, DAY_ONE_BRIEF } from "@/lib/activity-read";
 import { loadMarketContext, MARKET_NOTE } from "@/lib/market-context";
+import { movementSentence } from "@/lib/momentum-history";
 import { getDealImpactBrief } from "@/lib/deal-impact";
 import { logCallMentions } from "@/lib/call-mentions";
 import { loadChurnInsight } from "@/lib/churn-insight";
@@ -315,6 +316,7 @@ export function registerRipplewatchTools(server: McpServer) {
           note: UNTRUSTED_NOTE,
           ...(momentum.some((c) => c.momentum.score === null) ? { momentum_note: `${MOMENTUM_TIMING} ${DAY_ONE_BRIEF}`, sharpen_asks: sharpenAsks((winLoss ?? []).length, sellsTo) } : {}),
           log_action: logAction(sellsTo),
+          ...(momentum.some((c) => c.history.movement) ? { what_moved_this_week: momentum.filter((c) => c.history.movement).map((c) => movementSentence(c.competitor.name, c.history.movement!)) } : {}),
           ...(market && (market.trends.length > 0 || market.market) ? { market_context: { note: MARKET_NOTE, ...market } } : {}),
           verdict: fresh ? account!.weekly_verdict : null,
           verdict_generated_at: fresh ? account!.weekly_verdict_generated_at : null,
@@ -326,7 +328,7 @@ export function registerRipplewatchTools(server: McpServer) {
                   "There is no weekly verdict yet. It is written once there is about a week of history, and signals and Momentum fill in as competitors are checked. For now, answer from the signals and competitors below, and say that the first full briefing is still building.",
               }),
           competitors: momentum
-            .map(({ competitor, momentum: m, activity, priority, cost, coverage, opportunity, strength }) => ({
+            .map(({ competitor, momentum: m, activity, priority, cost, coverage, opportunity, strength, history }) => ({
               name: competitor.name,
               momentum: m.label,
               score: m.score,
@@ -336,7 +338,11 @@ export function registerRipplewatchTools(server: McpServer) {
               ...(coverage.summary ? { data_gaps: coverage.summary } : {}),
               ...(opportunity ? { opportunity } : {}),
           ...(strength.items.length ? { strength_read: strength } : {}),
+          ...(history.series.filter((p) => p.score !== null).length >= 2 ? { score_by_week: history.series.map((p) => p.score) } : {}),
+          ...(history.movement ? { moved_this_week: history.movement } : {}),
               ...(strength.items.length ? { strength_read: strength } : {}),
+              ...(history.series.filter((p) => p.score !== null).length >= 2 ? { score_by_week: history.series.map((p) => p.score) } : {}),
+              ...(history.movement ? { moved_this_week: history.movement } : {}),
               ...(m.score === null ? { activity } : {}),
             }))
             .sort((a, b) => (b.score ?? -101) - (a.score ?? -101) || b.priority.score - a.priority.score),
@@ -499,8 +505,9 @@ export function registerRipplewatchTools(server: McpServer) {
         ...(unscored ? { momentum_note: `${MOMENTUM_TIMING} ${DAY_ONE_BRIEF}` } : {}),
         ...(unscored || dealsLogged < 5 ? { sharpen_asks: sharpenAsks(dealsLogged, sellsTo) } : {}),
         log_action: logAction(sellsTo),
+        ...(momentum.some((c) => c.history.movement) ? { what_moved_this_week: momentum.filter((c) => c.history.movement).map((c) => movementSentence(c.competitor.name, c.history.movement!)) } : {}),
         ...(market && market.trends.length > 0 ? { market_context: { note: MARKET_NOTE, ...market } } : {}),
-        competitors: momentum.map(({ competitor, momentum: m, activity, priority, cost, coverage, opportunity, strength }) => ({
+        competitors: momentum.map(({ competitor, momentum: m, activity, priority, cost, coverage, opportunity, strength, history }) => ({
           name: competitor.name,
           label: m.label,
           score: m.score,
