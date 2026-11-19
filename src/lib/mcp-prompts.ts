@@ -57,6 +57,20 @@ export const MCP_PROMPTS: McpPromptDef[] = [
     text: (a) => `${USING}how does ${or(a.first, "my top competitor")}'s pricing compare to ${or(a.second, "my next competitor")}'s, and where do we stand?`,
   },
   {
+    name: "battlecard",
+    title: "Ripplewatch: Battlecard for a competitor",
+    description: "A talk track, the claims to expect and how to answer them, built from what Ripplewatch knows and your deals.",
+    args: [{ name: "competitor", description: "The competitor's name, for example Klue" }],
+    text: (a) => `${USING}build me a battlecard for ${or(a.competitor, "my top competitor")}: a talk track, the claims they will make and how I answer each, and where we are strongest.`,
+  },
+  {
+    name: "customer-truth",
+    title: "Ripplewatch: Where we win and where we're attacked",
+    description: "Your own results against the market: where you win, where competitors attack your gaps, the most contested segment, and the one bet that justifies.",
+    text: () =>
+      `${USING}give me a customer-truth readout. Use get_deal_impact, get_trends, get_churn_and_growth and get_momentum, and answer four questions with their numbers: (1) where are we winning on what customers say, (2) where are competitors attacking our gaps, matching their strengths to our biggest loss and churn reasons, (3) which segment is most contested, and (4) what one product or messaging bet does this justify next. If you can also reach our support inbox, call recorder, survey or review tools, search them for competitor names and phrases like "switched from" or "used to use", say what you would read, and ask me first.`,
+  },
+  {
     name: "costing-us-deals",
     title: "Ripplewatch: What's costing us deals",
     description: "The competitors you lose to most, checked against the deals you've told Ripplewatch about.",
