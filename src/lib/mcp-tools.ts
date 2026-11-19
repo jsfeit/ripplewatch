@@ -326,12 +326,15 @@ export function registerRipplewatchTools(server: McpServer) {
                   "There is no weekly verdict yet. It is written once there is about a week of history, and signals and Momentum fill in as competitors are checked. For now, answer from the signals and competitors below, and say that the first full briefing is still building.",
               }),
           competitors: momentum
-            .map(({ competitor, momentum: m, activity, priority }) => ({
+            .map(({ competitor, momentum: m, activity, priority, cost, coverage, opportunity }) => ({
               name: competitor.name,
               momentum: m.label,
               score: m.score,
               confidence: m.confidence,
               priority,
+              ...(cost.headline ? { costing_you: cost } : {}),
+              ...(coverage.summary ? { data_gaps: coverage.summary } : {}),
+              ...(opportunity ? { opportunity } : {}),
               ...(m.score === null ? { activity } : {}),
             }))
             .sort((a, b) => (b.score ?? -101) - (a.score ?? -101) || b.priority.score - a.priority.score),
@@ -495,12 +498,16 @@ export function registerRipplewatchTools(server: McpServer) {
         ...(unscored || dealsLogged < 5 ? { sharpen_asks: sharpenAsks(dealsLogged, sellsTo) } : {}),
         log_action: logAction(sellsTo),
         ...(market && market.trends.length > 0 ? { market_context: { note: MARKET_NOTE, ...market } } : {}),
-        competitors: momentum.map(({ competitor, momentum: m, activity, priority }) => ({
+        competitors: momentum.map(({ competitor, momentum: m, activity, priority, cost, coverage, opportunity }) => ({
           name: competitor.name,
           label: m.label,
           score: m.score,
           confidence: m.confidence,
           priority,
+          ...(cost.headline ? { costing_you: cost } : {}),
+          coverage: coverage.sources,
+          ...(coverage.summary ? { data_gaps: coverage.summary } : {}),
+          ...(opportunity ? { opportunity } : {}),
           ...(m.score === null ? { activity } : {}),
         })).sort((x, y) => (y.score ?? -101) - (x.score ?? -101) || y.priority.score - x.priority.score),
         your_momentum: { label: yours.label, score: yours.score, confidence: yours.confidence },

@@ -59,6 +59,13 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
   button:hover { border-color: var(--teal); }
   button:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
   .score { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .cost { font-size: 12.5px; background: var(--bad-soft); color: var(--ink); border-radius: 8px; padding: 6px 9px; }
+  .cost b { color: var(--bad); }
+  .opp { font-size: 12px; color: var(--muted); border-left: 3px solid var(--warn); padding-left: 9px; }
+  .cov { display: flex; flex-wrap: wrap; gap: 5px; }
+  .cov span { font-size: 11px; padding: 1px 7px; border-radius: 6px; border: 1px solid var(--line); color: var(--muted); }
+  .cov span.off { border-style: dashed; color: var(--warn); }
+  .cov-fix { font-size: 11.5px; color: var(--muted); }
   .prio { display: grid; gap: 4px; }
   .prio-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
   .prio-num { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 24px; }
@@ -203,6 +210,13 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
       top.appendChild(badgeFor(c.label || c.momentum || "No read yet"));
     }
     row.appendChild(top);
+    if (c.costing_you && c.costing_you.headline) {
+      var cs = el("div", "cost");
+      cs.appendChild(el("b", null, "Costing you: "));
+      cs.appendChild(document.createTextNode(c.costing_you.headline));
+      row.appendChild(cs);
+    }
+    if (c.opportunity) row.appendChild(el("div", "opp", c.opportunity));
     if (c.priority && !scored) {
       var pr = el("div", "prio");
       var prow = el("div", "prio-row");
@@ -243,6 +257,12 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
         mv.appendChild(document.createTextNode(c.activity.nextMove));
         row.appendChild(mv);
       }
+    }
+    if (c.coverage && c.coverage.length) {
+      var cov = el("div", "cov");
+      c.coverage.forEach(function (src) { cov.appendChild(el("span", src.working ? "" : "off", (src.working ? "✓ " : "· ") + src.label)); });
+      row.appendChild(cov);
+      if (c.data_gaps) row.appendChild(el("div", "cov-fix", c.data_gaps));
     }
     var actions = el("div", "actions");
     actions.appendChild(button("What changed?", "Using Ripplewatch: what changed with " + c.name + "?"));
