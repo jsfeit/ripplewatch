@@ -117,7 +117,7 @@ export async function loadCompetitorMomentum(
       coverage: { sources, summary: coverageSummary(sources) },
       opportunity: momentum.label === "Gone quiet" || momentum.label === "Cooling" ? OPPORTUNITY : null,
       strength,
-      history: { series, movement: detectMovement(series, computed) },
+      history: { series, movement: detectMovement(series, computed, c.created_at) },
     };
   });
 
