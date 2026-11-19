@@ -125,9 +125,13 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
   function ask(text) {
     if (!canMessage) { showCopy(text); return; }
     say("Sending to the chat…");
-    request("ui/message", { role: "user", content: { type: "text", text: text } }).then(
-      function () { say("Sent. Your answer is in the chat."); },
-      function () { canMessage = false; say(""); showCopy(text); }
+    request("ui/message", { role: "user", content: [{ type: "text", text: text }] }).then(
+      function (res) {
+        // Claude may ask the user to approve the message, or place it in their message box for them to send.
+        if (res && res.isError) { say(""); showCopy(text); }
+        else say("Added to your chat. If it's in your message box, press send.");
+      },
+      function () { say(""); showCopy(text); }
     );
   }
 
@@ -306,8 +310,6 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
     appCapabilities: {}
   }).then(function (res) {
     applyTheme(res && res.hostContext);
-    var hc = res && res.hostCapabilities;
-    if (hc && typeof hc === "object" && Object.keys(hc).length > 0 && !hc.message) canMessage = false;
     notify("ui/notifications/initialized", {});
   }, function () {
     app.textContent = "";

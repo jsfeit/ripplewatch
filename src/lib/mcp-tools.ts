@@ -429,7 +429,7 @@ export function registerRipplewatchTools(server: McpServer) {
       title: "Ripplewatch Momentum card",
       description: "A card showing each competitor's Momentum or first-check findings, with follow-up buttons.",
       mimeType: MCP_APP_MIME,
-      _meta: { ui: { csp: { connectDomains: [], resourceDomains: [] } } },
+      _meta: { ui: { domain: "be0d8976fa7c63ed6747af1516f556dd.claudemcpcontent.com", csp: { connectDomains: [], resourceDomains: [] } } },
     } as never,
     async (uri: URL) => ({
       contents: [{ uri: uri.href, mimeType: MCP_APP_MIME, text: MOMENTUM_CARD_HTML }],
