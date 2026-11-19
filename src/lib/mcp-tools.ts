@@ -298,14 +298,15 @@ export function registerRipplewatchTools(server: McpServer) {
                   "There is no weekly verdict yet. It is written once there is about a week of history, and signals and Momentum fill in as competitors are checked. For now, answer from the signals and competitors below, and say that the first full briefing is still building.",
               }),
           competitors: momentum
-            .map(({ competitor, momentum: m, activity }) => ({
+            .map(({ competitor, momentum: m, activity, priority }) => ({
               name: competitor.name,
               momentum: m.label,
               score: m.score,
               confidence: m.confidence,
+              priority,
               ...(m.score === null ? { activity } : {}),
             }))
-            .sort((a, b) => (b.score ?? -101) - (a.score ?? -101) || (b.activity?.recentSignals ?? 0) - (a.activity?.recentSignals ?? 0)),
+            .sort((a, b) => (b.score ?? -101) - (a.score ?? -101) || b.priority.score - a.priority.score),
           top_recent_signals: (signals ?? []).map((s) => ({
             competitor: nameById.get(s.competitor_id) ?? null,
             type: s.type,
@@ -462,13 +463,14 @@ export function registerRipplewatchTools(server: McpServer) {
       return result({
         ...(unscored ? { momentum_note: `${MOMENTUM_TIMING} ${DAY_ONE_BRIEF}` } : {}),
         ...(unscored || dealsLogged < 5 ? { sharpen_asks: sharpenAsks(dealsLogged) } : {}),
-        competitors: momentum.map(({ competitor, momentum: m, activity }) => ({
+        competitors: momentum.map(({ competitor, momentum: m, activity, priority }) => ({
           name: competitor.name,
           label: m.label,
           score: m.score,
           confidence: m.confidence,
+          priority,
           ...(m.score === null ? { activity } : {}),
-        })).sort((x, y) => (y.score ?? -101) - (x.score ?? -101) || (y.activity?.recentSignals ?? 0) - (x.activity?.recentSignals ?? 0)),
+        })).sort((x, y) => (y.score ?? -101) - (x.score ?? -101) || y.priority.score - x.priority.score),
         your_momentum: { label: yours.label, score: yours.score, confidence: yours.confidence },
       }, next);
     }
