@@ -6,10 +6,27 @@ import { activityRead, type ActivityRead } from "@/lib/activity-read";
 import { computePriorities, type WatchPriority } from "@/lib/watch-priority";
 import { loadAllDeals, withDealDate } from "@/lib/deal-store";
 import { loadMarketContext } from "@/lib/market-context";
+import { computeCompetitorCosts, type CompetitorCost } from "@/lib/competitor-cost";
+import { sourceCoverage, coverageSummary, type CoverageSource } from "@/lib/source-coverage";
+import { detectGoneQuiet } from "@/lib/gone-quiet";
 
 type Admin = SupabaseClient<Database>;
 
-export type CompetitorMomentum = { competitor: { id: string; name: string }; momentum: MomentumResult; activity: ActivityRead; priority: WatchPriority };
+export type CompetitorMomentum = {
+  competitor: { id: string; name: string };
+  momentum: MomentumResult;
+  activity: ActivityRead;
+  priority: WatchPriority;
+  // What this competitor is costing the company, from its own deals. Null headline until a deal names them.
+  cost: CompetitorCost;
+  // Which sources feed the read and what to add for the ones that do not.
+  coverage: { sources: CoverageSource[]; summary: string | null };
+  // Set when Cooling or Gone quiet: a cautious way to read the silence as an opening, never as a certainty.
+  opportunity: string | null;
+};
+
+const OPPORTUNITY =
+  "Quieter than usual. That can be an opening: their customers may be easier to reach, and it is a good moment to press where you are strongest. It can also mean they are building something, so treat it as a window to check, not a conclusion.";
 
 // One place that knows how to load the inputs computeMomentum needs and run
 // it per competitor, shared by the REST momentum route, the win/loss route's
@@ -25,7 +42,10 @@ export async function loadCompetitorMomentum(
   accountId: string,
   opts: { competitorId?: string } = {}
 ): Promise<CompetitorMomentum[]> {
-  let competitorQuery = supabase.from("competitors").select("id, name, created_at").eq("account_id", accountId);
+  let competitorQuery = supabase
+    .from("competitors")
+    .select("id, name, created_at, pricing_url, careers_url, github_repo, g2_url, capterra_url, trustpilot_url, appstore_id")
+    .eq("account_id", accountId);
   if (opts.competitorId) competitorQuery = competitorQuery.eq("id", opts.competitorId);
   const { data: competitors } = await competitorQuery;
   const list = competitors ?? [];
@@ -49,26 +69,52 @@ export async function loadCompetitorMomentum(
       .gte("recorded_at", lookbackStart.toISOString()),
   ]);
 
+  // Industry developments: they count toward a competitor's priority (a regulator targeting its product category), and
+  // the market's direction decides whether a quiet competitor is flagged as gone quiet.
+  const market = await loadMarketContext(supabase, accountId).catch(() => null);
+
   const reads = list.map((c) => {
     const mine = (signals ?? []).filter((s) => s.competitor_id === c.id);
     const history = (stateHistory ?? []).filter((e) => e.competitor_id === c.id);
     const deals = (winLoss ?? []).filter((e) => e.competitor_id === c.id);
+    const computed = computeMomentum(mine, deals, history);
+    // The dashboard and the weekly digest already apply this override; applying it here keeps the assistant from
+    // contradicting them about the same competitor.
+    const quiet = detectGoneQuiet({
+      competitorId: c.id,
+      competitorCreatedAt: c.created_at,
+      allSignals: signals ?? [],
+      peerCompetitorIds: competitorIds,
+      marketGrowthDirection: market?.market?.direction ?? null,
+    });
+    const momentum: MomentumResult = quiet ? { ...computed, score: null, label: "Gone quiet" } : computed;
+    const sources = sourceCoverage(c, history, mine);
     return {
-      competitor: c,
+      competitor: { id: c.id, name: c.name },
       mine,
       deals,
-      momentum: computeMomentum(mine, deals, history),
+      momentum,
       // What is knowable before there is a trend: shown only while Momentum says "Not enough history yet".
       activity: activityRead(mine, history, new Date(), c.created_at),
+      coverage: { sources, summary: coverageSummary(sources) },
+      opportunity: momentum.label === "Gone quiet" || momentum.label === "Cooling" ? OPPORTUNITY : null,
     };
   });
-  // Priority is relative to the other competitors tracked, so it is computed across the whole set.
-  // Industry developments that name a competitor count toward its priority (a regulator targeting its product category).
-  const market = await loadMarketContext(supabase, accountId).catch(() => null);
+
+  // Priority and cost are relative to the other competitors tracked, so both are computed across the whole set.
   const trendsFor = (name: string) =>
     (market?.trends ?? []).filter((t) => t.competitors.some((c) => c.trim().toLowerCase() === name.trim().toLowerCase())).map((t) => t.title);
   const priorities = computePriorities(
     reads.map((r) => ({ id: r.competitor.id, signals: r.mine, deals: r.deals, baseline: r.activity.baseline, marketTrends: trendsFor(r.competitor.name) }))
   );
-  return reads.map((r) => ({ competitor: r.competitor, momentum: r.momentum, activity: r.activity, priority: priorities.get(r.competitor.id)! }));
+  const costs = computeCompetitorCosts(competitorIds, winLoss ?? []);
+  return reads.map((r) => ({
+    competitor: r.competitor,
+    momentum: r.momentum,
+    activity: r.activity,
+    priority: priorities.get(r.competitor.id)!,
+    cost: costs.get(r.competitor.id)!,
+    coverage: r.coverage,
+    opportunity: r.opportunity,
+  }));
 }
