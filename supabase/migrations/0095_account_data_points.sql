@@ -35,6 +35,7 @@ create index if not exists account_data_points_metric_idx
 
 alter table account_data_points enable row level security;
 
+drop policy if exists "users can manage data points for their own account" on account_data_points;
 create policy "users can manage data points for their own account"
   on account_data_points for all
   to authenticated
