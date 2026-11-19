@@ -21,6 +21,7 @@ import { MOMENTUM_CARD_HTML, MOMENTUM_CARD_URI, MCP_APP_MIME } from "@/lib/mcp-m
 import { MOMENTUM_TIMING, DAY_ONE_BRIEF } from "@/lib/activity-read";
 import { loadMarketContext, MARKET_NOTE } from "@/lib/market-context";
 import { movementSentence } from "@/lib/momentum-history";
+import { listContextNotes } from "@/lib/context-notes";
 import { getDealImpactBrief } from "@/lib/deal-impact";
 import { logCallMentions } from "@/lib/call-mentions";
 import { loadChurnInsight } from "@/lib/churn-insight";
@@ -427,8 +428,10 @@ export function registerRipplewatchTools(server: McpServer) {
         return failure(`No tracked competitor named "${name}". Tracked: ${(competitors ?? []).map((c) => c.name).join(", ") || "none"}.`);
       }
 
-      const [[computed], { data: signals }, { data: winLoss }] = await Promise.all([
-        loadCompetitorMomentum(supabase, accountId, { competitorId: match.id }),
+      const [all, { data: signals }, { data: winLoss }] = await Promise.all([
+        // Loaded for the whole account, not just this competitor, because priority and the hiring-mix read compare
+        // a competitor with the others being tracked.
+        loadCompetitorMomentum(supabase, accountId),
         supabase
           .from("signals")
           .select("type, title, summary, occurred_on, relevance_level, relevance_reasoning")
@@ -438,10 +441,21 @@ export function registerRipplewatchTools(server: McpServer) {
         supabase.from("competitor_win_loss").select("outcome").eq("competitor_id", match.id),
       ]);
 
+      const computed = all.find((c) => c.competitor.id === match.id);
       const m = computed?.momentum;
       return result({
         note: UNTRUSTED_NOTE,
         competitor: match,
+        ...(computed
+          ? {
+              watch_priority: computed.priority,
+              ...(computed.cost.headline ? { costing_you: computed.cost } : {}),
+              ...(computed.strength.items.length ? { strength_read: computed.strength } : {}),
+              ...(computed.coverage.summary ? { data_gaps: computed.coverage.summary } : {}),
+              ...(computed.opportunity ? { opportunity: computed.opportunity } : {}),
+              ...(computed.history.movement ? { moved_this_week: computed.history.movement } : {}),
+            }
+          : {}),
         momentum: m
           ? {
               label: m.label,
@@ -457,6 +471,65 @@ export function registerRipplewatchTools(server: McpServer) {
           lost_or_churned: (winLoss ?? []).filter((e) => e.outcome !== "won").length,
         },
         recent_signals: signals ?? [],
+      });
+    }
+  );
+
+  server.registerTool(
+    "get_battlecard",
+    {
+      title: "Battlecard facts for one competitor",
+      description:
+        "Everything Ripplewatch knows that you need to prepare for a conversation against one competitor: their Momentum and watch priority, what they are costing this company in its own deals (with reasons and segment), the strength or weakness signs in their hiring and pricing, their pricing tiers, their most relevant recent signals, industry developments that name them, and what the user has told us about their own product. Use it when the user asks how to compete with, win against or talk about a competitor, or wants a battlecard or talk track. Write the battlecard yourself from these facts, following write_this; it costs no extra model usage on our side. An unknown name returns an error that lists the tracked competitors. Read-only.",
+      inputSchema: z.object({
+        name: z.string().min(1).describe("Competitor name, case-insensitive, exactly as returned by list_competitors."),
+      }),
+      annotations: READ_ONLY,
+    },
+    async ({ name }, ctx) => {
+      const accountId = accountIdFrom(ctx as Ctx);
+      const supabase = createAdminClient();
+      const { data: competitors } = await supabase.from("competitors").select("id, name, domain, category").eq("account_id", accountId);
+      const match = (competitors ?? []).find((c) => c.name.toLowerCase() === name.trim().toLowerCase());
+      if (!match) return failure(`No tracked competitor named "${name}". Tracked: ${(competitors ?? []).map((c) => c.name).join(", ") || "none"}.`);
+
+      const since = new Date();
+      since.setUTCDate(since.getUTCDate() - 90);
+      const [all, { data: account }, { data: pricing }, { data: signals }, notes, market] = await Promise.all([
+        loadCompetitorMomentum(supabase, accountId),
+        supabase.from("accounts").select("name, positioning, icp").eq("id", accountId).maybeSingle(),
+        supabase.from("competitor_pricing").select("billing_model, publicly_priced, note, tiers").eq("competitor_id", match.id).maybeSingle(),
+        supabase
+          .from("signals")
+          .select("type, title, summary, occurred_on, relevance_score, relevance_reasoning")
+          .eq("competitor_id", match.id)
+          .gte("occurred_on", since.toISOString().slice(0, 10))
+          .order("relevance_score", { ascending: false, nullsFirst: false })
+          .limit(6),
+        listContextNotes(supabase, accountId, 12),
+        loadMarketContext(supabase, accountId).catch(() => null),
+      ]);
+      const read = all.find((c) => c.competitor.id === match.id);
+      const touching = (market?.trends ?? []).filter((t) => t.competitors.some((c) => c.trim().toLowerCase() === match.name.toLowerCase()));
+
+      return result({
+        note: UNTRUSTED_NOTE,
+        competitor: match,
+        you: { company: account?.name ?? null, positioning: account?.positioning ?? null, icp: account?.icp ?? null },
+        them: {
+          momentum: read ? { label: read.momentum.label, score: read.momentum.score, confidence: read.momentum.confidence } : null,
+          watch_priority: read?.priority ?? null,
+          costing_you: read?.cost.headline ? read.cost : null,
+          strength_read: read && read.strength.items.length ? read.strength : null,
+          moved_this_week: read?.history.movement ?? null,
+          pricing: pricing ? { billing_model: pricing.billing_model, publicly_priced: pricing.publicly_priced, note: pricing.note, tiers: pricing.tiers } : null,
+          most_relevant_recent_signals: signals ?? [],
+          industry_developments_naming_them: touching,
+          data_gaps: read?.coverage.summary ?? null,
+        },
+        what_the_user_told_us_about_their_own_product: notes.map((n) => ({ kind: n.kind, note: n.body, effective_on: n.effective_on })),
+        write_this:
+          "Write a battlecard for a conversation against this competitor, using only the facts above. Give: (1) a two-sentence talk track for a call; (2) up to three claims this competitor is likely to make, each with a short, honest answer drawn from costing_you, their signals or what the user told us; (3) one line comparing pricing, only if tiers are listed; (4) where this company is strongest against them, only if the deals or notes support it. Where a section has no facts behind it, skip it and say what the user could tell you or log to fill it (a lost deal and why, what they ship). Never invent features, prices, customers or quotes. Name numbers exactly as given.",
       });
     }
   );
