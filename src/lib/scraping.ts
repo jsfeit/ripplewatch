@@ -1655,9 +1655,12 @@ const NEWS_BACKFILL_WINDOWS: NewsWindow[] = [
   { from: 90, to: 60 },
 ];
 
-export async function backfillNewsHistory(supabase: AdminClient, competitor: Competitor): Promise<Signal[]> {
+// `complete` is false when any window could not be processed (for example the model call failed), so the caller can leave
+// the "done" marker unwritten and try again on the next sweep instead of never filling that window.
+export async function backfillNewsHistory(supabase: AdminClient, competitor: Competitor): Promise<{ inserted: Signal[]; complete: boolean }> {
   const query = `"${competitor.name}" ${BUSINESS_CONTEXT_TERMS}`;
   const inserted: Signal[] = [];
+  let complete = true;
   const existingTitles = await fetchAllSignalTitles(supabase, competitor.id);
 
   for (const window of NEWS_BACKFILL_WINDOWS) {
@@ -1666,6 +1669,7 @@ export async function backfillNewsHistory(supabase: AdminClient, competitor: Com
       headlines = await filterHeadlinesForCompetitor(supabase, competitor, await fetchHeadlines(query, HEADLINES_PER_QUERY, window));
     } catch (err) {
       console.error(`news backfill failed for ${competitor.name} (${window.from}-${window.to}d):`, err);
+      complete = false;
       continue;
     }
     for (const headline of headlines) {
@@ -1691,7 +1695,7 @@ export async function backfillNewsHistory(supabase: AdminClient, competitor: Com
       }
     }
   }
-  return inserted;
+  return { inserted, complete };
 }
 
 // Everything that gives a competitor a "before" in one call, run from the daily crawl for any competitor that lacks one,
@@ -1700,19 +1704,20 @@ export async function backfillNewsHistory(supabase: AdminClient, competitor: Com
 export async function backfillPriorHistory(supabase: AdminClient, competitor: Competitor): Promise<Signal[]> {
   if (await hasPriorReading(supabase, competitor.id, "buzz_mentions")) return [];
   const priorHn = await countHNMentions(competitor.name, 60, 30);
-  // A failed request is retried tomorrow; recording it as zero would close the gate on a false reading.
+  // A failed request is retried next time; recording it as zero would close the gate on a false reading.
   if (priorHn === null) return [];
+  // News first, and the reading that closes the gate last: if any news window fails (a model outage, say), nothing marks
+  // this competitor as done, so the next sweep tries again. Stories already saved are skipped by their titles.
+  const news = await backfillNewsHistory(supabase, competitor);
+  if (!news.complete) return news.inserted;
   const { error } = await supabase.from("competitor_state_history").insert({
     competitor_id: competitor.id,
     metric: "buzz_mentions",
     value: priorHn,
     recorded_at: new Date(Date.now() - PRIOR_READING_DAYS_AGO * 86_400_000).toISOString(),
   });
-  if (error) {
-    console.error(`buzz backfill write failed for ${competitor.name}:`, error);
-    return [];
-  }
-  return backfillNewsHistory(supabase, competitor);
+  if (error) console.error(`buzz backfill write failed for ${competitor.name}:`, error);
+  return news.inserted;
 }
 
 // Funding — same free Google News RSS approach, but with a query weighted
