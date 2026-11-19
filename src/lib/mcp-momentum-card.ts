@@ -61,6 +61,12 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
   .score { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .cost { font-size: 12.5px; background: var(--bad-soft); color: var(--ink); border-radius: 8px; padding: 6px 9px; }
   .cost b { color: var(--bad); }
+  .str { display: grid; gap: 3px; }
+  .str-h { font-size: 12.5px; font-weight: 650; }
+  .str-i { font-size: 12.5px; display: flex; gap: 6px; }
+  .str-i .dot { flex: none; width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; background: var(--muted); }
+  .str-i .dot.strength { background: var(--good); }
+  .str-i .dot.weakness { background: var(--bad); }
   .opp { font-size: 12px; color: var(--muted); border-left: 3px solid var(--warn); padding-left: 9px; }
   .cov { display: flex; flex-wrap: wrap; gap: 5px; }
   .cov span { font-size: 11px; padding: 1px 7px; border-radius: 6px; border: 1px solid var(--line); color: var(--muted); }
@@ -217,6 +223,17 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
       row.appendChild(cs);
     }
     if (c.opportunity) row.appendChild(el("div", "opp", c.opportunity));
+    if (c.strength_read && c.strength_read.items && c.strength_read.items.length) {
+      var sr = el("div", "str");
+      if (c.strength_read.headline) sr.appendChild(el("div", "str-h", c.strength_read.headline));
+      c.strength_read.items.slice(0, 3).forEach(function (it) {
+        var line = el("div", "str-i");
+        line.appendChild(el("span", "dot " + it.direction));
+        line.appendChild(el("span", null, it.text));
+        sr.appendChild(line);
+      });
+      row.appendChild(sr);
+    }
     if (c.priority && !scored) {
       var pr = el("div", "prio");
       var prow = el("div", "prio-row");
