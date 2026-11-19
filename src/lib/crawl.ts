@@ -13,6 +13,7 @@ import {
   checkVisualChange,
   checkNews,
   checkFunding,
+  backfillPriorHistory,
   checkSearchNews,
   isFirstNewsCheck,
   ensureMonitoringUrls,
@@ -302,6 +303,15 @@ export async function crawlOneCompetitor(
       found.push(...(await checkFunding(supabase, competitor, isFirstCheck)));
     } catch (err) {
       console.error(`checkFunding failed for ${competitor.name}:`, err);
+    }
+  }
+  // Fill the 60 days before the recent window for any competitor that has no "before" yet, so Momentum has something to
+  // compare with. New competitors and ones added long ago both qualify; it is a no-op once done.
+  if (allowedSources.includes("news")) {
+    try {
+      found.push(...(await backfillPriorHistory(supabase, competitor)));
+    } catch (err) {
+      console.error(`history backfill failed for ${competitor.name}:`, err);
     }
   }
 

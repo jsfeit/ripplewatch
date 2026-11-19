@@ -37,6 +37,25 @@ async function fetchHNMentions(companyName: string): Promise<Mention[]> {
   }
 }
 
+// How many Hacker News stories and comments named the company between `fromDaysAgo` and `toDaysAgo` days ago.
+// Uses the search's total hit count, not the 50 shown, so a busy name isn't capped at 50 and two windows compare fairly.
+// Returns null when the request fails, so a failure is never recorded as "zero mentions".
+export async function countHNMentions(companyName: string, fromDaysAgo: number, toDaysAgo: number): Promise<number | null> {
+  const now = Math.floor(Date.now() / 1000);
+  const after = now - fromDaysAgo * 86_400;
+  const before = now - toDaysAgo * 86_400;
+  const url = `${HN_ALGOLIA_BASE}?query=${encodeURIComponent(`"${companyName}"`)}&tags=(story,comment)&numericFilters=created_at_i>${after},created_at_i<${before}&hitsPerPage=0`;
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { nbHits?: number };
+    return typeof data.nbHits === "number" ? data.nbHits : null;
+  } catch (err) {
+    console.error(`HN mention count failed for ${companyName}:`, err);
+    return null;
+  }
+}
+
 let cachedRedditToken: { token: string; expiresAt: number } | null = null;
 
 async function getRedditAppToken(): Promise<string | null> {

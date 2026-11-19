@@ -19,6 +19,7 @@ import { addContextNote } from "@/lib/context-notes";
 import { MCP_PROMPTS } from "@/lib/mcp-prompts";
 import { MOMENTUM_CARD_HTML, MOMENTUM_CARD_URI, MCP_APP_MIME } from "@/lib/mcp-momentum-card";
 import { MOMENTUM_TIMING, DAY_ONE_BRIEF } from "@/lib/activity-read";
+import { loadMarketContext, MARKET_NOTE } from "@/lib/market-context";
 import { getDealImpactBrief } from "@/lib/deal-impact";
 import { logCallMentions } from "@/lib/call-mentions";
 import { loadChurnInsight } from "@/lib/churn-insight";
@@ -145,16 +146,38 @@ function withToolTimeout(server: McpServer) {
 
 // What would make the answer specific to this company, in the order to raise it. Momentum on its own says what a competitor
 // is doing; deals say whether it matters to you. The assistant closes its answer with these as offers, one at a time.
-function sharpenAsks(dealsLogged: number): string[] {
+async function sellsToFor(supabase: ReturnType<typeof createAdminClient>, accountId: string): Promise<SellsTo> {
+  const { data } = await supabase.from("accounts").select("sells_to").eq("id", accountId).maybeSingle();
+  return (data?.sells_to as SellsTo) ?? null;
+}
+
+type SellsTo = "business" | "consumer" | "both" | null;
+
+// What the person logs to teach Ripplewatch what matters to them: deals for a company that sells to businesses, churn and
+// cancellation reasons for one that sells to consumers. The card's button and the assistant's asks both read this.
+function logAction(sellsTo: SellsTo): { label: string; prompt: string; noun: string } {
+  if (sellsTo === "consumer") return { label: "Log churn", prompt: "Using Ripplewatch: log my customer churn. ", noun: "churn" };
+  return { label: "Log a deal", prompt: "Using Ripplewatch: log a deal. ", noun: "deals" };
+}
+
+function sharpenAsks(dealsLogged: number, sellsTo: SellsTo = null): string[] {
   const asks: string[] = [];
-  asks.push(
-    dealsLogged === 0
-      ? "Ask which competitor they lost or won against most recently, and why. One deal is enough to start; log it with log_win_loss. Without any deals Ripplewatch can say what competitors are doing but not which ones cost this company money."
-      : `Only ${dealsLogged} deal${dealsLogged === 1 ? " is" : "s are"} logged. Ask for more, as far back as they have, with close dates and the reason each was won or lost.`
-  );
-  asks.push(
-    "If you can reach their CRM, a call recorder like Gong or their support inbox, offer to pull closed-won and closed-lost deals and competitor mentions into import_win_loss and log_call_mentions. Say what you would read and get their okay first."
-  );
+  if (sellsTo === "consumer") {
+    asks.push(
+      "Ask how many customers they have and how many left each month, and why people cancel or switch (and to which competitor). Save it with log_customer_metrics and log_customer_feedback, or offer draft_cancellation_survey if they do not know why people leave. Without it Ripplewatch can say what competitors are doing but not which ones are costing this company customers."
+    );
+    asks.push("If you can reach their billing, support or survey tools (Stripe, Intercom, Zendesk, Typeform), offer to read cancellation reasons and competitor mentions from them. Say what you would read and get their okay first.");
+  } else {
+    asks.push(
+      dealsLogged === 0
+        ? "Ask which competitor they lost or won against most recently, and why. One deal is enough to start; log it with log_win_loss. Without any deals Ripplewatch can say what competitors are doing but not which ones cost this company money."
+        : `Only ${dealsLogged} deal${dealsLogged === 1 ? " is" : "s are"} logged. Ask for more, as far back as they have, with close dates and the reason each was won or lost.`
+    );
+    asks.push(
+      "If you can reach their CRM, a call recorder like Gong or their support inbox, offer to pull closed-won and closed-lost deals and competitor mentions into import_win_loss and log_call_mentions. Say what you would read and get their okay first."
+    );
+    if (sellsTo === "both") asks.push("They also sell to consumers: ask about customer churn and why people cancel, and save it with log_customer_metrics.");
+  }
   asks.push("Ask what they are building or changing in the next few months, and save it with add_context_note, so competitor moves can be judged against their plans.");
   asks.push("Ask whether any of the competitors listed look wrong (a company that isn't a real competitor), so they can be fixed in Settings.");
   return asks;
@@ -261,6 +284,8 @@ export function registerRipplewatchTools(server: McpServer) {
       const momentum = await loadCompetitorMomentum(supabase, accountId);
       const nameById = new Map(momentum.map((m) => [m.competitor.id, m.competitor.name]));
 
+      const marketPromise = loadMarketContext(supabase, accountId).catch(() => null);
+      const sellsTo = await sellsToFor(supabase, accountId);
       const [{ data: account }, { data: signals }, { data: feedback }, { data: winLoss }, next] = await Promise.all([
         supabase.from("accounts").select("weekly_verdict, weekly_verdict_generated_at").eq("id", accountId).single(),
         nameById.size
@@ -278,6 +303,7 @@ export function registerRipplewatchTools(server: McpServer) {
         computeNextBestActions(supabase, accountId),
       ]);
 
+      const market = await marketPromise;
       const fresh =
         account?.weekly_verdict &&
         account.weekly_verdict_generated_at &&
@@ -287,7 +313,9 @@ export function registerRipplewatchTools(server: McpServer) {
       return result(
         {
           note: UNTRUSTED_NOTE,
-          ...(momentum.some((c) => c.momentum.score === null) ? { momentum_note: `${MOMENTUM_TIMING} ${DAY_ONE_BRIEF}`, sharpen_asks: sharpenAsks((winLoss ?? []).length) } : {}),
+          ...(momentum.some((c) => c.momentum.score === null) ? { momentum_note: `${MOMENTUM_TIMING} ${DAY_ONE_BRIEF}`, sharpen_asks: sharpenAsks((winLoss ?? []).length, sellsTo) } : {}),
+          log_action: logAction(sellsTo),
+          ...(market && (market.trends.length > 0 || market.market) ? { market_context: { note: MARKET_NOTE, ...market } } : {}),
           verdict: fresh ? account!.weekly_verdict : null,
           verdict_generated_at: fresh ? account!.weekly_verdict_generated_at : null,
           // Said out loud so the assistant has something true to tell the person, instead of an empty verdict.
@@ -451,18 +479,22 @@ export function registerRipplewatchTools(server: McpServer) {
     async (_args, ctx) => {
       const accountId = accountIdFrom(ctx as Ctx);
       const supabase = createAdminClient();
-      const [momentum, { data: feedback }, { data: winLoss }, next] = await Promise.all([
+      const [momentum, { data: feedback }, { data: winLoss }, next, market] = await Promise.all([
         loadCompetitorMomentum(supabase, accountId),
         supabase.from("account_customer_feedback").select("score, feedback_date").eq("account_id", accountId).not("score", "is", null),
         loadAllDeals(supabase, accountId).then((rows) => ({ data: withDealDate(rows) })),
         computeNextBestActions(supabase, accountId),
+        loadMarketContext(supabase, accountId).catch(() => null),
       ]);
+      const sellsTo = await sellsToFor(supabase, accountId);
       const yours = computeYourMomentum(feedback ?? [], winLoss ?? []);
       const unscored = momentum.some((c) => c.momentum.score === null);
       const dealsLogged = (winLoss ?? []).length;
       return result({
         ...(unscored ? { momentum_note: `${MOMENTUM_TIMING} ${DAY_ONE_BRIEF}` } : {}),
-        ...(unscored || dealsLogged < 5 ? { sharpen_asks: sharpenAsks(dealsLogged) } : {}),
+        ...(unscored || dealsLogged < 5 ? { sharpen_asks: sharpenAsks(dealsLogged, sellsTo) } : {}),
+        log_action: logAction(sellsTo),
+        ...(market && market.trends.length > 0 ? { market_context: { note: MARKET_NOTE, ...market } } : {}),
         competitors: momentum.map(({ competitor, momentum: m, activity, priority }) => ({
           name: competitor.name,
           label: m.label,

@@ -65,7 +65,7 @@ function dominantType(signals: SignalLike[], cutoff: number): string | null {
   return best;
 }
 
-const NOTHING_TO_ACT_ON = "Nothing to act on yet. Tell me about a deal you won or lost against them and I can tell whether they matter to you.";
+const NOTHING_TO_ACT_ON = "Nothing to act on yet. Tell me about a customer you won or lost to them and I can tell whether they matter to you.";
 
 const LABEL_MAX = 110;
 

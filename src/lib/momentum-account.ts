@@ -5,6 +5,7 @@ import { computeMomentum, type MomentumResult } from "@/lib/momentum";
 import { activityRead, type ActivityRead } from "@/lib/activity-read";
 import { computePriorities, type WatchPriority } from "@/lib/watch-priority";
 import { loadAllDeals, withDealDate } from "@/lib/deal-store";
+import { loadMarketContext } from "@/lib/market-context";
 
 type Admin = SupabaseClient<Database>;
 
@@ -62,8 +63,12 @@ export async function loadCompetitorMomentum(
     };
   });
   // Priority is relative to the other competitors tracked, so it is computed across the whole set.
+  // Industry developments that name a competitor count toward its priority (a regulator targeting its product category).
+  const market = await loadMarketContext(supabase, accountId).catch(() => null);
+  const trendsFor = (name: string) =>
+    (market?.trends ?? []).filter((t) => t.competitors.some((c) => c.trim().toLowerCase() === name.trim().toLowerCase())).map((t) => t.title);
   const priorities = computePriorities(
-    reads.map((r) => ({ id: r.competitor.id, signals: r.mine, deals: r.deals, baseline: r.activity.baseline }))
+    reads.map((r) => ({ id: r.competitor.id, signals: r.mine, deals: r.deals, baseline: r.activity.baseline, marketTrends: trendsFor(r.competitor.name) }))
   );
   return reads.map((r) => ({ competitor: r.competitor, momentum: r.momentum, activity: r.activity, priority: priorities.get(r.competitor.id)! }));
 }

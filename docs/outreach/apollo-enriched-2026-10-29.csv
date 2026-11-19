@@ -1,0 +1,51 @@
+email,first_name,last_name,company,domain,title,segment,employees,email_status,include,note,apollo_id,linkedin
+peter@herald.dev,Peter,F,Herald,herald.dev,VP Marketing,marketing,12,verified,yes,,687a07c2d60e2e00013b5e2a,
+cody@zortssports.com,Cody,Smith,Zorts,zortssports.com,"Vice President, Marketing",marketing,35,verified,yes,,6848554553a1b300017fe23d,http://www.linkedin.com/in/thecodysmith
+elias@vorlon.io,Elias,T,Vorlon,vorlon.io,VP of Marketing,marketing,28,verified,yes,,66f5f1f7ada3c30001940253,
+doug.karr@overfuel.com,Douglas,K,Overfuel,overfuel.com,Vice President Marketing,marketing,42,verified,yes,,66f70a61f6ae630001447fc1,
+blake@teamohana.com,Blake,C,TeamOhana,teamohana.com,Vice President Marketing,marketing,49,verified,yes,,66f2b744a62c9300019bb767,
+crule@clickboarding.com,Caleb,Rule,Click Boarding,clickboarding.com,Vice President Marketing,marketing,44,verified,yes,,66fc85ad0cbf900001616516,http://www.linkedin.com/in/calebrule
+stephen.banbury@clearlyrated.com,Stephen,B,ClearlyRated,clearlyrated.ai,"Vice President, Marketing",marketing,41,verified,yes,,66fc7fc4f037a60001ce8e2b,
+andrew@sitecapture.com,Andrew,Barlos,SiteCapture,sitecapture.com,Vice President Marketing,marketing,23,verified,yes,,66f7449231303a0001376d74,http://www.linkedin.com/in/andrew-barlos
+einav.h@reflectiz.com,Einav,Haber,Reflectiz,reflectiz.com,VP Marketing,marketing,64,extrapolated,no,over 50 employees,611d21d6665c2500019bd8eb,http://www.linkedin.com/in/einav-noy-haber-0904b850
+kristen.muckleroy@servisbot.com,Kristen,Muckleroy,ServisBOT,servisbot.com,VP Marketing,marketing,46,verified,yes,,611d4f5317738800012e4688,http://www.linkedin.com/in/kmuckleroy
+carina@heatmap.com,Carina,Munro,heatmap,heatmap.com,VP of Marketing,marketing,38,verified,yes,,672788bc1f466000011557ab,http://www.linkedin.com/in/carinamunro
+dave@hubifi.com,Dave,Bor,HubiFi,hubifi.com,VP Marketing,marketing,26,verified,yes,,60f6dc215d2b540001c8401e,http://www.linkedin.com/in/davidbor
+nadia@calibermind.com,Nadia,Davis,CaliberMind,calibermind.com,VP of Marketing,marketing,31,verified,yes,,66f685e4f588730001ecc9a5,http://www.linkedin.com/in/nadia-davis-mba
+shelby@cloverleaf.me,Shelby,B,Cloverleaf,cloverleaf.me,VP of Marketing,marketing,40,verified,yes,,679e4e2a03d1e50001f18267,
+iulia@agoric.com,Iulia,M,Agoric,agoric.com,VP of Marketing,marketing,25,verified,yes,,66a108bfb0b0eb000187942c,
+mweir@barndoor.ai,Melissa,Weir,Barndoor AI,barndoor.ai,Vice President Marketing,marketing,37,verified,yes,,61167d01b106320001e04127,http://www.linkedin.com/in/melissaweir1
+david@tuskira.ai,David,Mundy,Tuskira,tuskira.ai,VP of Marketing,marketing,49,verified,yes,,66f59ab32d32ec00010c8947,http://www.linkedin.com/in/davidmundy1
+andrew.carlson@bonfyreapp.com,Andrew,C,Bonfyre,bonfyreapp.com,"Vice President, Marketing",marketing,27,verified,yes,,6101220e9dc227000163e852,
+scott@syrup.tech,Scott,H,Syrup Tech,syrup.tech,Vice President Marketing,marketing,24,verified,yes,,683d56bfb87d910001a840d2,
+nnayman@certificial.com,Nathalie,Nayman,Certificial,certificial.com,VP of Marketing,marketing,25,verified,yes,,60c208600050bf0001aa6d45,http://www.linkedin.com/in/nathalie-nayman
+brittany@scientiamobile.com,Brittany,Lorincz,ScientiaMobile,scientiamobile.com,"Vice President, Marketing",marketing,37,verified,yes,,66f9205246908100019f4b0a,http://www.linkedin.com/in/brittany-lorincz
+bmitchell@omnilert.com,Blake,Mitchell,Omnilert,omnilert.com,Vice President of Marketing,marketing,32,verified,yes,,60426bfebf439100011d1eff,http://www.linkedin.com/in/blakeanthonymitchell
+gwendolyn.lamar@facilitygrid.com,Gwen,Lamar,Facility Grid,facilitygrid.com,VP of Marketing,marketing,37,verified,yes,,5fc692a4537b5300016b7854,http://www.linkedin.com/in/gwendolynlamar
+virginie.glaenzer@novolyze.com,Virginie,Glaenzer,Novolyze,novolyze.com,Vice President Marketing,marketing,38,verified,yes,,60fb40740db3400001d7f0bd,http://www.linkedin.com/in/virginieglaenzer
+amatthews@reportsnow.com,Anna,Matthews,ReportsNow Inc.,reportsnow.com,"Vice President, Marketing",marketing,41,verified,yes,,68d3f7257132200001c12315,http://www.linkedin.com/in/anna-matthews
+michele.nieberding@optiversal.com,Michele,Nieberding,Optiversal,optiversal.com,Head of Product Marketing,product marketing,29,verified,yes,,640b6025e2963b0001721c60,http://www.linkedin.com/in/michele-nieberding
+ilan.vagenshtein@lockthreat.com,Ilan,Vagenshtein,LockThreat GRC,lockthreat.com,Head of Product Marketing,product marketing,46,verified,yes,,66eb2cd659a306000165b7c8,http://www.linkedin.com/in/ilanvag
+divya@zepic.com,Divya,Murugesan,ZEPIC,zepic.com,Head of Product Marketing,product marketing,29,verified,yes,,54a32c437468693318887a59,http://www.linkedin.com/in/divya-murugesan-1a910419
+rebecca.feldman@pursuit.us,Rebecca,F,Pursuit,pursuit.us,Head of Product Marketing,product marketing,30,verified,yes,,66f745f6d68d7200016e7f88,
+alon@way.security,Alon,Berger,Way Security,way.security,Head of Product Marketing,product marketing,30,verified,yes,,60e51f582d9aac0001220d35,http://www.linkedin.com/in/alon-berger-8b1351a7
+evelyn.immanuel@platform3solutions.com,Evelyn,Immanuel,Archon Data Store,archondatastore.com,Head of Product Marketing,product marketing,36,verified,yes,,66a717cd9d00b70001472055,http://www.linkedin.com/in/evelyn-immanuel
+lindsay.mcneill@imgix.com,Lindsay,McNeill,Imgix,imgix.com,Sales Enablement Manager,revenue/sales,41,verified,yes,,6723f9a3e4ae2300018682c0,http://www.linkedin.com/in/lindsaymcneill1
+chris@nomic.ai,Christopher,G,Nomic AI,nomic.ai,Head of Revenue,revenue/sales,30,verified,yes,,66f1a8c98b70be0001bd768a,
+brandon@pathworklife.com,Brandon,Murphy,Pathwork,pathwork.com,Head of Revenue,revenue/sales,15,verified,yes,,687e42ff8ecad300017fda73,http://www.linkedin.com/in/bsmurphy
+greg.wheltle@authzed.com,Greg,Wheltle,AuthZed,authzed.com,Head of Revenue,revenue/sales,39,verified,yes,,66f02dd003968f00014eba11,http://www.linkedin.com/in/greg-wheltle
+deepan@richpanel.com,Deepan,Rajan,Richpanel,richpanel.com,Head of Revenue,revenue/sales,43,verified,yes,,5e82e70a199f4e0001aec6ad,http://www.linkedin.com/in/deepan-r-245a12162
+bethany@schematichq.com,Bethany,S,Schematic,schematichq.com,Head of Growth,growth,17,verified,yes,,66f2c3766d36cd0001755a61,
+anita@vellum.ai,Anita,Kirkovska,Vellum,vellum.ai,Head of Growth,growth,31,verified,yes,,65a291040a627f000148cc4b,http://www.linkedin.com/in/anitakirkovska
+nachiket.kumar@salesmate.io,Nachiket,Kumar,Salesmate,salesmate.io,Head of Growth,growth,29,verified,yes,,6912588596b1130001f158db,http://www.linkedin.com/in/nachiketkumararora
+adam.boettiger@productplan.com,Adam,Boettiger,ProductPlan,productplan.com,Head of Growth,growth,34,verified,yes,,680c6f43e112c7000101ac7b,http://www.linkedin.com/in/adamboettiger
+wklemmer@formotiv.com,Woody,Klemmer,ForMotiv,formotiv.com,Head of Growth,growth,38,verified,yes,,60537080e2839e0001f435dd,http://www.linkedin.com/in/woodyklemmer
+tom@datagrid.com,Tom,F,Datagrid AI,datagrid.com,Head of Growth,growth,47,verified,yes,,60a754a7012da30001116aa1,
+jan@databar.ai,Jan,Berning,Databar.ai,databar.ai,Head of Growth,growth,12,verified,yes,,60eb28d2b7a1b80001496538,http://www.linkedin.com/in/jan-berning
+gaurav@bitquery.io,Gaurav,Agrawal,Bitquery,bitquery.io,Head of Growth,growth,18,verified,yes,,65436dec6db6bb0001f5782c,http://www.linkedin.com/in/g-agrawal
+michael@zentail.com,Michael,Goldmeier,Zentail,zentail.com,Head of Revenue,revenue/sales,12,verified,yes,,610bd52514647c00010effcf,http://www.linkedin.com/in/michael-goldmeier
+abigail@checksum.ai,Abigail,A,Checksum.ai,checksum.ai,Head of Revenue,revenue/sales,22,verified,yes,,60101248d7ab4e00017d4077,
+chris@trybadge.com,Chris,Harter,Badge,trybadge.com,Head of Revenue,revenue/sales,39,verified,yes,,66fc5c9bac50d00001fb1201,http://www.linkedin.com/in/chris-h-harter
+brittney.wilganowski@higherme.com,Brittney,Harrison,HigherMe,higherme.com,Head of Revenue,revenue/sales,17,verified,yes,,686e408eac983f0001a6f760,http://www.linkedin.com/in/brittney-wilganowski
+anya@archetypeid.ai,Anya,Law,ArchetypeID,archetypeid.com,Head of Growth,growth,13,verified,yes,,5e79461ce829a300014106cf,http://www.linkedin.com/in/anya-law
+antoine.moreau@formance.com,Antoine,Moreau,Formance,formance.com,Head of Revenue,revenue/sales,44,verified,yes,,60d58f662698540001117414,http://www.linkedin.com/in/antoine-moreau
