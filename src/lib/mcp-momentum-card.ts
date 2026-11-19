@@ -325,9 +325,11 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
       app.appendChild(mv);
     }
 
-    var unscored = competitors.some(function (c) { return c.score == null; });
-    if (unscored) {
-      app.appendChild(el("div", "note", "Momentum is a 30-day trend, so it needs a month of history. Until then, Watch priority ranks who deserves your attention now, from what the first check found and your deals."));
+    var unscoredCount = competitors.filter(function (c) { return c.score == null; }).length;
+    if (unscoredCount > 0) {
+      app.appendChild(el("div", "note", unscoredCount === competitors.length
+        ? "Momentum is a 30-day trend, so it needs a month of history. Until then, Watch priority ranks who deserves your attention now, from what the first check found and your deals."
+        : "Some competitors do not have a Momentum score yet, because it needs a month of history. Those show Watch priority instead."));
     }
 
     var list = el("div", "list");
