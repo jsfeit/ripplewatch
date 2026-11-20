@@ -1,5 +1,6 @@
 import "server-only";
 import { looksLikeNotACompany, suspectCompetitorNames } from "@/lib/suspect-names";
+import { buildGaps } from "@/lib/sharpen-gaps";
 import { after } from "next/server";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/server";
@@ -754,7 +755,15 @@ export function registerRipplewatchTools(server: McpServer) {
       const yours = computeYourMomentum(feedback ?? [], winLoss ?? []);
       const unscored = momentum.some((c) => c.momentum.score === null);
       const dealsLogged = (winLoss ?? []).length;
+      const { count: notesCount } = await supabase.from("context_notes").select("id", { count: "exact", head: true }).eq("account_id", accountId);
+      const gaps = buildGaps({
+        sellsTo,
+        outcomesLogged: dealsLogged,
+        contextNotes: notesCount ?? 0,
+        competitors: momentum.map((c) => ({ name: c.competitor.name, looksWrong: looksLikeNotACompany(c.competitor.name), coverage: c.coverage.sources })),
+      });
       return result({
+        ...(gaps.length ? { gaps } : {}),
         ...(unscored ? { momentum_note: `${MOMENTUM_TIMING} ${DAY_ONE_BRIEF}` } : {}),
         ...(unscored || dealsLogged < 5 ? { sharpen_asks: sharpenAsks(dealsLogged, sellsTo, suspectCompetitorNames(momentum.map((c) => c.competitor.name))) } : {}),
         log_action: logAction(sellsTo),
