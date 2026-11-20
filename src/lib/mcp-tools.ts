@@ -1,4 +1,5 @@
 import "server-only";
+import { looksLikeNotACompany, suspectCompetitorNames } from "@/lib/suspect-names";
 import { after } from "next/server";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/server";
@@ -165,7 +166,16 @@ function logAction(sellsTo: SellsTo): { label: string; prompt: string; noun: str
   return { label: "Log a deal", prompt: "Using Ripplewatch: log a deal. ", noun: "deals" };
 }
 
-function sharpenAsks(dealsLogged: number, sellsTo: SellsTo = null): string[] {
+// What the card and the assistant call a competitor. A swing read from a thin history is an early read, not a verdict,
+// and a name that is not a company is never ranked as a threat. Same rule for every account.
+function shownLabel(label: string, confidence: string, suspect: boolean): string {
+  if (suspect) return "Check this entry";
+  if (confidence === "low" && label === "Heating up") return "Early read: rising";
+  if (confidence === "low" && label === "Cooling") return "Early read: cooling";
+  return label;
+}
+
+function sharpenAsks(dealsLogged: number, sellsTo: SellsTo = null, suspects: string[] = []): string[] {
   const asks: string[] = [];
   if (sellsTo === "consumer") {
     asks.push(
@@ -184,7 +194,8 @@ function sharpenAsks(dealsLogged: number, sellsTo: SellsTo = null): string[] {
     if (sellsTo === "both") asks.push("They also sell to consumers: ask about customer churn and why people cancel, and save it with log_customer_metrics.");
   }
   asks.push("Ask what they are building or changing in the next few months, and save it with add_context_note, so competitor moves can be judged against their plans.");
-  asks.push("Ask whether any of the competitors listed look wrong (a company that isn't a real competitor), so they can be fixed in Settings.");
+  // Only when a name is clearly not a company. Never ask the person to audit a list that looks fine.
+  if (suspects.length > 0) asks.push(`Ripplewatch flagged ${suspects.map((n) => `"${n}"`).join(", ")} as probably not a company (it reads like a headline). Say so plainly and suggest removing or renaming it in Settings; do not rank it as a real competitor.`);
   return asks;
 }
 
@@ -318,7 +329,7 @@ export function registerRipplewatchTools(server: McpServer) {
       return result(
         {
           note: UNTRUSTED_NOTE,
-          ...(momentum.some((c) => c.momentum.score === null) ? { momentum_note: `${MOMENTUM_TIMING} ${DAY_ONE_BRIEF}`, sharpen_asks: sharpenAsks((winLoss ?? []).length, sellsTo) } : {}),
+          ...(momentum.some((c) => c.momentum.score === null) ? { momentum_note: `${MOMENTUM_TIMING} ${DAY_ONE_BRIEF}`, sharpen_asks: sharpenAsks((winLoss ?? []).length, sellsTo, suspectCompetitorNames(momentum.map((c) => c.competitor.name))) } : {}),
           log_action: logAction(sellsTo),
           ...(momentum.some((c) => c.history.movement) ? { what_moved_this_week: momentum.filter((c) => c.history.movement).map((c) => movementSentence(c.competitor.name, c.history.movement!)) } : {}),
           ...(market && (market.trends.length > 0 || market.market) ? { market_context: { note: MARKET_NOTE, ...market } } : {}),
@@ -745,15 +756,16 @@ export function registerRipplewatchTools(server: McpServer) {
       const dealsLogged = (winLoss ?? []).length;
       return result({
         ...(unscored ? { momentum_note: `${MOMENTUM_TIMING} ${DAY_ONE_BRIEF}` } : {}),
-        ...(unscored || dealsLogged < 5 ? { sharpen_asks: sharpenAsks(dealsLogged, sellsTo) } : {}),
+        ...(unscored || dealsLogged < 5 ? { sharpen_asks: sharpenAsks(dealsLogged, sellsTo, suspectCompetitorNames(momentum.map((c) => c.competitor.name))) } : {}),
         log_action: logAction(sellsTo),
         ...(momentum.some((c) => c.history.movement) ? { what_moved_this_week: momentum.filter((c) => c.history.movement).map((c) => movementSentence(c.competitor.name, c.history.movement!)) } : {}),
         ...(market && market.trends.length > 0 ? { market_context: { note: MARKET_NOTE, ...market } } : {}),
         competitors: momentum.map(({ competitor, momentum: m, activity, priority, cost, coverage, opportunity, strength, history }) => ({
           name: competitor.name,
-          label: m.label,
+          label: shownLabel(m.label, m.confidence, looksLikeNotACompany(competitor.name)),
           score: m.score,
           confidence: m.confidence,
+          ...(looksLikeNotACompany(competitor.name) ? { looks_wrong: "This name reads like a headline, not a company. Suggest removing or renaming it in Settings; do not treat it as a threat." } : {}),
           priority,
           ...(cost.headline ? { costing_you: cost } : {}),
           coverage: coverage.sources,
@@ -763,7 +775,11 @@ export function registerRipplewatchTools(server: McpServer) {
           ...(history.series.filter((p) => p.score !== null).length >= 2 ? { score_by_week: history.series.map((p) => p.score) } : {}),
           ...(history.movement ? { moved_this_week: history.movement } : {}),
           ...(m.score === null ? { activity } : {}),
-        })).sort((x, y) => (y.score ?? -101) - (x.score ?? -101) || y.priority.score - x.priority.score),
+        })).sort((x, y) => {
+          // Not-a-company last; real reads (full confidence) by score; early reads and unscored by watch priority.
+          const rank = (c: typeof x) => (c.looks_wrong ? -1 : c.confidence === "full" && c.score !== null ? 2 : 1);
+          return rank(y) - rank(x) || (rank(x) === 2 ? (y.score ?? 0) - (x.score ?? 0) : 0) || y.priority.score - x.priority.score;
+        }),
         your_momentum: { label: yours.label, score: yours.score, confidence: yours.confidence },
       }, next);
     }
