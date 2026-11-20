@@ -107,3 +107,8 @@ export const DAY_ONE_BRIEF =
 
 export const MOMENTUM_TIMING =
   "Momentum is a trend: it compares the last 30 days with the 30 before. A competitor added recently shows \"Not enough history yet\" until there is a month or so of readings, and the score firms up after that.";
+
+// For tools that show the Momentum card. The card already carries the competitors, priorities, gaps and market context, so
+// the assistant's own reply should be a short human verdict, not a second copy of the same table.
+export const CARD_REPLY_STYLE =
+  "The card above already shows every competitor, its priority, what is missing and the market context, so do not re-list them in a table or restate the card. Reply in at most three short sentences: say the verdict in your own words, name the one competitor to watch and the single strongest reason, and end with the one next step that would help most (the first item in gaps, or the card's Log button). If a competitor has costing_you, strength_read or moved_this_week, work that into the sentence. Never invent a score or rank anyone from your own knowledge, and do not stop at 'nobody is heating up': say who to watch.";

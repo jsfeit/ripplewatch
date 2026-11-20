@@ -1,6 +1,7 @@
 import "server-only";
 import { looksLikeNotACompany, suspectCompetitorNames } from "@/lib/suspect-names";
 import { buildGaps } from "@/lib/sharpen-gaps";
+import { momentumVerdict } from "@/lib/momentum-verdict";
 import { after } from "next/server";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/server";
@@ -20,7 +21,7 @@ import { loadAllDeals, withDealDate } from "@/lib/deal-store";
 import { addContextNote } from "@/lib/context-notes";
 import { MCP_PROMPTS } from "@/lib/mcp-prompts";
 import { MOMENTUM_CARD_HTML, MOMENTUM_CARD_URI, MCP_APP_MIME } from "@/lib/mcp-momentum-card";
-import { MOMENTUM_TIMING, DAY_ONE_BRIEF } from "@/lib/activity-read";
+import { MOMENTUM_TIMING, DAY_ONE_BRIEF, CARD_REPLY_STYLE } from "@/lib/activity-read";
 import { loadMarketContext, MARKET_NOTE } from "@/lib/market-context";
 import { movementSentence } from "@/lib/momentum-history";
 import { listContextNotes } from "@/lib/context-notes";
@@ -762,9 +763,21 @@ export function registerRipplewatchTools(server: McpServer) {
         contextNotes: notesCount ?? 0,
         competitors: momentum.map((c) => ({ name: c.competitor.name, looksWrong: looksLikeNotACompany(c.competitor.name), coverage: c.coverage.sources })),
       });
+      const verdict = momentumVerdict(
+        momentum.map((c) => ({
+          name: c.competitor.name,
+          label: c.momentum.label,
+          confidence: c.momentum.confidence,
+          priority: c.priority.score,
+          reasons: c.priority.reasons,
+          looksWrong: looksLikeNotACompany(c.competitor.name),
+        }))
+      );
       return result({
+        verdict,
+        reply_style: CARD_REPLY_STYLE,
         ...(gaps.length ? { gaps } : {}),
-        ...(unscored ? { momentum_note: `${MOMENTUM_TIMING} ${DAY_ONE_BRIEF}` } : {}),
+        ...(unscored ? { momentum_note: MOMENTUM_TIMING } : {}),
         ...(unscored || dealsLogged < 5 ? { sharpen_asks: sharpenAsks(dealsLogged, sellsTo, suspectCompetitorNames(momentum.map((c) => c.competitor.name))) } : {}),
         log_action: logAction(sellsTo),
         ...(momentum.some((c) => c.history.movement) ? { what_moved_this_week: momentum.filter((c) => c.history.movement).map((c) => movementSentence(c.competitor.name, c.history.movement!)) } : {}),
