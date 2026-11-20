@@ -95,6 +95,11 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
   .more { display: grid; gap: 7px; }
   .more[hidden] { display: none; }
   .tog { justify-self: start; font-size: 11.5px; padding: 3px 9px; color: var(--muted); }
+  .flagged { margin-top: 10px; border: 1px dashed var(--line); border-radius: 10px; padding: 8px 11px; display: grid; gap: 4px; font-size: 12.5px; }
+  .flagged b { color: var(--bad); font-size: 12px; }
+  .fl-row { display: grid; gap: 1px; }
+  .fl-name { font-weight: 600; overflow-wrap: anywhere; }
+  .fl-why { color: var(--muted); font-size: 12px; }
   .market { margin-top: 12px; display: grid; gap: 8px; }
   .market h2 { font-size: 13px; margin: 0; letter-spacing: -0.01em; }
   .trend { border-left: 3px solid var(--teal); padding: 2px 0 2px 10px; display: grid; gap: 3px; }
@@ -356,7 +361,10 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
 
   function render(data) {
     app.textContent = "";
-    var competitors = (data && data.competitors) || [];
+    var all = (data && data.competitors) || [];
+    // Entries that are not companies do not belong in the comparison: they get their own small strip below it.
+    var flagged = all.filter(function (c) { return c.looks_wrong; });
+    var competitors = all.filter(function (c) { return !c.looks_wrong; });
     var head = el("div", "head");
     head.appendChild(el("h1", null, "Ripplewatch · Momentum"));
     head.appendChild(el("span", "sub", competitors.length + (competitors.length === 1 ? " competitor" : " competitors")));
@@ -401,7 +409,7 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
       yrow.appendChild(ya);
       list.appendChild(yrow);
     }
-    if (!competitors.length) {
+    if (!all.length) {
       list.appendChild(el("p", "empty", "No competitors are tracked yet."));
     }
     assignTiers(competitors);
@@ -409,6 +417,18 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
     competitors.forEach(function (c) { if (!firstHigh && tierOf[c.name] === "t-high") firstHigh = c.name; });
     competitors.forEach(function (c) { list.appendChild(competitorRow(c, c.name === firstHigh)); });
     app.appendChild(list);
+
+    if (flagged.length) {
+      var fl = el("div", "flagged");
+      fl.appendChild(el("b", null, flagged.length === 1 ? "Check this entry" : "Check these entries"));
+      flagged.forEach(function (c) {
+        var line = el("div", "fl-row");
+        line.appendChild(el("span", "fl-name", c.name));
+        line.appendChild(el("span", "fl-why", "Reads like a headline, not a company. Remove or rename it in Settings, and it will stop showing here."));
+        fl.appendChild(line);
+      });
+      app.appendChild(fl);
+    }
 
     var mc = data && data.market_context;
     if (mc && mc.trends && mc.trends.length) {
