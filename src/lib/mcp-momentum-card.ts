@@ -221,8 +221,22 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
     return isNaN(dt) ? "" : dt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
   }
 
+  // Tier by standing among this account's own competitors, with a floor so a quiet set never lights anyone up: the top
+  // fifth (at least one) with real priority is high, anyone else with real priority or in the top two fifths with some is mid.
+  var tierOf = {};
+  function assignTiers(list) {
+    var ranked = list.filter(function (c) { return c.priority && !c.looks_wrong; })
+      .sort(function (a, b) { return b.priority.score - a.priority.score; });
+    var topN = Math.max(1, Math.ceil(ranked.length * 0.2)), midN = Math.max(2, Math.ceil(ranked.length * 0.4));
+    tierOf = {};
+    ranked.forEach(function (c, i) {
+      var sc = c.priority.score;
+      tierOf[c.name] = sc >= 60 || (sc >= 35 && i < topN) ? "t-high" : sc >= 35 || (sc >= 30 && i < midN) ? "t-mid" : "t-low";
+    });
+  }
+
   function competitorRow(c, first) {
-    var tier = c.looks_wrong || !c.priority ? "t-low" : c.priority.score >= 60 ? "t-high" : c.priority.score >= 35 ? "t-mid" : "t-low";
+    var tier = tierOf[c.name] || "t-low";
     var row = el("div", "row " + tier);
     var top = el("div", "top");
     var nm = el("span", "name", c.name);
@@ -390,7 +404,10 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
     if (!competitors.length) {
       list.appendChild(el("p", "empty", "No competitors are tracked yet."));
     }
-    competitors.forEach(function (c, i) { list.appendChild(competitorRow(c, i === 0)); });
+    assignTiers(competitors);
+    var firstHigh = null;
+    competitors.forEach(function (c) { if (!firstHigh && tierOf[c.name] === "t-high") firstHigh = c.name; });
+    competitors.forEach(function (c) { list.appendChild(competitorRow(c, c.name === firstHigh)); });
     app.appendChild(list);
 
     var mc = data && data.market_context;
