@@ -91,7 +91,7 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
   .row.t-high .prio-num { color: var(--warn); font-size: 17px; }
   .row.t-low .bar > i { background: var(--muted); opacity: .55; }
   .row.t-low .prio-num { color: var(--muted); }
-  .first { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--warn); background: var(--warn-soft); border-radius: 6px; padding: 1px 7px; }
+  .first-unused { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--warn); background: var(--warn-soft); border-radius: 6px; padding: 1px 7px; }
   .more { display: grid; gap: 7px; }
   .more[hidden] { display: none; }
   .tog { justify-self: start; font-size: 11.5px; padding: 3px 9px; color: var(--muted); }
@@ -111,6 +111,15 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
   button.go:hover { filter: brightness(1.08); }
   button.alt { background: transparent; }
   .fine { margin-top: 12px; font-size: 11.5px; color: var(--muted); }
+  .right { display: flex; align-items: center; gap: 10px; }
+  .chip-tier { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap; background: var(--flat-soft); color: var(--muted); }
+  .chip-tier.t-mid { background: var(--teal-soft); color: var(--teal); }
+  .chip-tier.t-high { background: var(--warn-soft); color: var(--warn); }
+  .mrow { display: flex; align-items: center; gap: 8px; }
+  .verdict { margin-bottom: 12px; display: grid; gap: 3px; }
+  .verdict h1 { font-size: 17px; line-height: 1.25; letter-spacing: -0.015em; }
+  .verdict p { margin: 0; color: var(--muted); font-size: 13px; }
+  .sec { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
   .market { margin-top: 12px; display: grid; gap: 8px; }
   .market h2 { font-size: 13px; margin: 0; letter-spacing: -0.01em; }
   .trend { border-left: 3px solid var(--teal); padding: 2px 0 2px 10px; display: grid; gap: 3px; }
@@ -251,39 +260,50 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
     });
   }
 
+  var TIER_TEXT = { "t-high": "Watch closely", "t-mid": "Keep an eye on", "t-low": "Background" };
+
+  function sparkline(pts) {
+    var real = pts.filter(function (v) { return v != null; });
+    if (real.length < 2) return null;
+    var lo = Math.min.apply(null, real), hi = Math.max.apply(null, real), span = Math.max(hi - lo, 10);
+    var ns = "http://www.w3.org/2000/svg";
+    var svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("class", "spark"); svg.setAttribute("width", "72"); svg.setAttribute("height", "20"); svg.setAttribute("viewBox", "0 0 96 22");
+    svg.setAttribute("role", "img"); svg.setAttribute("aria-label", "Momentum over the last four weeks");
+    var path = "";
+    pts.forEach(function (v, i) { if (v == null) return; var x = (i / (pts.length - 1)) * 92 + 2, y = 20 - ((v - lo) / span) * 18; path += (path ? " L" : "M") + x.toFixed(1) + " " + y.toFixed(1); });
+    var line = document.createElementNS(ns, "path");
+    line.setAttribute("d", path); line.setAttribute("fill", "none"); line.setAttribute("stroke", "currentColor"); line.setAttribute("stroke-width", "1.8"); line.setAttribute("stroke-linecap", "round"); line.setAttribute("stroke-linejoin", "round");
+    svg.style.color = "var(--teal)";
+    svg.appendChild(line);
+    return svg;
+  }
+
+  // One competitor. The visible part answers one question: how much should you watch them, and why. Everything else
+  // (evidence, sources, buttons) sits under Details, open only on the top row.
   function competitorRow(c, first) {
     var tier = tierOf[c.name] || "t-low";
     var row = el("div", "row " + tier);
     var top = el("div", "top");
-    var nm = el("span", "name", c.name);
-    if (first && tier !== "t-low") { var ft = el("span", "first", "Watch first"); var wrap = el("span"); wrap.style.cssText = "display:flex;gap:8px;align-items:center;flex-wrap:wrap"; wrap.appendChild(nm); wrap.appendChild(ft); top.appendChild(wrap); }
-    else top.appendChild(nm);
-    var scored = c.score != null;
-    if (scored) {
-      top.appendChild(badgeFor(c.label || c.momentum));
-    } else if (c.activity) {
-      top.appendChild(badgeFor(c.activity.label));
-    } else {
-      top.appendChild(badgeFor(c.label || c.momentum || "No read yet"));
-    }
+    top.appendChild(el("span", "name", c.name));
+    var right = el("span", "right");
+    var sp = c.score_by_week ? sparkline(c.score_by_week) : null;
+    if (sp) right.appendChild(sp);
+    // The chip is the priority band, so it differs from row to row. Momentum's own label only appears once it is a real read.
+    right.appendChild(el("span", "chip-tier " + tier, first && tier === "t-high" ? "Watch first" : TIER_TEXT[tier]));
+    top.appendChild(right);
     row.appendChild(top);
-    if (c.score_by_week) {
-      var pts = c.score_by_week;
-      var real = pts.filter(function (v) { return v != null; });
-      if (real.length >= 2) {
-        var lo = Math.min.apply(null, real), hi = Math.max.apply(null, real), span = Math.max(hi - lo, 10);
-        var ns = "http://www.w3.org/2000/svg";
-        var svg = document.createElementNS(ns, "svg");
-        svg.setAttribute("class", "spark"); svg.setAttribute("width", "96"); svg.setAttribute("height", "22"); svg.setAttribute("viewBox", "0 0 96 22");
-        svg.setAttribute("role", "img"); svg.setAttribute("aria-label", "Momentum over the last four weeks");
-        var path = "";
-        pts.forEach(function (v, i) { if (v == null) return; var x = (i / (pts.length - 1)) * 92 + 2, y = 20 - ((v - lo) / span) * 18; path += (path ? " L" : "M") + x.toFixed(1) + " " + y.toFixed(1); });
-        var line = document.createElementNS(ns, "path");
-        line.setAttribute("d", path); line.setAttribute("fill", "none"); line.setAttribute("stroke", "currentColor"); line.setAttribute("stroke-width", "1.8"); line.setAttribute("stroke-linecap", "round"); line.setAttribute("stroke-linejoin", "round");
-        svg.style.color = "var(--teal)";
-        svg.appendChild(line);
-        top.appendChild(svg);
-      }
+
+    if (c.priority) {
+      var prow = el("div", "prio-row");
+      prow.appendChild(el("span", "prio-num", c.priority.score));
+      var bar = el("span", "bar");
+      var fill = document.createElement("i");
+      fill.style.width = Math.max(0, Math.min(100, c.priority.score)) + "%";
+      bar.appendChild(fill);
+      prow.appendChild(bar);
+      row.appendChild(prow);
+      if (c.priority.reasons && c.priority.reasons.length) row.appendChild(el("div", "prio-why", c.priority.reasons[0]));
     }
     if (c.costing_you && c.costing_you.headline) {
       var cs = el("div", "cost");
@@ -291,7 +311,16 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
       cs.appendChild(document.createTextNode(c.costing_you.headline));
       row.appendChild(cs);
     }
-    if (c.looks_wrong) row.appendChild(el("div", "opp", "This name reads like a headline, not a company. Remove or rename it in Settings."));
+    var real = c.confidence !== "low" && c.score != null;
+    if (real) {
+      var mrow = el("div", "mrow");
+      mrow.appendChild(badgeFor(c.label));
+      mrow.appendChild(el("span", "detail", "Momentum " + c.score));
+      row.appendChild(mrow);
+    }
+
+    var cut = row.childNodes.length;
+    if (c.priority && c.priority.reasons && c.priority.reasons.length > 1) row.appendChild(el("div", "prio-why", c.priority.reasons.slice(1, 3).join(" · ")));
     if (c.opportunity) row.appendChild(el("div", "opp", c.opportunity));
     if (c.strength_read && c.strength_read.items && c.strength_read.items.length) {
       var sr = el("div", "str");
@@ -304,27 +333,7 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
       });
       row.appendChild(sr);
     }
-    if (c.priority && !c.looks_wrong) {
-      var pr = el("div", "prio");
-      var prow = el("div", "prio-row");
-      prow.appendChild(el("span", "prio-num", c.priority.score));
-      var bar = el("span", "bar");
-      var fill = document.createElement("i");
-      fill.style.width = Math.max(0, Math.min(100, c.priority.score)) + "%";
-      bar.appendChild(fill);
-      prow.appendChild(bar);
-      prow.appendChild(el("span", "prio-band", "Watch priority · " + c.priority.band));
-      pr.appendChild(prow);
-      if (c.priority.reasons && c.priority.reasons.length) pr.appendChild(el("div", "prio-why", c.priority.reasons.slice(0, 3).join(" · ")));
-      row.appendChild(pr);
-    }
-    var cut = row.childNodes.length;
-    if (scored) {
-      // An early read is a guess from thin history: keep it out of sight in the details so it is not read as a second rank.
-      var early = c.confidence === "low";
-      row.appendChild(el("div", "detail", "Momentum " + c.score + (early ? " · early read, too soon to rely on" : "")));
-      if (!early) cut = row.childNodes.length;
-    } else if (c.activity) {
+    if (c.activity) {
       row.appendChild(el("div", "detail", c.activity.detail));
       var tc = typeChips(c.activity.byType);
       if (tc.childNodes.length) row.appendChild(tc);
@@ -340,8 +349,6 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
         });
         row.appendChild(ul);
       }
-      var due = c.activity.momentumInDays;
-      row.appendChild(el("div", "score", "Momentum score: not yet" + (due != null ? (due > 0 ? ", about " + due + " days to go" : ", due any day now") : "")));
       if (c.activity.nextMove) {
         var mv = el("div", "move");
         mv.appendChild(el("b", null, "Next move: "));
@@ -349,6 +356,7 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
         row.appendChild(mv);
       }
     }
+    if (!real && c.score != null) row.appendChild(el("div", "score", "Momentum " + c.score + " is an early read, too soon to rely on."));
     if (c.coverage && c.coverage.length) {
       var cov = el("div", "cov");
       c.coverage.forEach(function (src) { cov.appendChild(el("span", src.working ? "" : "off", (src.working ? "✓ " : "· ") + src.label)); });
@@ -359,16 +367,16 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
     var pricingOk = (c.coverage || []).some(function (src) { return src.id === "pricing" && src.working; });
     if (pricingOk) actions.appendChild(button("Compare pricing", "Using Ripplewatch: compare pricing with " + c.name + "."));
     row.appendChild(actions);
+
     var more = el("div", "more");
     while (row.childNodes.length > cut) more.appendChild(row.childNodes[cut]);
     row.appendChild(more);
-    if (tier === "t-low") {
-      more.hidden = true;
-      var tg = el("button", "tog", "Details ▾");
-      tg.type = "button";
-      tg.addEventListener("click", function () { more.hidden = !more.hidden; tg.textContent = more.hidden ? "Details ▾" : "Hide details ▴"; resize(); });
-      row.insertBefore(tg, more);
-    }
+    var open = first && tier === "t-high";
+    more.hidden = !open;
+    var tg = el("button", "tog", open ? "Hide details ▴" : "Details ▾");
+    tg.type = "button";
+    tg.addEventListener("click", function () { more.hidden = !more.hidden; tg.textContent = more.hidden ? "Details ▾" : "Hide details ▴"; resize(); });
+    row.insertBefore(tg, more);
     return row;
   }
 
@@ -379,9 +387,17 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
     var flagged = all.filter(function (c) { return c.looks_wrong; });
     var competitors = all.filter(function (c) { return !c.looks_wrong; });
     var head = el("div", "head");
-    head.appendChild(el("h1", null, "Ripplewatch · Momentum"));
+    head.appendChild(el("span", "sec", "Ripplewatch · Momentum"));
     head.appendChild(el("span", "sub", competitors.length + (competitors.length === 1 ? " competitor" : " competitors")));
     app.appendChild(head);
+
+    var vd = data && data.verdict;
+    if (vd && vd.headline) {
+      var vb = el("div", "verdict");
+      vb.appendChild(el("h1", null, vd.headline));
+      if (vd.detail) vb.appendChild(el("p", null, vd.detail));
+      app.appendChild(vb);
+    }
 
     var moved = (data && data.what_moved_this_week) || [];
     if (moved.length) {
@@ -391,6 +407,7 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
       app.appendChild(mv);
     }
 
+    if (competitors.length) app.appendChild(el("div", "sec", "Ranked by watch priority"));
     var list = el("div", "list");
     if (!all.length) list.appendChild(el("p", "empty", "No competitors are tracked yet."));
     assignTiers(competitors);
