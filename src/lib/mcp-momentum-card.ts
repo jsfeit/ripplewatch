@@ -174,6 +174,8 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
   function badgeFor(label) {
     var cls = "badge";
     if (label === "Heating up") cls += " heat";
+    else if (label === "Check this entry") cls += " cool";
+    else if (label.indexOf("Early read") === 0) cls += " active";
     else if (label === "Cooling" || label === "Gone quiet") cls += " cool";
     else if (label === "Active") cls += " active";
     return el("span", cls, label);
@@ -243,6 +245,7 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
       cs.appendChild(document.createTextNode(c.costing_you.headline));
       row.appendChild(cs);
     }
+    if (c.looks_wrong) row.appendChild(el("div", "opp", "This name reads like a headline, not a company. Remove or rename it in Settings."));
     if (c.opportunity) row.appendChild(el("div", "opp", c.opportunity));
     if (c.strength_read && c.strength_read.items && c.strength_read.items.length) {
       var sr = el("div", "str");
@@ -255,7 +258,7 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
       });
       row.appendChild(sr);
     }
-    if (c.priority && !scored) {
+    if (c.priority && !c.looks_wrong) {
       var pr = el("div", "prio");
       var prow = el("div", "prio-row");
       prow.appendChild(el("span", "prio-num", c.priority.score));
@@ -330,6 +333,15 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
       app.appendChild(el("div", "note", unscoredCount === competitors.length
         ? "Momentum is a 30-day trend, so it needs a month of history. Until then, Watch priority ranks who deserves your attention now, from what the first check found and your deals."
         : "Some competitors do not have a Momentum score yet, because it needs a month of history. Those show Watch priority instead."));
+    }
+
+    var hasCost = competitors.some(function (c) { return c.costing_you; });
+    var hasStrength = competitors.some(function (c) { return c.strength_read; });
+    if (!hasCost || !hasStrength) {
+      var missing = [];
+      if (!hasCost) missing.push("what each competitor is costing you (needs some " + ((data && data.log_action && data.log_action.noun) || "deals") + " logged)");
+      if (!hasStrength) missing.push("whether they look strong or under pressure (needs about two weeks of hiring, pricing and review history)");
+      app.appendChild(el("div", "note", "Not showing yet: " + missing.join(", and ") + "."));
     }
 
     var list = el("div", "list");

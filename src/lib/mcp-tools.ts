@@ -1,5 +1,5 @@
 import "server-only";
-import { suspectCompetitorNames } from "@/lib/suspect-names";
+import { looksLikeNotACompany, suspectCompetitorNames } from "@/lib/suspect-names";
 import { after } from "next/server";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/server";
@@ -164,6 +164,15 @@ type SellsTo = "business" | "consumer" | "both" | null;
 function logAction(sellsTo: SellsTo): { label: string; prompt: string; noun: string } {
   if (sellsTo === "consumer") return { label: "Log churn", prompt: "Using Ripplewatch: log my customer churn. ", noun: "churn" };
   return { label: "Log a deal", prompt: "Using Ripplewatch: log a deal. ", noun: "deals" };
+}
+
+// What the card and the assistant call a competitor. A swing read from a thin history is an early read, not a verdict,
+// and a name that is not a company is never ranked as a threat. Same rule for every account.
+function shownLabel(label: string, confidence: string, suspect: boolean): string {
+  if (suspect) return "Check this entry";
+  if (confidence === "low" && label === "Heating up") return "Early read: rising";
+  if (confidence === "low" && label === "Cooling") return "Early read: cooling";
+  return label;
 }
 
 function sharpenAsks(dealsLogged: number, sellsTo: SellsTo = null, suspects: string[] = []): string[] {
@@ -753,9 +762,10 @@ export function registerRipplewatchTools(server: McpServer) {
         ...(market && market.trends.length > 0 ? { market_context: { note: MARKET_NOTE, ...market } } : {}),
         competitors: momentum.map(({ competitor, momentum: m, activity, priority, cost, coverage, opportunity, strength, history }) => ({
           name: competitor.name,
-          label: m.label,
+          label: shownLabel(m.label, m.confidence, looksLikeNotACompany(competitor.name)),
           score: m.score,
           confidence: m.confidence,
+          ...(looksLikeNotACompany(competitor.name) ? { looks_wrong: "This name reads like a headline, not a company. Suggest removing or renaming it in Settings; do not treat it as a threat." } : {}),
           priority,
           ...(cost.headline ? { costing_you: cost } : {}),
           coverage: coverage.sources,
@@ -765,7 +775,11 @@ export function registerRipplewatchTools(server: McpServer) {
           ...(history.series.filter((p) => p.score !== null).length >= 2 ? { score_by_week: history.series.map((p) => p.score) } : {}),
           ...(history.movement ? { moved_this_week: history.movement } : {}),
           ...(m.score === null ? { activity } : {}),
-        })).sort((x, y) => (y.score ?? -101) - (x.score ?? -101) || y.priority.score - x.priority.score),
+        })).sort((x, y) => {
+          // Not-a-company last; real reads (full confidence) by score; early reads and unscored by watch priority.
+          const rank = (c: typeof x) => (c.looks_wrong ? -1 : c.confidence === "full" && c.score !== null ? 2 : 1);
+          return rank(y) - rank(x) || (rank(x) === 2 ? (y.score ?? 0) - (x.score ?? 0) : 0) || y.priority.score - x.priority.score;
+        }),
         your_momentum: { label: yours.label, score: yours.score, confidence: yours.confidence },
       }, next);
     }
