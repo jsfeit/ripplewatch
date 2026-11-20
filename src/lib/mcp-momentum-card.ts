@@ -82,6 +82,19 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
   .bar > i { display: block; height: 100%; background: var(--teal); border-radius: 999px; }
   .prio-band { color: var(--muted); white-space: nowrap; }
   .prio-why { color: var(--muted); font-size: 12px; }
+  .row.t-high { border: 1.5px solid var(--warn); background: var(--bg); }
+  .row.t-mid { border-color: var(--teal); }
+  .row.t-low { padding: 9px 12px; background: transparent; }
+  .row.t-low .name { font-weight: 600; font-size: 13.5px; color: var(--muted); }
+  .row.t-low .badge { background: transparent; color: var(--muted); border: 1px solid var(--line); font-weight: 600; }
+  .row.t-high .bar > i { background: var(--warn); }
+  .row.t-high .prio-num { color: var(--warn); font-size: 17px; }
+  .row.t-low .bar > i { background: var(--muted); opacity: .55; }
+  .row.t-low .prio-num { color: var(--muted); }
+  .first { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--warn); background: var(--warn-soft); border-radius: 6px; padding: 1px 7px; }
+  .more { display: grid; gap: 7px; }
+  .more[hidden] { display: none; }
+  .tog { justify-self: start; font-size: 11.5px; padding: 3px 9px; color: var(--muted); }
   .market { margin-top: 12px; display: grid; gap: 8px; }
   .market h2 { font-size: 13px; margin: 0; letter-spacing: -0.01em; }
   .trend { border-left: 3px solid var(--teal); padding: 2px 0 2px 10px; display: grid; gap: 3px; }
@@ -208,10 +221,13 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
     return isNaN(dt) ? "" : dt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
   }
 
-  function competitorRow(c) {
-    var row = el("div", "row");
+  function competitorRow(c, first) {
+    var tier = c.looks_wrong || !c.priority ? "t-low" : c.priority.score >= 60 ? "t-high" : c.priority.score >= 35 ? "t-mid" : "t-low";
+    var row = el("div", "row " + tier);
     var top = el("div", "top");
-    top.appendChild(el("span", "name", c.name));
+    var nm = el("span", "name", c.name);
+    if (first && tier !== "t-low") { var ft = el("span", "first", "Watch first"); var wrap = el("span"); wrap.style.cssText = "display:flex;gap:8px;align-items:center;flex-wrap:wrap"; wrap.appendChild(nm); wrap.appendChild(ft); top.appendChild(wrap); }
+    else top.appendChild(nm);
     var scored = c.score != null;
     if (scored) {
       top.appendChild(badgeFor(c.label || c.momentum));
@@ -272,8 +288,10 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
       if (c.priority.reasons && c.priority.reasons.length) pr.appendChild(el("div", "prio-why", c.priority.reasons.slice(0, 3).join(" · ")));
       row.appendChild(pr);
     }
+    var cut = row.childNodes.length;
     if (scored) {
       row.appendChild(el("div", "detail", "Momentum " + c.score + (c.confidence === "low" ? " · early read" : "")));
+      cut = row.childNodes.length;
     } else if (c.activity) {
       row.appendChild(el("div", "detail", c.activity.detail));
       var tc = typeChips(c.activity.byType);
@@ -309,6 +327,16 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
     actions.appendChild(button("What changed?", "Using Ripplewatch: what changed with " + c.name + "?"));
     actions.appendChild(button("Compare pricing", "Using Ripplewatch: compare pricing with " + c.name + "."));
     row.appendChild(actions);
+    var more = el("div", "more");
+    while (row.childNodes.length > cut) more.appendChild(row.childNodes[cut]);
+    row.appendChild(more);
+    if (tier === "t-low") {
+      more.hidden = true;
+      var tg = el("button", "tog", "Details ▾");
+      tg.type = "button";
+      tg.addEventListener("click", function () { more.hidden = !more.hidden; tg.textContent = more.hidden ? "Details ▾" : "Hide details ▴"; resize(); });
+      row.insertBefore(tg, more);
+    }
     return row;
   }
 
@@ -362,7 +390,7 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
     if (!competitors.length) {
       list.appendChild(el("p", "empty", "No competitors are tracked yet."));
     }
-    competitors.forEach(function (c) { list.appendChild(competitorRow(c)); });
+    competitors.forEach(function (c, i) { list.appendChild(competitorRow(c, i === 0)); });
     app.appendChild(list);
 
     var mc = data && data.market_context;
