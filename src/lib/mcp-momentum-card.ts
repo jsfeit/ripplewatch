@@ -95,6 +95,22 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
   .more { display: grid; gap: 7px; }
   .more[hidden] { display: none; }
   .tog { justify-self: start; font-size: 11.5px; padding: 3px 9px; color: var(--muted); }
+  .you-line { margin-top: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12.5px; padding: 6px 2px; border-top: 1px solid var(--line); }
+  .you-k { font-weight: 650; }
+  .you-v { color: var(--muted); flex: 1 1 160px; }
+  .sharpen { margin-top: 12px; background: var(--teal-soft); border-radius: 14px; padding: 13px 14px; display: grid; gap: 0; }
+  .sharpen h2 { font-size: 13.5px; margin: 0; letter-spacing: -0.01em; }
+  .sharpen-sub { color: var(--muted); font-size: 12px; margin: 1px 0 4px; }
+  .gap { display: grid; gap: 6px; padding: 11px 0 3px; border-top: 1px solid color-mix(in srgb, var(--teal) 22%, transparent); margin-top: 8px; }
+  .gap-t { font-weight: 650; font-size: 13.5px; }
+  .gap-w { font-size: 12.5px; color: var(--ink); }
+  .gap-for { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+  .gap-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .gap-set { font-size: 12px; color: var(--muted); }
+  button.go { background: var(--teal); color: var(--bg); border-color: var(--teal); }
+  button.go:hover { filter: brightness(1.08); }
+  button.alt { background: transparent; }
+  .fine { margin-top: 12px; font-size: 11.5px; color: var(--muted); }
   .market { margin-top: 12px; display: grid; gap: 8px; }
   .market h2 { font-size: 13px; margin: 0; letter-spacing: -0.01em; }
   .trend { border-left: 3px solid var(--teal); padding: 2px 0 2px 10px; display: grid; gap: 3px; }
@@ -304,8 +320,10 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
     }
     var cut = row.childNodes.length;
     if (scored) {
-      row.appendChild(el("div", "detail", "Momentum " + c.score + (c.confidence === "low" ? " · early read" : "")));
-      cut = row.childNodes.length;
+      // An early read is a guess from thin history: keep it out of sight in the details so it is not read as a second rank.
+      var early = c.confidence === "low";
+      row.appendChild(el("div", "detail", "Momentum " + c.score + (early ? " · early read, too soon to rely on" : "")));
+      if (!early) cut = row.childNodes.length;
     } else if (c.activity) {
       row.appendChild(el("div", "detail", c.activity.detail));
       var tc = typeChips(c.activity.byType);
@@ -335,11 +353,11 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
       var cov = el("div", "cov");
       c.coverage.forEach(function (src) { cov.appendChild(el("span", src.working ? "" : "off", (src.working ? "✓ " : "· ") + src.label)); });
       row.appendChild(cov);
-      if (c.data_gaps) row.appendChild(el("div", "cov-fix", c.data_gaps));
     }
     var actions = el("div", "actions");
     actions.appendChild(button("What changed?", "Using Ripplewatch: what changed with " + c.name + "?"));
-    actions.appendChild(button("Compare pricing", "Using Ripplewatch: compare pricing with " + c.name + "."));
+    var pricingOk = (c.coverage || []).some(function (src) { return src.id === "pricing" && src.working; });
+    if (pricingOk) actions.appendChild(button("Compare pricing", "Using Ripplewatch: compare pricing with " + c.name + "."));
     row.appendChild(actions);
     var more = el("div", "more");
     while (row.childNodes.length > cut) more.appendChild(row.childNodes[cut]);
@@ -356,7 +374,10 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
 
   function render(data) {
     app.textContent = "";
-    var competitors = (data && data.competitors) || [];
+    var all = (data && data.competitors) || [];
+    // Entries that are not companies do not belong in the comparison: they get their own small strip below it.
+    var flagged = all.filter(function (c) { return c.looks_wrong; });
+    var competitors = all.filter(function (c) { return !c.looks_wrong; });
     var head = el("div", "head");
     head.appendChild(el("h1", null, "Ripplewatch · Momentum"));
     head.appendChild(el("span", "sub", competitors.length + (competitors.length === 1 ? " competitor" : " competitors")));
@@ -370,45 +391,58 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
       app.appendChild(mv);
     }
 
-    var unscoredCount = competitors.filter(function (c) { return c.score == null; }).length;
-    if (unscoredCount > 0) {
-      app.appendChild(el("div", "note", unscoredCount === competitors.length
-        ? "Momentum is a 30-day trend, so it needs a month of history. Until then, Watch priority ranks who deserves your attention now, from what the first check found and your deals."
-        : "Some competitors do not have a Momentum score yet, because it needs a month of history. Those show Watch priority instead."));
-    }
-
-    var hasCost = competitors.some(function (c) { return c.costing_you; });
-    var hasStrength = competitors.some(function (c) { return c.strength_read; });
-    if (!hasCost || !hasStrength) {
-      var missing = [];
-      if (!hasCost) missing.push("what each competitor is costing you (needs some " + ((data && data.log_action && data.log_action.noun) || "deals") + " logged)");
-      if (!hasStrength) missing.push("whether they look strong or under pressure (needs about two weeks of hiring, pricing and review history)");
-      app.appendChild(el("div", "note", "Not showing yet: " + missing.join(", and ") + "."));
-    }
-
     var list = el("div", "list");
-    var you = data && data.your_momentum;
-    if (you) {
-      var yrow = el("div", "row you");
-      var ytop = el("div", "top");
-      ytop.appendChild(el("span", "name", "You"));
-      ytop.appendChild(badgeFor(you.label || "No read yet"));
-      yrow.appendChild(ytop);
-      yrow.appendChild(el("div", "detail", you.score != null ? "Momentum " + you.score : "Your momentum builds from your deals and customer scores."));
-      var ya = el("div", "actions");
-      var la = (data && data.log_action) || { label: "Log a deal", prompt: "Using Ripplewatch: log a deal. " };
-      ya.appendChild(button(la.label, la.prompt));
-      yrow.appendChild(ya);
-      list.appendChild(yrow);
-    }
-    if (!competitors.length) {
-      list.appendChild(el("p", "empty", "No competitors are tracked yet."));
-    }
+    if (!all.length) list.appendChild(el("p", "empty", "No competitors are tracked yet."));
     assignTiers(competitors);
     var firstHigh = null;
     competitors.forEach(function (c) { if (!firstHigh && tierOf[c.name] === "t-high") firstHigh = c.name; });
     competitors.forEach(function (c) { list.appendChild(competitorRow(c, c.name === firstHigh)); });
     app.appendChild(list);
+
+    // Your own momentum: a thin line, not a card, until there is something to say.
+    var you = data && data.your_momentum;
+    var la = (data && data.log_action) || { label: "Log a deal", prompt: "Using Ripplewatch: log a deal. " };
+    if (you) {
+      var yl = el("div", "you-line");
+      yl.appendChild(el("span", "you-k", "You"));
+      yl.appendChild(el("span", "you-v", you.score != null ? "Momentum " + you.score : "Not enough history yet. It builds from your deals and customer scores."));
+      yl.appendChild(button(la.label, la.prompt));
+      app.appendChild(yl);
+    }
+
+    // Recommendations look different from competitors on purpose: a tinted panel of things to do, with solid buttons.
+    var gaps = (data && data.gaps) || [];
+    if (flagged.length || gaps.length) {
+      var sp = el("div", "sharpen");
+      sp.appendChild(el("h2", null, "To sharpen this"));
+      sp.appendChild(el("div", "sharpen-sub", "What is missing, and where it could come from."));
+      if (flagged.length) {
+        var fg = el("div", "gap");
+        fg.appendChild(el("div", "gap-t", flagged.length === 1 ? "Check this entry" : "Check these entries"));
+        fg.appendChild(el("div", "gap-w", "These read like headlines, not companies, so they are left out of the comparison."));
+        fg.appendChild(el("div", "gap-for", flagged.map(function (c) { return c.name; }).join(" · ")));
+        fg.appendChild(el("div", "gap-set", "Remove or rename in Settings → Competitors."));
+        sp.appendChild(fg);
+      }
+      gaps.forEach(function (g) {
+        var gi = el("div", "gap");
+        gi.appendChild(el("div", "gap-t", g.title));
+        gi.appendChild(el("div", "gap-w", g.why));
+        if (g.affects && g.affects.length) gi.appendChild(el("div", "gap-for", "Affects: " + g.affects.join(", ")));
+        var ga = el("div", "gap-actions");
+        var setting = null;
+        (g.routes || []).forEach(function (r, i) {
+          if (r.kind === "settings") { setting = r.label; return; }
+          var b = button(r.label, r.prompt);
+          b.className = i === 0 ? "go" : "alt";
+          ga.appendChild(b);
+        });
+        if (ga.childNodes.length) gi.appendChild(ga);
+        if (setting) gi.appendChild(el("div", "gap-set", "Or: " + setting.charAt(0).toLowerCase() + setting.slice(1) + "."));
+        sp.appendChild(gi);
+      });
+      app.appendChild(sp);
+    }
 
     var mc = data && data.market_context;
     if (mc && mc.trends && mc.trends.length) {
@@ -425,6 +459,15 @@ export const MOMENTUM_CARD_HTML = `<!doctype html>
       });
       app.appendChild(mk);
     }
+
+    var unscoredCount = competitors.filter(function (c) { return c.score == null; }).length;
+    var hasCost = competitors.some(function (c) { return c.costing_you; });
+    var hasStrength = competitors.some(function (c) { return c.strength_read; });
+    var fine = [];
+    if (unscoredCount > 0) fine.push("Momentum is a 30-day trend, so it needs a month of history. Until then Watch priority ranks who deserves your attention now.");
+    if (!hasCost) fine.push("Costing you appears once you have logged some " + (la.noun || "deals") + ".");
+    if (!hasStrength) fine.push("Strong or under pressure appears after about two weeks of hiring, pricing and review history.");
+    if (fine.length) app.appendChild(el("div", "fine", fine.join(" ")));
 
     copybox = el("div", "copybox");
     copybox.hidden = true;
